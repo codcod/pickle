@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-002 reviewed → DONE; T-012 broadened)
+Last updated: 2026-07-23 (T-002 merged to main; T-003 refined → READY)
 
 ---
 
@@ -41,6 +41,7 @@ Last updated: 2026-07-23 (T-002 reviewed → DONE; T-012 broadened)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-003 | ticket new (id allocation + template + board row) | high | medium | M | [T-001] |
 
 ## TO DO (impact order, per child)
 
@@ -48,7 +49,6 @@ Last updated: 2026-07-23 (T-002 reviewed → DONE; T-012 broadened)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-003 | ticket new (id allocation + template + board row) | high | medium | M | [T-001] |
 | T-004 | install (scaffold + skill install + marker injection + first child) | high | high | L | [T-001] |
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | high | medium-high | M-L | [T-002] |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | high | medium | M-L | [] |
@@ -66,7 +66,7 @@ Last updated: 2026-07-23 (T-002 reviewed → DONE; T-012 broadened)
 | id | title | merged |
 |---|---|---|
 | T-001 | pickle.toml config model + project registry | yes — merged to main 2026-07-23 (cdad65e) |
-| T-002 | board audit engine | no — feat/T-002-board-audit-engine (publish-gated, awaiting approval) |
+| T-002 | board audit engine | yes — merged to main 2026-07-23 (fca3ea1) |
 
 ## DROPPED
 

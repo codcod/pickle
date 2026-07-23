@@ -202,3 +202,4 @@ folded into **T-012** (now depends on T-002) rather than opening near-duplicate 
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-002-board-audit-engine (applicability gate clean)
 - 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (internal/ticket+board+audit; dogfood audit 0 errors on own board; broken-tree exits 1)
 - 2026-07-23 — IN REVIEW → DONE: review PASS, no blocking findings; N1/N2 folded into T-012; acceptance re-run verbatim (branch not yet merged — publish-gated)
+- 2026-07-23 — MERGED: feat/T-002-board-audit-engine → main (fca3ea1), user-approved; branch deleted
