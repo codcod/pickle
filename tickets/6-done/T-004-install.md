@@ -181,7 +181,54 @@ deferral documented.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Reviewed:** 2026-07-23 on `feat/T-004-install`. **Verdict: PASS** (no blocking findings;
+non-blocking follow-ups → T-013).
+
+Protocol: generic (`skill/resources/review-protocol.md`); no overarching/per-child addendum
+configured. Dependency gate: T-001 done + merged (cdad65e) — satisfied.
+
+- [x] Implementation audit — acceptance test re-run verbatim (green)
+- [x] Quality audit
+- [x] Consistency audit
+- [x] Documentation audit (README section added; no docs build configured)
+- [x] Findings classified & recorded; non-blocking → T-013
+- [x] Ticket moved to 6-done; History appended
+- [x] BOARD.md updated; impact sweep done
+
+### Implementation audit (step 2) — all met
+
+| Item | Result | Evidence |
+|---|---|---|
+| Task 1 `internal/install` (copy payload, scaffold, board, readme, config, markers, symlink) | met | package present; 3 unit tests PASS; coverage 70.2% |
+| Task 2 cli `runInstall` (flags + defaults + self-check) | met | `install` produces full layout; post-install `audit.Audit` gate wired |
+| Task 3 README | met | `## pickle install` section (layout, flags, idempotency, pi/opencode deferral) |
+| Acceptance test (verbatim) | met | fresh install → layout + `board audit` clean + `ticket new` works; re-run keeps one marker pair + preserves T-001 ticket; exit 0 |
+| Decisions 1–8 | honoured | copy-not-symlink + self-host guard (`TestSelfHostSymlinkGuard`); relative `.claude` symlink; scope limited (pi/opencode deferred); child defaults; idempotent+preserve (`TestRunIsIdempotent`); CLAUDE.md modes; `.gitkeep` ×7; post-install audit self-check |
+
+### Findings (all non-blocking → T-013)
+
+| # | Severity | Description | Evidence |
+|---|---|---|---|
+| 1 | non-blocking | `injectMarker` separator logic has a dead `else if` branch; a file ending in `\n\n` gets an extra blank line before the appended block | code read; append repro on a pre-existing marker-less AGENTS.md (spacing correct for the common single-`\n` case) |
+| 2 | non-blocking | re-run summary reports `+` (created) for `copyPayload`/`scaffoldTickets` even when only refreshing existing files | re-run output showed `+ .agents/skills/ticket-flow/` / `+ tickets/ (7 status dirs)` on an installed tree |
+| 3 | non-blocking | cli `runInstall` wrapper has no direct test (only the `internal/install` core is tested) | coverage: install 70.2%, cli untested for install |
+| 4 | non-blocking | `--agent` flag is accepted but a pure no-op (pi/opencode deferred) — could mislead a user passing `--agent pi` | code: flag parsed then discarded |
+| 5 | non-blocking (minor) | child name substituted into BOARD.md headings without sanitization | `writeBoard` uses `ReplaceAll` on the raw name |
+
+No blocking findings: the golden path is correct, install is idempotent and board-audit-clean,
+and every task/decision is honoured. All five items are polish/hardening on the install surface
+and were collected into a single new ticket **T-013** (`depends-on: [T-004]`). Two plan
+deviations noted at hand-off are accepted as-is: flag form `--project`/`--path` (vs the
+Description's inline syntax) and `.gitkeep` closing the empty-dir gap deferred from T-002.
+
+### Impact sweep (step 8)
+
+Tickets depending on T-004: **T-005** (doctor), **T-006** (upgrade+uninstall), **T-009**
+(opencode), **T-010** (pi), and the new **T-013**. T-004 fixes the concrete artifact set those
+tickets must operate on — recorded a short pointer in T-005 and T-006's Descriptions (verify /
+refresh / remove exactly: `.agents/skills/ticket-flow/` copy, `.claude/skills/ticket-flow`
+symlink, `AGENTS.md`+`CLAUDE.md` marker pair, `tickets/**/.gitkeep`, `pickle.toml`). T-009/T-010
+must extend install for their agents (they were always scoped to). No assumptions invalidated.
 
 ## History
 
@@ -189,3 +236,4 @@ deferral documented.
 - 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met); prerequisite T-001 done+merged. Scope pinned to the core reference install; pi/opencode matrix deferred to T-009/T-010.
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-004-install (applicability gate clean)
 - 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (fresh install -> layout + board audit clean + ticket new works; idempotent re-run preserves data, one marker pair)
+- 2026-07-23 — IN REVIEW → DONE: review PASS; no blocking findings; 5 non-blocking -> T-013
