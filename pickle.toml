@@ -1,0 +1,35 @@
+# pickle configuration for this overarching project.
+#
+# Hand-written to bootstrap pickle's own self-hosted flow (the chicken-and-egg:
+# pickle cannot `pickle install` itself until pickle is built). Once `pickle
+# install` / `pickle project add` land (T-001/T-004), this file becomes
+# tool-managed. Its schema is finalised by T-001.
+
+# Payload version pinned into this project (stamped by install/upgrade).
+payload_version = "0.0.0-skeleton"
+
+# Optional overarching review addendum, applied to every ticket on top of the
+# generic review protocol (see skill/resources/review-protocol.md). None yet.
+# review_addendum = "review-addendum.md"
+
+[commit]
+# Overarching bookkeeping (tickets/, BOARD.md, docs) may be auto-committed, always
+# with explicit pathspecs (never `git add -A`/`.`).
+overarching_auto = true
+# Child-projects are publish-gated: local WIP commits are fine; push + MR only
+# after explicit user approval; merging is always the human's.
+child_publish_gated = true
+
+# --- Registered child-projects (one [[project]] per connected build target) ---
+# pickle is self-hosted: its sole child is the repo itself, at ".".
+[[project]]
+name = "pickle"
+path = "."
+build = "just build"
+test = "just test"
+lint = "just lint"
+# docs = ""                       # no docs build yet
+branch_prefix = "feat/"           # feat/T-NNN-<slug>
+wip_in_development = 1
+wip_in_review = 1
+# review_addendum = ""            # per-child addendum, if any

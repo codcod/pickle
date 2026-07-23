@@ -32,9 +32,12 @@ A single-child project is just the degenerate case.
 - **Mechanics** (scaffold dirs, allocate the next `T-NNN`, move a ticket file + sync the board +
   append History atomically, audit the invariants) are deterministic **CLI commands**.
 
-The embedded payload lives in [`resources/`](resources/) (`SKILL.md`, `tickets-README.md`,
-`TEMPLATE.md`, `review-protocol.md`, `BOARD.md`) and is compiled into the binary via
-`//go:embed`.
+The embedded payload lives in [`skill/`](skill/) — laid out exactly as the installed skill
+(`skill/SKILL.md` + `skill/resources/{tickets-README,TEMPLATE,review-protocol,BOARD}.md`) — and
+is compiled into the binary via `//go:embed`. `pickle` **self-hosts** this flow: its own board
+lives in [`tickets/`](tickets/), the skill is discoverable via `.agents/skills/ticket-flow`
+(a symlink to `skill/`), and [`pickle.toml`](pickle.toml) registers the sole child-project
+(`pickle`, at the repo root).
 
 ## Commands
 
@@ -82,9 +85,15 @@ just lint         # go vet + gofmt check
 ```
 .
 ├── main.go              entrypoint
-├── assets.go            //go:embed all:resources  (the payload + build version)
+├── assets.go            //go:embed all:skill  (the payload + build version)
 ├── internal/cli/        command surface (dispatch + one file per command)
-└── resources/           embedded skill payload (source of truth for the flow)
+├── skill/               embedded skill payload (source of truth for the flow)
+│   ├── SKILL.md
+│   └── resources/       tickets-README.md, TEMPLATE.md, review-protocol.md, BOARD.md
+├── tickets/             pickle's OWN board (self-hosted flow) + seeded backlog
+├── pickle.toml          overarching config + [[project]] registry (child: pickle)
+├── AGENTS.md            marker block: start at tickets/BOARD.md + project config
+└── .agents/skills/ticket-flow -> ../../skill   (skill discovery; .claude mirror)
 ```
 
 > Note: the module path is `pickle` (bare) for the skeleton; it becomes a real VCS path
