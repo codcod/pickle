@@ -183,3 +183,4 @@ into a single follow-up (**T-012**) rather than three near-duplicate board rows.
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-001-config-and-project-registry (applicability gate clean)
 - 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (config pkg + project add/list/remove)
 - 2026-07-23 — IN REVIEW → DONE: review PASS, no blocking findings; spawned T-012 (non-blocking); acceptance test re-run verbatim (branch not yet merged — publish-gated)
+- 2026-07-23 — MERGED: feat/T-001-config-and-project-registry → main (cdad65e), user-approved; branch deleted
