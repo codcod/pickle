@@ -197,3 +197,4 @@ the durable fix (split on the first `:` before finding the arrow) is folded into
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-003-ticket-new (applicability gate clean)
 - 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (ticket new -> board audit 0 errors on the mutated tree; failure modes exit non-zero)
 - 2026-07-23 — IN REVIEW → DONE: review PASS; no blocking findings; 2 non-blocking -> T-012
+- 2026-07-23 — merged to main (6a6fa72)

@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-003 review PASS → done, unmerged; non-blocking → T-012)
+Last updated: 2026-07-23 (T-003 merged to main; refining T-004)
 
 ---
 
@@ -66,7 +66,7 @@ Last updated: 2026-07-23 (T-003 review PASS → done, unmerged; non-blocking →
 |---|---|---|
 | T-001 | pickle.toml config model + project registry | yes — merged to main 2026-07-23 (cdad65e) |
 | T-002 | board audit engine | yes — merged to main 2026-07-23 (fca3ea1) |
-| T-003 | ticket new (id allocation + template + board row) | no — publish-gated (branch feat/T-003-ticket-new) |
+| T-003 | ticket new (id allocation + template + board row) | yes — merged to main 2026-07-23 (6a6fa72) |
 
 ## DROPPED
 
