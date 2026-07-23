@@ -2,7 +2,7 @@
 id: T-006
 title: upgrade + uninstall
 project: pickle
-depends-on: []
+depends-on: [T-004]
 impact: medium
 complexity: medium
 cost: M

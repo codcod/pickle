@@ -2,7 +2,7 @@
 id: T-008
 title: board sync
 project: pickle
-depends-on: []
+depends-on: [T-002]
 impact: medium
 complexity: medium
 cost: M

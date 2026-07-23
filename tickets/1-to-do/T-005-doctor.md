@@ -2,7 +2,7 @@
 id: T-005
 title: doctor
 project: pickle
-depends-on: []
+depends-on: [T-004]
 impact: medium
 complexity: low-medium
 cost: S-M

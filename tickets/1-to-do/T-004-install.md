@@ -2,7 +2,7 @@
 id: T-004
 title: install (scaffold + skill install + marker injection + first child)
 project: pickle
-depends-on: []
+depends-on: [T-001]
 impact: high
 complexity: high
 cost: L

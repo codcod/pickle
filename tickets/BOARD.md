@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23
+Last updated: 2026-07-23 (T-001 refined → READY)
 
 ---
 
@@ -41,6 +41,7 @@ Last updated: 2026-07-23
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-001 | pickle.toml config model + project registry | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -48,17 +49,16 @@ Last updated: 2026-07-23
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-001 | pickle.toml config model + project registry | high | medium | M | [] |
-| T-002 | board audit engine | high | medium-high | M-L | [] |
-| T-003 | ticket new (id allocation + template + board row) | high | medium | M | [] |
-| T-004 | install (scaffold + skill install + marker injection + first child) | high | high | L | [] |
-| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | high | medium-high | M-L | [] |
+| T-002 | board audit engine | high | medium-high | M-L | [T-001] |
+| T-003 | ticket new (id allocation + template + board row) | high | medium | M | [T-001] |
+| T-004 | install (scaffold + skill install + marker injection + first child) | high | high | L | [T-001] |
+| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | high | medium-high | M-L | [T-002] |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | high | medium | M-L | [] |
-| T-005 | doctor | medium | low-medium | S-M | [] |
-| T-006 | upgrade + uninstall | medium | medium | M | [] |
-| T-008 | board sync | medium | medium | M | [] |
-| T-009 | opencode wiring | medium | medium | M | [] |
-| T-010 | Pi guardrail scaffold | medium | medium | M | [] |
+| T-005 | doctor | medium | low-medium | S-M | [T-004] |
+| T-006 | upgrade + uninstall | medium | medium | M | [T-004] |
+| T-008 | board sync | medium | medium | M | [T-002] |
+| T-009 | opencode wiring | medium | medium | M | [T-004] |
+| T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
 
 ## DONE
 
@@ -76,12 +76,13 @@ Last updated: 2026-07-23
 
 ---
 
+## Dependency chain (hard `depends-on:`, human-approved 2026-07-23)
+
+- **T-001** (config/registry) → **T-002**, **T-003**, **T-004**.
+- **T-002** (audit) → **T-007**, **T-008**.
+- **T-004** (install) → **T-005**, **T-006**, **T-009**, **T-010**.
+
 ## Known soft couplings (cross-referenced in ticket Descriptions, not `depends-on`)
 
-Suggested build-order chain (hard `depends-on:` to be confirmed with the human at refine time —
-rules §3):
-
-- **T-001** (config/registry) is the foundation consumed by **T-002**, **T-003**, **T-004**.
-- **T-002** (audit) underpins **T-007** and **T-008**.
-- **T-004** (install) underpins **T-005**, **T-006**, **T-009**, **T-010**.
-- **T-011** (distribution) wants the command set (P1–P3) essentially complete.
+- **T-011** (distribution) wants the command set (P1–P3) essentially complete — narrative
+  coupling only, no hard `depends-on`.

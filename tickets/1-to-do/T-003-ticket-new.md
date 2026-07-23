@@ -2,7 +2,7 @@
 id: T-003
 title: ticket new (id allocation + template + board row)
 project: pickle
-depends-on: []
+depends-on: [T-001]
 impact: high
 complexity: medium
 cost: M

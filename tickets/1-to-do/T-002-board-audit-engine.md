@@ -2,7 +2,7 @@
 id: T-002
 title: board audit engine
 project: pickle
-depends-on: []
+depends-on: [T-001]
 impact: high
 complexity: medium-high
 cost: M-L
