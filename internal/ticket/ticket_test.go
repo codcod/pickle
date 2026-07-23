@@ -85,6 +85,82 @@ func TestLoadAllToleratesMissingDirs(t *testing.T) {
 	}
 }
 
+func TestSlugify(t *testing.T) {
+	for _, c := range []struct{ in, want string }{
+		{"Review the Jira board", "review-the-jira-board"},
+		{"  Trim & Punctuation!!  ", "trim-punctuation"},
+		{"MixedCASE_123", "mixedcase-123"},
+		{"###", "untitled"},
+	} {
+		if got := Slugify(c.in); got != c.want {
+			t.Errorf("Slugify(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestNextNum(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"1-to-do/T-001-a.md", "6-done/T-012-b.md", "3-in-development/T-007-c.md"} {
+		p := filepath.Join(root, "tickets", filepath.Dir(name))
+		os.MkdirAll(p, 0o755)
+		os.WriteFile(filepath.Join(root, "tickets", name), []byte(sample), 0o644)
+	}
+	if got := NextNum(root); got != 13 {
+		t.Errorf("NextNum = %d, want 13", got)
+	}
+	if got := NextNum(t.TempDir()); got != 1 {
+		t.Errorf("NextNum(empty) = %d, want 1", got)
+	}
+}
+
+func TestValidGrade(t *testing.T) {
+	if !ValidGrade("impact", "medium-high") || !ValidGrade("cost", "M") || !ValidGrade("complexity", "low") {
+		t.Error("expected legal grades to validate")
+	}
+	if ValidGrade("impact", "banana") || ValidGrade("cost", "XXL") || ValidGrade("nope", "medium") {
+		t.Error("expected illegal grades to fail")
+	}
+}
+
+func TestScaffoldIsAuditClean(t *testing.T) {
+	out := Scaffold("T-013", "Review the Jira board", "pickle", "high", "medium", "M")
+	fm, ok := ParseFrontmatter(out)
+	if !ok {
+		t.Fatal("scaffold has no frontmatter")
+	}
+	for _, k := range []string{"id", "title", "project", "depends-on", "impact", "complexity", "cost"} {
+		if _, has := fm[k]; !has {
+			t.Errorf("scaffold frontmatter missing %q", k)
+		}
+	}
+	if fm["id"] != "T-013" || fm["project"] != "pickle" {
+		t.Errorf("scaffold frontmatter = %v", fm)
+	}
+	if got := LastHistoryStatus(out); got != "TO DO" {
+		t.Errorf("scaffold LastHistoryStatus = %q, want TO DO", got)
+	}
+}
+
+// TestScaffoldSectionsMatchTemplate is the drift guard (T-003 decision 4): the
+// scaffold's ## section set must equal the embedded TEMPLATE.md's.
+func TestScaffoldSectionsMatchTemplate(t *testing.T) {
+	tmplPath := filepath.Join("..", "..", "skill", "resources", "TEMPLATE.md")
+	data, err := os.ReadFile(tmplPath)
+	if err != nil {
+		t.Skipf("TEMPLATE.md not found: %v", err)
+	}
+	want := SectionHeadings(string(data))
+	got := SectionHeadings(Scaffold("T-001", "x", "pickle", "high", "medium", "M"))
+	if len(want) != len(got) {
+		t.Fatalf("section count differs: template %v vs scaffold %v", want, got)
+	}
+	for i := range want {
+		if want[i] != got[i] {
+			t.Errorf("section %d: template %q != scaffold %q", i, want[i], got[i])
+		}
+	}
+}
+
 func TestLoadAllBadFilename(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "tickets", "1-to-do")

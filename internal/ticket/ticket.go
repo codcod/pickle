@@ -5,12 +5,14 @@
 package ticket
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Status is a board status with its directory, display name, and terminal flag.
@@ -169,6 +171,118 @@ func HasMergeLine(text string) bool {
 		}
 	}
 	return false
+}
+
+// Legal grade values (single values or adjacent-pair ranges). These are the one
+// source of truth, consumed by both the board audit and `ticket new`.
+var (
+	LegalImpact     = gradeSet("low", "medium", "high", "critical", "low-medium", "medium-high", "high-critical")
+	LegalComplexity = gradeSet("low", "medium", "high", "low-medium", "medium-high")
+	LegalCost       = gradeSet("S", "M", "L", "XL", "S-M", "M-L", "L-XL")
+)
+
+func gradeSet(vals ...string) map[string]bool {
+	m := make(map[string]bool, len(vals))
+	for _, v := range vals {
+		m[v] = true
+	}
+	return m
+}
+
+// ValidGrade reports whether v is legal for the grade kind ("impact",
+// "complexity", or "cost").
+func ValidGrade(kind, v string) bool {
+	switch kind {
+	case "impact":
+		return LegalImpact[v]
+	case "complexity":
+		return LegalComplexity[v]
+	case "cost":
+		return LegalCost[v]
+	}
+	return false
+}
+
+// NextNum returns the next free ticket number: max(numeric part of every T-NNN
+// filename across all status dirs) + 1 (one global namespace). Scans filenames
+// directly so it is robust to files that fail frontmatter parsing.
+func NextNum(root string) int {
+	max := 0
+	for _, s := range Statuses {
+		entries, err := os.ReadDir(filepath.Join(root, "tickets", s.Dir))
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if m := filenameRE.FindStringSubmatch(e.Name()); m != nil {
+				if n, err := strconv.Atoi(strings.TrimPrefix(m[1], "T-")); err == nil && n > max {
+					max = n
+				}
+			}
+		}
+	}
+	return max + 1
+}
+
+var slugStripRE = regexp.MustCompile(`[^a-z0-9]+`)
+
+// Slugify turns a title into a filename slug: lowercase, non-alphanumeric runs
+// collapsed to single hyphens, trimmed. Empty input yields "untitled".
+func Slugify(title string) string {
+	s := strings.Trim(slugStripRE.ReplaceAllString(strings.ToLower(title), "-"), "-")
+	if s == "" {
+		return "untitled"
+	}
+	return s
+}
+
+// SectionHeadings returns the ordered list of top-level ("## ") section headings
+// in a ticket/template body — used to keep Scaffold in step with TEMPLATE.md.
+func SectionHeadings(text string) []string {
+	var out []string
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			out = append(out, strings.TrimSpace(line[3:]))
+		}
+	}
+	return out
+}
+
+// Scaffold renders a fresh, canonical TO DO ticket: filled frontmatter, heading,
+// and the standard section skeleton (mirroring TEMPLATE.md's section set). The
+// full TEMPLATE.md remains the authoring guide; this is the minimal, audit-clean
+// starting point `pickle ticket new` writes.
+func Scaffold(id, title, project, impact, complexity, cost string) string {
+	date := time.Now().Format("2006-01-02")
+	return fmt.Sprintf(`---
+id: %s
+title: %s
+project: %s
+depends-on: []
+impact: %s
+complexity: %s
+cost: %s
+---
+
+# %s — %s
+
+## Description
+
+<!-- TODO: describe this feature in prose (the current spec). Note soft couplings to other
+tickets by id; hard dependencies go in depends-on: frontmatter (human-approved). -->
+
+## Implementation Plan
+
+<!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->
+
+## Review
+
+<!-- empty until IN REVIEW -->
+
+## History
+
+- %s — created (TO DO). source: pickle ticket new
+`, id, title, project, impact, complexity, cost, id, title, date)
 }
 
 // LoadAll reads every ticket under root/tickets/<status>/. Missing status dirs are

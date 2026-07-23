@@ -20,21 +20,7 @@ type Result struct {
 	Warnings   []string
 }
 
-var legal = map[string]map[string]bool{
-	"impact":     set("low", "medium", "high", "critical", "low-medium", "medium-high", "high-critical"),
-	"complexity": set("low", "medium", "high", "low-medium", "medium-high"),
-	"cost":       set("S", "M", "L", "XL", "S-M", "M-L", "L-XL"),
-}
-
 var requiredKeys = []string{"id", "title", "project", "depends-on", "impact", "complexity", "cost"}
-
-func set(vals ...string) map[string]bool {
-	m := make(map[string]bool, len(vals))
-	for _, v := range vals {
-		m[v] = true
-	}
-	return m
-}
 
 // Audit checks every invariant for the tickets/ tree under root, using cfg for the
 // registered-child and per-child WIP checks.
@@ -67,7 +53,7 @@ func Audit(root string, cfg *config.Config) Result {
 			r.errf("%s: frontmatter id %s != filename id %s", ref, id, t.ID)
 		}
 		for _, k := range []string{"impact", "complexity", "cost"} {
-			if v := t.Front[k]; v != "" && !legal[k][v] {
+			if v := t.Front[k]; v != "" && !ticket.ValidGrade(k, v) {
 				r.errf("%s: illegal %s value %q (legal: single values or adjacent-pair ranges)", ref, k, v)
 			}
 		}

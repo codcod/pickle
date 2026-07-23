@@ -53,14 +53,18 @@ parse/model layer from T-002 is also merged and is reused here, though not a har
    `T-%03d` (zero-padded to match the existing T-001…T-012). Implement `ticket.NextNum(root)`.
 3. **Slug:** `ticket.Slugify(title)` — lowercase, non-`[a-z0-9]` runs → single `-`, trimmed;
    empty → `untitled`. Filename `T-NNN-<slug>.md`.
-4. **Scaffold source (FLAGGED — see note below):** the CLI writes a **canonical minimal
-   scaffold** via `ticket.Scaffold(...)`, *not* a literal copy of the full `TEMPLATE.md`
-   guidance. The scaffold has: filled frontmatter (`id`, `title`, `project`, `depends-on: []`,
-   the three grades), the `# T-NNN — <title>` heading, a `## Description` placeholder comment,
+4. **Scaffold source (CONFIRMED — option A):** the CLI writes a **canonical minimal scaffold**
+   via `ticket.Scaffold(...)`, *not* a literal copy of the full `TEMPLATE.md` guidance. The
+   scaffold has: filled frontmatter (`id`, `title`, `project`, `depends-on: []`, the three
+   grades), the `# T-NNN — <title>` heading, a `## Description` placeholder comment,
    `## Implementation Plan` with `<!-- empty until refined -->`, an empty `## Review` marker,
    and a `## History` with the `created (TO DO). source: pickle ticket new` line. The full
    `TEMPLATE.md` remains the authoring guide the agent consults at refinement (and that
-   `install` writes into the skill) — its section structure is mirrored exactly by the scaffold.
+   `install` writes into the skill). **Drift guard:** a unit test asserts the scaffold's
+   ordered `##` section headings equal `TEMPLATE.md`'s (`Description`, `Implementation Plan`,
+   `Review`, `History`), so a change to the template's section set forces the scaffold to keep
+   up (read the template via the relative path `../../skill/resources/TEMPLATE.md`, as
+   `config_test.go` reads the repo `pickle.toml`).
 5. **Grades:** validate any provided value against the legal set; default when omitted to
    `impact=medium`, `complexity=medium`, `cost=M`. **Move the legal-grade sets into
    `internal/ticket`** (`LegalImpact`/`LegalComplexity`/`LegalCost`) and have `internal/audit`
@@ -78,7 +82,10 @@ parse/model layer from T-002 is also merged and is reused here, though not a har
 
 1. **`internal/ticket`** — add `NextNum(root) int`, `Slugify(title) string`, the exported
    `LegalImpact/LegalComplexity/LegalCost` sets + a `ValidGrade(kind, v) bool`, and
-   `Scaffold(id, title, project, impact, complexity, cost string) string`. Unit tests.
+   `Scaffold(id, title, project, impact, complexity, cost string) string`. Unit tests,
+   **including the section-headings parity test against `skill/resources/TEMPLATE.md`**
+   (decision 4) and a test that `Scaffold(...)`'s output passes `ParseFrontmatter` +
+   `LastHistoryStatus == "TO DO"`.
 2. **`internal/audit`** — replace its private `legal` table with `internal/ticket`'s sets
    (behaviour unchanged; keep tests green).
 3. **`internal/board`** — add `AddTODORow`. Unit tests (insert into existing sub-group in
@@ -124,11 +131,6 @@ failure modes exit non-zero.
 4. Suggested commit: `feat(cli): add ticket new (id + scaffold + board row) (T-003)`.
 5. Commit locally on the branch; **do not push / open MR without approval**.
 
-> **Decision flagged for confirmation (4):** the CLI emits a lean canonical scaffold rather
-> than instantiating the *full* `TEMPLATE.md` guidance verbatim (which is authoring prose full
-> of `<…>` placeholders). New tickets thus look like the existing hand-written ones (Description
-> placeholder + `empty until refined` plan), and pass `board audit` immediately. Confirm this is
-> the intended reading of "instantiate the embedded `TEMPLATE.md`" before implementation.
 
 ## Review
 
@@ -137,4 +139,6 @@ failure modes exit non-zero.
 ## History
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P1)
-- 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met); prerequisite T-001 done+merged. One decision (scaffold source) flagged for confirmation.
+- 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met); prerequisite T-001 done+merged. Scaffold-source decision confirmed (option A + headings-parity test).
+- 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-003-ticket-new (applicability gate clean)
+- 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (ticket new -> board audit 0 errors on the mutated tree; failure modes exit non-zero)

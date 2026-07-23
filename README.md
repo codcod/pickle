@@ -47,7 +47,7 @@ pickle project add|list|remove          manage connected child-projects         
 pickle upgrade                          refresh installed skill payload + markers                        [P2]
 pickle doctor                           verify install integrity                                         [P2]
 pickle uninstall                        remove skill/symlinks/markers (keep tickets/)                    [P2]
-pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [P1]
+pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [done: T-003]
 pickle ticket move T-NNN <status>       move file + History + board atomically                           [P3]
 pickle board audit                      check every board/ticket invariant                               [done: T-002]
 pickle board sync                       repair board rows from ticket state                              [P3]
@@ -90,6 +90,19 @@ non-zero (and prints `ERROR:`/`WARNING:` lines plus a summary) when any invarian
 
 Missing empty status directories are treated as empty, not errors (git does not track empty
 dirs).
+
+## `pickle ticket new`
+
+```
+pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V]
+```
+
+Allocates the next `T-NNN` (one global namespace = `max(existing) + 1`), writes a clean,
+audit-passing scaffold to `tickets/1-to-do/T-NNN-<slug>.md` (filled frontmatter + the standard
+section skeleton), and inserts the board row under the child's `### <child>` sub-group in the
+TO DO section, in impact order. `--project` must name a registered child; grades default to
+`medium`/`medium`/`M` and must be legal. The agent fills the Description prose afterwards; the
+full `TEMPLATE.md` (installed with the skill) is the authoring guide.
 
 ## Build
 
