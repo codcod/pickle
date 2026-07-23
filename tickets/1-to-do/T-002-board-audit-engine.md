@@ -31,8 +31,17 @@ Verify every invariant:
   dependency has no `merged` History line — checked against the dependency's **own** child repo,
   since dependencies may cross children).
 
-Exit non-zero on any error; print each error with a path/line reference. Phase P1. Soft-coupled
-to T-001; underpins T-007 and T-008.
+Exit non-zero on any error; print each error with a path/line reference. Phase P1. Depends on
+T-001; underpins T-007 and T-008.
+
+> **Impact note (from the T-001 review, 2026-07-23):** T-001 introduced a ticket-frontmatter
+> scanner in `internal/cli/project.go` (`ticketProject` reads `project:`; `liveTicketsTargeting`
+> globs `tickets/{1-to-do..5-rework}/T-*.md`). Board audit parses the *same* frontmatter (`id`,
+> `project:`, `depends-on:`, …) and enumerates the same status dirs — so extract a shared
+> parser (e.g. an `internal/ticket` package: parse frontmatter + status-dir list) and refactor
+> the T-001 remove-guard to reuse it, rather than duplicating the scan. Consume
+> `config.Config`/`Project(name)` for the `project:`-is-registered check and the per-child WIP
+> limits.
 
 ## Implementation Plan
 
