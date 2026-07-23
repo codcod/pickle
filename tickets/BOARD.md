@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-004 merged to main)
+Last updated: 2026-07-23 (T-007 refined to READY)
 
 ---
 
@@ -41,6 +41,7 @@ Last updated: 2026-07-23 (T-004 merged to main)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | high | medium-high | M-L | [T-002] |
 
 ## TO DO (impact order, per child)
 
@@ -48,7 +49,6 @@ Last updated: 2026-07-23 (T-004 merged to main)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | high | medium-high | M-L | [T-002] |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | high | medium | M-L | [] |
 | T-005 | doctor | medium | low-medium | S-M | [T-004] |
 | T-006 | upgrade + uninstall | medium | medium | M | [T-004] |
