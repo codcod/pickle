@@ -187,3 +187,5 @@ deferral documented.
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P2)
 - 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met); prerequisite T-001 done+merged. Scope pinned to the core reference install; pi/opencode matrix deferred to T-009/T-010.
+- 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-004-install (applicability gate clean)
+- 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (fresh install -> layout + board audit clean + ticket new works; idempotent re-run preserves data, one marker pair)

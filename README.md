@@ -42,7 +42,7 @@ lives in [`tickets/`](tickets/), the skill is discoverable via `.agents/skills/t
 ## Commands
 
 ```
-pickle install                          scaffold + install skill + markers + pickle.toml + first child   [P2]
+pickle install                          scaffold + install skill + markers + pickle.toml + first child   [done: T-004]
 pickle project add|list|remove          manage connected child-projects                                  [done: T-001]
 pickle upgrade                          refresh installed skill payload + markers                        [P2]
 pickle doctor                           verify install integrity                                         [P2]
@@ -54,9 +54,10 @@ pickle board sync                       repair board rows from ticket state     
 pickle version | help
 ```
 
-This repository is **early**: the command surface, dispatch, exit codes, and the embedded
-payload are in place. `pickle project add|list|remove` is implemented (T-001); the remaining
-commands are stubs that report their target build phase.
+This repository is **early**, but the core loop is live: `install` (T-004), `project
+add|list|remove` (T-001), `ticket new` (T-003), and `board audit` (T-002) are implemented.
+The remaining commands (`upgrade`/`doctor`/`uninstall`, `ticket move`, `board sync`) are stubs
+that report their target build phase.
 
 ## Configuration — `pickle.toml`
 
@@ -90,6 +91,35 @@ non-zero (and prints `ERROR:`/`WARNING:` lines plus a summary) when any invarian
 
 Missing empty status directories are treated as empty, not errors (git does not track empty
 dirs).
+
+## `pickle install`
+
+```
+pickle install [--project <name>] [--path <path>] [--build/--test/--lint/--docs <cmd>]
+               [--no-claude] [--claude-symlink]
+```
+
+Run once in a project to lay down the flow. It:
+
+- copies the embedded skill payload into `.agents/skills/ticket-flow/` (real files);
+- symlinks the Claude Code view `.claude/skills/ticket-flow -> ../../.agents/skills/ticket-flow`;
+- scaffolds `tickets/` (the seven ordered status dirs, each with a `.gitkeep`), seeds
+  `tickets/BOARD.md` from the skeleton (child name + date substituted) and a short
+  `tickets/README.md` pointer;
+- injects an idempotent `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block into
+  `AGENTS.md` and `CLAUDE.md` (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md`;
+  `--no-claude` skips all Claude artifacts);
+- writes `pickle.toml` registering the first child-project (`--project`, default: the root dir
+  name; `--path`, default `.`).
+
+**Per-project** (never writes to `~/` or outside the root), **idempotent, and safe to re-run**:
+the payload and marker block are refreshed in place while instance data (`BOARD.md`, tickets,
+`pickle.toml`) is preserved once present. After installing, a post-install `board audit`
+self-check must pass. An existing `.agents/skills/ticket-flow` **symlink** (a dev/self-host
+link) is left untouched.
+
+The pi/opencode agent wiring (`.pi/`, opencode) lands later (their own tickets); today
+`install` covers the agent-agnostic `.agents/` skill + `AGENTS.md` and the Claude Code view.
 
 ## `pickle ticket new`
 
