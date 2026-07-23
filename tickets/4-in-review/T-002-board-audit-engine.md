@@ -152,3 +152,5 @@ row.
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P1)
 - 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met); prerequisite T-001 done+merged
+- 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-002-board-audit-engine (applicability gate clean)
+- 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (internal/ticket+board+audit; dogfood audit 0 errors on own board; broken-tree exits 1)

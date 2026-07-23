@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 	"os"
+
+	"pickle/internal/audit"
 )
 
 // Board mechanics. `board audit` is the keystone (P1): a pure check over tickets/
@@ -15,8 +17,7 @@ func runBoard(args []string) int {
 	}
 	switch args[0] {
 	case "audit":
-		return notImplemented("P1", "board audit",
-			"check every invariant: one board row per ticket in the right section, unique ids matching filenames, complete frontmatter with legal grades, project: is a registered child, depends-on targets exist, per-child WIP limits, last History matches directory, in-dev deps done+merged (in their own child repo)")
+		return runBoardAudit(args[1:])
 	case "sync":
 		return notImplemented("P3", "board sync",
 			"regenerate/repair board rows from ticket frontmatter + locations (escape hatch when hand-edits drift)")
@@ -24,4 +25,24 @@ func runBoard(args []string) int {
 		fmt.Fprintf(os.Stderr, "pickle board: unknown subcommand %q\n", args[0])
 		return exitUsage
 	}
+}
+
+func runBoardAudit(_ []string) int {
+	cfg, code := loadConfig()
+	if code != exitOK {
+		return code
+	}
+	res := audit.Audit(cfg.Root(), cfg)
+	for _, w := range res.Warnings {
+		fmt.Printf("WARNING: %s\n", w)
+	}
+	for _, e := range res.Errors {
+		fmt.Printf("ERROR: %s\n", e)
+	}
+	fmt.Printf("board audit: %d tickets, %d error(s), %d warning(s)\n",
+		res.NumTickets, len(res.Errors), len(res.Warnings))
+	if len(res.Errors) > 0 {
+		return exitError
+	}
+	return exitOK
 }

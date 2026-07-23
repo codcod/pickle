@@ -16,7 +16,7 @@ func TestRunExitCodes(t *testing.T) {
 		{"version", []string{"version"}, exitOK},
 		{"unknown command", []string{"frobnicate"}, exitUsage},
 		{"install stub", []string{"install"}, exitUnimplement},
-		{"board audit stub", []string{"board", "audit"}, exitUnimplement},
+		{"board sync stub", []string{"board", "sync"}, exitUnimplement},
 		{"board no subcommand", []string{"board"}, exitUsage},
 		{"board unknown subcommand", []string{"board", "xyz"}, exitUsage},
 		{"ticket new stub", []string{"ticket", "new"}, exitUnimplement},

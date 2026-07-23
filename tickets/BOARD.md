@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-001 merged to main; T-002 refined → READY)
+Last updated: 2026-07-23 (T-002 in review)
 
 ---
 
@@ -23,10 +23,11 @@ Last updated: 2026-07-23 (T-001 merged to main; T-002 refined → READY)
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
+| T-002 | board audit engine | feat/T-002-board-audit-engine | [T-001] |
 
 ## REWORK
 
@@ -41,7 +42,6 @@ Last updated: 2026-07-23 (T-001 merged to main; T-002 refined → READY)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-002 | board audit engine | high | medium-high | M-L | [T-001] |
 
 ## TO DO (impact order, per child)
 

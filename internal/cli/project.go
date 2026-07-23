@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"text/tabwriter"
 
 	"pickle/internal/config"
+	"pickle/internal/ticket"
 )
 
 // Child-project registry commands. The [[project]] array in pickle.toml is the
@@ -149,42 +149,19 @@ func dash(s string) string {
 }
 
 // liveTicketsTargeting returns the ids of tickets in a non-terminal status dir
-// whose project: frontmatter is name.
+// whose project: frontmatter is name. It reuses the shared loader so the
+// frontmatter scan lives in exactly one place (internal/ticket).
 func liveTicketsTargeting(root, name string) []string {
+	tickets, _ := ticket.LoadAll(root)
 	var hits []string
-	for _, d := range []string{"1-to-do", "2-ready", "3-in-development", "4-in-review", "5-rework"} {
-		matches, _ := filepath.Glob(filepath.Join(root, "tickets", d, "T-*.md"))
-		for _, m := range matches {
-			if ticketProject(m) == name {
-				hits = append(hits, strings.TrimSuffix(filepath.Base(m), ".md"))
-			}
+	for _, t := range tickets {
+		if st, ok := ticket.StatusByDir(t.Dir); ok && st.Terminal {
+			continue
+		}
+		if t.Project() == name {
+			hits = append(hits, t.Base())
 		}
 	}
 	sort.Strings(hits)
 	return hits
-}
-
-// ticketProject reads the project: field from a ticket's YAML frontmatter.
-func ticketProject(path string) string {
-	f, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	delims := 0
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "---" {
-			delims++
-			if delims == 2 {
-				break
-			}
-			continue
-		}
-		if delims == 1 && strings.HasPrefix(line, "project:") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "project:"))
-		}
-	}
-	return ""
 }
