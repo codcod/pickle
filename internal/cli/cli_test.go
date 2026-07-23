@@ -2,9 +2,6 @@ package cli
 
 import "testing"
 
-// The payload is not exercised by the skeleton tests; an empty FS is fine.
-type emptyFS struct{}
-
 func TestRunExitCodes(t *testing.T) {
 	cases := []struct {
 		name string

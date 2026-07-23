@@ -28,6 +28,12 @@ Enforce:
 
 Reject illegal moves with a clear message. Needs T-001 and T-002. Phase P3.
 
+> **Impact note (from the T-002 review, 2026-07-23):** the shared model now exists — build on
+> `internal/ticket` (`Statuses` table + terminal set, `LoadAll`, `LastHistoryStatus`,
+> `HasMergeLine`), `internal/board` (row model), and `config.Config` (per-child WIP). After a
+> move, the result must pass `internal/audit.Audit` with zero errors — reuse it as the
+> post-move self-check rather than re-deriving invariants.
+
 ## Implementation Plan
 
 <!-- empty until refined -->

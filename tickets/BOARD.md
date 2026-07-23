@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-002 in review)
+Last updated: 2026-07-23 (T-002 reviewed → DONE; T-012 broadened)
 
 ---
 
@@ -23,11 +23,10 @@ Last updated: 2026-07-23 (T-002 in review)
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
-| T-002 | board audit engine | feat/T-002-board-audit-engine | [T-001] |
 
 ## REWORK
 
@@ -58,7 +57,7 @@ Last updated: 2026-07-23 (T-002 in review)
 | T-008 | board sync | medium | medium | M | [T-002] |
 | T-009 | opencode wiring | medium | medium | M | [T-004] |
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
-| T-012 | harden config/registry layer (cli tests + TOML-safe render) | medium | low | S-M | [T-001] |
+| T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002] |
 
 ## DONE
 
@@ -67,6 +66,7 @@ Last updated: 2026-07-23 (T-002 in review)
 | id | title | merged |
 |---|---|---|
 | T-001 | pickle.toml config model + project registry | yes — merged to main 2026-07-23 (cdad65e) |
+| T-002 | board audit engine | no — feat/T-002-board-audit-engine (publish-gated, awaiting approval) |
 
 ## DROPPED
 
