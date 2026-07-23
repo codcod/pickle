@@ -237,3 +237,4 @@ must extend install for their agents (they were always scoped to). No assumption
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-004-install (applicability gate clean)
 - 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (fresh install -> layout + board audit clean + ticket new works; idempotent re-run preserves data, one marker pair)
 - 2026-07-23 — IN REVIEW → DONE: review PASS; no blocking findings; 5 non-blocking -> T-013
+- 2026-07-23 — merged to main (33f05e3)
