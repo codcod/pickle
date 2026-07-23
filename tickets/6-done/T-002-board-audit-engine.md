@@ -146,9 +146,59 @@ row.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Reviewer verdict: PASS — no blocking findings.** Moved to `6-done/`; non-blocking test-
+coverage gaps folded into the existing **T-012** (broadened). Generic protocol only (no
+addenda configured); prerequisite T-001 is done **and merged** (cdad65e), so the dependency
+gate is satisfied.
+
+### Audit summary
+
+- **Implementation (step 2) — all tasks & criteria MET.** Acceptance test re-run **verbatim**
+  on branch `feat/T-002-board-audit-engine`: `just lint`/`test`/`build` clean; **dogfood**
+  `pickle board audit` on pickle's own board = **12 tickets, 0 errors, 0 warnings, exit 0**;
+  the broken fixture exits **1** reporting the unregistered `project`, illegal `impact`,
+  dangling `depends-on`, and missing board row (plus an expected "no History" warning, since
+  that fixture body omits `## History`). Task 1 `internal/ticket` (87.6% cover), Task 2
+  `internal/board` (96.0%), Task 3 `internal/audit` (87.5%), Task 4 cli wiring + **remove-guard
+  refactored onto `internal/ticket`** (verified no `ticketProject`/`bufio` remnants — the
+  duplicate scan is gone, honouring decision 2 / the T-001 impact note), Task 6 README all
+  present. Decision 7 (tolerate vanished-empty dirs) verified by a `ticket` unit test.
+- **Quality (step 3):** idiomatic; deterministic output (errors/warnings sorted); `-race`
+  clean. Gap: the `internal/cli` layer is 29.5% — `runBoardAudit` is a thin print/exit wrapper
+  and the `project` commands remain uncovered (→ N1).
+- **Consistency (step 4):** the three new packages compose cleanly (`audit` over
+  `ticket`+`board`+`config`); README invariant list matches the implementation; no contradictions
+  or stale refs. Deviation D1 below.
+- **Docs (step 4a):** README `board audit` section accurate and complete; no `docs/` book yet.
+
+### Findings
+
+| severity | description | evidence | disposition |
+|---|---|---|---|
+| non-blocking (N1) | cli-layer coverage thin (29.5%): no tests for `runBoardAudit` or the `project` commands | `go test -cover ./internal/cli` | → **T-012** (broadened) |
+| non-blocking (N2) | `internal/audit` has no test for the board **child-mismatch** (`row.Child != project`) or **duplicate board row** paths | `audit_test.go` cases | → **T-012** (broadened) |
+| note (D1) | Task 5 named `internal/audit/testdata/<case>/` fixture dirs; implemented instead as programmatic temp-tree fixtures (table-driven, clean + 12 broken cases). Same intent, no committed fixture sprawl — accepted, no action | `internal/audit/audit_test.go` | accepted |
+| trivial (patched) | dead `emptyFS` type in `cli_test.go` (skeleton leftover, never instantiated) | `internal/cli/cli_test.go` | removed in this review |
+
+N1+N2 are the same non-blocking test-hardening class as T-012's existing scope, so they were
+folded into **T-012** (now depends on T-002) rather than opening near-duplicate rows.
+
+### Checklist
+
+- [x] Implementation audit — acceptance test re-run verbatim, tasks & criteria verified (step 2)
+- [x] Quality audit — idiomatic, deterministic, `-race` clean (step 3)
+- [x] Consistency audit — packages compose; duplicate scan removed; README matches (step 4)
+- [x] Documentation audit — README `board audit` section accurate; no docs book (step 4a)
+- [x] Findings classified; N1/N2 folded into T-012; trivial dead code patched (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6)
+- [x] `BOARD.md` updated; T-012 broadened; dependents (T-007/T-008) noted (step 7)
+- [x] Impact sweep — T-007/T-008 build on the new packages (step 8)
+- [x] Summary + commit message & MR attributes presented for approval; bookkeeping per policy; next-ticket suggestion (step 9)
 
 ## History
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P1)
 - 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met); prerequisite T-001 done+merged
+- 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-002-board-audit-engine (applicability gate clean)
+- 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (internal/ticket+board+audit; dogfood audit 0 errors on own board; broken-tree exits 1)
+- 2026-07-23 — IN REVIEW → DONE: review PASS, no blocking findings; N1/N2 folded into T-012; acceptance re-run verbatim (branch not yet merged — publish-gated)

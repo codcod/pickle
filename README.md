@@ -49,7 +49,7 @@ pickle doctor                           verify install integrity                
 pickle uninstall                        remove skill/symlinks/markers (keep tickets/)                    [P2]
 pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [P1]
 pickle ticket move T-NNN <status>       move file + History + board atomically                           [P3]
-pickle board audit                      check every board/ticket invariant                               [P1]
+pickle board audit                      check every board/ticket invariant                               [done: T-002]
 pickle board sync                       repair board rows from ticket state                              [P3]
 pickle version | help
 ```
@@ -71,6 +71,25 @@ preserved on load but normalised to a canonical layout on the next `project add|
 
 TOML is decoded with [`github.com/BurntSushi/toml`](https://github.com/BurntSushi/toml) — a
 **build-time** dependency compiled into the static binary; nothing is fetched at runtime.
+
+## `pickle board audit`
+
+A pure, dependency-free check of the flow invariants over `tickets/` + `pickle.toml`. It exits
+non-zero (and prints `ERROR:`/`WARNING:` lines plus a summary) when any invariant fails:
+
+- each ticket file sits in a known status dir and is named `T-NNN-<slug>.md`;
+- frontmatter is complete (`id`, `title`, `project`, `depends-on`, `impact`, `complexity`,
+  `cost`), grades are legal, the id matches the filename, and ids are unique globally;
+- `project:` names a **registered child**, and every `depends-on:` target exists;
+- every ticket appears exactly once on `BOARD.md`, under the section **and** child sub-group
+  matching its directory (terminal tickets may age off the board); every board row has a file;
+- **per-child** WIP limits (`wip_in_development`/`wip_in_review`) hold;
+- each ticket's last History transition matches its directory;
+- nothing is in `3-in-development/` with a dependency not yet in `6-done/` (warning if a done
+  dependency has no `MERGED` History line).
+
+Missing empty status directories are treated as empty, not errors (git does not track empty
+dirs).
 
 ## Build
 
