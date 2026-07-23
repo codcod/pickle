@@ -20,9 +20,16 @@ var Version = "dev"
 // Exit codes.
 const (
 	exitOK          = 0 // success
+	exitError       = 1 // runtime error (bad config, I/O, rejected operation)
 	exitUsage       = 2 // bad invocation / unknown command
 	exitUnimplement = 3 // command exists but is not implemented yet (skeleton)
 )
+
+// errf prints a pickle error to stderr and returns the error exit code.
+func errf(format string, a ...any) int {
+	fmt.Fprintf(os.Stderr, "pickle: "+format+"\n", a...)
+	return exitError
+}
 
 // Run dispatches args (os.Args[1:]) to a command and returns a process exit code.
 func Run(payload fs.FS, version string, args []string) int {

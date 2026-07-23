@@ -132,3 +132,5 @@ throwaway `pickle.toml` stays valid TOML.
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P1/P2)
 - 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met)
+- 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-001-config-and-project-registry (applicability gate clean)
+- 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (config pkg + project add/list/remove)

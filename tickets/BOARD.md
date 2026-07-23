@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-001 refined → READY)
+Last updated: 2026-07-23 (T-001 in review)
 
 ---
 
@@ -23,10 +23,11 @@ Last updated: 2026-07-23 (T-001 refined → READY)
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
+| T-001 | pickle.toml config model + project registry | feat/T-001-config-and-project-registry | [] |
 
 ## REWORK
 
@@ -41,7 +42,6 @@ Last updated: 2026-07-23 (T-001 refined → READY)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-001 | pickle.toml config model + project registry | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
