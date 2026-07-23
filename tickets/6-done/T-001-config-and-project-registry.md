@@ -64,7 +64,9 @@ None — this is the foundational ticket. Clean tree on `main`.
 5. **`project remove` refuses** while any **live** ticket (in a non-terminal status dir,
    `1-to-do/`…`5-rework/`) has `project: <name>`.
 6. **Validation:** names unique + non-empty; `path` non-empty and resolving (relative to root)
-   to an existing directory; WIP limits >= 0; at least the fields above present.
+   to an existing directory; WIP limits >= 1 (0 is treated as "unset" and defaulted to 1 —
+   a 0 limit would deadlock the flow); at least the fields above present.
+   <!-- review-01: corrected from ">= 0" to match the implementation (config.go). -->
 
 ### Tasks
 
@@ -126,9 +128,58 @@ throwaway `pickle.toml` stays valid TOML.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Reviewer verdict: PASS — no blocking findings.** Moved to `6-done/`; one non-blocking
+follow-up spawned (T-012). Generic protocol only (no overarching/per-child `review_addendum`
+configured; `depends-on: []`, so no dependency-merge gate).
+
+### Audit summary
+
+- **Implementation (step 2) — all tasks & criteria MET.** Acceptance test re-run **verbatim**
+  on branch `feat/T-001-config-and-project-registry`: `just lint`/`test`/`build` clean;
+  `project list → add web → list (2) → remove web → list (1)` all exit 0; the throwaway
+  `pickle.toml` re-parses (verified independently with Python `tomllib` — our `Render` emits
+  valid TOML). Task 1 (`internal/config`: `Find`/`Load`/`Validate`/`Project`/`AddProject`/
+  `RemoveProject`/`Render`/`Save` + table-driven tests, config coverage **91.8%**), Task 2
+  (`project add|list|remove` wired, incl. the live-ticket remove-guard — verified it refuses
+  against the repo's 11 live tickets without touching the file), Task 3 (repo `pickle.toml`
+  load test), Task 4 (README schema + dependency note, `go mod tidy`) all present.
+- **Quality (step 3):** idiomatic Go, errors wrapped with context, path/duplicate validation
+  present. Gap: the `internal/cli` layer is at 28.9% coverage — the new `project` commands are
+  only exercised by the manual acceptance test (→ N1).
+- **Consistency (step 4):** caller↔callee contract (`loadConfig` → `(nil, code)`) consistent;
+  README schema matches the struct/defaults; no stale references. One decision-text vs.
+  implementation mismatch on the WIP bound (patched, see below).
+- **Docs (step 4a):** README covers the schema + the `BurntSushi/toml` build dependency; no
+  `docs/` book ships yet, so nothing further to build.
+
+### Findings
+
+| severity | description | evidence | disposition |
+|---|---|---|---|
+| non-blocking (N1) | No cli-level tests for `project add\|list\|remove`; behaviour only covered by the manual acceptance test | `go test -cover ./internal/cli` = 28.9%; no test drives `runProject*` | → **T-012** |
+| non-blocking (N2) | `Render` uses Go `%q`, not TOML basic-string escaping; control chars / some runes would emit `\xNN` (invalid TOML) on round-trip | `internal/config/config.go` `Render` | → **T-012** |
+| non-blocking (N3) | `config_test.go` "zero wip" case actually asserts `-1`, not `0`; no test asserts the `0 → default 1` behaviour | `internal/config/config_test.go` ("zero wip") | → **T-012** |
+| trivial (patched) | Confirmed decision 6 said "WIP limits >= 0", but a 0 limit deadlocks the flow and the implementation correctly requires >= 1 | `config.go` `Validate` vs plan decision 6 | decision text corrected in this ticket (review-01) |
+
+N1–N3 are cohesive robustness work on the same config/registry layer, so they are grouped
+into a single follow-up (**T-012**) rather than three near-duplicate board rows.
+
+### Checklist
+
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — README coverage; no docs book to build (step 4a)
+- [x] Findings classified; non-blocking → new ticket T-012 (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6)
+- [x] `BOARD.md` updated; T-012 added; dependents unblocked (step 7)
+- [x] Impact sweep done — T-002/T-003/T-004 checked (step 8)
+- [x] Summary + commit message & MR attributes presented for approval; bookkeeping per policy; next-ticket suggestion (step 9)
 
 ## History
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P1/P2)
 - 2026-07-23 — TO DO → READY: implementation plan complete (READY gate met)
+- 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-001-config-and-project-registry (applicability gate clean)
+- 2026-07-23 — IN DEVELOPMENT → IN REVIEW: acceptance test green (config pkg + project add/list/remove)
+- 2026-07-23 — IN REVIEW → DONE: review PASS, no blocking findings; spawned T-012 (non-blocking); acceptance test re-run verbatim (branch not yet merged — publish-gated)

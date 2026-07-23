@@ -43,7 +43,7 @@ lives in [`tickets/`](tickets/), the skill is discoverable via `.agents/skills/t
 
 ```
 pickle install                          scaffold + install skill + markers + pickle.toml + first child   [P2]
-pickle project add|list|remove          manage connected child-projects                                  [P2]
+pickle project add|list|remove          manage connected child-projects                                  [done: T-001]
 pickle upgrade                          refresh installed skill payload + markers                        [P2]
 pickle doctor                           verify install integrity                                         [P2]
 pickle uninstall                        remove skill/symlinks/markers (keep tickets/)                    [P2]
@@ -54,8 +54,23 @@ pickle board sync                       repair board rows from ticket state     
 pickle version | help
 ```
 
-This repository is the **initial skeleton**: the command surface, dispatch, exit codes, and
-the embedded payload are in place; each command is a stub that reports its target build phase.
+This repository is **early**: the command surface, dispatch, exit codes, and the embedded
+payload are in place. `pickle project add|list|remove` is implemented (T-001); the remaining
+commands are stubs that report their target build phase.
+
+## Configuration — `pickle.toml`
+
+`pickle.toml` lives at the overarching-project root and is **tool-managed** (hand-edits are
+preserved on load but normalised to a canonical layout on the next `project add|remove`):
+
+- **overarching:** `payload_version`, optional `review_addendum`, and a `[commit]` table
+  (`overarching_auto`, `child_publish_gated`);
+- **`[[project]]` array** (one per connected child): `name`, `path` (relative to the root),
+  `build`/`test`/`lint`/optional `docs`, `branch_prefix` (default `feat/`),
+  `wip_in_development` / `wip_in_review` (default 1), optional per-child `review_addendum`.
+
+TOML is decoded with [`github.com/BurntSushi/toml`](https://github.com/BurntSushi/toml) — a
+**build-time** dependency compiled into the static binary; nothing is fetched at runtime.
 
 ## Build
 

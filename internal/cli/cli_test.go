@@ -20,7 +20,9 @@ func TestRunExitCodes(t *testing.T) {
 		{"board no subcommand", []string{"board"}, exitUsage},
 		{"board unknown subcommand", []string{"board", "xyz"}, exitUsage},
 		{"ticket new stub", []string{"ticket", "new"}, exitUnimplement},
-		{"project add stub", []string{"project", "add"}, exitUnimplement},
+		{"project no subcommand", []string{"project"}, exitUsage},
+		{"project unknown subcommand", []string{"project", "xyz"}, exitUsage},
+		{"project add missing args", []string{"project", "add"}, exitUsage},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

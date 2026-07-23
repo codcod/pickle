@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-001 refined → READY)
+Last updated: 2026-07-23 (T-001 reviewed → DONE; spawned T-012)
 
 ---
 
@@ -41,7 +41,6 @@ Last updated: 2026-07-23 (T-001 refined → READY)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-001 | pickle.toml config model + project registry | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -59,6 +58,7 @@ Last updated: 2026-07-23 (T-001 refined → READY)
 | T-008 | board sync | medium | medium | M | [T-002] |
 | T-009 | opencode wiring | medium | medium | M | [T-004] |
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
+| T-012 | harden config/registry layer (cli tests + TOML-safe render) | medium | low | S-M | [T-001] |
 
 ## DONE
 
@@ -66,6 +66,7 @@ Last updated: 2026-07-23 (T-001 refined → READY)
 
 | id | title | merged |
 |---|---|---|
+| T-001 | pickle.toml config model + project registry | no — feat/T-001-config-and-project-registry (publish-gated, awaiting approval) |
 
 ## DROPPED
 
