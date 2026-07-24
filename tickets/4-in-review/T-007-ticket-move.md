@@ -205,3 +205,4 @@ move.
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P3)
 - 2026-07-23 — TO DO → READY: Implementation Plan written (internal/move orchestrator + internal/board status-aware MoveRow + cli wrapper + tests + acceptance); meets the READY gate
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-007-ticket-move (dependency T-002 done+merged)
+- 2026-07-24 — IN DEVELOPMENT → IN REVIEW

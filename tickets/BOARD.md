@@ -10,24 +10,24 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-23 (T-007 in development)
+Last updated: 2026-07-24 (T-007 in review)
 
 ---
 
 ## IN DEVELOPMENT
+
+### pickle (0/1)
+
+| id | title | branch | depends-on |
+|---|---|---|---|
+
+## IN REVIEW
 
 ### pickle (1/1)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | feat/T-007-ticket-move | [T-002] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | branch | depends-on |
-|---|---|---|---|
 
 ## REWORK
 
