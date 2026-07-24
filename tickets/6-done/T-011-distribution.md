@@ -278,3 +278,4 @@ unaffected.
 - 2026-07-24 — READY → IN DEVELOPMENT
 - 2026-07-24 — IN DEVELOPMENT → IN REVIEW
 - 2026-07-24 — IN REVIEW → DONE: review PASS; 0 blocking; D5'/D3' cask deviation recorded; N1 patched inline
+- 2026-07-24 — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted
