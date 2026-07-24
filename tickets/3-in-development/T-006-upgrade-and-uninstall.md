@@ -226,3 +226,4 @@ Update `README.md`:
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P2)
 - 2026-07-24 — TO DO → READY: plan complete
+- 2026-07-24 — READY → IN DEVELOPMENT: picked up

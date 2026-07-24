@@ -20,6 +20,7 @@ Last updated: 2026-07-24 (board sync)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
+| T-006 | upgrade + uninstall | feat/T-006-upgrade-and-uninstall | [T-004] |
 
 ## IN REVIEW
 
@@ -41,7 +42,6 @@ Last updated: 2026-07-24 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-006 | upgrade + uninstall | medium | medium | M | [T-004] |
 
 ## TO DO (impact order, per child)
 
