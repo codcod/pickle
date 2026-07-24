@@ -263,3 +263,4 @@ Description already anticipates repairing rows from ticket state. No assumptions
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-007-ticket-move (dependency T-002 done+merged)
 - 2026-07-24 — IN DEVELOPMENT → IN REVIEW
 - 2026-07-24 — IN REVIEW → DONE: review PASS; no blocking findings; non-blocking -> T-014
+- 2026-07-24 — merged to main (fd70a82)

@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-24 (T-007 review PASS → done, unmerged; non-blocking → T-014)
+Last updated: 2026-07-24 (T-007 merged to main)
 
 ---
 
@@ -68,7 +68,7 @@ Last updated: 2026-07-24 (T-007 review PASS → done, unmerged; non-blocking →
 | T-002 | board audit engine | yes — merged to main 2026-07-23 (fca3ea1) |
 | T-003 | ticket new (id allocation + template + board row) | yes — merged to main 2026-07-23 (6a6fa72) |
 | T-004 | install (scaffold + skill install + marker injection + first child) | yes — merged to main 2026-07-23 (33f05e3) |
-| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | no — publish-gated (branch feat/T-007-ticket-move) |
+| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
 
 ## DROPPED
 
