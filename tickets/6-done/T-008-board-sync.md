@@ -186,12 +186,15 @@ cd "$REPO"
 "$BIN" ticket move T-001 in-development
 "$BIN" ticket move T-001 in-review
 "$BIN" ticket move T-001 done --reason "acceptance walk"
-sed -i '' 's#no — publish-gated.*#yes — merged (abc1234)#' tickets/BOARD.md   # human bookkeeping
+# human bookkeeping — keep the trailing cell delimiter ([^|]* stops before the pipe)
+sed -i '' 's#no — publish-gated[^|]*#yes — merged (abc1234) #' tickets/BOARD.md
 
-# corrupt the board: drop T-002's row, mangle a WIP count, add an orphan row
+# corrupt the board: drop T-002's row, mangle a WIP count, inject an orphan row
+# *inside* the TO DO section (a stray row in the appendix is preserved prose, so
+# the orphan must sit under a status heading to exercise removal)
 grep -v '| T-002 |' tickets/BOARD.md > tickets/BOARD.tmp && mv tickets/BOARD.tmp tickets/BOARD.md
 sed -i '' 's#(0/1)#(9/1)#' tickets/BOARD.md
-printf '| T-999 | ghost row | low | low | S | [] |\n' >> tickets/BOARD.md
+perl -0pi -e 's/\| T-003 \|/| T-999 | ghost | low | low | S | [] |\n| T-003 |/' tickets/BOARD.md
 "$BIN" board audit && { echo "FAIL: audit should have errored on the corrupted board"; exit 1; } || echo "OK: corrupted board fails audit"
 
 # dry-run reports drift, writes nothing, exits non-zero
@@ -203,7 +206,7 @@ diff -q tickets/BOARD.md /tmp/pk-sync-before.md && echo "OK: dry-run wrote nothi
 "$BIN" board sync
 "$BIN" board audit                           # MUST be 0 errors
 grep -q '| T-002 |' tickets/BOARD.md         && echo "OK: dropped row restored"
-grep -q 'yes — merged (abc1234)' tickets/BOARD.md && echo "OK: human merged cell preserved (D1)"
+grep -q 'yes — merged (abc1234)' tickets/BOARD.md && echo "OK: human merged cell preserved (D1)" || { echo "FAIL: D1 merged cell clobbered"; exit 1; }
 grep -q 'T-999' tickets/BOARD.md             && { echo "FAIL: orphan row not removed"; exit 1; } || echo "OK: orphan row removed"
 grep -q '(9/1)' tickets/BOARD.md             && { echo "FAIL: bad WIP count not fixed"; exit 1; } || echo "OK: WIP count refreshed"
 
@@ -238,10 +241,70 @@ Also: `just test` (all packages green, incl. the new `internal/sync` suite) and 
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Verdict: PASS — 0 blocking, 2 non-blocking (→ T-015) + 1 trivial inline patch. Reviewed on
+`feat/T-008-board-sync` (un-merged, publish-gated).**
+
+- [x] Implementation audit — acceptance test re-run **verbatim → ACCEPTANCE PASS**; tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — README coverage + whole-tree sweep; no docs build (README is the only doc) (step 4a)
+- [x] Findings classified & recorded; non-blocking → T-015 (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6b)
+- [x] `BOARD.md` updated (step 7)
+- [x] Impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented for approval; bookkeeping committed (step 9)
+
+### Implementation audit (step 2)
+
+| Item | Result | Evidence |
+|---|---|---|
+| Board API: `RenderRow`/`HeaderRow`/`SeparatorRow` + `insertIntoBoard` refactor (no behaviour change) | **met** | `internal/board/board.go`; existing board tests green; `TestRenderRowMatchesSection` |
+| Board API: `ParseCells` carry-over reader | **met** | `board.ParseCells`; `TestParseCellsRoundTrip` |
+| `internal/sync` package + `Sync(root, cfg, dryRun) (Result, error)` | **met** | `internal/sync/sync.go` |
+| CLI wiring `runBoardSync` + `--dry-run`, exit codes (drift→non-zero, unknown flag→usage) | **met** | `internal/cli/board.go`; `cli_test.go` bad-flag case |
+| D1 never-clobber human cells | **met** | acceptance "human merged cell preserved"; `TestSyncPreservesHumanCells` |
+| D2 full regenerate + preamble/appendix preserved | **met** | `TestSyncPreservesPreambleAndAppendix` |
+| D3 terminal-only-if-listed | **partially met (test)** | `TestSyncTerminalMembership` covers not-re-added; wrong-section-relocation half untested → **N2** |
+| D4 deterministic ordering | **met** | `sync.sortRows` |
+| D5 `--dry-run` reports, writes nothing, non-zero on drift | **met** | acceptance dry-run checks; `TestSyncDryRunReportsWithoutWriting` |
+| Idempotency (byte-stable) | **met** | acceptance idempotent check; dogfood dry-run clean; `TestSyncIsIdempotent` |
+| Post-op audit self-check | **met** | `Sync` calls `audit.Audit`, errors as `sync applied but board audit still reports …` |
+| `just build` / `just test` / `just lint` | **met** | all green; coverage **sync 90.8%, board 93.5%** |
+
+### Findings
+
+| # | Severity | Description | Evidence | Suggestion |
+|---|---|---|---|---|
+| N1 | non-blocking | Status-heading→status matching (longest-first) is duplicated in **4** places (`board.Parse`, `board.ParseCells`, `sync.matchStatus`, `board.sectionSpan`); this ticket added 2 of them. | `board.go:41,172,329`, `sync.go:171` | Extract a shared `board.MatchStatusHeading` helper. **→ T-015** |
+| N2 | non-blocking | `TestSyncTerminalMembership` covers only half of D3 (not-re-added); the plan also called for "wrong-section DONE ticket relocated with its merged cell." Untested; and `merged` does not survive relocation *from a wrong section* (ParseCells keys cells by the found section). | `sync_test.go`; plan Task 4 | Add the relocation case; document/decide the carry-over-across-wrong-section behaviour. **→ T-015** |
+| N3 | trivial (patched inline) | `PLAN.md` listed `board sync` under "Remaining" though it is now delivered. | `PLAN.md:11` | Patched inline: moved `board sync` into the delivered list; P3 now noted complete. |
+
+No blocking findings: the golden path (regenerate + repair + preserve human cells + audit-clean
++ idempotent) is met, acceptance passes verbatim, and no locked decision is contradicted. Cell
+escaping remains explicitly out of scope (T-014), consistent with `ticket move`.
+
+### Consistency & docs notes
+
+- Status display-name strings agree across `sync.boardOrder`, `ticket.Statuses`, and
+  `board.SectionColumns` (all seven).
+- README `## pickle board sync` section added, status list + prose flipped to done; no stale
+  `[P3]`/stub references remain (the P3 roadmap bullet correctly *describes* the phase).
+- Dogfood: `pickle board sync` against this repo repaired a real pre-existing drift — the stale
+  `(0/1)` IN-DEVELOPMENT WIP count left by `ticket move` (the T-014 finding) — then a `--dry-run`
+  reported in-sync. This is exactly the "big hammer recovers what the incremental path drifts"
+  contract.
+
+### Impact sweep (step 8)
+
+No `2-ready/` or `1-to-do/` ticket lists T-008 in `depends-on:`. T-014 (board-move polish)
+soft-references the same shared-renderer/WIP-count area but is unaffected (its escaping fix will
+naturally flow into sync's raw rendering); T-015 (new) is soft-coupled, no hard dependency.
 
 ## History
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P3)
 - 2026-07-24 — TO DO → READY: refined; D1–D5 confirmed (never-clobber human cells, full
   regenerate, terminal-only-if-listed, deterministic ordering, --dry-run)
+- 2026-07-24 — READY → IN DEVELOPMENT
+- 2026-07-24 — IN DEVELOPMENT → IN REVIEW
+- 2026-07-24 — IN REVIEW → DONE: review PASS; 0 blocking; N1/N2 -> T-015; N3 patched inline

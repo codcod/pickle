@@ -15,7 +15,7 @@ func TestRunExitCodes(t *testing.T) {
 		{"upgrade stub", []string{"upgrade"}, exitUnimplement},
 		{"doctor stub", []string{"doctor"}, exitUnimplement},
 		{"uninstall stub", []string{"uninstall"}, exitUnimplement},
-		{"board sync stub", []string{"board", "sync"}, exitUnimplement},
+		{"board sync bad flag", []string{"board", "sync", "--bogus"}, exitUsage},
 		{"board no subcommand", []string{"board"}, exitUsage},
 		{"board unknown subcommand", []string{"board", "xyz"}, exitUsage},
 		{"ticket new missing title", []string{"ticket", "new"}, exitUsage},

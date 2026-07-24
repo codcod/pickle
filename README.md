@@ -50,13 +50,14 @@ pickle uninstall                        remove skill/symlinks/markers (keep tick
 pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [done: T-003]
 pickle ticket move T-NNN <status>       move file + History + board atomically                           [done: T-007]
 pickle board audit                      check every board/ticket invariant                               [done: T-002]
-pickle board sync                       repair board rows from ticket state                              [P3]
+pickle board sync                       repair board rows from ticket state                              [done: T-008]
 pickle version | help
 ```
 
 This repository is **early**, but the core loop is live: `install` (T-004), `project
-add|list|remove` (T-001), `ticket new` (T-003), and `board audit` (T-002) are implemented.
-The remaining commands (`upgrade`/`doctor`/`uninstall`, `board sync`) are stubs that report
+add|list|remove` (T-001), `ticket new` (T-003), `board audit` (T-002), and `board sync`
+(T-008) are implemented.
+The remaining commands (`upgrade`/`doctor`/`uninstall`) are stubs that report
 their target build phase.
 
 ## Configuration — `pickle.toml`
@@ -91,6 +92,35 @@ non-zero (and prints `ERROR:`/`WARNING:` lines plus a summary) when any invarian
 
 Missing empty status directories are treated as empty, not errors (git does not track empty
 dirs).
+
+## `pickle board sync`
+
+```
+pickle board sync [--dry-run]
+```
+
+The escape hatch that repairs `BOARD.md` from ground truth (ticket files + frontmatter +
+`pickle.toml`) when hand-edits drift. **"In sync" is defined as `board audit` reporting zero
+errors**, so a successful sync always leaves the board audit-clean. It fully regenerates the
+seven status sections — correct section per directory, one `### <child>` sub-group per
+registered child, refreshed `(n/limit)` WIP counts, deterministic ordering (TO DO/READY by
+descending impact, everything else by id), and the `depends-on`/`branch` columns.
+
+What it **preserves**:
+
+- the **preamble** above the first status heading (only the `Last updated:` line is refreshed);
+- the **trailing appendix** (any `---` + free-form `## …` prose after the last status section);
+- **human bookkeeping cells that are not in frontmatter** — DONE `merged`, DROPPED `reason`,
+  REWORK `open findings` are carried over from the existing row; a row sync must *add* gets a
+  default (`merged` → `no — publish-gated (branch …)`, `reason`/`open findings` → empty).
+
+Terminal tickets (DONE/DROPPED) are only listed if they are already on the board — sync repairs
+and relocates them but never auto-adds every done ticket (matching audit's "terminal statuses
+may age off"). `--dry-run` reports the drift, writes nothing, and **exits non-zero if the board
+would change** (wire it into CI). After a write, sync runs `board audit` as a self-check.
+
+> Cell escaping (a `|` or newline inside a title/reason) is a known shared-renderer gap tracked
+> separately; sync renders cells raw, exactly as `ticket move` does today.
 
 ## `pickle install`
 

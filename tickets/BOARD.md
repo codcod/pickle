@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-24 (T-008 refined → READY)
+Last updated: 2026-07-24 (board sync)
 
 ---
 
@@ -41,7 +41,6 @@ Last updated: 2026-07-24 (T-008 refined → READY)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-008 | board sync | medium | medium | M | [T-002] |
 
 ## TO DO (impact order, per child)
 
@@ -57,6 +56,7 @@ Last updated: 2026-07-24 (T-008 refined → READY)
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
+| T-015 | consolidate board status-heading matching and fill sync test gaps | low | low | S | [] |
 
 ## DONE
 
@@ -69,6 +69,7 @@ Last updated: 2026-07-24 (T-008 refined → READY)
 | T-003 | ticket new (id allocation + template + board row) | yes — merged to main 2026-07-23 (6a6fa72) |
 | T-004 | install (scaffold + skill install + marker injection + first child) | yes — merged to main 2026-07-23 (33f05e3) |
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
+| T-008 | board sync | no — publish-gated (branch feat/T-008-board-sync) |
 
 ## DROPPED
 

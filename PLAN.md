@@ -6,9 +6,9 @@
 > [`tickets/BOARD.md`](tickets/BOARD.md) — this repo self-hosts the flow it ships, so all work
 > flows through tickets (`T-NNN`), not this doc.
 >
-> **Progress vs. the §12 phases:** P1–P3 are essentially delivered — config/registry, board
-> audit, `ticket new`, `install`, and `ticket move` are done and merged (see the board's DONE
-> section). Remaining: `doctor`/`upgrade`/`uninstall`, `board sync`, the opencode/Pi breadth
+> **Progress vs. the §12 phases:** P1–P3 are delivered — config/registry, board audit,
+> `ticket new`, `install`, `ticket move`, and `board sync` are done and merged (see the board's
+> DONE section). Remaining: `doctor`/`upgrade`/`uninstall`, the opencode/Pi breadth
 > (P4), distribution (P5), plus hardening/polish tickets. Where this doc and a ticket disagree,
 > **the ticket wins**; treat §-level decisions here as the standing rationale behind them.
 >

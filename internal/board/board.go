@@ -138,6 +138,97 @@ func renderRow(cols []string, d RowData) string {
 	return "| " + strings.Join(cells, " | ") + " |"
 }
 
+// RenderRow renders a single board row for a status section, filling only the
+// cells that section's columns call for. It returns "" for an unknown section.
+func RenderRow(statusName string, d RowData) string {
+	cols := SectionColumns(statusName)
+	if cols == nil {
+		return ""
+	}
+	return renderRow(cols, d)
+}
+
+// HeaderRow renders a markdown table header line for the given columns.
+func HeaderRow(cols []string) string {
+	return "| " + strings.Join(cols, " | ") + " |"
+}
+
+// SeparatorRow renders the markdown table separator line for the given columns.
+func SeparatorRow(cols []string) string {
+	return "|" + strings.Repeat("---|", len(cols))
+}
+
+// ParseCells reads BOARD.md and returns, per ticket id, a map of column-name to
+// cell value using the columns of the section the row sits in. It is the
+// carry-over source for `board sync`: cells that are human bookkeeping rather
+// than ticket frontmatter (DONE `merged`, DROPPED `reason`, REWORK `open
+// findings`) can be preserved across a rebuild. The T-NNN placeholder is ignored.
+func ParseCells(path string) (map[string]map[string]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(ticket.Statuses))
+	for i, s := range ticket.Statuses {
+		names[i] = s.Name
+	}
+	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })
+
+	out := map[string]map[string]string{}
+	status := ""
+	for _, line := range strings.Split(string(data), "\n") {
+		switch {
+		case strings.HasPrefix(line, "## "):
+			heading := strings.ToUpper(strings.TrimSpace(line[3:]))
+			status = ""
+			for _, n := range names {
+				if strings.HasPrefix(heading, n) {
+					status = n
+					break
+				}
+			}
+		default:
+			if status == "" {
+				continue
+			}
+			trimmed := strings.TrimSpace(line)
+			m := rowRE.FindStringSubmatch(trimmed)
+			if m == nil || m[1] == "T-NNN" {
+				continue
+			}
+			cols := SectionColumns(status)
+			if cols == nil {
+				continue
+			}
+			out[m[1]] = zipCells(cols, splitCells(trimmed))
+		}
+	}
+	return out, nil
+}
+
+// splitCells splits a "| a | b | c |" table row into its trimmed cell values.
+func splitCells(row string) []string {
+	parts := strings.Split(row, "|")
+	if len(parts) >= 2 {
+		parts = parts[1 : len(parts)-1] // drop the empty leading/trailing fields
+	}
+	cells := make([]string, len(parts))
+	for i, p := range parts {
+		cells[i] = strings.TrimSpace(p)
+	}
+	return cells
+}
+
+func zipCells(cols, cells []string) map[string]string {
+	m := make(map[string]string, len(cols))
+	for i, c := range cols {
+		if i < len(cells) {
+			m[c] = cells[i]
+		}
+	}
+	return m
+}
+
 // AddTODORow inserts a ticket row into the TO DO section under the child's
 // `### <child>` sub-group, in impact order (highest first; ties keep existing
 // order). The sub-group is created (with a standard header) if it does not exist.
@@ -175,8 +266,7 @@ func insertIntoBoard(boardPath, statusName, child string, d RowData) error {
 	}
 	subStart, subEnd := subgroupSpan(lines, secStart, secEnd, child)
 	if subStart == -1 { // create the sub-group at the end of the section
-		sep := "|" + strings.Repeat("---|", len(cols))
-		block := []string{"", "### " + child, "", "| " + strings.Join(cols, " | ") + " |", sep, row}
+		block := []string{"", "### " + child, "", HeaderRow(cols), SeparatorRow(cols), row}
 		return write(boardPath, insertLines(lines, secEnd, block))
 	}
 

@@ -92,6 +92,34 @@ func TestAddTODORowCreatesSubgroup(t *testing.T) {
 	}
 }
 
+func TestRenderRowMatchesSection(t *testing.T) {
+	got := RenderRow("DONE", RowData{ID: "T-001", Title: "x", Merged: "yes — merged (abc1234)"})
+	if want := "| T-001 | x | yes — merged (abc1234) |"; got != want {
+		t.Errorf("RenderRow = %q, want %q", got, want)
+	}
+	if RenderRow("NOPE", RowData{ID: "T-001"}) != "" {
+		t.Error("RenderRow for unknown section should be empty")
+	}
+}
+
+func TestParseCellsRoundTrip(t *testing.T) {
+	body := "# Board\n\n## DONE\n\n### pickle\n\n| id | title | merged |\n|---|---|---|\n| T-001 | one | yes — merged (abc1234) |\n\n## DROPPED\n\n### pickle\n\n| id | title | reason |\n|---|---|---|\n| T-002 | two | superseded by T-003 |\n"
+	path := writeBoard(t, body)
+	cells, err := ParseCells(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cells["T-001"]["merged"]; got != "yes — merged (abc1234)" {
+		t.Errorf("T-001 merged = %q", got)
+	}
+	if got := cells["T-002"]["reason"]; got != "superseded by T-003" {
+		t.Errorf("T-002 reason = %q", got)
+	}
+	if got := cells["T-001"]["title"]; got != "one" {
+		t.Errorf("T-001 title = %q", got)
+	}
+}
+
 func TestParse(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "BOARD.md")

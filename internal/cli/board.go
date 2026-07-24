@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"pickle/internal/audit"
+	"pickle/internal/sync"
 )
 
 // Board mechanics. `board audit` is the keystone (P1): a pure check over tickets/
@@ -19,12 +20,52 @@ func runBoard(args []string) int {
 	case "audit":
 		return runBoardAudit(args[1:])
 	case "sync":
-		return notImplemented("P3", "board sync",
-			"regenerate/repair board rows from ticket frontmatter + locations (escape hatch when hand-edits drift)")
+		return runBoardSync(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "pickle board: unknown subcommand %q\n", args[0])
 		return exitUsage
 	}
+}
+
+const boardSyncUsage = "usage: pickle board sync [--dry-run]"
+
+func runBoardSync(args []string) int {
+	dryRun := false
+	for _, a := range args {
+		switch a {
+		case "--dry-run", "-n":
+			dryRun = true
+		default:
+			fmt.Fprintf(os.Stderr, "pickle board sync: unknown argument %q\n%s\n", a, boardSyncUsage)
+			return exitUsage
+		}
+	}
+	cfg, code := loadConfig()
+	if code != exitOK {
+		return code
+	}
+	res, err := sync.Sync(cfg.Root(), cfg, dryRun)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "pickle board sync: %v\n", err)
+		return exitError
+	}
+	for _, s := range res.Summary {
+		fmt.Printf("  %s\n", s)
+	}
+	if dryRun {
+		if res.Changed {
+			fmt.Printf("board sync --dry-run: %s is OUT OF SYNC (%d change(s))\n", res.Path, len(res.Summary))
+			return exitError
+		}
+		fmt.Printf("board sync --dry-run: %s is in sync\n", res.Path)
+		return exitOK
+	}
+	if res.Changed {
+		fmt.Printf("board sync: rebuilt %s (%d change(s))\n", res.Path, len(res.Summary))
+	} else {
+		fmt.Printf("board sync: %s already in sync\n", res.Path)
+	}
+	return exitOK
 }
 
 func runBoardAudit(_ []string) int {
