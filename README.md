@@ -75,7 +75,7 @@ lives in [`tickets/`](tickets/), the skill is discoverable via `.agents/skills/t
 pickle install                          scaffold + install skill + markers + pickle.toml + first child   [done: T-004]
 pickle project add|list|remove          manage connected child-projects                                  [done: T-001]
 pickle upgrade                          refresh installed skill payload + markers                        [P2]
-pickle doctor                           verify install integrity                                         [P2]
+pickle doctor                           verify install integrity                                         [done: T-005]
 pickle uninstall                        remove skill/symlinks/markers (keep tickets/)                    [P2]
 pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [done: T-003]
 pickle ticket move T-NNN <status>       move file + History + board atomically                           [done: T-007]
@@ -87,7 +87,7 @@ pickle version | help
 This repository is **early**, but the core loop is live: `install` (T-004), `project
 add|list|remove` (T-001), `ticket new` (T-003), `board audit` (T-002), and `board sync`
 (T-008) are implemented.
-The remaining commands (`upgrade`/`doctor`/`uninstall`) are stubs that report
+The remaining commands (`upgrade`/`uninstall`) are stubs that report
 their target build phase.
 
 ## Configuration — `pickle.toml`

@@ -22,10 +22,15 @@ import (
 // Marker delimiters for the injected AGENTS.md/CLAUDE.md block. Anything between
 // them is pickle-managed and replaced on re-run; text outside is preserved.
 const (
-	markerBegin = "<!-- pickle:begin -->"
-	markerEnd   = "<!-- pickle:end -->"
+	MarkerBegin = "<!-- pickle:begin -->"
+	MarkerEnd   = "<!-- pickle:end -->"
 
-	skillDir = ".agents/skills/ticket-flow"
+	// SkillDir is the installed skill payload location (relative to the project root).
+	SkillDir = ".agents/skills/ticket-flow"
+	// ClaudeSkillLink is the Claude Code view of the skill; ClaudeSkillTarget is the
+	// relative symlink target it points at (SkillDir, from inside .claude/skills/).
+	ClaudeSkillLink   = ".claude/skills/ticket-flow"
+	ClaudeSkillTarget = "../../.agents/skills/ticket-flow"
 )
 
 // Options configures a single install run.
@@ -81,8 +86,8 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 	}
 	if opts.Claude {
 		if err := ensureSymlink(
-			filepath.Join(root, ".claude", "skills", "ticket-flow"),
-			"../../.agents/skills/ticket-flow", &res); err != nil {
+			filepath.Join(root, filepath.FromSlash(ClaudeSkillLink)),
+			ClaudeSkillTarget, &res); err != nil {
 			return res, err
 		}
 		if opts.ClaudeLink {
@@ -100,9 +105,9 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 // as real files. If that path already exists as a symlink (a dev/self-host link),
 // it is left untouched.
 func copyPayload(payload fs.FS, root string, res *Result) error {
-	dst := filepath.Join(root, filepath.FromSlash(skillDir))
+	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
 	if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink != 0 {
-		res.skipped(skillDir + " (existing symlink)")
+		res.skipped(SkillDir + " (existing symlink)")
 		return nil
 	}
 	sub, err := fs.Sub(payload, "skill")
@@ -126,7 +131,7 @@ func copyPayload(payload fs.FS, root string, res *Result) error {
 	if err != nil {
 		return fmt.Errorf("copy payload: %w", err)
 	}
-	res.created(skillDir + "/")
+	res.created(SkillDir + "/")
 	return nil
 }
 
@@ -255,7 +260,7 @@ func ensureSymlink(link, target string, res *Result) error {
 // does not exist it is created with a minimal title header.
 func injectMarker(path, title, block string, res *Result) error {
 	rel := filepath.Base(path)
-	wrapped := markerBegin + "\n" + block + "\n" + markerEnd
+	wrapped := MarkerBegin + "\n" + block + "\n" + MarkerEnd
 
 	existing, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -271,10 +276,10 @@ func injectMarker(path, title, block string, res *Result) error {
 	}
 
 	text := string(existing)
-	bi := strings.Index(text, markerBegin)
-	ei := strings.Index(text, markerEnd)
+	bi := strings.Index(text, MarkerBegin)
+	ei := strings.Index(text, MarkerEnd)
 	if bi >= 0 && ei > bi {
-		out := text[:bi] + wrapped + text[ei+len(markerEnd):]
+		out := text[:bi] + wrapped + text[ei+len(MarkerEnd):]
 		if out == text {
 			res.skipped(rel + " (marker current)")
 			return nil

@@ -8,6 +8,7 @@ import (
 
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/doctor"
 	"github.com/codcod/pickle/internal/install"
 )
 
@@ -84,9 +85,41 @@ func runUpgrade(_ []string) int {
 		"refresh the installed skill payload + marker block to this binary's version")
 }
 
-func runDoctor(_ []string) int {
-	return notImplemented("P2", "doctor",
-		"verify install integrity: skill present, symlinks valid, markers present, every registered child path resolves")
+func runDoctor(args []string) int {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	verbose := fs.Bool("verbose", false, "also list the checks that passed")
+	fs.BoolVar(verbose, "v", false, "also list the checks that passed (shorthand)")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return errf("%v", err)
+	}
+	cfgPath, err := config.Find(wd)
+	if err != nil {
+		return errf("%v", err)
+	}
+	root := filepath.Dir(cfgPath)
+
+	res := doctor.Check(root, Version)
+	if *verbose {
+		for _, p := range res.Passed {
+			fmt.Printf("ok: %s\n", p)
+		}
+	}
+	for _, w := range res.Warnings {
+		fmt.Printf("WARNING: %s\n", w)
+	}
+	for _, e := range res.Errors {
+		fmt.Printf("ERROR: %s\n", e)
+	}
+	fmt.Printf("pickle doctor: %d error(s), %d warning(s)\n", len(res.Errors), len(res.Warnings))
+	if len(res.Errors) > 0 {
+		return exitError
+	}
+	return exitOK
 }
 
 func runUninstall(_ []string) int {

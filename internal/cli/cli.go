@@ -11,7 +11,8 @@ import (
 )
 
 // Payload is the embedded skill payload (the resources/ tree), injected by main.
-// Install/upgrade/doctor read from it once implemented.
+// Install reads from it; upgrade will once implemented (doctor checks the
+// on-disk install, not the embedded payload).
 var Payload fs.FS
 
 // Version is the build version, injected by main.

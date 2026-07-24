@@ -50,7 +50,7 @@ func TestRunProducesInstall(t *testing.T) {
 	// Markers injected into both files; BOARD.md carries the child name + a date.
 	for _, f := range []string{"AGENTS.md", "CLAUDE.md"} {
 		b, _ := os.ReadFile(filepath.Join(root, f))
-		if !strings.Contains(string(b), markerBegin) {
+		if !strings.Contains(string(b), MarkerBegin) {
 			t.Errorf("%s missing marker", f)
 		}
 	}
@@ -98,7 +98,7 @@ func TestRunIsIdempotent(t *testing.T) {
 	}
 
 	agents, _ := os.ReadFile(filepath.Join(root, "AGENTS.md"))
-	if n := strings.Count(string(agents), markerBegin); n != 1 {
+	if n := strings.Count(string(agents), MarkerBegin); n != 1 {
 		t.Errorf("AGENTS.md marker count = %d, want 1", n)
 	}
 	if b, _ := os.ReadFile(ticketPath); string(b) != "keep me" {

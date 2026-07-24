@@ -201,9 +201,48 @@ Update `README.md`:
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Verdict: PASS (clean).** No blocking findings; one trivial cosmetic note, patched directly.
+Reviewed on `feat/T-005-doctor` @ e498169 (+ this review's fixup).
+
+### Checklist
+
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — README coverage present; no configured docs build (step 4a)
+- [x] Findings classified & recorded (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6)
+- [x] `BOARD.md` updated (step 7)
+- [x] Impact sweep done — no ticket depends on T-005 (step 8)
+- [x] Summary + commit message presented for approval; bookkeeping committed (step 9)
+
+### Implementation audit (step 2)
+
+| Item | Result | Evidence |
+|---|---|---|
+| Task 1 — export install constants | met | `install.SkillDir`/`MarkerBegin`/`MarkerEnd`/`ClaudeSkillLink`/`ClaudeSkillTarget`; all in-package refs updated; `install_test.go` green |
+| Task 2 — `internal/doctor` package | met | pure `Check(root, version) Result`; config/skill/claude/markers/children/version checks; sorted output like `audit` |
+| Task 3 — CLI wiring | met | `runDoctor` mirrors `runBoardAudit`; `-v`/`--verbose`; `config.Find`→root; exit non-zero iff errors |
+| Task 4 — tests | met | `doctor_test.go`: healthy + 5 broken-artifact subtests + drift warning; `cli_test.go` stub row removed |
+| Acceptance test | met | `./pickle doctor` exit 0 (drift warning only); `-v` lists 6 checks; outside a project exit 1; `just test`/`just lint` clean |
+| Decisions D1–D8 | honoured | audit-shape, error/warning split, reused+exported constants, self-host symlink followed, Claude optional, AGENTS.md required, config-failure-is-a-finding, `.git` check |
+
+### Findings
+
+| # | Severity | Description | Evidence | Resolution |
+|---|---|---|---|---|
+| 1 | non-blocking (trivial) | `internal/cli/cli.go` `Payload` doc comment listed `doctor` among commands that "read from it" — but doctor inspects the on-disk install, not the embedded payload | cli.go:14 | Patched directly during review (protocol §5 trivial-cosmetic) |
+
+**Notes.** A missing child *directory* surfaces via `config.Load` validation as a
+`pickle.toml:` error rather than the `checkChildren` git-repo error — expected per decision #8
+(`config.Validate` guarantees the dir exists at load time; doctor adds the `.git` check on
+top). CLI-layer handler has no dedicated unit test, consistent with `runInstall`/`runBoardAudit`
+(behaviour covered by the package tests).
 
 ## History
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P2)
 - 2026-07-24 — TO DO → READY: plan complete
+- 2026-07-24 — READY → IN DEVELOPMENT: picked up, branch feat/T-005-doctor
+- 2026-07-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-07-24 — IN REVIEW → DONE: review clean; trivial note patched inline

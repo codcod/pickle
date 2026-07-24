@@ -41,7 +41,6 @@ Last updated: 2026-07-24 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-005 | doctor | medium | low | M | [T-004] |
 
 ## TO DO (impact order, per child)
 
@@ -71,6 +70,7 @@ Last updated: 2026-07-24 (board sync)
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
 | T-008 | board sync | yes — merged to main 2026-07-24 (9b87a61) |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — merged to main 2026-07-24 (e4aaed7) |
+| T-005 | doctor | no — publish-gated (branch feat/T-005-doctor) |
 
 ## DROPPED
 
