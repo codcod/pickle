@@ -246,3 +246,4 @@ top). CLI-layer handler has no dedicated unit test, consistent with `runInstall`
 - 2026-07-24 — READY → IN DEVELOPMENT: picked up, branch feat/T-005-doctor
 - 2026-07-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-07-24 — IN REVIEW → DONE: review clean; trivial note patched inline
+- 2026-07-24 — merged to main (b199215)
