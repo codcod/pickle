@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"pickle/internal/audit"
-	"pickle/internal/config"
+	"github.com/codcod/pickle/internal/audit"
+	"github.com/codcod/pickle/internal/config"
 )
 
 // payloadRoot returns the dir whose os.DirFS exposes "skill/SKILL.md" etc. at the

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"pickle/internal/config"
+	"github.com/codcod/pickle/internal/config"
 )
 
 const cfgBody = `payload_version = "1"

@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"pickle/internal/config"
-	"pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // Marker delimiters for the injected AGENTS.md/CLAUDE.md block. Anything between

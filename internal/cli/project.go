@@ -9,8 +9,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"pickle/internal/config"
-	"pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // Child-project registry commands. The [[project]] array in pickle.toml is the

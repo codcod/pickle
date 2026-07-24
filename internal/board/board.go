@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // impactRank orders TO DO rows by impact (highest first).

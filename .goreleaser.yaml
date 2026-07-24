@@ -1,0 +1,76 @@
+# goreleaser configuration for pickle. Validate with `just dist-check`
+# (`goreleaser check`); build a local, unpublished snapshot with `just dist-snapshot`.
+# Real releases are cut by pushing a `vX.Y.Z` tag (see RELEASING.md).
+version: 2
+
+project_name: pickle
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: pickle
+    main: .
+    binary: pickle
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: pickle
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+# Pin the release forge to GitHub explicitly. goreleaser otherwise infers it and
+# will prefer GitLab whenever a GITLAB_TOKEN is present in the environment, which
+# would wrongly point release/cask URLs at gitlab.com even though origin is
+# github.com. Pinning it here makes the output deterministic.
+release:
+  github:
+    owner: codcod
+    name: pickle
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  # git-based (not github) so `goreleaser check` and snapshot builds work before
+  # a remote exists; GitHub auto-detects the release target once origin is set.
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+# Homebrew cask (goreleaser deprecated `brews`/formulae in favour of casks for
+# pre-built binaries). Published to the separate tap repo; users then run
+# `brew install codcod/taps/pickle`. Casks are macOS-only — Linux users install
+# via `go install` or the release archives.
+homebrew_casks:
+  - name: pickle
+    repository:
+      owner: codcod
+      name: homebrew-taps
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/codcod/pickle"
+    description: "Ticket-based, board-driven feature flow as a CLI"
+    # Remove the quarantine attribute so the unsigned binary runs without a
+    # Gatekeeper prompt.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/pickle"]
+          end

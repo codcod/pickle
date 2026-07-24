@@ -1,4 +1,4 @@
-module pickle
+module github.com/codcod/pickle
 
 go 1.26
 

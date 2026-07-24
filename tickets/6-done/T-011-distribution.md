@@ -157,12 +157,16 @@ just lint && echo "OK: lint clean"
 just build >/dev/null && ./pickle version | grep -Eq '^pickle .+' && echo "OK: stamped version"
 go build -o /tmp/pk-noflags . && /tmp/pk-noflags version | grep -Eq '^pickle .+' && echo "OK: version fallback non-empty"
 
-# goreleaser config + local cross-compiled snapshot (no publish, no tokens)
+# goreleaser config + local cross-compiled snapshot (no publish, no tokens).
+# The `just dist-*` recipes unset any ambient GITLAB_TOKEN so goreleaser detects
+# the GitHub forge deterministically (see RELEASING.md).
 command -v goreleaser >/dev/null || { echo "install goreleaser first: brew install goreleaser"; exit 1; }
-goreleaser check && echo "OK: .goreleaser.yaml valid"
-goreleaser release --snapshot --clean >/dev/null && echo "OK: snapshot build"
+just dist-check && echo "OK: .goreleaser.yaml valid (no deprecations)"
+just dist-snapshot >/dev/null && echo "OK: snapshot build"
 ls dist/pickle_*_darwin_arm64.tar.gz dist/pickle_*_linux_amd64.tar.gz >/dev/null && echo "OK: cross-compiled archives"
 test -f dist/checksums.txt && echo "OK: checksums produced"
+grep -q 'github.com/codcod/pickle/releases/download' dist/homebrew/Casks/pickle.rb && echo "OK: cask URLs point at GitHub" || { echo "FAIL: cask URLs not GitHub (forge detection)"; exit 1; }
+! grep -q 'gitlab.com' dist/homebrew/Casks/pickle.rb && echo "OK: no gitlab.com URLs" || { echo "FAIL: gitlab.com leaked into cask"; exit 1; }
 
 echo "ACCEPTANCE PASS"
 ```
@@ -190,9 +194,87 @@ pickle — README + `RELEASING.md` are the docs surface.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Verdict: PASS — 0 blocking, 0 new tickets; 2 justified plan deviations recorded + 1 trivial
+inline patch. Reviewed on `feat/T-011-distribution` (un-merged, publish-gated).**
+
+- [x] Implementation audit — acceptance re-run **verbatim → ACCEPTANCE PASS** (13/13 checks); tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — README `## Install` + `RELEASING.md`; no docs build (README/MD is the doc surface) (step 4a)
+- [x] Findings classified & recorded; no blocking, no new tickets (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6b)
+- [x] `BOARD.md` updated (step 7)
+- [x] Impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes + human handoff presented for approval (step 9)
+
+### Implementation audit (step 2)
+
+| Task | Result | Evidence |
+|---|---|---|
+| 1. Module rename → `github.com/codcod/pickle` (14 files) | **met** | `go.mod`; `! grep '"pickle/internal'`; `go build ./...` |
+| 2. `resolveVersion()` version fallback | **met** | `main.go`; acceptance "version fallback non-empty" (plain `go build` → pseudo-version via build info) |
+| 3. `.goreleaser.yaml` (builds/archives/checksums/brew) | **met, w/ deviation** | see D5′/D3′ below; `goreleaser check` clean, snapshot builds 4 targets |
+| 4. `release.yml` tag-triggered | **met** | `.github/workflows/release.yml` (`v*`, GITHUB_TOKEN + HOMEBREW_TAP_GITHUB_TOKEN) |
+| 5. CI `goreleaser-check` job | **met** | `.github/workflows/ci.yml` (`args: check`) |
+| 6. justfile `dist-check`/`dist-snapshot` + `clean`/gitignore | **met** | `justfile`, `.gitignore` `/dist/`; `just clean` removes dist |
+| 7. MIT `LICENSE` | **met** | `LICENSE` (© 2026 codcod) — **confirm license choice** |
+| 8. Docs: README `## Install` + module/P5 notes + `RELEASING.md` | **met** | README, `RELEASING.md` |
+| `just build`/`test`/`lint` clean | **met** | acceptance |
+
+### Plan deviations (recorded, not findings — justified & documented)
+
+- **D5′ / D3′ — Homebrew *cask*, not *formula*.** goreleaser v2.17 **deprecated `brews`** (and
+  the `homebrew_casks.binary` field); `goreleaser check` exits non-zero on deprecations, so the
+  plan's literal `brews:` block would fail CI. Migrated to `homebrew_casks:`. **Consequence:**
+  casks are **macOS-only** — Linux `brew` users are not served; they use `go install` or the
+  release archives. This is documented in `.goreleaser.yaml`, README `## Install`, and
+  `RELEASING.md`. The ticket intent (`brew install codcod/taps/pickle`) is met on macOS.
+- **`changelog.use: git`, not `github`, + explicit `release.github` + `just dist-*` unset
+  `GITLAB_TOKEN`.** Two environment realities forced this: (a) `changelog.use: github` and the
+  SCM check need a remote, which doesn't exist pre-handoff; (b) an ambient `GITLAB_TOKEN` in the
+  dev shell made goreleaser emit `gitlab.com` cask URLs. Pinning `release.github` + unsetting
+  the GitLab tokens in the `just` recipes makes output deterministically GitHub; CI runners
+  have neither issue. Guarded by acceptance assertions ("cask URLs point at GitHub" / "no
+  gitlab.com").
+
+### Findings
+
+| # | Severity | Description | Disposition |
+|---|---|---|---|
+| N1 | trivial (patched inline) | `main.go` package comment said "initial skeleton"; `resolveVersion` comment claimed plain `go build` reports `(devel)` — Go 1.26 actually stamps a VCS pseudo-version. | Patched inline (commit `a885155`). |
+
+No blocking findings. No non-blocking tickets spawned: the cask macOS-only limitation is an
+inherent, documented consequence of the goreleaser deprecation (no clean cross-distro `brew`
+path exists), and `resolveVersion` is exercised by the acceptance test (no separate unit test
+warranted for a 12-line fallback in `package main`).
+
+### Consistency & docs notes
+
+- `brew install codcod/taps/pickle` consistent across README + RELEASING.md; tap = `homebrew-taps`
+  → tap name `codcod/taps`, cask `pickle`. README anchors (`#build`, `#commands`) resolve.
+- `go.mod` module line changed (1 line); `go.sum` untouched (no dependency change). `go vet` +
+  `gofmt` clean.
+- A local `origin` remote (`https://github.com/codcod/pickle.git`) was added for goreleaser SCM
+  detection — **no push occurred**; pushing is a handoff step (RELEASING.md).
+
+### Human handoff (from RELEASING.md — required to actually publish)
+
+1. Create `github.com/codcod/pickle`; `git push -u origin main`.
+2. Create `github.com/codcod/homebrew-taps`.
+3. Add a `repo`-scoped PAT as the `pickle` repo's `HOMEBREW_TAP_GITHUB_TOKEN` Actions secret.
+4. `git tag v0.1.0 && git push origin v0.1.0` → the release workflow does the rest.
+
+### Impact sweep (step 8)
+
+No `2-ready/`/`1-to-do/` ticket lists T-011 in `depends-on:`. The module-path rename is
+repo-internal (all imports updated); no other ticket encodes the old bare `pickle` path.
+Distribution adds no CLI behaviour, so T-005/T-006/T-009/T-010/T-012/T-013/T-014/T-015 are
+unaffected.
 
 ## History
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P5)
 - 2026-07-24 — TO DO → READY: refined; D1-D7 confirmed
+- 2026-07-24 — READY → IN DEVELOPMENT
+- 2026-07-24 — IN DEVELOPMENT → IN REVIEW
+- 2026-07-24 — IN REVIEW → DONE: review PASS; 0 blocking; D5'/D3' cask deviation recorded; N1 patched inline

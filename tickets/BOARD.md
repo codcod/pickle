@@ -41,7 +41,6 @@ Last updated: 2026-07-24 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -70,6 +69,7 @@ Last updated: 2026-07-24 (board sync)
 | T-004 | install (scaffold + skill install + marker injection + first child) | yes — merged to main 2026-07-23 (33f05e3) |
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
 | T-008 | board sync | yes — merged to main 2026-07-24 (9b87a61) |
+| T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | no — publish-gated (branch feat/T-011-distribution) |
 
 ## DROPPED
 

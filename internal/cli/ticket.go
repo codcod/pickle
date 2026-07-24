@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pickle/internal/board"
-	"pickle/internal/move"
-	"pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/board"
+	"github.com/codcod/pickle/internal/move"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // Ticket mechanics. `ticket new` lands in P1 (id allocation + template + board

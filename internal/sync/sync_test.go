@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"pickle/internal/audit"
-	"pickle/internal/board"
-	"pickle/internal/config"
-	"pickle/internal/install"
-	"pickle/internal/move"
-	"pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/audit"
+	"github.com/codcod/pickle/internal/board"
+	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/install"
+	"github.com/codcod/pickle/internal/move"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // newProject lays a fresh install into a temp dir and returns (root, cfg).

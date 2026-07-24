@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"pickle/internal/audit"
-	"pickle/internal/sync"
+	"github.com/codcod/pickle/internal/audit"
+	"github.com/codcod/pickle/internal/sync"
 )
 
 // Board mechanics. `board audit` is the keystone (P1): a pure check over tickets/

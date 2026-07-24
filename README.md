@@ -8,6 +8,36 @@ requests like *"create a feature to review the Jira board"*: it authors a correc
 ticket in `tickets/1-to-do/T-NNN-<slug>.md` and updates `BOARD.md`, because `install` laid down
 the flow skill, the board, and the agent-instruction markers.
 
+## Install
+
+> **Two different “installs.”** *This* section installs the **`pickle` binary** on your machine.
+> The [`pickle install`](#commands) *command* is a separate step you run **inside a project** to
+> lay down the flow (skill, board, markers).
+
+**Homebrew** (via the tap):
+
+```sh
+brew install codcod/taps/pickle
+```
+
+**`go install`** (Go 1.26+, any platform):
+
+```sh
+go install github.com/codcod/pickle@latest
+```
+
+**From source** — see [Build](#build).
+
+Then, inside any project:
+
+```sh
+pickle install        # lay down the ticket flow
+pickle version
+```
+
+> `brew install` / `go install` work once the GitHub repo + tap exist and a release tag is cut
+> — see [`RELEASING.md`](RELEASING.md).
+
 ## Multi-project
 
 The overarching project (where `pickle` is installed and the board lives) can hold several
@@ -200,14 +230,19 @@ is no longer clean.
 
 ## Build
 
-Requires Go 1.26+ and (optionally) [`just`](https://github.com/casey/just).
+Requires Go 1.26+ and (optionally) [`just`](https://github.com/casey/just). Releasing also needs
+[`goreleaser`](https://goreleaser.com) (`brew install goreleaser`).
 
 ```sh
-just build        # → ./pickle   (or: go build -o pickle .)
-just test         # go test ./...
-just lint         # go vet + gofmt check
+just build         # → ./pickle   (or: go build -o pickle .)
+just test          # go test ./...
+just lint          # go vet + gofmt check
+just dist-check    # validate .goreleaser.yaml
+just dist-snapshot # local cross-compiled build into ./dist (no publish)
 ./pickle version
 ```
+
+Cutting an actual release is tag-driven and documented in [`RELEASING.md`](RELEASING.md).
 
 ## Phased build plan
 
@@ -219,7 +254,8 @@ just lint         # go vet + gofmt check
 - **P3 — moves + state machine.** `ticket move` (state machine, per-child WIP, cross-child merge
   gate); `board sync`.
 - **P4 — multi-agent breadth.** opencode wiring; Pi guardrail scaffold.
-- **P5 — distribution.** `go:embed` release build, Homebrew tap, releases, docs.
+- **P5 — distribution.** goreleaser cross-compiled release build, Homebrew tap, tag-driven
+  release CI, install docs. **[done: T-011]**
 
 ## Layout
 
@@ -237,5 +273,5 @@ just lint         # go vet + gofmt check
 └── .agents/skills/ticket-flow -> ../../skill   (skill discovery; .claude mirror)
 ```
 
-> Note: the module path is `pickle` (bare) for the skeleton; it becomes a real VCS path
-> (`github.com/…`/`gitlab.com/…`) at P5 when distribution is wired up.
+> Note: the module path is `github.com/codcod/pickle`; releases are cut with goreleaser and the
+> Homebrew cask is published to the `codcod/homebrew-taps` tap (see [`RELEASING.md`](RELEASING.md)).

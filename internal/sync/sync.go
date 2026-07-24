@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"pickle/internal/audit"
-	"pickle/internal/board"
-	"pickle/internal/config"
-	"pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/audit"
+	"github.com/codcod/pickle/internal/board"
+	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // Result records the outcome of a sync.

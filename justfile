@@ -23,6 +23,17 @@ lint:
 show-version: build
     ./pickle version
 
+# Validate the goreleaser config (also run in CI).
+# GitLab tokens are unset so goreleaser detects the GitHub forge deterministically
+# (it prefers GitLab whenever GITLAB_TOKEN is present in the environment).
+dist-check:
+    env -u GITLAB_TOKEN -u GITLAB_PERSONAL_ACCESS_TOKEN goreleaser check
+
+# Local, unpublished cross-compiled build into ./dist (no tokens, no upload).
+dist-snapshot:
+    env -u GITLAB_TOKEN -u GITLAB_PERSONAL_ACCESS_TOKEN goreleaser release --snapshot --clean
+
 # Remove build artifacts
 clean:
     rm -f pickle
+    rm -rf dist

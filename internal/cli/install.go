@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"pickle/internal/audit"
-	"pickle/internal/config"
-	"pickle/internal/install"
+	"github.com/codcod/pickle/internal/audit"
+	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/install"
 )
 
 // Setup commands. install is implemented (P2); upgrade/doctor/uninstall follow.

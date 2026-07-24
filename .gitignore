@@ -1,5 +1,6 @@
-# Build artifact
+# Build artifacts
 /pickle
+/dist/
 
 # Go
 *.test
