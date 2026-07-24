@@ -69,7 +69,7 @@ Last updated: 2026-07-24 (board sync)
 | T-003 | ticket new (id allocation + template + board row) | yes — merged to main 2026-07-23 (6a6fa72) |
 | T-004 | install (scaffold + skill install + marker injection + first child) | yes — merged to main 2026-07-23 (33f05e3) |
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
-| T-008 | board sync | no — publish-gated (branch feat/T-008-board-sync) |
+| T-008 | board sync | yes — merged to main 2026-07-24 (9b87a61) |
 
 ## DROPPED
 

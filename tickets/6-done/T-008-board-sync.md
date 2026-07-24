@@ -308,3 +308,4 @@ naturally flow into sync's raw rendering); T-015 (new) is soft-coupled, no hard 
 - 2026-07-24 — READY → IN DEVELOPMENT
 - 2026-07-24 — IN DEVELOPMENT → IN REVIEW
 - 2026-07-24 — IN REVIEW → DONE: review PASS; 0 blocking; N1/N2 -> T-015; N3 patched inline
+- 2026-07-24 — MERGED: feat/T-008-board-sync squashed → main (9b87a61), user-approved; branch deleted
