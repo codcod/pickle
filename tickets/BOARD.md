@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-24 (T-007 merged to main)
+Last updated: 2026-07-24 (T-008 refined → READY)
 
 ---
 
@@ -41,6 +41,7 @@ Last updated: 2026-07-24 (T-007 merged to main)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-008 | board sync | medium | medium | M | [T-002] |
 
 ## TO DO (impact order, per child)
 
@@ -51,7 +52,6 @@ Last updated: 2026-07-24 (T-007 merged to main)
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | high | medium | M-L | [] |
 | T-005 | doctor | medium | low-medium | S-M | [T-004] |
 | T-006 | upgrade + uninstall | medium | medium | M | [T-004] |
-| T-008 | board sync | medium | medium | M | [T-002] |
 | T-009 | opencode wiring | medium | medium | M | [T-004] |
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
