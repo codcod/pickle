@@ -189,6 +189,25 @@ func TestMoveRowRelocatesAndReshapes(t *testing.T) {
 	}
 }
 
+func TestMoveRowIntoEmptySubgroupIsAdjacent(t *testing.T) {
+	path := writeBoard(t, fullBoard)
+	// IN REVIEW has an empty pickle sub-group (header + separator, then a blank).
+	if err := MoveRow(path, "IN REVIEW", "pickle", RowData{
+		ID: "T-007", Title: "mover", Branch: "feat/T-007-x", DependsOn: "[T-002]",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	// The row must sit immediately after the separator line, and a blank line must
+	// still separate the sub-group from the next "## " heading.
+	if !strings.Contains(string(data), "|---|---|---|---|\n| T-007 | mover | feat/T-007-x | [T-002] |") {
+		t.Errorf("row not adjacent to separator:\n%s", data)
+	}
+	if strings.Contains(string(data), "[T-002] |\n## REWORK") {
+		t.Errorf("missing blank line before next heading:\n%s", data)
+	}
+}
+
 func TestMoveRowCreatesMissingSubgroup(t *testing.T) {
 	// DROPPED section exists but only for pickle; move a web ticket there.
 	body := fullBoard + "" // reuse

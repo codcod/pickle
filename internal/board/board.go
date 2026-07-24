@@ -202,15 +202,12 @@ func insertIntoBoard(boardPath, statusName, child string, d RowData) error {
 	if insertAt == -1 {
 		if lastRow != -1 {
 			insertAt = lastRow + 1
-		} else { // empty sub-group: skip blank/header/separator lines
+		} else { // empty sub-group: insert right after the header separator line
 			insertAt = subStart + 1
-			for insertAt < subEnd {
-				t := strings.TrimSpace(lines[insertAt])
-				if t == "" || strings.HasPrefix(t, "| id") || strings.HasPrefix(t, "|---") {
-					insertAt++
-					continue
+			for i := subStart + 1; i < subEnd; i++ {
+				if strings.HasPrefix(strings.TrimSpace(lines[i]), "|---") {
+					insertAt = i + 1
 				}
-				break
 			}
 		}
 	}
