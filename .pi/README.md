@@ -31,6 +31,7 @@ On first run:
 | Project rules / flow / commit policy | `AGENTS.md` | Native AGENTS.md loading (cwd + ancestors to git root) |
 | Ticket-flow engine | `.agents/skills/ticket-flow/` (→ `skill/`) | Native `.agents/skills` discovery + `/skill:ticket-flow` |
 | Guardrails | `.pi/extensions/workspace-guardrails.ts` | Auto-loaded after trust; `/reload` to refresh |
+| Docs-readability reviewer | `.pi/extensions/docs-readability.ts` | Read-only `docs_readability` tool + `/docs-readability` command (Gemini via Copilot) |
 | Skill commands | `.pi/settings.json` (`enableSkillCommands`) | `/skill:name` |
 
 `.claude/skills/ticket-flow` and the `CLAUDE.md` view are for Claude Code / Zed and are ignored
@@ -62,10 +63,29 @@ by a `tool_call` gate:
 
 Edit the rules in the extension and run `/reload`.
 
+## Docs-readability reviewer (`docs-readability.ts`)
+
+An **optional** read-only Gemini reviewer for an extra readability pass over a
+ticket's changed **AsciiDoc or Markdown** docs during review. It exposes:
+
+- **`docs_readability` tool** — LLM-callable; the flow agent calls it with the
+  changed `.adoc`/`.md` files and gets back suggestions (it never edits).
+- **`/docs-readability <file.adoc|file.md> [more …]`** — a thin command to run
+  the pass manually.
+
+Gemini is reached via your `pi` `/login` provider (GitHub Copilot by default, or
+`export GEMINI_API_KEY=…`). The reviewer only *suggests*; you approve and apply
+edits with the normal tools. Its system prompt is the shared file
+[`../.agents/docs-readability.prompt.md`](../.agents/docs-readability.prompt.md)
+— the same one the OpenCode `docs-readability` subagent uses (`../opencode.jsonc`).
+That prompt is kept **outside** `skill/` so it is never embedded into
+`pickle install`; this reviewer is dev tooling, not part of the shipped flow.
+
 ## Notes
 
-- **No MCP.** Pi doesn't support MCP; `pickle` needs none (the flow is local markdown +
-  the CLI). Nothing to bridge.
+- **No MCP.** Pi doesn't support MCP; the `pickle` flow needs none (it is local markdown +
+  the CLI). If a Jira/Confluence bridge is ever wanted, it would be a `.pi/skills/` skill
+  (like the workspace's atlassian skill) since Pi can't use an MCP server directly.
 - **TLS / corporate proxy "Connection error"** — if Pi retries with `Error: Connection error.`
   while `curl` to the API works, it's almost always Node TLS trust behind an intercepting proxy.
   Fix by making Node use the OS trust store: `export NODE_OPTIONS="--use-system-ca"` (then

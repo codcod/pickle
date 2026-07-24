@@ -1,0 +1,71 @@
+// OpenCode config for developing `pickle` (see AGENTS.md). It operates the
+// self-hosted ticket flow — read AGENTS.md first; it is the source of truth for
+// the flow, the commit policy, and the board rule. See .opencode/README.md for
+// setup. This config is for developing pickle; it is never part of the flow
+// pickle ships (the embedded `skill/` payload).
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // docs-readability reviewer — a read-only Gemini subagent that suggests
+  // AsciiDoc/Markdown readability improvements during a ticket review. It only
+  // *suggests*; the flow agent applies approved edits. Reached via your GitHub
+  // Copilot login (`opencode auth login` -> GitHub Copilot). Its system prompt
+  // is the SAME shared file the Pi extension (.pi/extensions/docs-readability.ts)
+  // uses, so both backends behave identically. The prompt lives OUTSIDE `skill/`
+  // so it is never bundled into `pickle install`. Confirm/adjust the model id
+  // with `opencode models github-copilot | grep -i gemini`.
+  "agent": {
+    "docs-readability": {
+      "description": "Suggests readability improvements to changed AsciiDoc/Markdown prose. Suggestions only.",
+      "mode": "subagent",
+      "model": "github-copilot/gemini-2.5-pro",
+      "temperature": 0.2,
+      "prompt": "{file:./.agents/docs-readability.prompt.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "webfetch": "deny",
+        "websearch": "deny"
+      }
+    }
+  },
+
+  // Guardrails mirroring .pi/extensions/workspace-guardrails.ts declaratively,
+  // via bash command patterns — no plugin code required. Patterns are matched
+  // against the parsed command; the LAST matching rule wins, so the catch-all
+  // "*" must come first and specific rules after.
+  "permission": {
+    "bash": {
+      "*": "allow",
+
+      // Rule 1 — explicit pathspecs only: never `git add -A` / `git add .` /
+      // `git commit -a`.
+      "git add -A*": "deny",
+      "git add --all*": "deny",
+      "git add .": "deny",
+      "git add . *": "deny",
+      "git commit -a*": "deny",
+      "git commit --all*": "deny",
+
+      // Rule 2 — publish gate: pickle is publish-gated. No push / merge request
+      // without explicit user approval (present the commit message + MR
+      // attributes first). Merging is always the human's.
+      "git push*": "ask",
+      "glab mr create*": "ask",
+      "gh pr create*": "ask",
+
+      // Rule 3 — self-modify guard: never run `pickle install|upgrade|uninstall`
+      // (or `just … install`) against this repo — it would rewrite/strip this
+      // project's own installed skill + AGENTS.md/CLAUDE.md markers. Test
+      // installs go to a throwaway dir (e.g. /tmp) only; "ask" lets you approve
+      // those.
+      "pickle install*": "ask",
+      "pickle upgrade*": "ask",
+      "pickle uninstall*": "ask",
+      "./pickle install*": "ask",
+      "./pickle upgrade*": "ask",
+      "./pickle uninstall*": "ask",
+      "just *install*": "ask"
+    }
+  }
+}
