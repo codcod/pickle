@@ -56,6 +56,7 @@ Last updated: 2026-07-24 (board sync)
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
 | T-015 | consolidate board status-heading matching and fill sync test gaps | low | low | S | [] |
+| T-016 | ship docs-readability as an optional review step (Step 4b) | low | medium | M | [] |
 
 ## DONE
 
