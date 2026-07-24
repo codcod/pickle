@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-24 (T-007 in review)
+Last updated: 2026-07-24 (T-007 review PASS → done, unmerged; non-blocking → T-014)
 
 ---
 
@@ -23,11 +23,10 @@ Last updated: 2026-07-24 (T-007 in review)
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
-| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | feat/T-007-ticket-move | [T-002] |
 
 ## REWORK
 
@@ -57,6 +56,7 @@ Last updated: 2026-07-24 (T-007 in review)
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
+| T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
 
 ## DONE
 
@@ -68,6 +68,7 @@ Last updated: 2026-07-24 (T-007 in review)
 | T-002 | board audit engine | yes — merged to main 2026-07-23 (fca3ea1) |
 | T-003 | ticket new (id allocation + template + board row) | yes — merged to main 2026-07-23 (6a6fa72) |
 | T-004 | install (scaffold + skill install + marker injection + first child) | yes — merged to main 2026-07-23 (33f05e3) |
+| T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | no — publish-gated (branch feat/T-007-ticket-move) |
 
 ## DROPPED
 

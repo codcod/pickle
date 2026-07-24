@@ -34,9 +34,9 @@ which change the golden path:
    default; pi/opencode wiring is deferred to T-010/T-009). Until those land, either reject
    unknown `--agent` values with a clear "not yet supported" message, or document it as reserved
    and warn — so a user passing `--agent pi` isn't silently misled.
-5. *(minor)* **child-name substitution into BOARD.md** — `writeBoard` substitutes the child name
-   into the `### <child>` headings without sanitization; a name containing a newline/`|` could
-   distort the board. Project names are identifiers today, so this is a guard-rail, not a bug.
+5. *(moved to T-014)* board-cell escaping — the child-name substitution into `BOARD.md` shares
+   the unescaped-`|`/newline gap now tracked, generally, as **T-014 item 2** (cell escaping at
+   the `board.renderRow` choke point). Fix it there rather than here.
 
 All items are input-hardening / polish on the install surface, hence non-blocking.
 

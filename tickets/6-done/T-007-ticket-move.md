@@ -198,7 +198,63 @@ move.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Reviewed:** 2026-07-24 on `feat/T-007-ticket-move`. **Verdict: PASS** (no blocking findings;
+non-blocking follow-ups -> T-014; one verified process note below).
+
+Protocol: generic (`skill/resources/review-protocol.md`); no overarching/per-child addendum
+configured. Dependency gate: T-002 done + merged (fca3ea1) -- satisfied.
+
+- [x] Implementation audit -- 9-step acceptance re-run verbatim (green)
+- [x] Quality audit (coverage, error paths, gofmt/vet)
+- [x] Consistency audit (board shapes, state machine, History parser interplay)
+- [x] Documentation audit (README `ticket move` section added)
+- [x] Findings classified & recorded; non-blocking -> T-014
+- [x] Ticket moved to 6-done; History appended
+- [x] BOARD.md updated; impact sweep done
+
+### Implementation audit -- all met
+
+| Item | Result | Evidence |
+|---|---|---|
+| `internal/move` orchestrator (status resolve, state machine, sign-off, WIP, dependency+merge gate, apply, self-check) | met | 88% coverage; 7 tests incl. forward walk / illegal / reason / WIP / dependency gate |
+| `internal/board` status-aware `MoveRow` + `RowData` (5 section shapes; shared insert; `AddTODORow` wrapper) | met | 91% coverage; relocate+reshape, create-subgroup, empty-subgroup adjacency, impact order tests |
+| `internal/ticket` `StatusByToken` (dir / short / display forms) | met | `TestStatusByToken` |
+| cli `runTicketMove` + README | met | usage/exit codes wired; `## pickle ticket move` section |
+| Acceptance (9 steps, verbatim) | met | forward walk clean at each step; WIP / illegal / missing-reason / dependency all rejected; DONE publish-gated; DROPPED reason recorded; `board audit` 0 errors after every applied move |
+
+**Dogfood:** T-007 was itself moved IN DEVELOPMENT -> IN REVIEW by `pickle ticket move` (the
+tool moving its own ticket) -- which is exactly how the empty-subgroup layout bug (below) was
+found and fixed inside this branch (`15c6109`).
+
+### Findings
+
+**Blocking: none.**
+
+**Non-blocking (all -> new ticket T-014, `depends-on: [T-007]`):**
+
+| # | Description | Evidence |
+|---|---|---|
+| 1 | `MoveRow` does not refresh the `(n/limit)` WIP-count in IN DEVELOPMENT/IN REVIEW headings (cosmetic; audit strips it) | had to hand-correct the counts on the repo board after the dogfooded move |
+| 2 | board cells are not escaped -- `|`/newline in `reason`/`title`/child name malforms the row (audit tolerates) | probe: `move T-003 dropped --reason "has \| pipe"` -> `\| T-003 \| Gamma \| has \| pipe \|`; supersedes T-013 item 5 |
+| 3 | create-*new*-sub-group insert leaves no blank line before the next `## ` heading (cosmetic; empty-existing-subgroup case already fixed here) | code read (`insertIntoBoard` create branch) |
+| 4 | best-effort atomicity: history written before rename/board rewrite, so a mid-apply failure can leave a partial move | code read; mitigated by the post-move audit self-check |
+
+### Process note (verified, resolved by this branch -- no rework)
+
+`main` briefly carried a **duplicate T-007** tracked file: the *refine* bookkeeping commit
+(`bacb76b`, on `main`) used `mv` instead of `git mv` and never staged the `1-to-do/` deletion,
+so `board audit` on main reported 2 errors (`git ls-tree main` showed T-007 in both `1-to-do/`
+and `2-ready/`). `board audit` reads the **working tree**, which was clean, so the dirty
+**committed** tree slipped through. This branch's committed tree contains a single
+`tickets/4-in-review/T-007-ticket-move.md` (`git ls-tree HEAD` verified), so merging it removes
+the stale files and **repairs `main`**. Lesson recorded on T-014: use `git mv` for ticket
+moves; a git-aware audit would have caught it.
+
+### Impact sweep
+
+Tickets depending on T-007: **T-014** (the new follow-up). No other ticket is affected -- T-008
+(board sync) will *reuse* `board.MoveRow`/`RowData` and benefits from them existing; its
+Description already anticipates repairing rows from ticket state. No assumptions invalidated.
 
 ## History
 
@@ -206,3 +262,4 @@ move.
 - 2026-07-23 — TO DO → READY: Implementation Plan written (internal/move orchestrator + internal/board status-aware MoveRow + cli wrapper + tests + acceptance); meets the READY gate
 - 2026-07-23 — READY → IN DEVELOPMENT: picked up, branch feat/T-007-ticket-move (dependency T-002 done+merged)
 - 2026-07-24 — IN DEVELOPMENT → IN REVIEW
+- 2026-07-24 — IN REVIEW → DONE: review PASS; no blocking findings; non-blocking -> T-014
