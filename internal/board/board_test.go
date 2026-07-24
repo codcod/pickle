@@ -121,3 +121,89 @@ func TestParse(t *testing.T) {
 		}
 	}
 }
+
+// fullBoard has one row in IN DEVELOPMENT and the empty target sections a move
+// would land rows into.
+const fullBoard = `# Board
+
+## IN DEVELOPMENT
+
+### pickle (1/1)
+
+| id | title | branch | depends-on |
+|---|---|---|---|
+| T-007 | mover | feat/T-007-x | [T-002] |
+
+## IN REVIEW
+
+### pickle (0/1)
+
+| id | title | branch | depends-on |
+|---|---|---|---|
+
+## DONE
+
+### pickle
+
+| id | title | merged |
+|---|---|---|
+
+## DROPPED
+
+### pickle
+
+| id | title | reason |
+|---|---|---|
+`
+
+func TestMoveRowRelocatesAndReshapes(t *testing.T) {
+	path := writeBoard(t, fullBoard)
+	// T-007 IN DEVELOPMENT -> IN REVIEW (same 4-column shape).
+	if err := MoveRow(path, "IN REVIEW", "pickle", RowData{
+		ID: "T-007", Title: "mover", Branch: "feat/T-007-x", DependsOn: "[T-002]",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rows, _ := Parse(path)
+	got := map[string]Row{}
+	for _, r := range rows {
+		got[r.ID] = r
+	}
+	if len(rows) != 1 || got["T-007"].Status != "IN REVIEW" {
+		t.Fatalf("after move: rows=%+v", rows)
+	}
+
+	// -> DONE (3-column shape: merged).
+	if err := MoveRow(path, "DONE", "pickle", RowData{
+		ID: "T-007", Title: "mover", Merged: "no — publish-gated",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "| T-007 | mover | no — publish-gated |") {
+		t.Errorf("DONE row not reshaped to merged column:\n%s", data)
+	}
+	rows, _ = Parse(path)
+	if len(rows) != 1 || rows[0].Status != "DONE" {
+		t.Errorf("expected single DONE row, got %+v", rows)
+	}
+}
+
+func TestMoveRowCreatesMissingSubgroup(t *testing.T) {
+	// DROPPED section exists but only for pickle; move a web ticket there.
+	body := fullBoard + "" // reuse
+	path := writeBoard(t, body)
+	// First relocate T-007 into DROPPED under a NEW child "web".
+	if err := MoveRow(path, "DROPPED", "web", RowData{
+		ID: "T-007", Title: "mover", Reason: "obsolete",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "### web") {
+		t.Errorf("web sub-group not created:\n%s", data)
+	}
+	if !strings.Contains(string(data), "| T-007 | mover | obsolete |") {
+		t.Errorf("DROPPED row missing/!reshaped:\n%s", data)
+	}
+}

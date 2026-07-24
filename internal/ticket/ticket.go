@@ -54,6 +54,24 @@ func StatusByName(name string) (Status, bool) {
 	return Status{}, false
 }
 
+var statusNumRE = regexp.MustCompile(`^\d+-`)
+
+// StatusByToken resolves a user-supplied status token, case-insensitively, in any
+// of three forms: the dir name ("3-in-development"), the dir minus its number
+// ("in-development"), or the display name lower-cased with spaces to hyphens
+// ("in-development" from "IN DEVELOPMENT").
+func StatusByToken(tok string) (Status, bool) {
+	t := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(tok)), " ", "-")
+	for _, s := range Statuses {
+		bare := statusNumRE.ReplaceAllString(s.Dir, "")
+		name := strings.ReplaceAll(strings.ToLower(s.Name), " ", "-")
+		if t == s.Dir || t == bare || t == name {
+			return s, true
+		}
+	}
+	return Status{}, false
+}
+
 // Ticket is one parsed ticket file.
 type Ticket struct {
 	ID        string            // "T-001" (from the filename)

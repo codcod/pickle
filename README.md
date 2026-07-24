@@ -48,7 +48,7 @@ pickle upgrade                          refresh installed skill payload + marker
 pickle doctor                           verify install integrity                                         [P2]
 pickle uninstall                        remove skill/symlinks/markers (keep tickets/)                    [P2]
 pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [done: T-003]
-pickle ticket move T-NNN <status>       move file + History + board atomically                           [P3]
+pickle ticket move T-NNN <status>       move file + History + board atomically                           [done: T-007]
 pickle board audit                      check every board/ticket invariant                               [done: T-002]
 pickle board sync                       repair board rows from ticket state                              [P3]
 pickle version | help
@@ -56,8 +56,8 @@ pickle version | help
 
 This repository is **early**, but the core loop is live: `install` (T-004), `project
 add|list|remove` (T-001), `ticket new` (T-003), and `board audit` (T-002) are implemented.
-The remaining commands (`upgrade`/`doctor`/`uninstall`, `ticket move`, `board sync`) are stubs
-that report their target build phase.
+The remaining commands (`upgrade`/`doctor`/`uninstall`, `board sync`) are stubs that report
+their target build phase.
 
 ## Configuration — `pickle.toml`
 
@@ -133,6 +133,40 @@ section skeleton), and inserts the board row under the child's `### <child>` sub
 TO DO section, in impact order. `--project` must name a registered child; grades default to
 `medium`/`medium`/`M` and must be legal. The agent fills the Description prose afterwards; the
 full `TEMPLATE.md` (installed with the skill) is the authoring guide.
+
+## `pickle ticket move`
+
+```
+pickle ticket move <T-NNN> <status> [--reason "<why>"]
+```
+
+Moves a ticket through the flow as **one operation** — the three edits the board rule demands,
+together: relocate the file between `tickets/<status>/` dirs, append a dated `## History`
+transition line, and rewrite the board row into the target section (correct child sub-group
+*and* column shape). `<status>` accepts the dir name (`3-in-development`), the short form
+(`in-development`), or the display name (`"in review"`).
+
+**State machine** (anything else is rejected):
+
+```
+to-do → ready → in-development → in-review → done
+                                     ↘ rework → in-review
+backward/abort:  in-development → ready,  ready → to-do,  (any non-terminal) → dropped
+```
+
+`done` and `dropped` are terminal. Gates enforced before anything is written:
+
+- **Sign-off** — `--reason` is required for every backward move, every `→ rework`, and every
+  `→ dropped`; the human running/approving the command is the sign-off, and the reason is
+  recorded in History (and the DROPPED/REWORK board cell). Forward moves may omit it.
+- **Per-child WIP** — moving into `in-development`/`in-review` cannot exceed that child's limit
+  (from `pickle.toml`); counts only the ticket's own `project`.
+- **Dependency + cross-child merge gate** (pickup only) — every `depends-on:` target must be
+  `done` **and** carry a `MERGED` History line (the cross-child proxy for "merged to its own
+  base"). This is intentionally stricter than `board audit`, which only warns.
+
+After applying, `ticket move` runs `board audit` as a self-check and fails loudly if the tree
+is no longer clean.
 
 ## Build
 

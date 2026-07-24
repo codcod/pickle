@@ -171,3 +171,32 @@ func TestLoadAllBadFilename(t *testing.T) {
 		t.Fatalf("expected 1 issue, got %v", issues)
 	}
 }
+
+func TestStatusByToken(t *testing.T) {
+	cases := []struct {
+		tok string
+		dir string
+		ok  bool
+	}{
+		{"3-in-development", "3-in-development", true}, // dir name
+		{"in-development", "3-in-development", true},   // dir minus number
+		{"IN DEVELOPMENT", "3-in-development", true},   // display name (spaces)
+		{"In-Development", "3-in-development", true},   // case-insensitive
+		{"to-do", "1-to-do", true},
+		{"1-to-do", "1-to-do", true},
+		{"done", "6-done", true},
+		{"dropped", "7-dropped", true},
+		{"nonsense", "", false},
+		{"", "", false},
+	}
+	for _, tc := range cases {
+		got, ok := StatusByToken(tc.tok)
+		if ok != tc.ok {
+			t.Errorf("StatusByToken(%q) ok=%v, want %v", tc.tok, ok, tc.ok)
+			continue
+		}
+		if ok && got.Dir != tc.dir {
+			t.Errorf("StatusByToken(%q) = %q, want %q", tc.tok, got.Dir, tc.dir)
+		}
+	}
+}
