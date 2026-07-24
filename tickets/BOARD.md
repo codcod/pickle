@@ -41,6 +41,7 @@ Last updated: 2026-07-24 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-005 | doctor | medium | low | M | [T-004] |
 
 ## TO DO (impact order, per child)
 
@@ -48,7 +49,6 @@ Last updated: 2026-07-24 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-005 | doctor | medium | low-medium | S-M | [T-004] |
 | T-006 | upgrade + uninstall | medium | medium | M | [T-004] |
 | T-009 | opencode wiring | medium | medium | M | [T-004] |
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
