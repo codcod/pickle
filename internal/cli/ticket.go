@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"pickle/internal/board"
+	"pickle/internal/move"
 	"pickle/internal/ticket"
 )
 
@@ -23,15 +24,49 @@ func runTicket(args []string) int {
 	case "new":
 		return runTicketNew(args[1:])
 	case "move":
-		return notImplemented("P3", "ticket move",
-			"move a ticket (file + dated History line + board row) atomically; enforce the state machine, per-child WIP limits, and backward-move sign-off")
+		return runTicketMove(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "pickle ticket: unknown subcommand %q\n", args[0])
 		return exitUsage
 	}
 }
 
-const ticketNewUsage = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V]`
+const (
+	ticketNewUsage  = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V]`
+	ticketMoveUsage = `usage: pickle ticket move <T-NNN> <status> [--reason "<why>"]`
+)
+
+func runTicketMove(args []string) int {
+	if len(args) < 2 || strings.HasPrefix(args[0], "-") || strings.HasPrefix(args[1], "-") {
+		fmt.Fprintln(os.Stderr, ticketMoveUsage)
+		return exitUsage
+	}
+	id, status := args[0], args[1]
+
+	fs := flag.NewFlagSet("ticket move", flag.ContinueOnError)
+	reason := fs.String("reason", "", "why the move is happening (required for backward/rework/drop moves)")
+	if err := fs.Parse(args[2:]); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintln(os.Stderr, ticketMoveUsage)
+		return exitUsage
+	}
+
+	cfg, code := loadConfig()
+	if code != exitOK {
+		return code
+	}
+	res, err := move.Move(cfg.Root(), cfg, id, status, *reason)
+	if err != nil {
+		return errf("%v", err)
+	}
+	fmt.Printf("moved %s: %s → %s  (%s)\n", id, res.From, res.To, res.Path)
+	for _, w := range res.Warnings {
+		fmt.Printf("  warning: %s\n", w)
+	}
+	return exitOK
+}
 
 func runTicketNew(args []string) int {
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {

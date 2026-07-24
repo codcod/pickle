@@ -73,67 +73,114 @@ func Parse(path string) ([]Row, error) {
 	return rows, nil
 }
 
+// RowData carries the section-specific cells a board row can hold. `ticket move`
+// (and, later, `board sync`) fill the fields relevant to the target section; the
+// section's column list decides which are rendered.
+type RowData struct {
+	ID         string
+	Title      string
+	Impact     string
+	Complexity string
+	Cost       string
+	DependsOn  string // "[T-002]" or "[]"
+	Branch     string // "feat/T-007-ticket-move"
+	Merged     string // DONE column
+	Reason     string // DROPPED reason / REWORK open findings
+}
+
+func (d RowData) cell(col string) string {
+	switch col {
+	case "id":
+		return d.ID
+	case "title":
+		return d.Title
+	case "impact":
+		return d.Impact
+	case "complexity":
+		return d.Complexity
+	case "cost":
+		return d.Cost
+	case "depends-on":
+		return d.DependsOn
+	case "branch":
+		return d.Branch
+	case "merged":
+		return d.Merged
+	case "reason", "open findings":
+		return d.Reason
+	}
+	return ""
+}
+
+// SectionColumns is the ordered column list for a status section's table. It
+// returns nil for an unknown section name.
+func SectionColumns(statusName string) []string {
+	switch statusName {
+	case "TO DO", "READY":
+		return []string{"id", "title", "impact", "complexity", "cost", "depends-on"}
+	case "IN DEVELOPMENT", "IN REVIEW":
+		return []string{"id", "title", "branch", "depends-on"}
+	case "REWORK":
+		return []string{"id", "title", "branch", "open findings"}
+	case "DONE":
+		return []string{"id", "title", "merged"}
+	case "DROPPED":
+		return []string{"id", "title", "reason"}
+	}
+	return nil
+}
+
+func renderRow(cols []string, d RowData) string {
+	cells := make([]string, len(cols))
+	for i, c := range cols {
+		cells[i] = d.cell(c)
+	}
+	return "| " + strings.Join(cells, " | ") + " |"
+}
+
 // AddTODORow inserts a ticket row into the TO DO section under the child's
 // `### <child>` sub-group, in impact order (highest first; ties keep existing
 // order). The sub-group is created (with a standard header) if it does not exist.
+// It is a thin wrapper over the shared section insert used by MoveRow.
 func AddTODORow(boardPath, child, id, title, impact, complexity, cost string) error {
+	return insertIntoBoard(boardPath, "TO DO", child, RowData{
+		ID: id, Title: title, Impact: impact, Complexity: complexity, Cost: cost, DependsOn: "[]",
+	})
+}
+
+// MoveRow removes any existing row for d.ID from the board and inserts a freshly
+// rendered row into the target status section under the ticket's `### <child>`
+// sub-group (created if absent). TO DO/READY insert in descending-impact order;
+// every other section appends. Now-empty sub-groups are left in place.
+func MoveRow(boardPath, statusName, child string, d RowData) error {
+	return insertIntoBoard(boardPath, statusName, child, d)
+}
+
+func insertIntoBoard(boardPath, statusName, child string, d RowData) error {
+	cols := SectionColumns(statusName)
+	if cols == nil {
+		return fmt.Errorf("unknown board section %q", statusName)
+	}
 	data, err := os.ReadFile(boardPath)
 	if err != nil {
 		return err
 	}
-	lines := strings.Split(string(data), "\n")
-	newRow := fmt.Sprintf("| %s | %s | %s | %s | %s | [] |", id, title, impact, complexity, cost)
+	lines := removeRowByID(strings.Split(string(data), "\n"), d.ID)
+	row := renderRow(cols, d)
+	impactOrdered := statusName == "TO DO" || statusName == "READY"
 
-	// TO DO section span [todoStart, todoEnd).
-	todoStart, todoEnd := -1, len(lines)
-	for i, ln := range lines {
-		if !strings.HasPrefix(ln, "## ") {
-			continue
-		}
-		head := strings.ToUpper(strings.TrimSpace(ln[3:]))
-		if todoStart == -1 && strings.HasPrefix(head, "TO DO") {
-			todoStart = i
-		} else if todoStart != -1 && i > todoStart {
-			todoEnd = i
-			break
-		}
+	secStart, secEnd := sectionSpan(lines, statusName)
+	if secStart == -1 {
+		return fmt.Errorf("%s: no %s section", boardPath, statusName)
 	}
-	if todoStart == -1 {
-		return fmt.Errorf("%s: no TO DO section", boardPath)
+	subStart, subEnd := subgroupSpan(lines, secStart, secEnd, child)
+	if subStart == -1 { // create the sub-group at the end of the section
+		sep := "|" + strings.Repeat("---|", len(cols))
+		block := []string{"", "### " + child, "", "| " + strings.Join(cols, " | ") + " |", sep, row}
+		return write(boardPath, insertLines(lines, secEnd, block))
 	}
 
-	// Child sub-group within the TO DO section.
-	subStart := -1
-	for i := todoStart + 1; i < todoEnd; i++ {
-		if strings.HasPrefix(lines[i], "### ") &&
-			strings.TrimSpace(strings.SplitN(lines[i][4:], " (", 2)[0]) == child {
-			subStart = i
-			break
-		}
-	}
-
-	if subStart == -1 { // create the sub-group at the end of the TO DO section
-		block := []string{
-			"",
-			"### " + child,
-			"",
-			"| id | title | impact | complexity | cost | depends-on |",
-			"|---|---|---|---|---|---|",
-			newRow,
-		}
-		return write(boardPath, insertLines(lines, todoEnd, block))
-	}
-
-	// Sub-group span [subStart, subEnd).
-	subEnd := todoEnd
-	for i := subStart + 1; i < todoEnd; i++ {
-		if strings.HasPrefix(lines[i], "### ") || strings.HasPrefix(lines[i], "## ") {
-			subEnd = i
-			break
-		}
-	}
-
-	newRank := impactRank[impact]
+	newRank := impactRank[d.Impact]
 	insertAt, lastRow := -1, -1
 	for i := subStart + 1; i < subEnd; i++ {
 		m := rowRE.FindStringSubmatch(strings.TrimSpace(lines[i]))
@@ -141,31 +188,85 @@ func AddTODORow(boardPath, child, id, title, impact, complexity, cost string) er
 			continue
 		}
 		lastRow = i
-		cells := strings.Split(lines[i], "|")
-		rowImpact := ""
-		if len(cells) > 3 {
-			rowImpact = strings.TrimSpace(cells[3])
-		}
-		if insertAt == -1 && impactRank[rowImpact] < newRank {
-			insertAt = i
+		if impactOrdered && insertAt == -1 {
+			cells := strings.Split(lines[i], "|")
+			rowImpact := ""
+			if len(cells) > 3 {
+				rowImpact = strings.TrimSpace(cells[3])
+			}
+			if impactRank[rowImpact] < newRank {
+				insertAt = i
+			}
 		}
 	}
 	if insertAt == -1 {
 		if lastRow != -1 {
 			insertAt = lastRow + 1
-		} else { // empty sub-group: skip blank/header/separator lines
+		} else { // empty sub-group: insert right after the header separator line
 			insertAt = subStart + 1
-			for insertAt < subEnd {
-				t := strings.TrimSpace(lines[insertAt])
-				if t == "" || strings.HasPrefix(t, "| id") || strings.HasPrefix(t, "|---") {
-					insertAt++
-					continue
+			for i := subStart + 1; i < subEnd; i++ {
+				if strings.HasPrefix(strings.TrimSpace(lines[i]), "|---") {
+					insertAt = i + 1
 				}
-				break
 			}
 		}
 	}
-	return write(boardPath, insertLines(lines, insertAt, []string{newRow}))
+	return write(boardPath, insertLines(lines, insertAt, []string{row}))
+}
+
+// removeRowByID drops any board row whose id equals id (in any section). Empty
+// sub-groups are intentionally left in place (matching the skeleton convention).
+func removeRowByID(lines []string, id string) []string {
+	out := make([]string, 0, len(lines))
+	for _, ln := range lines {
+		if m := rowRE.FindStringSubmatch(strings.TrimSpace(ln)); m != nil && m[1] == id {
+			continue
+		}
+		out = append(out, ln)
+	}
+	return out
+}
+
+// sectionSpan returns [start,end) line indices for the "## <name>..." section, or
+// (-1, len) if the section is absent. name is the upper-case status display name.
+func sectionSpan(lines []string, name string) (int, int) {
+	start, end := -1, len(lines)
+	for i, ln := range lines {
+		if !strings.HasPrefix(ln, "## ") {
+			continue
+		}
+		head := strings.ToUpper(strings.TrimSpace(ln[3:]))
+		if start == -1 && strings.HasPrefix(head, name) {
+			start = i
+		} else if start != -1 && i > start {
+			return start, i
+		}
+	}
+	return start, end
+}
+
+// subgroupSpan returns [start,end) for the "### <child>" sub-group inside
+// [secStart,secEnd), or (-1,-1) if absent.
+func subgroupSpan(lines []string, secStart, secEnd int, child string) (int, int) {
+	start := -1
+	for i := secStart + 1; i < secEnd; i++ {
+		if strings.HasPrefix(lines[i], "### ") &&
+			strings.TrimSpace(strings.SplitN(lines[i][4:], " (", 2)[0]) == child {
+			start = i
+			break
+		}
+	}
+	if start == -1 {
+		return -1, -1
+	}
+	end := secEnd
+	for i := start + 1; i < secEnd; i++ {
+		if strings.HasPrefix(lines[i], "### ") || strings.HasPrefix(lines[i], "## ") {
+			end = i
+			break
+		}
+	}
+	return start, end
 }
 
 func insertLines(lines []string, at int, block []string) []string {
