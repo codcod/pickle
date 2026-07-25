@@ -41,6 +41,7 @@ Last updated: 2026-07-25 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -52,7 +53,7 @@ Last updated: 2026-07-25 (board sync)
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
 | T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
-| T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | medium | medium | M | [] |
+| T-020 | doctor: detect AGENTS.md marker-block drift | medium | low | S | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
 | T-015 | consolidate board status-heading matching and fill sync test gaps | low | low | S | [] |
