@@ -139,9 +139,14 @@ Working tree clean on `main` before branching.
 - In `LoadAll`, populate `SpawnedBy: ParseDepends(fm["spawned-by"])`.
 - Update `ParseDepends`'s doc comment to state it parses any bracketed `T-NNN` list (used by
   both `depends-on` and `spawned-by`).
-- `Scaffold`: add a `spawnedBy []string` parameter and emit a `spawned-by: <rendered>` line
-  directly under `depends-on: []`. Add a tiny `renderIDList([]string) string` helper (`[]` for
-  empty, `[T-018, T-019]` otherwise) and use it for the spawned-by line.
+- `Scaffold`: add a `spawnedBy []string` parameter — **appended last**, after `cost` — and emit
+  a `spawned-by: <rendered>` line directly under `depends-on: []`. A variadic `...string` would
+  spare the four existing call sites but lets the field be silently forgotten; the explicit
+  slice is chosen so the compiler names every caller.
+- Add a tiny **unexported** `renderIDList([]string) string` helper (`[]` for empty,
+  `[T-018, T-019]` otherwise) and use it for the spawned-by line. Note in its doc comment that
+  `internal/move/move.go`'s `renderDepends` and the inline join at `internal/sync/sync.go:284`
+  do the same thing; **do not** refactor them here (consolidation is deferred — see T-015).
 
 #### Task 2 — `ticket new --spawned-by` (`internal/cli/ticket.go`)
 - Register `spawnedBy := fs.String("spawned-by", "", "lineage: ticket id(s) this one was born
@@ -156,6 +161,10 @@ Working tree clean on `main` before branching.
   id equals the ticket's own id. **No** entry in the `3-in-development` dependency-gate loop.
 - Add a one-line comment at that loop: lineage is provenance only — intentionally no
   done/merged/transition gate (contrast `depends-on`).
+- **`internal/move/move.go` stays untouched.** The pickup gate exists in *two* places, not one:
+  the audit's in-development loop (`audit.go:126-142`) **and** `move.Move`'s own gate
+  (`move.go:98-110`). Both read `DependsOn` only — leaving `move.go` alone is the deliberate
+  implementation of decision 3, not an oversight.
 
 #### Task 4 — Skill payload docs (edits under `skill/`, mirrored via the `.agents` symlink)
 - `skill/resources/TEMPLATE.md`: add the `spawned-by: [...]` line under `depends-on:` with a
@@ -165,9 +174,11 @@ Working tree clean on `main` before branching.
   at creation/immutable, complements (does not replace) the History `source:` line. Add
   `spawned-by` to the §7 frontmatter list (line ~202).
 - `skill/SKILL.md`: in *The rules (summary)* add a **Lineage** bullet mirroring the
-  Dependencies one; in *Procedure: make it a ticket* (step ~5) and *Procedure: validate a
-  ticket* note that a ticket born from a review/audit sets `spawned-by:` to the source
-  ticket(s); in *audit the board* add "`spawned-by:` targets exist (but never gate)".
+  Dependencies one (after the Dependencies bullet, ~`:84`); mention the `--spawned-by` flag at
+  *make it a ticket* **step 3** (~`:108-111`, where `pickle ticket new` is invoked — **not**
+  step 5) and the "set it when a ticket is born from another" convention at **step 5**; in
+  *Procedure: validate a ticket* note that spawned follow-ups set `spawned-by:` to the reviewed
+  ticket; in *audit the board* (~`:208`) add "`spawned-by:` targets exist (but never gate)".
 - `skill/resources/review-protocol.md`: where non-blocking findings spawn new TO DO tickets,
   note each new ticket sets `spawned-by: [<reviewed ticket id>]`.
 
@@ -177,6 +188,14 @@ Working tree clean on `main` before branching.
   `every depends-on: target exists`) — wording it as *exists but never gates*.
 - `pickle ticket new` section (**line 266**): add `[--spawned-by "T-NNN[,T-MMM]"]` to the usage
   line and a clause to the prose below it.
+- **Upgrade note (finding N1).** `spawned-by` becomes a **required** key of a shipped validator,
+  and `pickle upgrade` deliberately never touches tickets — so any already-installed project
+  would start reporting `frontmatter missing "spawned-by"` until backfilled. Add one sentence to
+  the `board audit` section saying exactly that: existing tickets must be backfilled with
+  `spawned-by: []` after upgrading. (No release tag exists yet, so nothing downstream is
+  actually broken today; user-confirmed to keep it required rather than warn-first.)
+- Also touch **line ~303** ("Dependency + cross-child merge gate (pickup only)") — the one place
+  a reader would ask whether lineage gates: state that `spawned-by` never participates.
 - **Leave `PLAN.md` alone** — it is the historical phased design record, not user docs.
 
 #### Task 6 — Backfill existing tickets
@@ -184,8 +203,11 @@ Working tree clean on `main` before branching.
   under `tickets/1-to-do/` … `tickets/7-dropped/` that lacks it — **27 files at time of
   refinement (T-001…T-027), including T-024 itself**; re-count at implementation time rather
   than trusting that number, and include any ticket filed in the meantime.
-- Verify none are skipped:
-  `rg -L --files-without-match '^spawned-by:' tickets/*/*.md` must print nothing.
+- Verify none are skipped. **`./pickle board audit` is the authoritative guard** (the required
+  key makes a missed file an error). A grep is only advisory and is provably blind to T-024
+  itself, whose Description contains an illustrative `spawned-by: [T-120]` at column 0:
+  `rg --files-without-match '^spawned-by:' tickets/*/*.md` (note: no `-L` — that is
+  ripgrep's `--follow`, not "files without match").
 - Real historical parents intentionally **not** populated — all `[]` (decision 2; T-025 owns
   the true-lineage pass).
 
@@ -195,8 +217,10 @@ Working tree clean on `main` before branching.
   required-keys assertion in `TestScaffoldIsAuditClean` (**line 131**); assert `Scaffold(...)`
   emits `spawned-by: []` for `nil` and `spawned-by: [T-001, T-002]` for a two-id slice. Update
   the two `Scaffold(...)` calls (**lines 126, 153**) for the new parameter.
-- `internal/audit/audit_test.go`: the `ticketFile(...)` builder (**line 28**) has **11 call
-  sites** — do **not** add a parameter. Emit a fixed `spawned-by: []` line in the builder and
+- `internal/audit/audit_test.go`: the `ticketFile(...)` builder (**line 24**; its
+  `depends-on: %s` line is `:29`) has **10 call sites** (`:65, :90, :93, :96, :99, :102, :111,
+  :114, :115, :120`) — do **not** add a parameter. Emit a fixed `spawned-by: []` line in the
+  builder and
   add a `withSpawnedBy(body, ids string) string` helper that string-replaces it (mirroring
   `internal/move/move_test.go:39`'s `depends-on` trick) for the cases that need a value. New
   cases: **(a)** valid non-empty `spawned-by` → clean; **(b)** dangling `spawned-by: [T-404]` →
@@ -204,8 +228,21 @@ Working tree clean on `main` before branching.
   **(d) the key guarantee:** a ticket in `3-in-development` whose `spawned-by` parent is **not**
   in `6-done`/not merged → **still clean** (no gate — contrast the existing `depends-on` gate
   case); **(e)** missing `spawned-by` key → `frontmatter missing "spawned-by"`.
-- `internal/cli/cli_test.go`: `ticket new --spawned-by "T-001"` writes `spawned-by: [T-001]`
-  and `board audit` is clean; default (no flag) writes `spawned-by: []`.
+- `internal/cli/cli_test.go` — **⚠ harness is mandatory (blocking finding B1).** `runTicketNew`
+  resolves its target through `loadConfig()` → `internal/cli/project.go:39-43`, which is
+  `os.Getwd()` + `config.Find(wd)`, i.e. a **walk up from the process CWD**. Today
+  `cli_test.go` has *no* filesystem harness, so a naive `ticket new` test runs with
+  CWD = `internal/cli/`, finds **this repo's** `pickle.toml`, and writes a real ticket into
+  `tickets/1-to-do/` + a real row into `tickets/BOARD.md` — burning a global id, which the
+  rules say is never reused. The audit reproduced exactly that (`created T-028`). The new test
+  must therefore, mirroring `internal/move/move_test.go:17-31`:
+  1. `root := t.TempDir()`;
+  2. `install.Run(os.DirFS(filepath.Join("..", "..")), root, "test", install.Options{ProjectName: "demo", ProjectPath: ".", Claude: false})` (no import cycle: `internal/install` does not import `internal/cli`);
+  3. `t.Chdir(root)` (Go 1.26 per `go.mod`);
+  4. pass `--project demo` (the temp install registers `demo`, not `pickle`);
+  5. **no `t.Parallel()`** anywhere in this test — CWD is process-global.
+  Then assert: `--spawned-by "T-001"` writes `spawned-by: [T-001]`, the no-flag default writes
+  `spawned-by: []`, and `board audit` in that temp root is clean.
 - `internal/move/move_test.go` (**line 37**) & `internal/sync/sync_test.go` (**line 37**):
   update the `ticket.Scaffold(...)` call sites for the new parameter (pass `nil`).
 
@@ -217,15 +254,17 @@ Run from the repo root (the `pickle` child):
 just build            # compiles with the new flag + model field
 just test             # all packages green, incl. the new audit/cli/ticket cases
 just lint             # go vet clean
-./pickle board audit  # => "... 0 error(s) ..." — proves backfill + required key are consistent
-rg -L --files-without-match '^spawned-by:' tickets/*/*.md   # => no output (backfill complete)
+./pickle board audit  # => "... 0 error(s) ..." — authoritative: proves the backfill is complete
+                      #    and consistent with the new required key
+rg --files-without-match '^spawned-by:' tickets/*/*.md   # advisory only (blind to T-024 itself)
 ```
 
-Then exercise the flag end-to-end **in a throwaway scratch checkout or temp dir** (do not leave
-a demo ticket in the real board): `pickle ticket new "demo" --project pickle --spawned-by "T-001"`
-produces frontmatter containing `spawned-by: [T-001]`, and `pickle board audit` reports 0
-errors. The non-empty `--spawned-by` path is also covered non-interactively by the new
-`cli_test.go` case, so the live repo stays clean.
+Optionally exercise the flag by hand — **only in a directory OUTSIDE this repo's tree**, after
+running `pickle install` there. A temp dir created *inside* the repo still walks up to the real
+`pickle.toml` and would pollute the live board (finding B1). The non-empty `--spawned-by` path
+is covered non-interactively by the new `cli_test.go` case **provided its `t.TempDir()` +
+`t.Chdir` harness is in place**; that harness, not the test's existence, is what keeps the live
+repo clean.
 
 Expected results: build/test/lint all green; `board audit` reports **0 errors, 0 warnings** on
 the real repo; audit *does* error on the negative fixtures (dangling id, self-reference, missing
@@ -242,8 +281,10 @@ pointer and needs no change.
 
 1. Acceptance test green; `just build`/`just test`/`just lint` and `pickle board audit` clean.
 2. Docs (skill payload + README) updated.
-3. Write a summary (files touched, backfill scope + file count, anything deferred — the
-   real-parent backfill is T-025, the `depends-on` self-check is T-027).
+3. Write a summary (files touched, backfill scope + file count, **the upgrade/backfill note for
+   already-installed projects (N1)**, anything deferred — the real-parent backfill is T-025, the
+   `depends-on` self-check is T-027, the TEMPLATE-vs-`requiredKeys` drift guard is T-028,
+   id-list renderer consolidation is noted on T-015).
 4. Suggest a Conventional Commit message, ticket id in brackets, e.g.:
 
    ```
@@ -270,3 +311,10 @@ pointer and needs no change.
   the true-lineage follow-up (uniform `[]` confirmed, T-025's own file included); `depends-on`
   self-check split out as T-027; test tasks made concrete (no new `ticketFile` parameter); cost
   range collapsed S-M → M (7 tasks across 10 code/test files, 5 doc surfaces, 27 backfills)
+- 2026-07-25 — applicability audit at pickup (unbiased sub-agent, plan replayed in a scratch
+  copy): 1 blocking + 9 non-blocking findings, routed PROCEED WITH INLINE CORRECTIONS. Folded
+  in: B1 (cli_test needs a `t.TempDir()`+`install.Run`+`t.Chdir` harness — as written it wrote a
+  real ticket into this board), N1 (README upgrade/backfill note; required-key confirmed over
+  warn-first), N2 (`rg` guard demoted to advisory, `-L` dropped), N3/N4/N7/N9 (line-ref and
+  parameter-placement corrections), N6 (`move.go`'s second pickup gate stays untouched).
+  Spun out: N8 → T-028, N5 → T-015 item 4

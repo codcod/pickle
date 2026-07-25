@@ -44,8 +44,18 @@ change. Two items, both in the `internal/board` + `internal/sync` layer:
    the division of labour should be stated. Fix the change-classification so cell-content
    rewrites are reported distinctly from pure reformatting, and add a test.
 
-Soft coupling: builds on T-008 (board sync) and T-002 (board audit engine), both merged; no
-hard `depends-on:` — the target code is already on `main`.
+4. **De-duplicate id-list rendering** (added by the T-024 applicability audit, finding N5).
+   Rendering `[]string{"T-001","T-002"}` as `[T-001, T-002]` (and `[]` when empty) now exists in
+   **three** places: `move.renderDepends` (`internal/move/move.go:240-242`), the inline join at
+   `internal/sync/sync.go:284`, and `ticket.renderIDList`, added unexported by T-024
+   (`internal/ticket/ticket.go`). Export the `internal/ticket` one (`ticket.RenderIDList`) —
+   it sits in the package that already owns the parsing counterpart, `ParseDepends` — and route
+   the other two through it. Pure refactor; the existing move/sync tests are the guard.
+
+Soft coupling: builds on T-008 (board sync) and T-002 (board audit engine), both merged, and on
+T-024 for item 4 (which introduces the third renderer); no hard `depends-on:` — item 4 is
+trivially skippable if T-024 has not landed, and the rest of the target code is already on
+`main`.
 
 ## Implementation Plan
 
@@ -58,3 +68,5 @@ hard `depends-on:` — the target code is already on `main`.
 ## History
 
 - 2026-07-24 — created (TO DO). source: T-008 review (non-blocking findings N1 duplication + N2 test gap)
+- 2026-07-25 — scope extended: item 4 (id-list renderer consolidation), from the T-024
+  applicability audit's non-blocking finding N5

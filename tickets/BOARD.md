@@ -65,6 +65,7 @@ Last updated: 2026-07-25 (board sync)
 | T-023 | board branch column is derived from the filename slug, not the ticket's real branch | low | low | S | [] |
 | T-025 | backfill true historical spawned-by lineage from existing source: lines | low | low | S | [T-024] |
 | T-027 | audit: flag depends-on entries that reference the ticket itself | low | low | S | [] |
+| T-028 | guard TEMPLATE.md frontmatter against audit requiredKeys | low | low | S | [] |
 
 ## DONE
 
