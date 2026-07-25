@@ -84,7 +84,7 @@ Last updated: 2026-07-25 (board sync)
 | T-008 | board sync | yes — merged to main 2026-07-24 (9b87a61) |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — merged to main 2026-07-24 (e4aaed7) |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main 2026-07-25 (1485242) |
-| T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | no — publish-gated (branch feat/T-024-add-spawned-by-lineage-frontmatter-field-provenance-non-gating) |
+| T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — main (3c4c131, squashed) |
 
 ## DROPPED
 

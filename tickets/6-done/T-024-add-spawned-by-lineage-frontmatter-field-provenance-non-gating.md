@@ -456,3 +456,4 @@ invalidated.
 - 2026-07-25 — IN REVIEW → REWORK: review: 1 blocking finding (B1: pickle help omits --spawned-by)
 - 2026-07-25 — REWORK → IN REVIEW: B1 fixed: help lists --spawned-by
 - 2026-07-25 — IN REVIEW → DONE: review PASS: B1 fixed, 13 non-blocking routed
+- 2026-07-25 — MERGED: feat/T-024-spawned-by-lineage-frontmatter → main (3c4c131, squashed)
