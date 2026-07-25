@@ -5,7 +5,7 @@ project: pickle
 depends-on: []
 impact: medium
 complexity: low
-cost: S-M
+cost: M
 ---
 
 # T-024 — add spawned-by: lineage frontmatter field (provenance, non-gating)
@@ -70,14 +70,19 @@ overloading `depends-on:` would wrongly gate its pickup.
   difference from `depends-on:`).
 - **Board**: **no** `spawned-by` column — lineage is provenance, not a scheduling axis.
 - **Backfill + root `README.md`**: every existing ticket gets `spawned-by: []`; the README's
-  frontmatter-invariant list is updated. Populating real historical parents is out of scope
-  (an optional follow-up).
+  frontmatter-invariant list is updated. Populating real historical parents is out of scope —
+  it is **T-025**, which hard-depends on this ticket.
 
 ### Couplings
 
-Soft coupling to the review/audit procedures (SKILL.md *make it a ticket* / *validate a
-ticket*), which are where spawned tickets are born and would set this field. No hard
-`depends-on:`.
+- Soft coupling to the review/audit procedures (SKILL.md *make it a ticket* / *validate a
+  ticket*), which are where spawned tickets are born and would set this field.
+- **T-025** (`depends-on: [T-024]`) backfills the *true* historical lineage from the History
+  `source:` lines once this ships. This ticket writes `[]` everywhere, including into T-025's
+  own file — T-025 owns every real parent value, its own included.
+- **T-027** (no dependency either way) proposes the same self-reference check for the shipped
+  `depends-on:` validator, deliberately left out of this ticket's scope.
+- No hard `depends-on:`.
 
 ## Implementation Plan
 
@@ -106,14 +111,16 @@ Working tree clean on `main` before branching.
    parser reused, not duplicated).
 2. **Required key + uniform backfill** (decision A, user-confirmed). `spawned-by` joins the
    audit's `requiredKeys`; **every existing ticket is backfilled with `spawned-by: []`** in this
-   same change. No real historical parents are populated here — all existing tickets get `[]`
-   (a true-lineage backfill is an optional separate follow-up). *If the user chose optional
-   instead: skip the `requiredKeys` addition and the backfill; everything else stands.*
+   same change. **No real historical parents are populated here — every existing ticket gets
+   `[]`, T-025's own file included**, even though its parent (T-024) is known. T-025 owns the
+   true-lineage backfill wholesale; splitting it would leave two tickets editing the same field.
 3. **Non-gating — the defining property.** `spawned-by` adds **no** transition guard and **no**
    done/merged check. A ticket may enter `3-in-development/` regardless of its `spawned-by`
    parents' status (or whether they are terminal). Audit only checks the ids **exist** and that
    a ticket does **not** list **itself**. A code comment at the audit site records that the
-   omission of a gate is deliberate.
+   omission of a gate is deliberate. The matching self-reference check for `depends-on:` is
+   **out of scope** (it changes shipped-validator behaviour) — it is T-027; do not touch the
+   `depends-on` loop's conditions.
 4. **No board column.** Lineage is provenance, not a scheduling axis; `BOARD.md` layout and
    `internal/board` are untouched.
 5. **`pickle ticket new --spawned-by "<ids>"`** — new optional flag, comma-separated (brackets
@@ -165,30 +172,42 @@ Working tree clean on `main` before branching.
   note each new ticket sets `spawned-by: [<reviewed ticket id>]`.
 
 #### Task 5 — Root README (`README.md`)
-- Update the frontmatter-completeness list (line ~130) and the "targets exist" line (~132) to
-  include `spawned-by`; if the `ticket new` blurb (~264) enumerates flags, add `--spawned-by`.
+- `board audit` invariant list: add `spawned-by` to the frontmatter-completeness bullet
+  (**line 136**, `frontmatter is complete (…)`) and to the targets-exist bullet (**line 138**,
+  `every depends-on: target exists`) — wording it as *exists but never gates*.
+- `pickle ticket new` section (**line 266**): add `[--spawned-by "T-NNN[,T-MMM]"]` to the usage
+  line and a clause to the prose below it.
+- **Leave `PLAN.md` alone** — it is the historical phased design record, not user docs.
 
 #### Task 6 — Backfill existing tickets
 - Insert `spawned-by: []` immediately after the `depends-on:` line in **every** ticket file
-  under `tickets/1-to-do/` … `tickets/7-dropped/` that lacks it (all 24, including T-024
-  itself). Mechanical; verify none are skipped. (Real historical parents intentionally **not**
-  populated — all `[]`.)
+  under `tickets/1-to-do/` … `tickets/7-dropped/` that lacks it — **27 files at time of
+  refinement (T-001…T-027), including T-024 itself**; re-count at implementation time rather
+  than trusting that number, and include any ticket filed in the meantime.
+- Verify none are skipped:
+  `rg -L --files-without-match '^spawned-by:' tickets/*/*.md` must print nothing.
+- Real historical parents intentionally **not** populated — all `[]` (decision 2; T-025 owns
+  the true-lineage pass).
 
 #### Task 7 — Tests
-- `internal/ticket/ticket_test.go`: add `spawned-by:` to the parse fixture (line ~13) and
-  assert `SpawnedBy` parses; add `"spawned-by"` to the required-keys assertion (line ~131);
-  assert `Scaffold(...)` emits a `spawned-by:` line (both empty and non-empty inputs). Update
-  the two `Scaffold(...)` calls for the new parameter.
-- `internal/audit/audit_test.go`: add `spawned-by: %s` (default `[]`) to the fixture builder
-  (line ~29); new cases: **(a)** valid non-empty `spawned-by` → clean; **(b)** dangling
-  `spawned-by: [T-404]` → error `spawned-by T-404 does not exist`; **(c)** self-reference →
-  error; **(d) the key guarantee:** a ticket in `3-in-development` whose `spawned-by` parent is
-  **not** in `6-done`/not merged → **still clean** (no gate); **(e)** missing `spawned-by` key →
-  error (required).
+- `internal/ticket/ticket_test.go`: add `spawned-by: [T-004]` to the `sample` fixture
+  (**after line 13**) and assert `LoadAll`/`ParseDepends` yields it; add `"spawned-by"` to the
+  required-keys assertion in `TestScaffoldIsAuditClean` (**line 131**); assert `Scaffold(...)`
+  emits `spawned-by: []` for `nil` and `spawned-by: [T-001, T-002]` for a two-id slice. Update
+  the two `Scaffold(...)` calls (**lines 126, 153**) for the new parameter.
+- `internal/audit/audit_test.go`: the `ticketFile(...)` builder (**line 28**) has **11 call
+  sites** — do **not** add a parameter. Emit a fixed `spawned-by: []` line in the builder and
+  add a `withSpawnedBy(body, ids string) string` helper that string-replaces it (mirroring
+  `internal/move/move_test.go:39`'s `depends-on` trick) for the cases that need a value. New
+  cases: **(a)** valid non-empty `spawned-by` → clean; **(b)** dangling `spawned-by: [T-404]` →
+  error `spawned-by T-404 does not exist`; **(c)** self-reference → error;
+  **(d) the key guarantee:** a ticket in `3-in-development` whose `spawned-by` parent is **not**
+  in `6-done`/not merged → **still clean** (no gate — contrast the existing `depends-on` gate
+  case); **(e)** missing `spawned-by` key → `frontmatter missing "spawned-by"`.
 - `internal/cli/cli_test.go`: `ticket new --spawned-by "T-001"` writes `spawned-by: [T-001]`
   and `board audit` is clean; default (no flag) writes `spawned-by: []`.
-- `internal/move/move_test.go` & `internal/sync/sync_test.go`: update the `ticket.Scaffold(...)`
-  call sites for the new parameter (pass `nil`).
+- `internal/move/move_test.go` (**line 37**) & `internal/sync/sync_test.go` (**line 37**):
+  update the `ticket.Scaffold(...)` call sites for the new parameter (pass `nil`).
 
 ### Acceptance test
 
@@ -199,6 +218,7 @@ just build            # compiles with the new flag + model field
 just test             # all packages green, incl. the new audit/cli/ticket cases
 just lint             # go vet clean
 ./pickle board audit  # => "... 0 error(s) ..." — proves backfill + required key are consistent
+rg -L --files-without-match '^spawned-by:' tickets/*/*.md   # => no output (backfill complete)
 ```
 
 Then exercise the flag end-to-end **in a throwaway scratch checkout or temp dir** (do not leave
@@ -222,8 +242,8 @@ pointer and needs no change.
 
 1. Acceptance test green; `just build`/`just test`/`just lint` and `pickle board audit` clean.
 2. Docs (skill payload + README) updated.
-3. Write a summary (files touched, the required-vs-optional decision as taken, backfill scope,
-   anything deferred — e.g. real-parent backfill follow-up).
+3. Write a summary (files touched, backfill scope + file count, anything deferred — the
+   real-parent backfill is T-025, the `depends-on` self-check is T-027).
 4. Suggest a Conventional Commit message, ticket id in brackets, e.g.:
 
    ```
@@ -245,3 +265,8 @@ pointer and needs no change.
 
 - 2026-07-25 — created (TO DO). source: chat
 - 2026-07-25 — TO DO → READY: implementation plan complete
+- 2026-07-25 — re-refined in place (stays READY): plan re-verified against the current tree
+  (all paths/symbols/line refs resolve); backfill scope corrected 24 → 27 files; T-025 named as
+  the true-lineage follow-up (uniform `[]` confirmed, T-025's own file included); `depends-on`
+  self-check split out as T-027; test tasks made concrete (no new `ticketFile` parameter); cost
+  range collapsed S-M → M (7 tasks across 10 code/test files, 5 doc surfaces, 27 backfills)

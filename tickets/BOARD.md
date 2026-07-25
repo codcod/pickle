@@ -41,7 +41,7 @@ Last updated: 2026-07-25 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | medium | low | S-M | [] |
+| T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | medium | low | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -64,6 +64,7 @@ Last updated: 2026-07-25 (board sync)
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
 | T-023 | board branch column is derived from the filename slug, not the ticket's real branch | low | low | S | [] |
 | T-025 | backfill true historical spawned-by lineage from existing source: lines | low | low | S | [T-024] |
+| T-027 | audit: flag depends-on entries that reference the ticket itself | low | low | S | [] |
 
 ## DONE
 
