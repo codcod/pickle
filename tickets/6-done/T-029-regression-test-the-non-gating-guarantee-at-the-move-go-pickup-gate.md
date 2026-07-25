@@ -482,3 +482,4 @@ N5); N6 recorded against T-027; N8/N9 informational.
 - 2026-07-25 — READY → IN DEVELOPMENT: picked up; applicability audit clean, findings N1-N5 folded in
 - 2026-07-25 — IN DEVELOPMENT → IN REVIEW: acceptance green; all 3 mutations confirmed load-bearing
 - 2026-07-25 — IN REVIEW → DONE: review clean: no blocking findings; 7 non-blocking (T-031, T-032 spawned; N6 -> T-027)
+- 2026-07-25 — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed)
