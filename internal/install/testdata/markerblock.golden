@@ -1,20 +1,3 @@
-# Working in the `pickle` repository
-
-`pickle` is a Go CLI that installs and operates a **ticket-based, board-driven feature flow**
-in any project (see [`README.md`](README.md)). This repo **self-hosts that flow**: its own
-work is planned and tracked through the very ticket flow it ships.
-
-Two consequences of self-hosting that the generated block below cannot know, and which
-therefore live out here where `pickle upgrade` will not overwrite them:
-
-- The sole registered child-project is **this repo itself**, at the root (`.`) — see
-  [`pickle.toml`](pickle.toml). Every ticket's requirements, tasks, and acceptance tests
-  describe the `pickle` binary.
-- `.agents/skills/ticket-flow/` is a symlink to [`skill/`](skill/), which is also the payload
-  embedded in the binary. Editing the skill here changes what `pickle install` ships — and it
-  is why `upgrade` leaves this repo's skill directory alone instead of replacing it.
-
-<!-- pickle:begin -->
 ## Ticket flow (start here)
 
 **Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the live index of every ticket by
@@ -33,14 +16,17 @@ a ticket whose Implementation Plan has met the READY gate.
 ### Project configuration
 
 - **Build target.** Every ticket targets one registered child-project via `project:`
-  frontmatter (`pickle project list`). Registered child-projects: `pickle`.
+  frontmatter (`pickle project list`). Registered child-projects: `alpha`, `beta`.
 - **Commands** (each child's, from `pickle.toml`):
-  - `pickle`: build `just build` · test `just test` · lint `just lint`
+  - `alpha`: build `just build` · test `just test` · lint `just lint` · docs `just docs`
+  - `beta`: build `make`
 - **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of
   the subject** (e.g. `feat(cli): add board audit (T-2)`). Branch per child:
-  - `pickle`: `feat/T-NNN-<slug>`
+  - `alpha`: `feat/T-NNN-<slug>`
+  - `beta`: `ticket/T-NNN-<slug>`
 - **WIP limits** (per child):
-  - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
+  - `alpha`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
+  - `beta`: `3-in-development/` ≤ 3 · `4-in-review/` ≤ 2
 - **Commit policy.** Child-projects are **publish-gated**: local WIP commits are encouraged;
   **no push / no merge request without explicit user approval**; after approval, finalize
   (squash or keep history) + push + open the MR — **merging is always the human's**.
@@ -52,4 +38,3 @@ a ticket whose Implementation Plan has met the READY gate.
 Every ticket move = move the file + one dated `## History` line + one `tickets/BOARD.md`
 edit, in the same change. A move that doesn't touch the board is a bug. Prefer
 `pickle ticket move` — it does all three atomically.
-<!-- pickle:end -->

@@ -91,13 +91,35 @@ This repository is **early**, but the full command surface is implemented: `inst
 
 ## Configuration — `pickle.toml`
 
-`pickle.toml` lives at the overarching-project root and is **tool-managed**: hand-edits are
-preserved on load, but any command that writes the file re-renders it to a canonical layout —
-`install`, `upgrade` (when it stamps a new `payload_version`), and `project add|remove`. That
-re-render **does not preserve comments**, so keep notes you care about outside `pickle.toml`:
+`pickle.toml` lives at the overarching-project root and is **tool-managed**, but only one
+command rewrites a file you already own:
+
+- **`project add|remove`** re-render the whole file to a canonical layout. That re-render
+  **does not preserve comments** — this is the one case where hand-written notes are lost.
+- **`upgrade`** rewrites only the `payload_version` line. Comments, blank lines, key order and
+  every other line's spacing survive; that one line comes back normalised to
+  `payload_version = "value"`, with any inline comment after the value kept — so that one line's
+  alignment and quoting style are not preserved. Because the edit is line-based, some shapes are
+  beyond it: a quoted `"payload_version"` key, a `payload_version` whose own value is a
+  multi-line string, or a multi-line string holding a line that looks like a `[table]` header or
+  like the key itself, sitting **above** the key (above the first `[table]` header, in a file
+  that has no `payload_version` yet). The result is parsed and compared against the original
+  before anything is written, so those shapes make `upgrade` **refuse and change nothing**, with
+  an error telling you to set the version by hand. Position is what decides it, not the mere
+  presence of a multi-line string: the scan stops at the key, so a multi-line string *below* the
+  key is never read and cannot trigger a refusal, and one above it is read correctly as long as
+  it holds neither of those two lines.
+- **`install`** writes `pickle.toml` only when it does not yet exist; on an existing file it
+  reports `= pickle.toml (exists)` and leaves it alone.
+
+Hand-edits are always preserved on load. The keys:
 
 - **overarching:** `payload_version`, optional `review_addendum`, and a `[commit]` table
-  (`overarching_auto`, `child_publish_gated`);
+  (`overarching_auto`, `child_publish_gated`). Both default to **`true`** when the key or the
+  whole table is absent — the cautious reading, and what `install` writes: a child is not pushed
+  without your approval. Set either to `false` explicitly to opt out; the wording rendered into
+  `AGENTS.md` follows whichever way they are set (see
+  [`pickle upgrade`](#pickle-upgrade));
 - **`[[project]]` array** (one per connected child): `name`, `path` (relative to the root),
   `build`/`test`/`lint`/optional `docs`, `branch_prefix` (default `feat/`),
   `wip_in_development` / `wip_in_review` (default 1), optional per-child `review_addendum`.
@@ -200,11 +222,23 @@ the `.claude/skills/ticket-flow` view is re-linked only if it is already there. 
 **symlinked** `.agents/skills/ticket-flow` is left untouched, never followed and overwritten.
 
 Idempotent: re-running at the current version still refreshes the payload and marker block (so
-drift is corrected) and reports `already at <version>` instead of failing. Note that stamping a
-new version re-renders `pickle.toml` and **drops its comments** (see
-[Configuration](#configuration--pickletoml)); the marker block is likewise regenerated, so
-hand-edits *inside* the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region are replaced. A
-post-upgrade `board audit` self-check must pass.
+drift is corrected) and reports `already at <version>` instead of failing. A post-upgrade
+`board audit` self-check must pass.
+
+Upgrade will not cost you hand-written content in `pickle.toml`: stamping a new version rewrites
+**only** the `payload_version` line, leaves every other line alone, and refuses outright if it
+cannot do so safely (see [Configuration](#configuration--pickletoml)). Two things it *does*
+replace wholesale, by design:
+
+- the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region of `AGENTS.md`/`CLAUDE.md`. It is
+  regenerated from `pickle.toml`, so everything it states about your project comes back — the
+  registered child names, each child's `build`/`test`/`lint`/`docs` commands, each child's
+  `branch_prefix`, each child's WIP limits, and the `[commit]` policy wording — but anything you
+  wrote in there yourself does not. Keep notes **outside** the markers, where pickle never looks.
+  Because that block is what an agent reads first, the `[commit]` keys decide whether it is told
+  to hold a child-project back pending your approval or to push as the work needs.
+- the skill directory `.agents/skills/ticket-flow/`, which is pickle-owned and re-copied in
+  full. Do not keep hand-written files there (a self-host *symlink* is left untouched).
 
 ## `pickle uninstall`
 

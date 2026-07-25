@@ -44,6 +44,15 @@ they differ.
    and `branch_prefix` from `pickle.toml`, so after it lands a correctly-installed project should
    be **byte-identical** and drift becomes a meaningful signal rather than near-universal noise.
    Refine this ticket **after** T-018 lands, or the check will fire on every existing install.
+   *(Confirmed 2026-07-25 by the T-018 review: a clone of this repo is byte-identical after
+   `pickle upgrade`, so the premise holds.)*
+5. **Added 2026-07-25 by the T-018 review — drift is now *generated*, not just accumulated.**
+   `project add|remove` mutate `pickle.toml` without re-injecting the block (**T-021**), so after
+   T-018 the block can be wrong about commands, branch prefixes and WIP limits, not merely about
+   the child name list. That makes this check materially more valuable, and means the two tickets
+   should be refined together: if T-021 re-injects on mutation, the drift this check reports
+   shrinks back to hand-edits; if it does not, this check is the only thing standing between the
+   user and an agent acting on stale WIP limits. Decide the split before either is implemented.
 
 Soft couplings (no hard `depends-on`): **T-018** — should land first (see #4); it also fixes the
 stale marker sentence this check would otherwise flag everywhere. **T-017** (unify marker-pair

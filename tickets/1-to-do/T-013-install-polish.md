@@ -59,10 +59,36 @@ than in a new ticket):
    is byte-identical — so a no-op upgrade looks like it changed the tree. Whatever
    created-vs-refreshed distinction item 2 lands must cover the `Upgrade` path too.
    **Mechanism constraint this imposes on item 2:** `Upgrade` does `os.RemoveAll` on the skill dir
-   (`internal/install/install.go:126`) *before* calling `copyPayload` (`:130`), so a presence-based
+   (`internal/install/install.go:129`) *before* calling `copyPayload` (`:133`), so a presence-based
    "did it already exist?" check always reports "created" on the upgrade path. The
    created-vs-refreshed signal must therefore be a **content** comparison captured before the
    removal, not an existence check. (`scaffoldTickets` is unaffected — `Upgrade` never calls it.)
+   **Two more labels, added 2026-07-25 by the T-018 review (non-blocking finding 11):**
+   `internal/install/install.go:168` reports an *in-place single-line edit* of `pickle.toml` as
+   `+` (created) — the same created-vs-refreshed dishonesty on a new call site; and
+   `internal/cli/cli.go:87-88`'s one-line help for `upgrade` never mentions that it stamps
+   `payload_version` in `pickle.toml`, which `README.md` does mention and which is the file most
+   users care about.
+   **Three more, added 2026-07-25 by the T-018 re-review (non-blocking findings R8, R9):**
+   - **`verifyStampedVersion` is 100% covered and 0% bound.** `install.go:173-184` is unit-tested
+     (`TestVerifyStampedVersion`, three real cases) but **deleting its call site at `:165-167`
+     fails no test** — mutation-confirmed, and disclosed by T-018's own rework record. It needs a
+     seam: an injectable writer that reports success on a write which reads back wrong. The
+     cheapest shape is to make the stamp step a function field on the install/upgrade options
+     struct so a test can substitute a lying writer.
+   - **`config.Config{}` literals render the *unsafe* commit wording.** The commit-policy default
+     now lives in `applyDefaults`, which only runs on the `config.Load` path, so a zero-value
+     `Config{}` renders "**not** publish-gated" — verified. No production path does this today
+     (`writeConfig` at `install.go:375` is the only literal and sets both explicitly), but nothing
+     prevents it, and `writeConfig` **hardcodes `true`/`true` instead of the
+     `DefaultOverarchingAuto`/`DefaultChildPublishGated` constants** three files away, so the two
+     can silently diverge. Use the constants; consider a constructor so the safe default is not
+     reachable-by-omission.
+   - **`upgrade` exits 1 from a partially-applied upgrade.** The skill payload is re-copied and
+     both marker blocks are rewritten *before* the `pickle.toml` stamp, so a stamp refusal leaves
+     the tree half-upgraded while the command reports failure. The file-level contract ("refuse
+     and change nothing") holds; the command-level one does not. Either stamp first or state the
+     ordering in the docs.
 
 9. **Extend item 3's cli-coverage to `runUpgrade`/`runUninstall`.** The T-006 review removed the
    two `exitUnimplement` stub rows from `internal/cli/cli_test.go` and added no replacement, so
@@ -84,12 +110,24 @@ than in a new ticket):
      `uninstall` row without a temp root would delete `.agents/skills/ticket-flow` and strip the
      repo's own marker block. The four rows above are safe *only* because they fail during parsing,
      before `config.Find`. Use `t.Chdir(tmp)` (or the harness from item 3) for anything else.
+     *(Updated 2026-07-25: T-018 makes the `pickle.toml` half of that mutant's damage much
+     smaller — `upgrade` now edits one line instead of re-rendering — but the marker-block and
+     `uninstall` hazards are unchanged, so the temp-root requirement stands.)*
    - **`runUninstall` ignores stray positionals** — `pickle uninstall foo` performs a real
      uninstall instead of `exitUsage`. This is finding 1's defect class surviving in the sibling
      handler: `runUninstall` parses flags but never checks `fs.NArg()`. T-006's rework deliberately
      left it out of scope (different command), and the re-review confirmed it is latent, not
      shipped-wrong-behaviour for a documented invocation. Fix it with the `fs.NArg() > 0` guard
      from `internal/cli/install.go:90-93` and cover it with an `uninstall stray arg` row.
+
+10. **`injectMarker` hard-codes `0o644` on `AGENTS.md`/`CLAUDE.md`** (added 2026-07-25 by T-018,
+    gate finding N10). Four writers in `internal/install/install.go` (`:422`, `:441`, `:455`,
+    `:502`) call `os.WriteFile(..., 0o644)`, so every install/upgrade/uninstall silently resets a
+    non-default permission on files the user owns. Same family as T-018 (silent loss of user
+    state) but on this ticket's `injectMarker` surface, so T-018 deliberately left it alone.
+    `internal/config` now has an unexported atomic, mode-preserving `writePreservingMode` helper
+    (added by T-018) worth mirroring — see T-012 item 7, which proposes the same fix for
+    `config.Save`.
 
 All items are input-hardening / polish on the install surface, hence non-blocking.
 
@@ -104,3 +142,6 @@ All items are input-hardening / polish on the install surface, hence non-blockin
 ## History
 
 - 2026-07-23 — created (TO DO). source: T-004 review (non-blocking findings); via pickle ticket new
+- 2026-07-25 — broadened by the T-018 gate + review: added injectMarker file-mode preservation (item 10) and two more summary/help labels (item 8)
+- 2026-07-25 — broadened again by the T-018 re-review (R8/R9): verifyStampedVersion test seam, Config{} default leak + writeConfig constants, partially-applied upgrade on refusal (item 8)
+- 2026-07-25 — re-anchored by the T-018 S1 re-review: install.go refs (:126 -> :129, :130 -> :133, :162 -> :168, :180-191 -> :173-184, :163-168 -> :165-167)

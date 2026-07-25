@@ -2,10 +2,18 @@
 // project configuration and the registry of connected child-projects.
 //
 // TOML is decoded with github.com/BurntSushi/toml (a build-time dependency
-// compiled into the static binary; nothing is fetched at runtime). Writing goes
-// through a canonical renderer (Render) so the file layout is deterministic and
-// tool-managed: hand-edits are preserved on load but normalised to the canonical
-// layout on the next mutation (project add/remove).
+// compiled into the static binary; nothing is fetched at runtime).
+//
+// There are two ways the file is written, and the difference is what a user's
+// comments depend on:
+//
+//   - Render/Save produce the canonical layout, discarding comments and any
+//     hand-tuned spacing. Used by `pickle project add|remove`, which change the
+//     file's structure, and by `pickle install`, which only ever writes the file
+//     when it does not yet exist.
+//   - SetPayloadVersionInPlace rewrites a single line and leaves every other
+//     byte alone. Used by `pickle upgrade`, so refreshing the payload never
+//     costs a user their comments.
 package config
 
 import (
@@ -13,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -26,6 +35,15 @@ const (
 	DefaultBranchPrefix     = "feat/"
 	DefaultWIPInDevelopment = 1
 	DefaultWIPInReview      = 1
+)
+
+// Overarching commit-policy defaults, applied when the key is absent. Both are
+// the cautious choice, and both match what `pickle install` writes: a child is
+// not pushed without approval, and only the overarching project's own
+// bookkeeping is committed automatically.
+const (
+	DefaultOverarchingAuto   = true
+	DefaultChildPublishGated = true
 )
 
 // Config is the whole pickle.toml.
@@ -80,11 +98,12 @@ func Find(startDir string) (string, error) {
 // Load decodes and validates the config at path.
 func Load(path string) (*Config, error) {
 	var c Config
-	if _, err := toml.DecodeFile(path, &c); err != nil {
+	md, err := toml.DecodeFile(path, &c)
+	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	c.path = path
-	c.applyDefaults()
+	c.applyDefaults(md)
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
@@ -103,7 +122,18 @@ func (c *Config) Root() string {
 // Path is where the config was loaded from.
 func (c *Config) Path() string { return c.path }
 
-func (c *Config) applyDefaults() {
+// applyDefaults fills in omitted fields. It needs the decoder's metadata
+// because the commit policy is expressed as booleans: an absent key and an
+// explicit `false` both decode to false, yet they must mean opposite things —
+// absent has to fall back to the cautious default, while an explicit `false`
+// has to survive. Only the decoder knows which one it saw.
+func (c *Config) applyDefaults(md toml.MetaData) {
+	if !md.IsDefined("commit", "overarching_auto") {
+		c.Commit.OverarchingAuto = DefaultOverarchingAuto
+	}
+	if !md.IsDefined("commit", "child_publish_gated") {
+		c.Commit.ChildPublishGated = DefaultChildPublishGated
+	}
 	for i := range c.Projects {
 		p := &c.Projects[i]
 		if p.BranchPrefix == "" {
@@ -194,8 +224,11 @@ func (c *Config) RemoveProject(name string) error {
 func (c *Config) Render() string {
 	var b strings.Builder
 	b.WriteString("# pickle configuration for this overarching project.\n")
-	b.WriteString("# Managed by `pickle`. Hand-edits are preserved on load but normalised to this\n")
-	b.WriteString("# layout on the next `pickle project add|remove`.\n\n")
+	b.WriteString("# Hand-edits are preserved on load. `pickle upgrade` rewrites only the\n")
+	b.WriteString("# payload_version line: comments and every other line survive, while that one\n")
+	b.WriteString("# line comes back as payload_version = \"value\" (any inline comment kept), so\n")
+	b.WriteString("# its own alignment and quoting style do not. `pickle project add|remove`\n")
+	b.WriteString("# re-render this file to the canonical layout below and drop comments entirely.\n\n")
 	fmt.Fprintf(&b, "payload_version = %q\n", c.PayloadVersion)
 	if c.ReviewAddendum != "" {
 		fmt.Fprintf(&b, "review_addendum = %q\n", c.ReviewAddendum)
@@ -225,6 +258,11 @@ func (c *Config) Render() string {
 }
 
 // Save writes the canonical render to path (or the loaded path if empty).
+//
+// This drops comments and any hand-tuned layout, so it is only for the commands
+// that change the file's structure (project add|remove) and for creating the
+// file from scratch. To stamp a new payload_version onto an existing file, use
+// SetPayloadVersionInPlace instead.
 func (c *Config) Save(path string) error {
 	if path == "" {
 		path = c.path
@@ -233,4 +271,233 @@ func (c *Config) Save(path string) error {
 		return errors.New("no path to save config to")
 	}
 	return os.WriteFile(path, []byte(c.Render()), 0o644)
+}
+
+const payloadVersionKey = "payload_version"
+
+// bom is the UTF-8 byte-order mark, which some editors put at the head of a
+// file. It is not part of any line's content and has to be held aside before
+// the text is scanned, or it hides the key on the first line.
+const bom = "\ufeff"
+
+// SetPayloadVersionInPlace sets payload_version in the file at path, touching
+// exactly one line: comments, blank lines, key order and every other line's
+// spacing survive verbatim. The key is rewritten where it already exists and
+// inserted before the first table header where it does not.
+//
+// The rewritten line itself is normalised to `payload_version = "value"`, so
+// hand-tuned alignment on that one line is lost and a 'literal' value becomes a
+// "basic" one; any inline comment after the value is kept.
+//
+// The transformation is line-based and therefore cannot see every TOML shape
+// (multi-line strings, quoted keys). Rather than trust it, the result is parsed
+// and compared against the original before anything is written: if the edit
+// would fail to parse, would not set the version, or would change any other
+// value, the file is left untouched and an error is returned. So the failure
+// mode is a loud refusal, never a silent loss of hand-written content.
+//
+// This is the counterpart to Save for `pickle upgrade`, whose only job is to
+// stamp a new version onto a file the user owns.
+func SetPayloadVersionInPlace(path, version string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	updated, err := setPayloadVersion(string(data), version)
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	if updated == string(data) {
+		return nil
+	}
+	return writePreservingMode(path, []byte(updated))
+}
+
+// setPayloadVersion is the pure text transformation behind
+// SetPayloadVersionInPlace, including the parse-back check that guards it.
+func setPayloadVersion(text, version string) (string, error) {
+	mark := ""
+	if strings.HasPrefix(text, bom) {
+		mark, text = bom, strings.TrimPrefix(text, bom)
+	}
+	updated, err := replacePayloadVersionLine(text, version)
+	if err != nil {
+		return "", err
+	}
+	if err := verifyOnlyPayloadVersion(text, updated, version); err != nil {
+		return "", err
+	}
+	return mark + updated, nil
+}
+
+// verifyOnlyPayloadVersion is the safety gate: it decodes both texts and
+// insists the edit did exactly what it claims — set payload_version to version,
+// and move nothing else. Anything the line scanner mis-read shows up here as a
+// parse error, a missing version, or a changed value, and turns into a refusal.
+//
+// Decoding into a map rather than into Config is deliberate: keys pickle knows
+// nothing about are still the user's content, and a mis-read line could corrupt
+// them just as easily. That whole-tree comparison is defence-in-depth, not a
+// load-bearing check: no input is known to reach it, because every shape that
+// would move another value fails the parse or the version check first. It is
+// here so that a future change to the scanner cannot quietly start doing so.
+//
+// Comments are not decoded and so are not covered here; the transformation only
+// ever rewrites one line or inserts one, which is what makes that gap tolerable.
+func verifyOnlyPayloadVersion(before, after, version string) error {
+	b, err := decodeTree(before)
+	if err != nil {
+		return fmt.Errorf("does not parse, so it cannot be edited safely: %w", err)
+	}
+	a, err := decodeTree(after)
+	if err != nil {
+		return fmt.Errorf("setting %s would leave the file unparseable (%w); set it by hand",
+			payloadVersionKey, err)
+	}
+	if got, _ := a[payloadVersionKey].(string); got != version {
+		return fmt.Errorf("could not set %s (it would end up %q, not %q); set it by hand",
+			payloadVersionKey, got, version)
+	}
+	delete(b, payloadVersionKey)
+	delete(a, payloadVersionKey)
+	if !reflect.DeepEqual(b, a) {
+		return fmt.Errorf("setting %s would change other values in the file; set it by hand",
+			payloadVersionKey)
+	}
+	return nil
+}
+
+func decodeTree(text string) (map[string]any, error) {
+	var m map[string]any
+	_, err := toml.Decode(text, &m)
+	return m, err
+}
+
+// replacePayloadVersionLine performs the line edit. It is deliberately naive —
+// verifyOnlyPayloadVersion is what makes it safe.
+func replacePayloadVersionLine(text, version string) (string, error) {
+	lines := strings.Split(text, "\n")
+	insertAt := len(lines)
+	for i, raw := range lines {
+		line := strings.TrimSuffix(raw, "\r")
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		body := line[indent:]
+		if body == "" || strings.HasPrefix(body, "#") {
+			continue
+		}
+		if strings.HasPrefix(body, "[") {
+			// A table header ends the top-level scope: a payload_version
+			// below this point belongs to [commit] or a [[project]].
+			insertAt = i
+			break
+		}
+		rest, ok := strings.CutPrefix(body, payloadVersionKey)
+		if !ok {
+			continue
+		}
+		value := strings.TrimLeft(rest, " \t")
+		if !strings.HasPrefix(value, "=") {
+			continue // a different key that merely starts with payload_version
+		}
+		start := indent + len(body) - len(value) + 1
+		for start < len(line) && (line[start] == ' ' || line[start] == '\t') {
+			start++
+		}
+		if strings.HasPrefix(line[start:], `"""`) || strings.HasPrefix(line[start:], "'''") {
+			// A multi-line string may continue past this line; rewriting it
+			// blind could corrupt the file. Refuse loudly instead.
+			return "", errors.New("payload_version uses a multi-line string; set it by hand")
+		}
+		end := valueEnd(line, start)
+		lines[i] = line[:indent] + payloadVersionKey + " = " + fmt.Sprintf("%q", version) + line[end:]
+		if raw != line {
+			lines[i] += "\r"
+		}
+		return strings.Join(lines, "\n"), nil
+	}
+
+	// Not present: insert it, keeping any blank lines attached to whatever
+	// follows rather than orphaning them above the new key.
+	for insertAt > 0 && strings.TrimSpace(lines[insertAt-1]) == "" {
+		insertAt--
+	}
+	entry := payloadVersionKey + " = " + fmt.Sprintf("%q", version)
+	if usesCRLF(lines) {
+		entry += "\r" // match the file rather than leaving one lone LF line
+	}
+	lines = append(lines[:insertAt], append([]string{entry}, lines[insertAt:]...)...)
+	return strings.Join(lines, "\n"), nil
+}
+
+// usesCRLF reports whether every terminated line ends with CR, i.e. the file is
+// consistently CRLF. A mixed file gets a plain LF and is left as it was found.
+func usesCRLF(lines []string) bool {
+	if len(lines) < 2 {
+		return false
+	}
+	for _, l := range lines[:len(lines)-1] {
+		if !strings.HasSuffix(l, "\r") {
+			return false
+		}
+	}
+	return true
+}
+
+// valueEnd returns the index just past the TOML value starting at i in line, so
+// that any trailing inline comment can be preserved verbatim.
+func valueEnd(line string, i int) int {
+	if i >= len(line) {
+		return len(line)
+	}
+	switch line[i] {
+	case '"':
+		for j := i + 1; j < len(line); j++ {
+			if line[j] == '\\' {
+				j++
+			} else if line[j] == '"' {
+				return j + 1
+			}
+		}
+	case '\'':
+		if k := strings.IndexByte(line[i+1:], '\''); k >= 0 {
+			return i + 1 + k + 1
+		}
+	default:
+		if j := strings.IndexAny(line[i:], " \t#"); j >= 0 {
+			return i + j
+		}
+	}
+	return len(line)
+}
+
+// writePreservingMode replaces path atomically, keeping its current permissions.
+//
+// A symlinked config is followed rather than replaced: renaming onto the link
+// would turn it into a regular file and leave the real target stale, which is
+// the opposite of preserving the user's file.
+func writePreservingMode(path string, data []byte) error {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	mode := os.FileMode(0o644)
+	if fi, err := os.Stat(path); err == nil {
+		mode = fi.Mode().Perm()
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer func() { _ = os.Remove(name) }() // no-op once the rename succeeds
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(name, mode); err != nil {
+		return err
+	}
+	return os.Rename(name, path)
 }

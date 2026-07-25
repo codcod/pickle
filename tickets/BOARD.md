@@ -41,7 +41,7 @@ Last updated: 2026-07-25 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | high | medium | M | [] |
+| T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | medium | low | S-M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -54,11 +54,16 @@ Last updated: 2026-07-25 (board sync)
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
 | T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
 | T-020 | doctor: detect AGENTS.md marker-block drift | medium | low | S | [] |
+| T-021 | project add|remove leave the AGENTS.md marker block stale | medium | low | S | [] |
+| T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
+| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | medium | medium | M | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
 | T-015 | consolidate board status-heading matching and fill sync test gaps | low | low | S | [] |
 | T-016 | ship docs-readability as an optional review step (Step 4b) | low | medium | M | [] |
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
+| T-023 | board branch column is derived from the filename slug, not the ticket's real branch | low | low | S | [] |
+| T-025 | backfill true historical spawned-by lineage from existing source: lines | low | low | S | [T-024] |
 
 ## DONE
 
@@ -75,6 +80,7 @@ Last updated: 2026-07-25 (board sync)
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
 | T-008 | board sync | yes — merged to main 2026-07-24 (9b87a61) |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — merged to main 2026-07-24 (e4aaed7) |
+| T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | no — publish-gated (branch feat/T-018-upgrade-must-not-silently-discard-user-content-pickle-toml-comments-agents-md-marker-body) |
 
 ## DROPPED
 

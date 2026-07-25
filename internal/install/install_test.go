@@ -322,3 +322,337 @@ func TestUninstallSelfHostSymlinkGuard(t *testing.T) {
 		t.Error("external symlink target was removed by uninstall")
 	}
 }
+
+// The regression test for T-018: a refresh must not cost the user their
+// pickle.toml comments.
+func TestUpgradePreservesConfigComments(t *testing.T) {
+	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: "."}); err != nil {
+		t.Fatal(err)
+	}
+
+	cfgPath := filepath.Join(root, config.FileName)
+	handWritten := `# Why this project is configured the way it is.
+# A second line of hard-won rationale.
+
+payload_version = "v1"
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+# The sole child, deliberately.
+[[project]]
+name = "demo"
+path = "."
+`
+	if err := os.WriteFile(cfgPath, []byte(handWritten), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Upgrade(payload, root, "v2"); err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+
+	got, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, comment := range []string{
+		"# Why this project is configured the way it is.",
+		"# A second line of hard-won rationale.",
+		"# The sole child, deliberately.",
+	} {
+		if !strings.Contains(string(got), comment) {
+			t.Errorf("upgrade destroyed comment %q\n--- got ---\n%s", comment, got)
+		}
+	}
+	if !strings.Contains(string(got), `payload_version = "v2"`) {
+		t.Errorf("payload_version not stamped:\n%s", got)
+	}
+	// Exactly one line may differ from what the user wrote.
+	before, after := strings.Split(handWritten, "\n"), strings.Split(string(got), "\n")
+	if len(before) != len(after) {
+		t.Fatalf("line count changed: %d -> %d", len(before), len(after))
+	}
+	diffs := 0
+	for i := range before {
+		if before[i] != after[i] {
+			diffs++
+		}
+	}
+	if diffs != 1 {
+		t.Errorf("upgrade changed %d lines, want 1", diffs)
+	}
+}
+
+func TestUpgradeInsertsMissingPayloadVersion(t *testing.T) {
+	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: "."}); err != nil {
+		t.Fatal(err)
+	}
+
+	cfgPath := filepath.Join(root, config.FileName)
+	noVersion := `# no payload_version anywhere in this file
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+[[project]]
+name = "demo"
+path = "."
+`
+	if err := os.WriteFile(cfgPath, []byte(noVersion), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Upgrade(payload, root, "v3"); err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+	got, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "# no payload_version anywhere in this file") {
+		t.Errorf("comment lost when inserting the key:\n%s", got)
+	}
+	if !strings.Contains(string(got), `payload_version = "v3"`) {
+		t.Errorf("payload_version not inserted:\n%s", got)
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("load after insert: %v", err)
+	}
+	if cfg.PayloadVersion != "v3" {
+		t.Errorf("payload_version = %q, want v3", cfg.PayloadVersion)
+	}
+}
+
+func TestMarkerBlockRendersChildrenFromConfig(t *testing.T) {
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
+		Projects: []config.Project{{
+			Name: "alpha", Path: ".", Build: "just build", Test: "just test", Lint: "just lint",
+			BranchPrefix: "feat/", WIPInDevelopment: 1, WIPInReview: 1,
+		}, {
+			Name: "beta", Path: "sub", Build: "make",
+			BranchPrefix: "ticket/", WIPInDevelopment: 3, WIPInReview: 2,
+		}},
+	}
+	block := markerBlock(cfg)
+
+	for _, want := range []string{
+		"- `alpha`: build `just build` · test `just test` · lint `just lint`",
+		"- `beta`: build `make`",
+		"- `alpha`: `feat/T-NNN-<slug>`",
+		"- `beta`: `ticket/T-NNN-<slug>`",
+		"- `alpha`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1",
+		"- `beta`: `3-in-development/` ≤ 3 · `4-in-review/` ≤ 2",
+		"Registered child-projects: `alpha`, `beta`.",
+		"publish-gated",
+		"may be committed automatically",
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("marker block missing %q\n--- block ---\n%s", want, block)
+		}
+	}
+	// The literal placeholder must never reach a reader again.
+	if strings.Contains(block, "<branch_prefix>") {
+		t.Error("marker block still renders the literal <branch_prefix>")
+	}
+	// beta defines no test/lint, so they must not be invented.
+	if strings.Contains(block, "- `beta`: build `make` · test") {
+		t.Error("marker block rendered a command the child does not define")
+	}
+}
+
+func TestMarkerBlockRendersCommitPolicyAndOmitsEmptyCommands(t *testing.T) {
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: false, ChildPublishGated: false},
+		Projects: []config.Project{{
+			Name: "solo", Path: ".", BranchPrefix: "feat/",
+			WIPInDevelopment: 1, WIPInReview: 1,
+		}},
+	}
+	block := markerBlock(cfg)
+
+	if !strings.Contains(block, "**not publish-gated**") {
+		t.Errorf("ungated policy not rendered:\n%s", block)
+	}
+	if !strings.Contains(block, "only when the\n  user asks") {
+		t.Errorf("non-auto overarching policy not rendered:\n%s", block)
+	}
+	if strings.Contains(block, "**Commands**") {
+		t.Errorf("commands bullet rendered for a child with no commands:\n%s", block)
+	}
+	// WIP and branch bullets are always derivable, so they must still be there.
+	if !strings.Contains(block, "- `solo`: `feat/T-NNN-<slug>`") {
+		t.Errorf("branch bullet missing:\n%s", block)
+	}
+}
+
+// TestMarkerBlockDefaultsToTheCautiousCommitPolicy is the regression test for a
+// config with no [commit] table at all. Because the policy is two booleans, an
+// omitted table used to decode to false/false and render as "not publish-gated"
+// — telling the agent it may push a child-project in a project whose author
+// never made that choice, while the skill installed beside it said the opposite.
+func TestMarkerBlockDefaultsToTheCautiousCommitPolicy(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, config.FileName)
+	const noCommitTable = `payload_version = "v1"
+
+[[project]]
+name = "solo"
+path = "."
+`
+	if err := os.WriteFile(path, []byte(noCommitTable), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	block := markerBlock(cfg)
+
+	if !strings.Contains(block, "Child-projects are **publish-gated**") {
+		t.Errorf("an omitted [commit] table rendered a non-gated policy:\n%s", block)
+	}
+	if strings.Contains(block, "**not publish-gated**") {
+		t.Errorf("an omitted [commit] table rendered 'not publish-gated':\n%s", block)
+	}
+	if !strings.Contains(block, "may be committed automatically") {
+		t.Errorf("an omitted [commit] table rendered a non-auto bookkeeping policy:\n%s", block)
+	}
+
+	// An explicit false must still survive — the default may not swallow it.
+	explicit := strings.Replace(noCommitTable, "\n[[project]]",
+		"\n[commit]\noverarching_auto = false\nchild_publish_gated = false\n\n[[project]]", 1)
+	if err := os.WriteFile(path, []byte(explicit), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = config.Load(path)
+	if err != nil {
+		t.Fatalf("load explicit: %v", err)
+	}
+	if !strings.Contains(markerBlock(cfg), "**not publish-gated**") {
+		t.Errorf("an explicit child_publish_gated = false was overridden by the default:\n%s", markerBlock(cfg))
+	}
+
+	// A [commit] table carrying only one of the two keys is the shape the
+	// per-key defaulting exists for: the key that is present must be honoured
+	// and the one that is absent must still fall back to the cautious default.
+	// Defaulting on the table instead of on each key passes every assertion
+	// above and fails here.
+	partial := []struct {
+		name    string
+		table   string
+		want    string
+		notWant string
+	}{{
+		name:    "only overarching_auto",
+		table:   "\n[commit]\noverarching_auto = true\n\n[[project]]",
+		want:    "Child-projects are **publish-gated**",
+		notWant: "**not publish-gated**",
+	}, {
+		name:    "only child_publish_gated",
+		table:   "\n[commit]\nchild_publish_gated = false\n\n[[project]]",
+		want:    "may be committed automatically",
+		notWant: "only when the\n  user asks",
+	}}
+	for _, p := range partial {
+		t.Run(p.name, func(t *testing.T) {
+			src := strings.Replace(noCommitTable, "\n[[project]]", p.table, 1)
+			if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := config.Load(path)
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			block := markerBlock(cfg)
+			if !strings.Contains(block, p.want) {
+				t.Errorf("a partial [commit] table did not default the absent key (want %q):\n%s", p.want, block)
+			}
+			if strings.Contains(block, p.notWant) {
+				t.Errorf("a partial [commit] table rendered %q:\n%s", p.notWant, block)
+			}
+		})
+	}
+}
+
+// TestMarkerBlockGolden pins the whole rendered block. The block is the agent's
+// primary instruction file and every project's AGENTS.md carries a copy, so any
+// wording change should be a deliberate, reviewable diff rather than something
+// the substring assertions above quietly let through.
+func TestMarkerBlockGolden(t *testing.T) {
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
+		Projects: []config.Project{{
+			Name: "alpha", Path: ".", Build: "just build", Test: "just test",
+			Lint: "just lint", Docs: "just docs",
+			BranchPrefix: "feat/", WIPInDevelopment: 1, WIPInReview: 1,
+		}, {
+			Name: "beta", Path: "sub", Build: "make",
+			BranchPrefix: "ticket/", WIPInDevelopment: 3, WIPInReview: 2,
+		}},
+	}
+	got := markerBlock(cfg)
+
+	golden := filepath.Join("testdata", "markerblock.golden")
+	if os.Getenv("UPDATE_GOLDEN") != "" {
+		if err := os.MkdirAll("testdata", 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Log("golden updated")
+		return
+	}
+	want, err := os.ReadFile(golden)
+	if err != nil {
+		t.Fatalf("read golden (regenerate with UPDATE_GOLDEN=1 go test ./internal/install/): %v", err)
+	}
+	if got != string(want) {
+		t.Errorf("marker block differs from %s.\nRegenerate with UPDATE_GOLDEN=1 go test ./internal/install/ if intended.\n--- got ---\n%s", golden, got)
+	}
+}
+
+// TestVerifyStampedVersion covers the guard that stops Upgrade reporting a
+// version it did not actually put on disk. The config writer's own parse-back
+// check makes this unreachable today; it exists so that a future regression
+// there surfaces as an error instead of a false success message.
+func TestVerifyStampedVersion(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, config.FileName)
+	write := func(version string) {
+		body := "payload_version = \"" + version + "\"\n\n[[project]]\nname = \"solo\"\npath = \".\"\n"
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	write("v2")
+	if err := verifyStampedVersion(path, "v2"); err != nil {
+		t.Errorf("matching version reported an error: %v", err)
+	}
+
+	write("v1")
+	err := verifyStampedVersion(path, "v2")
+	if err == nil {
+		t.Fatal("a stale payload_version was accepted as stamped")
+	}
+	if !strings.Contains(err.Error(), "still reads payload_version") {
+		t.Errorf("error = %q, want it to name the stale version", err)
+	}
+
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyStampedVersion(path, "v2"); err == nil {
+		t.Error("a missing config was accepted as stamped")
+	}
+}

@@ -106,7 +106,10 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 }
 
 // Upgrade refreshes the installed skill payload and the AGENTS.md/CLAUDE.md
-// marker block(s) to payloadVersion, and rewrites pickle.toml's payload_version.
+// marker block(s) to payloadVersion, and stamps payloadVersion into pickle.toml
+// by rewriting that single line, leaving the rest of the file (comments
+// included) untouched. The skill directory, by contrast, is pickle-owned and
+// replaced wholesale.
 // It never reads or writes anything under tickets/ or the board. Idempotent:
 // re-running at the current version still refreshes payload/markers (so drift
 // is corrected) and reports the version as unchanged rather than erroring.
@@ -151,12 +154,32 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		res.skipped(config.FileName + " (already at " + payloadVersion + ")")
 		return res, nil
 	}
-	cfg.PayloadVersion = payloadVersion
-	if err := cfg.Save(""); err != nil {
+	// Edit the one line rather than re-rendering: pickle.toml is the user's
+	// file, and upgrade has no business touching their comments.
+	if err = config.SetPayloadVersionInPlace(cfg.Path(), payloadVersion); err != nil {
+		return res, err
+	}
+	// Report the stamp only once it is on disk. A successful write is not the
+	// same as an achieved effect, and a version this command claims to have set
+	// but did not would stay wrong on every later run.
+	if err := verifyStampedVersion(cfg.Path(), payloadVersion); err != nil {
 		return res, err
 	}
 	res.created(config.FileName + " (payload_version -> " + payloadVersion + ")")
 	return res, nil
+}
+
+// verifyStampedVersion re-reads the config and confirms it now carries want.
+func verifyStampedVersion(path, want string) error {
+	after, err := config.Load(path)
+	if err != nil {
+		return fmt.Errorf("re-read %s after stamping %s: %w", config.FileName, want, err)
+	}
+	if after.PayloadVersion != want {
+		return fmt.Errorf("%s still reads payload_version = %q after stamping %q; set it by hand",
+			config.FileName, after.PayloadVersion, want)
+	}
+	return nil
 }
 
 // UninstallOptions configures a single uninstall run.
@@ -503,6 +526,12 @@ func stripMarker(path string, res *Result) error {
 }
 
 // markerBlock builds the pickle-managed AGENTS.md/CLAUDE.md content from cfg.
+//
+// Everything the block states about the children — their commands, branch
+// prefixes, WIP limits — is rendered from pickle.toml rather than hardcoded, so
+// regenerating the block cannot silently drop project-specific facts. Content
+// that is *not* derivable from the config does not belong between the markers;
+// it belongs in the surrounding file, which pickle never touches.
 func markerBlock(cfg *config.Config) string {
 	var names []string
 	for _, p := range cfg.Projects {
@@ -512,36 +541,76 @@ func markerBlock(cfg *config.Config) string {
 	if children == "" {
 		children = "(none yet — register with `pickle project add`)"
 	}
-	return fmt.Sprintf(`## Ticket flow (start here)
 
-**Start at [`+"`tickets/BOARD.md`"+`](tickets/BOARD.md)** — the live index of every ticket by
-status. Nothing is built directly from a chat message, an idea, or a review finding — only from
-a ticket whose Implementation Plan has met the READY gate.
+	// One line per child throughout: uniform for any number of children, and
+	// no wording that only reads correctly when there happens to be one.
+	var commands, branches, wip strings.Builder
+	for _, p := range cfg.Projects {
+		var cmds []string
+		for _, c := range []struct{ label, cmd string }{
+			{"build", p.Build}, {"test", p.Test}, {"lint", p.Lint}, {"docs", p.Docs},
+		} {
+			if c.cmd != "" {
+				cmds = append(cmds, c.label+" `"+c.cmd+"`")
+			}
+		}
+		if len(cmds) > 0 {
+			fmt.Fprintf(&commands, "\n  - `%s`: %s", p.Name, strings.Join(cmds, " · "))
+		}
+		fmt.Fprintf(&branches, "\n  - `%s`: `%sT-NNN-<slug>`", p.Name, p.BranchPrefix)
+		fmt.Fprintf(&wip, "\n  - `%s`: `3-in-development/` ≤ %d · `4-in-review/` ≤ %d",
+			p.Name, p.WIPInDevelopment, p.WIPInReview)
+	}
+	commandsBullet := ""
+	if commands.Len() > 0 {
+		commandsBullet = "\n- **Commands** (each child's, from `pickle.toml`):" + commands.String()
+	}
 
-- The flow engine is the **ticket-flow skill** at `+"`.agents/skills/ticket-flow/`"+`. It holds
-  the rules (`+"`resources/tickets-README.md`"+`), the ticket template
-  (`+"`resources/TEMPLATE.md`"+`), and the review protocol
-  (`+"`resources/review-protocol.md`"+`). Claude Code sees it via `+"`.claude/skills/ticket-flow`"+`.
-- Triggers: "make it a ticket", "refine ticket T-NNN", "implement ticket T-NNN", "rework ticket
-  T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board".
+	childPolicy := "Child-projects are **publish-gated**: local WIP commits are encouraged;\n" +
+		"  **no push / no merge request without explicit user approval**; after approval, finalize\n" +
+		"  (squash or keep history) + push + open the MR — **merging is always the human's**."
+	if !cfg.Commit.ChildPublishGated {
+		childPolicy = "Child-projects are **not publish-gated**: commit and push as the work\n" +
+			"  needs, and open the merge request when it is ready — **merging is always the human's**."
+	}
+	overarching := "Overarching bookkeeping (tickets, board, docs) may be committed automatically,\n" +
+		"  always with **explicit pathspecs**"
+	if !cfg.Commit.OverarchingAuto {
+		overarching = "Overarching bookkeeping (tickets, board, docs) is committed only when the\n" +
+			"  user asks, and always with **explicit pathspecs**"
+	}
 
-### Project configuration
-
-- **Build target.** Every ticket targets one registered child-project via `+"`project:`"+`
-  frontmatter (`+"`pickle project list`"+`; commands, branch prefix, and WIP limits live in
-  `+"`pickle.toml`"+`). Registered child-projects: %s.
-- **Branch & commit.** `+"`<branch_prefix>T-NNN-<slug>`"+` branches; Conventional Commits with the
-  **ticket id in brackets at the end of the subject** (e.g. `+"`feat(cli): add board audit (T-2)`"+`).
-- **Commit policy.** Child-projects are **publish-gated**: local WIP commits are encouraged; **no
-  push / no merge request without explicit user approval**; merging is always the human's.
-  Overarching bookkeeping (tickets, board, docs) may be committed automatically, always with
-  **explicit pathspecs** (`+"`git add <paths>`"+`, never `+"`git add -A`/`.`"+`).
-
-### Board rule
-
-Every ticket move = move the file + one dated `+"`## History`"+` line + one `+"`tickets/BOARD.md`"+`
-edit, in the same change. A move that doesn't touch the board is a bug. Prefer
-`+"`pickle ticket move`"+` once available; otherwise do the three edits by hand.`, children)
+	return "## Ticket flow (start here)\n" +
+		"\n" +
+		"**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the live index of every ticket by\n" +
+		"status. Nothing is built directly from a chat message, an idea, or a review finding — only from\n" +
+		"a ticket whose Implementation Plan has met the READY gate.\n" +
+		"\n" +
+		"- The flow engine is the **ticket-flow skill** at `.agents/skills/ticket-flow/`. It holds\n" +
+		"  the rules (`resources/tickets-README.md`), the ticket template\n" +
+		"  (`resources/TEMPLATE.md`), and the review protocol\n" +
+		"  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/ticket-flow`.\n" +
+		"  The directory is pickle-owned — `pickle upgrade` replaces it wholesale, so keep\n" +
+		"  hand-written notes outside it.\n" +
+		"- Triggers: \"make it a ticket\", \"refine ticket T-NNN\", \"implement ticket T-NNN\", \"rework ticket\n" +
+		"  T-NNN\", \"validate ticket T-NNN\" (or \"review ticket T-NNN\"), \"audit the board\".\n" +
+		"\n" +
+		"### Project configuration\n" +
+		"\n" +
+		"- **Build target.** Every ticket targets one registered child-project via `project:`\n" +
+		"  frontmatter (`pickle project list`). Registered child-projects: " + children + "." +
+		commandsBullet + "\n" +
+		"- **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of\n" +
+		"  the subject** (e.g. `feat(cli): add board audit (T-2)`). Branch per child:" + branches.String() + "\n" +
+		"- **WIP limits** (per child):" + wip.String() + "\n" +
+		"- **Commit policy.** " + childPolicy + "\n" +
+		"  " + overarching + " (`git add <paths>`, never `git add -A`/`.`).\n" +
+		"\n" +
+		"### Board rule\n" +
+		"\n" +
+		"Every ticket move = move the file + one dated `## History` line + one `tickets/BOARD.md`\n" +
+		"edit, in the same change. A move that doesn't touch the board is a bug. Prefer\n" +
+		"`pickle ticket move` — it does all three atomically."
 }
 
 const ticketsReadme = "# `tickets/` — the ticket-based feature flow\n\n" +
