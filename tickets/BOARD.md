@@ -41,6 +41,7 @@ Last updated: 2026-07-25 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-029 | regression-test the non-gating guarantee at the move.go pickup gate | medium | low | S | [] |
 
 ## TO DO (impact order, per child)
 
@@ -53,7 +54,6 @@ Last updated: 2026-07-25 (board sync)
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
 | T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
 | T-020 | doctor: detect AGENTS.md marker-block drift | medium | low | S | [] |
-| T-029 | regression-test the non-gating guarantee at the move.go pickup gate | medium | low | S | [] |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | medium | low | S | [] |
 | T-021 | project add|remove leave the AGENTS.md marker block stale | medium | low | S | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
