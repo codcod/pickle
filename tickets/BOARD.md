@@ -20,6 +20,7 @@ Last updated: 2026-07-25 (T-030 pickup gate: spawned T-034/T-035)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
+| T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | feat/T-030-ticket-new-writes-unsanitised-input-into-frontmatter-newline-injection | [] |
 
 ## IN REVIEW
 
@@ -41,7 +42,6 @@ Last updated: 2026-07-25 (T-030 pickup gate: spawned T-034/T-035)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | medium | low | S | [] |
 
 ## TO DO (impact order, per child)
 

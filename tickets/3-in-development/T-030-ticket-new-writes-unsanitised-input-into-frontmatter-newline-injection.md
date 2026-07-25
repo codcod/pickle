@@ -530,3 +530,4 @@ no-op:
   breaks on a malformed row) and **T-035** (this repo's own T-021 board row is corrupt) — diagnosed
   while filing: `insertIntoBoard` reads impact as `cells[3]` of a plain `|` split, so the corrupt row
   has rank 0 and every new row piles up in front of it.
+- 2026-07-25 — READY → IN DEVELOPMENT: picked up; pickup gate clean (0 blocking, 7 amendments applied)
