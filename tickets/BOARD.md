@@ -20,7 +20,6 @@ Last updated: 2026-07-24 (board sync)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
-| T-006 | upgrade + uninstall | feat/T-006-upgrade-and-uninstall | [T-004] |
 
 ## IN REVIEW
 
@@ -52,10 +51,13 @@ Last updated: 2026-07-24 (board sync)
 | T-009 | opencode wiring | medium | medium | M | [T-004] |
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
+| T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
+| T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | medium | medium | M | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
 | T-015 | consolidate board status-heading matching and fill sync test gaps | low | low | S | [] |
 | T-016 | ship docs-readability as an optional review step (Step 4b) | low | medium | M | [] |
+| T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
 
 ## DONE
 
@@ -68,6 +70,7 @@ Last updated: 2026-07-24 (board sync)
 | T-003 | ticket new (id allocation + template + board row) | yes — merged to main 2026-07-23 (6a6fa72) |
 | T-004 | install (scaffold + skill install + marker injection + first child) | yes — merged to main 2026-07-23 (33f05e3) |
 | T-005 | doctor | yes — merged to main 2026-07-24 (b199215) |
+| T-006 | upgrade + uninstall | no — publish-gated (branch feat/T-006-upgrade-and-uninstall) |
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
 | T-008 | board sync | yes — merged to main 2026-07-24 (9b87a61) |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — merged to main 2026-07-24 (e4aaed7) |

@@ -60,7 +60,11 @@ and refinement must resolve how far the split goes:**
 
 **Soft couplings** (no hard `depends-on:` without sign-off): **T-010** (Pi `.pi/` scaffold) and
 **T-009** (opencode wiring) — the natural homes for any install-time reviewer scaffolding;
-**T-006** (`upgrade`/`uninstall`) — must add/remove any scaffolded wiring symmetrically. The
+**T-006** (`upgrade`/`uninstall`) — **shipped**; its artifact list is hardcoded in
+`install.Upgrade` (`internal/install/install.go:124-148`) and `install.Uninstall` (`:176-212`)
+with no agent registry, and its rework scope is closed, so any wiring scaffolded by option 2 must
+carry its own symmetric refresh/removal there — the obligation sits with this ticket (or
+T-009/T-010), not with T-006. The
 reference implementation to adapt is this workspace's dev tooling
 (`.pi/extensions/docs-readability.ts`, `opencode.jsonc` `agent.docs-readability`,
 `.agents/docs-readability.prompt.md`) — adapt, don't assume it ships verbatim.

@@ -74,9 +74,9 @@ lives in [`tickets/`](tickets/), the skill is discoverable via `.agents/skills/t
 ```
 pickle install                          scaffold + install skill + markers + pickle.toml + first child   [done: T-004]
 pickle project add|list|remove          manage connected child-projects                                  [done: T-001]
-pickle upgrade                          refresh installed skill payload + markers                        [P2]
+pickle upgrade                          refresh installed skill payload + markers                        [done: T-006]
 pickle doctor                           verify install integrity                                         [done: T-005]
-pickle uninstall                        remove skill/symlinks/markers (keep tickets/)                    [P2]
+pickle uninstall [--dry-run]            remove skill/symlinks/markers (keep tickets/ + pickle.toml)      [done: T-006]
 pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [done: T-003]
 pickle ticket move T-NNN <status>       move file + History + board atomically                           [done: T-007]
 pickle board audit                      check every board/ticket invariant                               [done: T-002]
@@ -84,16 +84,17 @@ pickle board sync                       repair board rows from ticket state     
 pickle version | help
 ```
 
-This repository is **early**, but the core loop is live: `install` (T-004), `project
-add|list|remove` (T-001), `ticket new` (T-003), `board audit` (T-002), and `board sync`
-(T-008) are implemented.
-The remaining commands (`upgrade`/`uninstall`) are stubs that report
-their target build phase.
+This repository is **early**, but the full command surface is implemented: `install`
+(T-004), `project add|list|remove` (T-001), `ticket new` (T-003), `ticket move` (T-007),
+`board audit` (T-002), `board sync` (T-008), `doctor` (T-005), and `upgrade`/`uninstall`
+(T-006).
 
 ## Configuration — `pickle.toml`
 
-`pickle.toml` lives at the overarching-project root and is **tool-managed** (hand-edits are
-preserved on load but normalised to a canonical layout on the next `project add|remove`):
+`pickle.toml` lives at the overarching-project root and is **tool-managed**: hand-edits are
+preserved on load, but any command that writes the file re-renders it to a canonical layout —
+`install`, `upgrade` (when it stamps a new `payload_version`), and `project add|remove`. That
+re-render **does not preserve comments**, so keep notes you care about outside `pickle.toml`:
 
 - **overarching:** `payload_version`, optional `review_addendum`, and a `[commit]` table
   (`overarching_auto`, `child_publish_gated`);
@@ -180,6 +181,50 @@ link) is left untouched.
 
 The pi/opencode agent wiring (`.pi/`, opencode) lands later (their own tickets); today
 `install` covers the agent-agnostic `.agents/` skill + `AGENTS.md` and the Claude Code view.
+
+## `pickle upgrade`
+
+```
+pickle upgrade
+```
+
+Refreshes an existing install to the running binary's payload. It re-copies the embedded skill
+payload into `.agents/skills/ticket-flow/` (removing files that the new payload dropped),
+re-injects the `AGENTS.md` marker block, and stamps `payload_version` in `pickle.toml`. Takes no
+flags and no arguments.
+
+**It never reads or writes anything under `tickets/`** — your board and tickets are instance data
+and are not upgrade's business. Only artifacts that already exist are refreshed: `CLAUDE.md` is
+re-injected only if it is a regular file (a `CLAUDE.md -> AGENTS.md` symlink is left alone), and
+the `.claude/skills/ticket-flow` view is re-linked only if it is already there. A self-host
+**symlinked** `.agents/skills/ticket-flow` is left untouched, never followed and overwritten.
+
+Idempotent: re-running at the current version still refreshes the payload and marker block (so
+drift is corrected) and reports `already at <version>` instead of failing. Note that stamping a
+new version re-renders `pickle.toml` and **drops its comments** (see
+[Configuration](#configuration--pickletoml)); the marker block is likewise regenerated, so
+hand-edits *inside* the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region are replaced. A
+post-upgrade `board audit` self-check must pass.
+
+## `pickle uninstall`
+
+```
+pickle uninstall [--dry-run|-n]
+```
+
+Detaches the flow from the project, leaving your work behind. It removes
+`.agents/skills/ticket-flow/`, the `.claude/skills/ticket-flow` symlink, and the
+`<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block from `AGENTS.md`/`CLAUDE.md` (a
+`CLAUDE.md` that is a symlink to `AGENTS.md` is removed outright; a regular file keeps everything
+outside the markers, and the file itself is never deleted).
+
+**`tickets/` and `pickle.toml` are both left intact** — the board, the tickets, and the
+child-project registry are instance data, so a later `pickle install` or `pickle upgrade`
+re-attaches cleanly to the same configuration.
+
+`--dry-run` (`-n`) lists what would be removed and changes nothing. Idempotent: on an
+already-clean tree it reports nothing removed rather than failing. A self-host **symlinked**
+skill directory has only the link removed — the tree it points at is never deleted.
 
 ## `pickle ticket new`
 

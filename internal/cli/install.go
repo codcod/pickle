@@ -12,7 +12,7 @@ import (
 	"github.com/codcod/pickle/internal/install"
 )
 
-// Setup commands. install is implemented (P2); upgrade/doctor/uninstall follow.
+// Setup commands: install, upgrade, doctor, uninstall.
 
 func runInstall(args []string) int {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
@@ -80,9 +80,64 @@ func runInstall(args []string) int {
 	return exitOK
 }
 
-func runUpgrade(_ []string) int {
-	return notImplemented("P2", "upgrade",
-		"refresh the installed skill payload + marker block to this binary's version")
+func runUpgrade(args []string) int {
+	// Takes no flags, but must still parse: silently ignoring argv would make
+	// `pickle upgrade -h` (or a typo, or a guessed `-n`) perform a real upgrade.
+	fs := flag.NewFlagSet("upgrade", flag.ContinueOnError)
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() > 0 {
+		fmt.Fprintf(os.Stderr, "pickle upgrade: unexpected argument %q\n", fs.Arg(0))
+		return exitUsage
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return errf("%v", err)
+	}
+	cfgPath, err := config.Find(wd)
+	if err != nil {
+		return errf("%v", err)
+	}
+	root := filepath.Dir(cfgPath)
+
+	before, err := config.Load(cfgPath)
+	if err != nil {
+		return errf("%v", err)
+	}
+	prevVersion := before.PayloadVersion
+
+	res, err := install.Upgrade(Payload, root, Version)
+	for _, c := range res.Created {
+		fmt.Printf("  + %s\n", c)
+	}
+	for _, s := range res.Skipped {
+		fmt.Printf("  = %s\n", s)
+	}
+	if err != nil {
+		return errf("%v", err)
+	}
+
+	// Post-upgrade self-check: an upgrade must leave the project board-audit-clean.
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		return errf("%v", err)
+	}
+	a := audit.Audit(cfg.Root(), cfg)
+	if len(a.Errors) > 0 {
+		for _, e := range a.Errors {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", e)
+		}
+		return errf("post-upgrade audit found %d error(s)", len(a.Errors))
+	}
+
+	if prevVersion == cfg.PayloadVersion {
+		fmt.Printf("\npickle upgrade: already at %s (refreshed payload + markers)\n", cfg.PayloadVersion)
+	} else {
+		fmt.Printf("\npickle upgrade: %s -> %s\n", prevVersion, cfg.PayloadVersion)
+	}
+	return exitOK
 }
 
 func runDoctor(args []string) int {
@@ -122,7 +177,39 @@ func runDoctor(args []string) int {
 	return exitOK
 }
 
-func runUninstall(_ []string) int {
-	return notImplemented("P2", "uninstall",
-		"remove skill/symlinks/markers; leave tickets/ intact")
+func runUninstall(args []string) int {
+	fs := flag.NewFlagSet("uninstall", flag.ContinueOnError)
+	dryRun := fs.Bool("dry-run", false, "list what would be removed without changing anything")
+	fs.BoolVar(dryRun, "n", false, "list what would be removed without changing anything (shorthand)")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return errf("%v", err)
+	}
+	cfgPath, err := config.Find(wd)
+	if err != nil {
+		return errf("%v", err)
+	}
+	root := filepath.Dir(cfgPath)
+
+	res, err := install.Uninstall(root, install.UninstallOptions{DryRun: *dryRun})
+	for _, r := range res.Removed {
+		fmt.Printf("  - %s\n", r)
+	}
+	for _, s := range res.Skipped {
+		fmt.Printf("  = %s\n", s)
+	}
+	if err != nil {
+		return errf("%v", err)
+	}
+
+	if *dryRun {
+		fmt.Printf("\npickle uninstall --dry-run: %d item(s) would be removed; nothing changed\n", len(res.Removed))
+	} else {
+		fmt.Printf("\npickle uninstall: removed %d item(s); tickets/ and pickle.toml left intact\n", len(res.Removed))
+	}
+	return exitOK
 }

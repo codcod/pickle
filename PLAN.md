@@ -8,8 +8,9 @@
 >
 > **Progress vs. the §12 phases:** P1–P3 are delivered — config/registry, board audit,
 > `ticket new`, `install`, `ticket move`, and `board sync` are done and merged (see the board's
-> DONE section). Remaining: `doctor`/`upgrade`/`uninstall`, the opencode/Pi breadth
-> (P4), distribution (P5), plus hardening/polish tickets. Where this doc and a ticket disagree,
+> DONE section); `doctor` (T-005) plus `upgrade`/`uninstall` (T-006) complete the command
+> surface, and distribution (P5) landed in T-011. Remaining: the opencode/Pi breadth
+> (P4), plus hardening/polish tickets. Where this doc and a ticket disagree,
 > **the ticket wins**; treat §-level decisions here as the standing rationale behind them.
 >
 > Historical references below to the workspace this was distilled from are context, not paths

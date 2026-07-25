@@ -45,14 +45,18 @@ type Options struct {
 	ClaudeLink  bool // make CLAUDE.md a symlink to AGENTS.md instead of a marker block
 }
 
-// Result records what the run created vs. left in place, for the CLI summary.
+// Result records what the run created, left in place, or removed, for the CLI
+// summary. Removed is populated by Uninstall (and, under UninstallOptions.DryRun,
+// records what would be removed without mutating the tree).
 type Result struct {
 	Created []string
 	Skipped []string
+	Removed []string
 }
 
 func (r *Result) created(f string) { r.Created = append(r.Created, f) }
 func (r *Result) skipped(f string) { r.Skipped = append(r.Skipped, f) }
+func (r *Result) removed(f string) { r.Removed = append(r.Removed, f) }
 
 // Run performs the install into root using the embedded payload FS (rooted at
 // the binary's "skill" tree) and payloadVersion (stamped into pickle.toml).
@@ -99,6 +103,152 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 		}
 	}
 	return res, nil
+}
+
+// Upgrade refreshes the installed skill payload and the AGENTS.md/CLAUDE.md
+// marker block(s) to payloadVersion, and rewrites pickle.toml's payload_version.
+// It never reads or writes anything under tickets/ or the board. Idempotent:
+// re-running at the current version still refreshes payload/markers (so drift
+// is corrected) and reports the version as unchanged rather than erroring.
+func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
+	var res Result
+
+	cfg, err := config.Load(filepath.Join(root, config.FileName))
+	if err != nil {
+		return res, err
+	}
+
+	// Refresh the skill payload: a real dir is wiped and re-copied so files
+	// removed from the new payload don't linger; a self-host symlink is left
+	// alone (copyPayload already skips it via the Lstat/ModeSymlink guard).
+	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
+	if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink == 0 {
+		if err := os.RemoveAll(dst); err != nil {
+			return res, fmt.Errorf("refresh skill payload: %w", err)
+		}
+	}
+	if err := copyPayload(payload, root, &res); err != nil {
+		return res, err
+	}
+
+	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", markerBlock(cfg), &res); err != nil {
+		return res, err
+	}
+	claude := filepath.Join(root, "CLAUDE.md")
+	if fi, err := os.Lstat(claude); err == nil && fi.Mode()&os.ModeSymlink == 0 {
+		if err := injectMarker(claude, "Ticket flow", markerBlock(cfg), &res); err != nil {
+			return res, err
+		}
+	}
+	claudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
+	if _, err := os.Lstat(claudeLink); err == nil {
+		if err := ensureSymlink(claudeLink, ClaudeSkillTarget, &res); err != nil {
+			return res, err
+		}
+	}
+
+	if cfg.PayloadVersion == payloadVersion {
+		res.skipped(config.FileName + " (already at " + payloadVersion + ")")
+		return res, nil
+	}
+	cfg.PayloadVersion = payloadVersion
+	if err := cfg.Save(""); err != nil {
+		return res, err
+	}
+	res.created(config.FileName + " (payload_version -> " + payloadVersion + ")")
+	return res, nil
+}
+
+// UninstallOptions configures a single uninstall run.
+type UninstallOptions struct {
+	// DryRun computes and records what would be removed/stripped without
+	// mutating the tree.
+	DryRun bool
+}
+
+// Uninstall removes the installed skill dir + Claude symlinks and strips the
+// pickle marker block(s), leaving tickets/ and pickle.toml untouched so a later
+// install/upgrade re-attaches cleanly. Idempotent: re-running on an already-clean
+// tree reports nothing removed.
+func Uninstall(root string, opts UninstallOptions) (Result, error) {
+	var res Result
+
+	skillDir := filepath.Join(root, filepath.FromSlash(SkillDir))
+	if fi, err := os.Lstat(skillDir); err == nil {
+		if opts.DryRun {
+			res.removed(SkillDir + " (dry-run)")
+		} else if fi.Mode()&os.ModeSymlink != 0 {
+			// Never RemoveAll a symlink: that would delete the real skill/ tree
+			// it points at (self-host). Remove the link itself only.
+			if err := os.Remove(skillDir); err != nil {
+				return res, fmt.Errorf("remove skill symlink: %w", err)
+			}
+			res.removed(SkillDir + " (symlink)")
+		} else {
+			if err := os.RemoveAll(skillDir); err != nil {
+				return res, fmt.Errorf("remove skill dir: %w", err)
+			}
+			res.removed(SkillDir + "/")
+		}
+	}
+
+	claudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
+	if _, err := os.Lstat(claudeLink); err == nil {
+		if opts.DryRun {
+			res.removed(ClaudeSkillLink + " (dry-run)")
+		} else {
+			if err := os.Remove(claudeLink); err != nil {
+				return res, fmt.Errorf("remove claude skill symlink: %w", err)
+			}
+			res.removed(ClaudeSkillLink)
+		}
+	}
+
+	if err := uninstallMarkerFile(filepath.Join(root, "AGENTS.md"), opts, &res); err != nil {
+		return res, err
+	}
+	if err := uninstallMarkerFile(filepath.Join(root, "CLAUDE.md"), opts, &res); err != nil {
+		return res, err
+	}
+
+	return res, nil
+}
+
+// uninstallMarkerFile handles one AGENTS.md/CLAUDE.md: a symlink (CLAUDE.md ->
+// AGENTS.md) is removed outright; a regular file has its marker block stripped
+// (leaving the rest of the file, and the file itself, in place). Absent files
+// are skipped.
+func uninstallMarkerFile(path string, opts UninstallOptions, res *Result) error {
+	rel := filepath.Base(path)
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return nil // absent — nothing to do
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
+		if opts.DryRun {
+			res.removed(rel + " (symlink, dry-run)")
+			return nil
+		}
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("remove %s symlink: %w", rel, err)
+		}
+		res.removed(rel + " (symlink)")
+		return nil
+	}
+	if opts.DryRun {
+		existing, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		text := string(existing)
+		if strings.Contains(text, MarkerBegin) && strings.Contains(text, MarkerEnd) {
+			res.removed(rel + " (marker, dry-run)")
+		} else {
+			res.skipped(rel + " (no marker)")
+		}
+		return nil
+	}
+	return stripMarker(path, res)
 }
 
 // copyPayload writes the embedded skill tree into root/.agents/skills/ticket-flow
@@ -302,6 +452,53 @@ func injectMarker(path, title, block string, res *Result) error {
 		return err
 	}
 	res.created(rel + " (marker appended)")
+	return nil
+}
+
+// stripMarker removes the pickle-managed block (MarkerBegin…MarkerEnd, inclusive)
+// from path, along with any blank line(s) left orphaned immediately around it —
+// the inverse of injectMarker. An absent file, or one without a marker pair, is
+// left untouched (skipped, not an error). The file itself is never deleted, even
+// if stripping the marker leaves it empty.
+func stripMarker(path string, res *Result) error {
+	rel := filepath.Base(path)
+	existing, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		res.skipped(rel + " (absent)")
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	text := string(existing)
+	bi := strings.Index(text, MarkerBegin)
+	ei := strings.Index(text, MarkerEnd)
+	if bi < 0 || ei < bi {
+		res.skipped(rel + " (no marker)")
+		return nil
+	}
+	end := ei + len(MarkerEnd)
+
+	before := strings.TrimRight(text[:bi], "\n")
+	after := strings.TrimLeft(text[end:], "\n")
+
+	var out string
+	switch {
+	case before == "" && after == "":
+		out = ""
+	case before == "":
+		out = after
+	case after == "":
+		out = before + "\n"
+	default:
+		out = before + "\n\n" + after
+	}
+
+	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
+		return err
+	}
+	res.removed(rel + " (marker stripped)")
 	return nil
 }
 

@@ -33,6 +33,17 @@ change. Two items, both in the `internal/board` + `internal/sync` layer:
    whether that is acceptable (likely yes: a misfiled row's cells were never DONE-shaped) or
    whether carry-over should fall back to an id-keyed scan, and encode the decision in the test.
 
+3. **`board sync` under-reports what it changed** (added by the T-006 review). After three
+   newly-filed tickets were re-graded in frontmatter, `pickle board sync` correctly rebuilt their
+   `impact`/`complexity`/`cost` cells from the tickets — but classified the run as
+   `reformat only (ordering / WIP counts / spacing / Last-updated)`. Three grade triples were
+   rewritten, which is a *data* change, not a reformat, so the summary actively understates the
+   diff. (Observed on `T-017`/`T-019`: `medium|medium|M` → `medium|low|S` and `low|low|S`.) Note
+   also that `board audit` reports **0 errors, 0 warnings** while board grade cells disagree with
+   ticket frontmatter — reasonable if grades are deliberately sync-owned rather than audited, but
+   the division of labour should be stated. Fix the change-classification so cell-content
+   rewrites are reported distinctly from pure reformatting, and add a test.
+
 Soft coupling: builds on T-008 (board sync) and T-002 (board audit engine), both merged; no
 hard `depends-on:` — the target code is already on `main`.
 

@@ -1,7 +1,7 @@
 // Package cli implements pickle's command surface: the top-level dispatcher and
-// one handler per command. In this skeleton every handler is a stub that reports
-// which phase of the build plan will implement it (see README.md). The dispatch
-// table, usage text, exit codes, and command grouping are real and stable.
+// one handler per command. Every command in the dispatch table is implemented
+// (see README.md); the dispatch table, usage text, exit codes, and command
+// grouping are stable.
 package cli
 
 import (
@@ -11,8 +11,9 @@ import (
 )
 
 // Payload is the embedded skill payload (the resources/ tree), injected by main.
-// Install reads from it; upgrade will once implemented (doctor checks the
-// on-disk install, not the embedded payload).
+// install and upgrade both read from it to (re-)write the on-disk skill copy;
+// doctor and uninstall only ever inspect/modify the on-disk install, never the
+// embedded payload.
 var Payload fs.FS
 
 // Version is the build version, injected by main.
@@ -20,10 +21,9 @@ var Version = "dev"
 
 // Exit codes.
 const (
-	exitOK          = 0 // success
-	exitError       = 1 // runtime error (bad config, I/O, rejected operation)
-	exitUsage       = 2 // bad invocation / unknown command
-	exitUnimplement = 3 // command exists but is not implemented yet (skeleton)
+	exitOK    = 0 // success
+	exitError = 1 // runtime error (bad config, I/O, rejected operation)
+	exitUsage = 2 // bad invocation / unknown command
 )
 
 // errf prints a pickle error to stderr and returns the error exit code.
@@ -71,12 +71,6 @@ func Run(payload fs.FS, version string, args []string) int {
 	}
 }
 
-// notImplemented reports a stubbed command and the plan phase that will build it.
-func notImplemented(phase, name, desc string) int {
-	fmt.Fprintf(os.Stderr, "pickle %s: not implemented yet [%s]\n  %s\n", name, phase, desc)
-	return exitUnimplement
-}
-
 func usage(w *os.File) {
 	fmt.Fprint(w, `pickle — install and operate a ticket-based feature flow in any project.
 
@@ -93,7 +87,8 @@ Setup commands:
   upgrade                 Refresh the installed skill payload + marker block to this
                           binary's version (never touches tickets).
   doctor                  Verify install integrity (skill, symlinks, markers, child paths).
-  uninstall               Remove skill/symlinks/markers; leave tickets/ intact.
+  uninstall [--dry-run]   Remove skill/symlinks/markers; leave tickets/ and pickle.toml
+                          intact. --dry-run (-n) lists what would go, changing nothing.
 
 Flow commands:
   ticket new "<title>" --project <name> [--impact .. --complexity .. --cost ..]

@@ -12,8 +12,12 @@ func TestRunExitCodes(t *testing.T) {
 		{"help", []string{"help"}, exitOK},
 		{"version", []string{"version"}, exitOK},
 		{"unknown command", []string{"frobnicate"}, exitUsage},
-		{"upgrade stub", []string{"upgrade"}, exitUnimplement},
-		{"uninstall stub", []string{"uninstall"}, exitUnimplement},
+		// upgrade takes no flags, but must reject rather than ignore argv: a
+		// silently-ignored -h/-n would perform a real, mutating upgrade.
+		{"upgrade bad flag", []string{"upgrade", "--bogus"}, exitUsage},
+		{"upgrade help flag", []string{"upgrade", "-h"}, exitUsage},
+		{"upgrade stray arg", []string{"upgrade", "extra"}, exitUsage},
+		{"uninstall bad flag", []string{"uninstall", "--bogus"}, exitUsage},
 		{"board sync bad flag", []string{"board", "sync", "--bogus"}, exitUsage},
 		{"board no subcommand", []string{"board"}, exitUsage},
 		{"board unknown subcommand", []string{"board", "xyz"}, exitUsage},
