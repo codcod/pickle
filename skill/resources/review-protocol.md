@@ -108,7 +108,10 @@ Write directly into the ticket's own **`## Review`** section (no separate file):
   scoped re-review.
 - **Non-blocking** — quality/consistency/polish that doesn't block shipping. Spawn a **new
   ticket** in `tickets/1-to-do/` (from this skill's `resources/TEMPLATE.md`, graded per the
-  rules §3) for each, and reference the new id(s) here. The original ticket proceeds to
+  rules §3) for each, and reference the new id(s) here. Each spawned ticket records its
+  lineage — `spawned-by: [<reviewed ticket id>]`, i.e.
+  `pickle ticket new … --spawned-by "T-NNN"` — which is provenance only and does **not** make
+  the follow-up wait on the ticket under review. The original ticket proceeds to
   `tickets/6-done/` (step 6b).
 - Trivial, purely-cosmetic spec typos in the workflow scaffolding itself may be patched directly
   and noted here.

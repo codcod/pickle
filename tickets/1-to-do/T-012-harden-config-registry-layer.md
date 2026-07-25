@@ -3,6 +3,7 @@ id: T-012
 title: harden test coverage + TOML-safe render (config, project, board audit)
 project: pickle
 depends-on: [T-001, T-002, T-003]
+spawned-by: []
 impact: medium
 complexity: low
 cost: S-M

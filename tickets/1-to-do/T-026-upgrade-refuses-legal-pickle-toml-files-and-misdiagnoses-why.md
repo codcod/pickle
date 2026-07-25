@@ -3,6 +3,7 @@ id: T-026
 title: upgrade refuses legal pickle.toml files and misdiagnoses why
 project: pickle
 depends-on: []
+spawned-by: []
 impact: medium
 complexity: medium
 cost: M

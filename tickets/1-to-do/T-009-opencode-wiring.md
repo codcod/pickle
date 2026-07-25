@@ -3,6 +3,7 @@ id: T-009
 title: opencode wiring
 project: pickle
 depends-on: [T-004]
+spawned-by: []
 impact: medium
 complexity: medium
 cost: M

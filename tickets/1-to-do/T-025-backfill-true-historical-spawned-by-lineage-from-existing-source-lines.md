@@ -3,6 +3,7 @@ id: T-025
 title: backfill true historical spawned-by lineage from existing source: lines
 project: pickle
 depends-on: [T-024]
+spawned-by: []
 impact: low
 complexity: low
 cost: S
@@ -37,6 +38,15 @@ generic "pickle ticket new"); refinement must decide whether to trust Descriptio
 restrict the backfill to tickets whose `source:` **line itself** names the parent (T-012–T-015).
 Everything not evidenced stays `[]`.
 
+**Post-T-024 update (2026-07-25).** T-024 has shipped and the set has already grown — the table
+above is a floor, not a ceiling. Tickets born *since* the field existed already carry real
+values and need **no** backfill: `T-029` and `T-030` were filed with
+`--spawned-by "T-024"` by T-024's own review. Tickets created in the gap — filed before the
+field existed but after this ticket was written — still need entries, and their evidence is
+their `source:` line: `T-027` ("refinement of T-024"), `T-028` ("applicability audit of T-024"),
+and **this ticket itself** ("T-024 refinement") — all `[T-024]`. Re-derive the full set at
+implementation time rather than trusting either list.
+
 This is pure data (ticket-file frontmatter) — **no code changes**. Value is modest: it makes
 `spawned-by` queries accurate for the pre-feature archive and demonstrates the field with real
 non-empty values. Purely cosmetic on the DONE/DROPPED archive, more useful on the live backlog.
@@ -59,3 +69,5 @@ unknown-key). Once T-024 ships, this ticket's own `spawned-by:` should be set to
 ## History
 
 - 2026-07-25 — created (TO DO). source: T-024 refinement (deferred real-lineage backfill)
+- 2026-07-25 — impact sweep after T-024 was reviewed: candidate set extended (T-025/T-027/T-028
+  need `[T-024]`; T-029/T-030 already carry it from creation)

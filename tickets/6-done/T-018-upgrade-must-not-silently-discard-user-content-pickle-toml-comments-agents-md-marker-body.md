@@ -3,6 +3,7 @@ id: T-018
 title: upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body)
 project: pickle
 depends-on: []
+spawned-by: []
 impact: high
 complexity: medium
 cost: M

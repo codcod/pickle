@@ -3,6 +3,7 @@ id: T-021
 title: project add|remove leave the AGENTS.md marker block stale
 project: pickle
 depends-on: []
+spawned-by: []
 impact: medium
 complexity: low
 cost: S

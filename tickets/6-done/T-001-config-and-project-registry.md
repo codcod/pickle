@@ -3,6 +3,7 @@ id: T-001
 title: pickle.toml config model + project registry
 project: pickle
 depends-on: []
+spawned-by: []
 impact: high
 complexity: medium
 cost: M

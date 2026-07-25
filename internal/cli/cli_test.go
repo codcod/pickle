@@ -1,6 +1,13 @@
 package cli
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/codcod/pickle/internal/install"
+)
 
 func TestRunExitCodes(t *testing.T) {
 	cases := []struct {
@@ -35,4 +42,94 @@ func TestRunExitCodes(t *testing.T) {
 			}
 		})
 	}
+}
+
+// newProject installs a throwaway project into a temp dir and chdirs into it.
+//
+// The chdir is not optional: runTicketNew resolves its target through
+// loadConfig() -> os.Getwd() + config.Find(wd), which walks *up* from the
+// process CWD. Without it a `ticket new` test running in internal/cli/ would
+// find pickle's own pickle.toml and write a real ticket into the real board,
+// burning a global id (ids are never reused). Because CWD is process-global,
+// no test using this helper may call t.Parallel().
+func newProject(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	if _, err := install.Run(os.DirFS(filepath.Join("..", "..")), root, "test", install.Options{
+		ProjectName: "demo", ProjectPath: ".", Claude: false,
+	}); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	t.Chdir(root)
+	return root
+}
+
+// TestTicketNewSpawnedBy covers the --spawned-by flag end to end: the scaffold
+// it writes and the audit's verdict on it.
+func TestTicketNewSpawnedBy(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"default is empty", []string{"ticket", "new", "child", "--project", "demo"}, "spawned-by: []"},
+		{"single parent", []string{"ticket", "new", "child", "--project", "demo", "--spawned-by", "T-001"}, "spawned-by: [T-001]"},
+		{"two parents, brackets optional", []string{"ticket", "new", "child", "--project", "demo", "--spawned-by", "T-001,T-002"}, "spawned-by: [T-001, T-002]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
+			root := newProject(t)
+			// the lineage parents must exist, or board audit rightly complains
+			for _, id := range []string{"T-001", "T-002"} {
+				if got := Run(nil, "test", []string{"ticket", "new", "parent " + id, "--project", "demo"}); got != exitOK {
+					t.Fatalf("seeding %s: exit %d", id, got)
+				}
+			}
+			if got := Run(nil, "test", tc.args); got != exitOK {
+				t.Fatalf("Run(%v) = %d, want %d", tc.args, got, exitOK)
+			}
+			body := readTicket(t, root, "T-003")
+			if !strings.Contains(body, tc.want) {
+				t.Errorf("scaffold missing %q:\n%s", tc.want, body)
+			}
+			if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+				t.Fatalf("board audit = %d, want clean (%d)", got, exitOK)
+			}
+		})
+	}
+}
+
+// TestTicketNewSpawnedByUnknownID pins decision 5: ids are passed through at
+// creation (like depends-on) and it is board audit that rejects them.
+func TestTicketNewSpawnedByUnknownID(t *testing.T) {
+	root := newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "orphan", "--project", "demo", "--spawned-by", "T-404"}); got != exitOK {
+		t.Fatalf("ticket new = %d, want %d (creation does not validate ids)", got, exitOK)
+	}
+	if body := readTicket(t, root, "T-001"); !strings.Contains(body, "spawned-by: [T-404]") {
+		t.Errorf("scaffold missing spawned-by: [T-404]:\n%s", body)
+	}
+	if got := Run(nil, "test", []string{"board", "audit"}); got == exitOK {
+		t.Error("board audit = 0, want non-zero for a dangling spawned-by id")
+	}
+}
+
+// readTicket returns the body of the T-NNN ticket in 1-to-do/.
+func readTicket(t *testing.T, root, id string) string {
+	t.Helper()
+	dir := filepath.Join(root, "tickets", "1-to-do")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), id+"-") {
+			b, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			return string(b)
+		}
+	}
+	t.Fatalf("%s not found in %s", id, dir)
+	return ""
 }

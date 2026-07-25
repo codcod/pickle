@@ -133,15 +133,23 @@ A pure, dependency-free check of the flow invariants over `tickets/` + `pickle.t
 non-zero (and prints `ERROR:`/`WARNING:` lines plus a summary) when any invariant fails:
 
 - each ticket file sits in a known status dir and is named `T-NNN-<slug>.md`;
-- frontmatter is complete (`id`, `title`, `project`, `depends-on`, `impact`, `complexity`,
-  `cost`), grades are legal, the id matches the filename, and ids are unique globally;
-- `project:` names a **registered child**, and every `depends-on:` target exists;
+- frontmatter is complete (`id`, `title`, `project`, `depends-on`, `spawned-by`, `impact`,
+  `complexity`, `cost`), grades are legal, the id matches the filename, and ids are unique
+  globally;
+- `project:` names a **registered child**, every `depends-on:` target exists, and every
+  `spawned-by:` target exists without a ticket citing itself — lineage is checked for
+  existence but **never gates** anything;
 - every ticket appears exactly once on `BOARD.md`, under the section **and** child sub-group
   matching its directory (terminal tickets may age off the board); every board row has a file;
 - **per-child** WIP limits (`wip_in_development`/`wip_in_review`) hold;
 - each ticket's last History transition matches its directory;
 - nothing is in `3-in-development/` with a dependency not yet in `6-done/` (warning if a done
-  dependency has no `MERGED` History line).
+  dependency has no `MERGED` History line) — `spawned-by:` parents are deliberately exempt.
+
+> **Upgrading an existing project:** `spawned-by:` is a **required** key, and `pickle upgrade`
+> never touches tickets. Tickets written before this key existed therefore report
+> `frontmatter missing "spawned-by"` until you backfill them — add `spawned-by: []` under each
+> ticket's `depends-on:` line (a one-line mechanical edit per file).
 
 Missing empty status directories are treated as empty, not errors (git does not track empty
 dirs).
@@ -263,15 +271,18 @@ skill directory has only the link removed — the tree it points at is never del
 ## `pickle ticket new`
 
 ```
-pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V]
+pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"]
 ```
 
 Allocates the next `T-NNN` (one global namespace = `max(existing) + 1`), writes a clean,
 audit-passing scaffold to `tickets/1-to-do/T-NNN-<slug>.md` (filled frontmatter + the standard
 section skeleton), and inserts the board row under the child's `### <child>` sub-group in the
 TO DO section, in impact order. `--project` must name a registered child; grades default to
-`medium`/`medium`/`M` and must be legal. The agent fills the Description prose afterwards; the
-full `TEMPLATE.md` (installed with the skill) is the authoring guide.
+`medium`/`medium`/`M` and must be legal. `--spawned-by` records **lineage** — the ticket(s) this
+one was born from (a review finding, an audit, a split) — comma-separated, brackets optional,
+defaulting to `[]`. It is provenance, not a dependency: it never gates pickup, and the ids are
+checked for existence by `board audit`, not at creation. The agent fills the Description prose
+afterwards; the full `TEMPLATE.md` (installed with the skill) is the authoring guide.
 
 ## `pickle ticket move`
 
@@ -302,7 +313,9 @@ backward/abort:  in-development → ready,  ready → to-do,  (any non-terminal)
   (from `pickle.toml`); counts only the ticket's own `project`.
 - **Dependency + cross-child merge gate** (pickup only) — every `depends-on:` target must be
   `done` **and** carry a `MERGED` History line (the cross-child proxy for "merged to its own
-  base"). This is intentionally stricter than `board audit`, which only warns.
+  base"). This is intentionally stricter than `board audit`, which only warns. **`spawned-by:`
+  takes no part in this gate** — lineage is provenance, so a ticket is pickable however its
+  parents stand.
 
 After applying, `ticket move` runs `board audit` as a self-check and fails loudly if the tree
 is no longer clean.

@@ -3,6 +3,7 @@ id: T-027
 title: audit: flag depends-on entries that reference the ticket itself
 project: pickle
 depends-on: []
+spawned-by: []
 impact: low
 complexity: low
 cost: S
@@ -31,6 +32,15 @@ day one). Extending the check to `depends-on:` changes the behaviour of a **ship
 — a previously-clean tree could start erroring — so it was deliberately kept out of T-024's
 scope rather than smuggled in alongside the new field.
 
+### Also worth folding in: id **shape** validation
+
+Added by the T-024 review (finding N3). Neither `depends-on` nor `spawned-by` checks that a
+token even looks like a ticket id, so `--spawned-by "banana"` produces
+`ERROR: … spawned-by banana does not exist` — framing a malformed token as a missing ticket.
+Duplicates (`[T-001, T-001]`) are likewise accepted. A shared `^T-\d+$` check in the same loops
+fixes both messages at once. Coordinate with **T-030**, which proposes validating the same
+tokens at *creation* time; the two should share one helper rather than diverge.
+
 ### Scope
 
 - `internal/audit/audit.go` — one condition in the `depends-on` existence loop.
@@ -57,3 +67,5 @@ needs the other. Whichever lands second should match the wording of the first.
 
 - 2026-07-25 — created (TO DO). source: refinement of T-024 (scope split: self-reference check
   for the shipped `depends-on` validator kept out of T-024)
+- 2026-07-25 — scope extended: id shape validation (`^T-\d+$`) for both id lists, from the
+  T-024 review's non-blocking finding N3

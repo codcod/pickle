@@ -3,6 +3,7 @@ id: T-011
 title: distribution (goreleaser + Homebrew tap + releases + docs)
 project: pickle
 depends-on: []
+spawned-by: []
 impact: high
 complexity: medium
 cost: M

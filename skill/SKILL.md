@@ -82,6 +82,10 @@ WIP limits, and an optional per-child review addendum. Defaults:
 - **Dependencies (may cross children).** `depends-on:` frontmatter. A ticket may not enter
   `3-in-development/` while any dependency is not in `6-done/` **and merged to the base of its
   own child's repo** (done ≠ merged; the human merges, and may lag — see rules §3).
+- **Lineage (may cross children).** `spawned-by:` frontmatter — the ticket(s) this one was born
+  from (review finding, board audit, refinement split). Same wire format as `depends-on:` and
+  the exact opposite in behaviour: **provenance only, it gates nothing**, so never overload
+  `depends-on:` to express it.
 - **READY gate.** A ticket is READY only when its `## Implementation Plan` is a complete,
   self-contained prompt: feature branch (in the child), prerequisites, confirmed decisions,
   concrete tasks, a runnable acceptance test, a docs step, and a finish step.
@@ -107,13 +111,16 @@ When asked to turn an idea, finding, or request into a ticket:
    which ticket absorbed it. If the overlap is partial, ask the user whether to merge or split.
 3. **Author** the ticket: run `pickle ticket new "<title>" --project <name>` to allocate the
    next `T-NNN` (max across *all* status dirs + 1), scaffold from `resources/TEMPLATE.md` into
-   `1-to-do/` with `project:` set, and add the board row under that child's sub-group. Then fill
-   in the Description prose.
+   `1-to-do/` with `project:` set, and add the board row under that child's sub-group. When the
+   ticket is born from another one, add `--spawned-by "T-NNN[,T-MMM]"`. Then fill in the
+   Description prose.
 4. **Grade it** (impact / complexity / cost) **against the existing backlog** — re-grade
    neighbours if the comparison shifts them.
 5. Note any soft couplings (including cross-child ones) in the Description; hard `depends-on:`
-   only with user sign-off. Confirm the board row + `created` History line are present
-   (`pickle board audit`).
+   only with user sign-off. Record where the ticket came from: the `created … source: …`
+   History line in prose, and — whenever the source is another ticket — that ticket's id in
+   `spawned-by:` (lineage; it never blocks pickup, so it needs no sign-off). Confirm the board
+   row + `created` History line are present (`pickle board audit`).
 
 ## Procedure: refine a ticket
 
@@ -184,7 +191,7 @@ child). In short:
 1. The ticket must be in `4-in-review/`. Audit implementation, quality, consistency, and docs
    (running the child's configured commands); classify each finding **blocking** (→
    `5-rework/`, scoped re-review after the fix) vs **non-blocking** (→ new `1-to-do/` ticket(s),
-   original proceeds to `6-done/`).
+   each filed with `--spawned-by "<reviewed ticket id>"`; original proceeds to `6-done/`).
 2. Findings go into the ticket's own `## Review` section — no separate file.
 3. On a concluding verdict, **move the ticket** (`pickle ticket move …`).
 4. **Present the child-project commit message** (and merge-request attributes) **to the user
@@ -206,7 +213,8 @@ It verifies the flow's invariants mechanically: every ticket appears exactly onc
 board, in the section matching its directory (under its child-project's sub-group); every board
 row has a backing file; ids are unique and match filenames; frontmatter is complete with legal
 grade values and a `project:` that names a registered child; `depends-on:` targets exist;
-per-child WIP limits hold; each ticket's last History transition matches its directory; and
+`spawned-by:` targets exist and no ticket cites itself (but lineage never gates); per-child WIP
+limits hold; each ticket's last History transition matches its directory; and
 in-development tickets have all dependencies done (warning if a done dependency has no `merged`
 History line). Fix every error it reports — an error is a broken invariant, not a judgement
 call.

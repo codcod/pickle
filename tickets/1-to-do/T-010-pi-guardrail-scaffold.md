@@ -3,6 +3,7 @@ id: T-010
 title: Pi guardrail scaffold
 project: pickle
 depends-on: [T-004]
+spawned-by: []
 impact: medium
 complexity: medium
 cost: M

@@ -100,7 +100,7 @@ with a reason):
 
 All other transitions are forward-only, as diagrammed.
 
-## 3. IDs, priority, and dependencies
+## 3. IDs, priority, dependencies, and lineage
 
 - **ID (one global namespace).** `T-NNN`, monotonically increasing, **never reused**,
   **shared across all child-projects**. A new ticket's number is `max(existing across all
@@ -135,6 +135,18 @@ All other transitions are forward-only, as diagrammed.
   and tick the board's `merged` column. Soft couplings (nice-to-know, not blocking) are
   narrative cross-references in the Description — never `depends-on`. Creating a genuine new hard
   dependency between two independent tickets requires asking the human first.
+- **Lineage (`spawned-by`).** Provenance goes in `spawned-by:` frontmatter — the ticket(s) this
+  one was **born from** (a review finding, a board audit, a refinement split), as a list of
+  `T-NNN` ids in the same wire format as `depends-on:` (`[]` when the ticket came from a fresh
+  idea or a chat). It may cross child-projects. **It is the exact opposite of `depends-on:` in
+  behaviour: it gates nothing.** There is no transition guard — a ticket may enter
+  `3-in-development/` no matter what state its `spawned-by` parents are in, terminal ones
+  included; `pickle board audit` only checks that each id exists and that a ticket does not cite
+  itself. Never fold a "created because of" relationship into `depends-on:` to make it visible:
+  that would wrongly block pickup. Set at creation and left alone thereafter (like the History
+  `source:` line, which it complements rather than replaces — the History line keeps the prose
+  reason, `spawned-by:` makes the link queryable). `pickle ticket new --spawned-by "T-NNN"`
+  fills it in.
 
 ## 4. The READY gate
 
@@ -174,7 +186,8 @@ quality, consistency, and docs, then classifies every finding:
   not re-audit the whole feature from scratch).
 - **Non-blocking** — quality/consistency/polish that doesn't block shipping. → recorded in the
   ticket's Review section, spawned as **new TO DO ticket(s)** (each with its own `project:`
-  target), and the original ticket proceeds to `6-done/`.
+  target and `spawned-by:` naming the reviewed ticket — lineage, which never blocks the
+  follow-up; see §3), and the original ticket proceeds to `6-done/`.
 
 Findings are written into the ticket's own **Review** section — reviews produce no separate
 file.
@@ -199,7 +212,7 @@ board layout from the tickets.
 ## 7. Ticket structure
 
 Author every new ticket from the skill's `resources/TEMPLATE.md` (projects keep no local
-copy): frontmatter (id, title, **project**, depends-on, grading) +
+copy): frontmatter (id, title, **project**, depends-on, spawned-by, grading) +
 `## Description` (current spec) + `## Implementation Plan` (empty until refined; the
 READY-gated executable prompt) + `## Review` (empty until reviewed) + `## History`
 (append-only, dated, newest last).

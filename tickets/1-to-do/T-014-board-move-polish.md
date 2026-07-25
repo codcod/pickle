@@ -3,6 +3,7 @@ id: T-014
 title: board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity)
 project: pickle
 depends-on: [T-007]
+spawned-by: []
 impact: low
 complexity: low
 cost: S

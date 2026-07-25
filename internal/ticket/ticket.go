@@ -80,7 +80,8 @@ type Ticket struct {
 	Dir       string            // status directory, e.g. "1-to-do"
 	Path      string            // absolute path
 	Front     map[string]string // raw frontmatter values (title kept verbatim)
-	DependsOn []string          // parsed depends-on ids
+	DependsOn []string          // parsed depends-on ids — hard dependencies; gate pickup
+	SpawnedBy []string          // parsed spawned-by ids — lineage only, never a gate
 	Text      string            // full file text
 }
 
@@ -121,7 +122,10 @@ func ParseFrontmatter(text string) (map[string]string, bool) {
 	return fm, true
 }
 
-// ParseDepends parses a depends-on value like "[T-001, T-002]" or "[]".
+// ParseDepends parses a bracketed ticket-id list like "[T-001, T-002]" or "[]".
+// Brackets are optional, so it also accepts the comma-separated flag form
+// ("T-001,T-002"). Used for both `depends-on:` and `spawned-by:` — the two share
+// a wire format and differ only in meaning.
 func ParseDepends(raw string) []string {
 	raw = strings.TrimSpace(raw)
 	raw = strings.TrimPrefix(raw, "[")
@@ -266,17 +270,34 @@ func SectionHeadings(text string) []string {
 	return out
 }
 
+// renderIDList renders a ticket-id slice in frontmatter form: "[]" when empty,
+// "[T-018, T-019]" otherwise — the inverse of ParseDepends.
+//
+// Two other renderers do the same job today (internal/move's renderDepends and an
+// inline join in internal/sync); collapsing all three onto this one is deliberately
+// deferred to T-015 rather than done here.
+func renderIDList(ids []string) string {
+	if len(ids) == 0 {
+		return "[]"
+	}
+	return "[" + strings.Join(ids, ", ") + "]"
+}
+
 // Scaffold renders a fresh, canonical TO DO ticket: filled frontmatter, heading,
 // and the standard section skeleton (mirroring TEMPLATE.md's section set). The
 // full TEMPLATE.md remains the authoring guide; this is the minimal, audit-clean
 // starting point `pickle ticket new` writes.
-func Scaffold(id, title, project, impact, complexity, cost string) string {
+//
+// spawnedBy is the ticket's lineage (nil for none) — provenance only; it never
+// gates anything.
+func Scaffold(id, title, project, impact, complexity, cost string, spawnedBy []string) string {
 	date := time.Now().Format("2006-01-02")
 	return fmt.Sprintf(`---
 id: %s
 title: %s
 project: %s
 depends-on: []
+spawned-by: %s
 impact: %s
 complexity: %s
 cost: %s
@@ -300,7 +321,7 @@ tickets by id; hard dependencies go in depends-on: frontmatter (human-approved).
 ## History
 
 - %s — created (TO DO). source: pickle ticket new
-`, id, title, project, impact, complexity, cost, id, title, date)
+`, id, title, project, renderIDList(spawnedBy), impact, complexity, cost, id, title, date)
 }
 
 // LoadAll reads every ticket under root/tickets/<status>/. Missing status dirs are
@@ -351,6 +372,7 @@ func LoadAll(root string) ([]*Ticket, []string) {
 				Path:      path,
 				Front:     fm,
 				DependsOn: ParseDepends(fm["depends-on"]),
+				SpawnedBy: ParseDepends(fm["spawned-by"]),
 				Text:      text,
 			})
 		}

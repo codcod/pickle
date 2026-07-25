@@ -34,7 +34,7 @@ func newProject(t *testing.T) (string, *config.Config) {
 // depends-on, and returns its id.
 func newTicket(t *testing.T, root, id, title string, deps ...string) {
 	t.Helper()
-	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M")
+	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M", nil)
 	if len(deps) > 0 {
 		body = strings.Replace(body, "depends-on: []", "depends-on: ["+strings.Join(deps, ", ")+"]", 1)
 	}

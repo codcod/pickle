@@ -92,7 +92,9 @@ Setup commands:
 
 Flow commands:
   ticket new "<title>" --project <name> [--impact .. --complexity .. --cost ..]
+                       [--spawned-by "T-NNN[,T-MMM]"]
                           Allocate the next T-NNN, scaffold the ticket, add the board row.
+                          --spawned-by records lineage (never gates pickup).
   ticket move T-NNN <status> --reason "<why>"
                           Move a ticket (file + History + board) atomically.
   board audit             Check the board/ticket invariants (exit non-zero on any error).

@@ -3,6 +3,7 @@ id: T-024
 title: add spawned-by: lineage frontmatter field (provenance, non-gating)
 project: pickle
 depends-on: []
+spawned-by: []
 impact: medium
 complexity: low
 cost: M
@@ -298,9 +299,141 @@ pointer and needs no change.
 5. Commit locally on the branch; **do not push or open an MR without user approval**. Present
    the message; on approval finalize + push + open the MR (merging is the human's).
 
+## Implementation summary
+
+Branch `feat/T-024-spawned-by-lineage-frontmatter`, commit `87aca24` (plus bookkeeping commits
+`b0d7458`, `ff9835c`). 42 files changed.
+
+**Code (3 files).**
+- `internal/ticket/ticket.go` — `Ticket.SpawnedBy` (documented "lineage only, never a gate");
+  `LoadAll` populates it via the existing `ParseDepends`, whose doc comment now states it serves
+  both fields; unexported `renderIDList`; `Scaffold` gained a trailing `spawnedBy []string`
+  parameter and emits `spawned-by:` immediately under `depends-on:` (decision 7).
+- `internal/cli/ticket.go` — `--spawned-by` flag (comma-separated, brackets optional), passed
+  through unvalidated by design; `ticketNewUsage` updated.
+- `internal/audit/audit.go` — `"spawned-by"` added to `requiredKeys`; a new loop checking
+  existence + self-reference, carrying a comment that the absent gate is deliberate; a second
+  comment on the in-development gate recording that it is `depends-on`-only.
+  `internal/move/move.go` (the *other* pickup gate, finding N6) deliberately untouched.
+
+**Docs (5 files).** `skill/resources/TEMPLATE.md` (frontmatter line + Description guidance),
+`skill/resources/tickets-README.md` (§3 Lineage bullet, §7 frontmatter list),
+`skill/SKILL.md` (rules summary, *make it a ticket* steps 3 + 5, *validate a ticket*,
+*audit the board*), `skill/resources/review-protocol.md` (spawned follow-ups record lineage),
+`README.md` (audit invariants, the `--spawned-by` flag, the pickup-gate exemption, **plus the
+upgrade/backfill callout from finding N1**). `PLAN.md` left alone as a historical record.
+
+**Tests (5 files).** `ticket_test.go`: `spawned-by` in the `sample` fixture with a `SpawnedBy`
+assertion, `TestScaffoldRendersSpawnedBy` (nil / empty / one / two ids, round-tripped through
+`ParseDepends`, position asserted). `audit_test.go`: fixed `spawned-by: []` in the builder plus
+a `withSpawnedBy` rewrite helper (no new parameter — the 10 call sites are untouched), and five
+cases: valid, dangling, self-reference, missing key, and **in-development with a not-done
+lineage parent staying clean**. `cli_test.go`: gained the `t.TempDir()` + `install.Run` +
+`t.Chdir` harness demanded by finding B1, covering the flag's default/single/multi forms and
+the "unknown id is board audit's problem" contract. `move_test.go` / `sync_test.go`: `Scaffold`
+call sites updated.
+
+**Backfill.** All **28** existing tickets carry `spawned-by: []` — uniform, no real parents
+(decision 2), T-025's own file included.
+
+**Verification.** `just build`, `just test` (9 packages), `just lint`, `gofmt -l` clean;
+`./pickle board audit` → 28 tickets, 0 errors, 0 warnings. Also smoke-tested end-to-end in a
+throwaway project *outside* the repo tree: `pickle install` ships the new TEMPLATE line,
+`ticket new --spawned-by "T-001"` writes `spawned-by: [T-001]`, and a ticket was moved into
+`3-in-development/` while its lineage parent sat in `1-to-do/` — audit clean; flipping that
+same relationship to `depends-on:` immediately produced
+`in development but dependency T-001 is in 1-to-do`. The non-gating property is demonstrated,
+not merely asserted.
+
+**Deferred (not in this diff).** Real historical lineage → T-025. `depends-on` self-reference
+check → T-027. TEMPLATE-vs-`requiredKeys` drift guard → T-028 (from finding N8). Id-list
+renderer consolidation → T-015 item 4 (finding N5).
+
+**Suggested commit message** (already used locally):
+
+```
+feat(ticket): add spawned-by lineage frontmatter (non-gating provenance) (T-024)
+```
+
 ## Review
 
-<!-- empty until IN REVIEW -->
+**2026-07-25 — full review** (generic protocol; no addenda configured). Audited by an
+independent reviewer that did not write the code, which verified test sensitivity by **mutation
+testing in an out-of-tree copy** rather than by reading assertions.
+
+- [x] Implementation audit — acceptance test re-run verbatim (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage + whole-tree sweep (step 4a); docs build N/A (`docs` is
+      commented out in `pickle.toml:36`)
+- [x] Findings classified and recorded below; non-blocking spawned/absorbed (step 5)
+- [x] Ticket moved + History appended (step 6)
+- [x] `BOARD.md` updated (step 7)
+- [x] Impact sweep (step 8)
+- [x] Summary + commit message presented for approval (step 9)
+
+**Acceptance test (re-run verbatim):** `just build` ✓ · `just test` 9/9 packages ✓ ·
+`just lint` (`go vet`) ✓ · `gofmt -l .` empty ✓ · `./pickle board audit` → 28 tickets, 0 errors,
+0 warnings ✓ · backfill grep → no output ✓. All seven Tasks met; decisions 1-7 each verified
+individually.
+
+### Findings
+
+| # | Severity | Finding | Evidence | Disposition |
+|---|---|---|---|---|
+| B1 | **blocking** | `pickle help` enumerates every other `ticket new` flag but omits `--spawned-by` — the one flag this ticket ships. Missing docs coverage for a user-facing surface (protocol 4a.1). | `internal/cli/cli.go:94`; confirmed in live `pickle help` output. Contrast `ticketNewUsage` (`cli/ticket.go:35`), `README.md:274`, `SKILL.md:115`, which all list it. | Fixed in rework (see below) |
+| N1 | non-blocking | The non-gating guarantee is untested at the gate a human actually hits. Adding `SpawnedBy` to `move.go`'s pickup loop leaves the **whole suite green**; the same mutation against the audit loop correctly fails. | `internal/move/move.go:98-113`; mutation experiment E | → **T-029** |
+| N2 | non-blocking | `ticket new` interpolates input into frontmatter unsanitised: a newline in `--spawned-by` injects arbitrary keys and `board audit` calls the result clean. Pre-exists on the `title` positional. The repo already has the convention (`move.sanitizeReason`). | `internal/cli/ticket.go:80,119-122`; reproduced against the built binary | → **T-030** |
+| N3 | non-blocking | No id **shape** check: `--spawned-by "banana"` reports "does not exist", framing a malformed token as a missing ticket; duplicates accepted. | `internal/audit/audit.go:74-82` | → absorbed by **T-027** (same loop) + **T-030** |
+| N4 | non-blocking | Doc comment named a function that does not exist. | `internal/cli/cli_test.go:101` | Patched during review (trivial) |
+| N5 | non-blocking | Dangling-id CLI test asserts only "non-zero", so it would also pass on an unrelated audit error. | `internal/cli/cli_test.go:111-113` | → **T-029** |
+| N6 | non-blocking | CWD safety is opt-in per test, not structural — a future `cli` test that skips `newProject` re-opens the original B1 hole. | `internal/cli/cli_test.go:55-65` | → **T-029** |
+| N7 | non-blocking | `Scaffold` now takes six adjacent `string` params; a params struct is the idiomatic next step. | `internal/ticket/ticket.go:293` | → **T-015** item 5 |
+| N8 | non-blocking | Triplicated id-list rendering persists. | `ticket.go:279`, `move.go:240`, `sync.go:284` | Already deferred — **T-015** item 4 (verified present) |
+| N9 | non-blocking | Rules §5 described spawning a follow-up without mentioning lineage, while two other docs now do. | `skill/resources/tickets-README.md:187-189` | Patched during review (one clause) |
+| N10 | non-blocking | Inserted README sentence not re-wrapped (110 chars vs the file's ~98 norm). | `README.md:284` | Patched during review (trivial) |
+| N11 | non-blocking | **Pre-existing factual error:** README claims `board audit` "only warns" about in-development dependencies; it **errors** — only the missing-`MERGED`-line case warns. | `README.md:316` vs `internal/audit/audit.go:150-154` | → **T-019** item 3 |
+| N12 | non-blocking | `PLAN.md:239` still enumerates frontmatter without `spawned-by`. | — | No action — deliberate (Task 5: PLAN.md is a historical record) |
+| N13 | non-blocking | §3's title no longer covered its contents. | `skill/resources/tickets-README.md:103` | Patched during review (trivial) |
+
+### Notable verifications
+
+- **Test sensitivity proved by mutation, not assertion-reading.** Seven mutations in a scratch
+  copy: dropping the required key, the whole `spawned-by` loop, *only* the self-reference branch,
+  the `LoadAll` wiring, and the `Scaffold` line each fail precisely the tests that claim to cover
+  them. Critically, **adding** a gate to the audit fails
+  `TestAudit/in-dev_spawned-by_parent_not_done` — so the central guarantee is a real assertion,
+  not a vacuous pass.
+- **Nothing else can create a ticket without the key.** The complete production writer set was
+  enumerated: `cli/ticket.go:122` is the only writer of ticket frontmatter; `move.go:117` appends
+  History only; `sync.go` writes `BOARD.md` only; `install.go` writes no ticket files; `doctor`
+  is read-only. So `sync`/`doctor`/`install` cannot leave a ticket lacking `spawned-by`, and
+  `upgrade`'s hands-off contract is exactly what the new README callout covers.
+- **Frontmatter-key enumerations are in step project-wide** (README, tickets-README, TEMPLATE,
+  audit, tests); only PLAN.md lags, by design.
+- All four implementer claims independently checked **TRUE**: `move.go` untouched, 28 tickets
+  backfilled, the `cli_test` harness correct (and still safe if `install.Run` fails, since
+  `t.Fatalf` precedes `t.Chdir`), and decision 7's ordering holding across all 28 tickets +
+  TEMPLATE + scaffold output.
+
+### Rework — B1
+
+Fixed on the same branch, scope limited to the finding: `internal/cli/cli.go:94-95` now shows
+`[--spawned-by "T-NNN[,T-MMM]"]` on a continuation line, matching the help block's layout.
+Acceptance test re-run green afterwards. Scoped re-review confirmed the fix and nothing else.
+
+### Verdict: **PASS**
+
+Blocking findings: 1, resolved. Non-blocking: 13 — 4 patched during review (N4, N9, N10, N13),
+5 spawned as new tickets (**T-029** ← N1/N5/N6, **T-030** ← N2), 3 absorbed into existing
+tickets (**T-027** ← N3, **T-015** item 5 ← N7, **T-019** item 3 ← N11), 2 no-action
+(N8 already deferred to T-015 item 4, N12 deliberate).
+
+**Impact sweep (step 8).** Tickets referencing T-024: **T-025** (`depends-on: [T-024]`) — its
+candidate table was a snapshot and has been extended: T-025/T-027/T-028 now need `[T-024]`
+backfilled, while T-029/T-030 were *born* with it and need nothing. **T-027**, **T-028**,
+**T-015**, **T-019** — assumptions intact, each extended with the findings above. No ticket was
+invalidated.
 
 ## History
 
@@ -318,3 +451,8 @@ pointer and needs no change.
   warn-first), N2 (`rg` guard demoted to advisory, `-L` dropped), N3/N4/N7/N9 (line-ref and
   parameter-placement corrections), N6 (`move.go`'s second pickup gate stays untouched).
   Spun out: N8 → T-028, N5 → T-015 item 4
+- 2026-07-25 — READY → IN DEVELOPMENT: picked up; applicability audit PROCEED with inline corrections
+- 2026-07-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-07-25 — IN REVIEW → REWORK: review: 1 blocking finding (B1: pickle help omits --spawned-by)
+- 2026-07-25 — REWORK → IN REVIEW: B1 fixed: help lists --spawned-by
+- 2026-07-25 — IN REVIEW → DONE: review PASS: B1 fixed, 13 non-blocking routed

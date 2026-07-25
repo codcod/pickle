@@ -3,6 +3,7 @@ id: T-013
 title: install polish (marker spacing, summary labels, cli tests, --agent)
 project: pickle
 depends-on: [T-004]
+spawned-by: []
 impact: low
 complexity: low
 cost: S

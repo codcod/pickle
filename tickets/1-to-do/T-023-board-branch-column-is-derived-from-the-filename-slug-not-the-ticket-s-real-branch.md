@@ -3,6 +3,7 @@ id: T-023
 title: board branch column is derived from the filename slug, not the ticket's real branch
 project: pickle
 depends-on: []
+spawned-by: []
 impact: low
 complexity: low
 cost: S

@@ -3,6 +3,7 @@ id: T-008
 title: board sync
 project: pickle
 depends-on: [T-002]
+spawned-by: []
 impact: medium
 complexity: medium
 cost: M

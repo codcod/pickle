@@ -3,6 +3,7 @@ id: T-017
 title: unify marker-pair detection + dry-run fidelity
 project: pickle
 depends-on: []
+spawned-by: []
 impact: medium
 complexity: low
 cost: S

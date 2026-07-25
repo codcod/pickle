@@ -3,6 +3,7 @@ id: T-019
 title: README accuracy polish (prose duplicates command table, phased-plan tagging)
 project: pickle
 depends-on: []
+spawned-by: []
 impact: low
 complexity: low
 cost: S
@@ -33,6 +34,14 @@ are fixed in T-006's own rework pass, not here.)
    clause (`README.md:326-328`) is still outstanding (T-009/T-010), so either split that clause
    out to P4 so P2 can be tagged truthfully, or leave P2 untagged with a one-line note saying
    why. Decide during refinement.
+
+3. **A factual error about `board audit`'s severity** (added by the T-024 review's whole-tree
+   sweep, finding N11). `README.md:316` claims the `ticket move` pickup gate "is intentionally
+   stricter than `board audit`, which only warns." That is wrong: `internal/audit/audit.go:150`
+   **errors** when an in-development ticket's dependency is not in `6-done/`; only the
+   done-but-no-`MERGED`-line case warns (`:152-154`). The gate is stricter in *substance* (it
+   demands a `MERGED` History line), not because the audit merely warns. Reword to say what the
+   extra strictness actually is.
 
 > **Line refs re-anchored again 2026-07-25** (T-018 re-review): T-018's rework added ~13 lines to
 > the Configuration and `## pickle upgrade` sections, shifting everything below. Items 1/2 cited
@@ -65,3 +74,4 @@ are fixed in T-006's own rework pass, not here.)
 
 - 2026-07-24 — created (TO DO). source: pickle ticket new
 - 2026-07-25 — re-anchored by the T-018 re-review: items 1/2 line refs shifted by T-018's README edits; noted that `README.md:102-104` belongs to T-018's rework
+- 2026-07-25 — scope extended: item 3 (README.md:316 misstates board audit's severity), from the T-024 review's whole-tree sweep (finding N11)

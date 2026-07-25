@@ -3,6 +3,7 @@ id: T-007
 title: ticket move (state machine + per-child WIP + cross-child merge gate)
 project: pickle
 depends-on: [T-002]
+spawned-by: []
 impact: high
 complexity: medium-high
 cost: M-L

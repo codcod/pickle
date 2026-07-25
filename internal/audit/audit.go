@@ -20,7 +20,7 @@ type Result struct {
 	Warnings   []string
 }
 
-var requiredKeys = []string{"id", "title", "project", "depends-on", "impact", "complexity", "cost"}
+var requiredKeys = []string{"id", "title", "project", "depends-on", "spawned-by", "impact", "complexity", "cost"}
 
 // Audit checks every invariant for the tickets/ tree under root, using cfg for the
 // registered-child and per-child WIP checks.
@@ -65,6 +65,19 @@ func Audit(root string, cfg *config.Config) Result {
 		for _, dep := range t.DependsOn {
 			if _, ok := byID[dep]; !ok {
 				r.errf("%s: depends-on %s does not exist", ref, dep)
+			}
+		}
+		// spawned-by is lineage, not a dependency: the only checks are that each
+		// parent exists and that a ticket does not cite itself. There is
+		// deliberately NO done/merged or transition gate for it (contrast the
+		// depends-on gate below) — provenance must never block pickup.
+		for _, src := range t.SpawnedBy {
+			if src == t.ID {
+				r.errf("%s: spawned-by lists itself", ref)
+				continue
+			}
+			if _, ok := byID[src]; !ok {
+				r.errf("%s: spawned-by %s does not exist", ref, src)
 			}
 		}
 	}
@@ -122,7 +135,8 @@ func Audit(root string, cfg *config.Config) Result {
 		}
 	}
 
-	// In-development dependency gate.
+	// In-development dependency gate. depends-on only: spawned-by parents are
+	// intentionally absent here — lineage never gates a pickup.
 	for _, t := range tickets {
 		if t.Dir != "3-in-development" {
 			continue

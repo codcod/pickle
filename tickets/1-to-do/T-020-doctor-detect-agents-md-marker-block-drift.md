@@ -3,6 +3,7 @@ id: T-020
 title: doctor: detect AGENTS.md marker-block drift
 project: pickle
 depends-on: []
+spawned-by: []
 impact: medium
 complexity: low
 cost: S

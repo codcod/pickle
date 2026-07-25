@@ -32,7 +32,7 @@ func runTicket(args []string) int {
 }
 
 const (
-	ticketNewUsage  = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V]`
+	ticketNewUsage  = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"]`
 	ticketMoveUsage = `usage: pickle ticket move <T-NNN> <status> [--reason "<why>"]`
 )
 
@@ -80,6 +80,7 @@ func runTicketNew(args []string) int {
 	impact := fs.String("impact", "medium", "impact grade")
 	complexity := fs.String("complexity", "medium", "complexity grade")
 	cost := fs.String("cost", "M", "cost grade")
+	spawnedBy := fs.String("spawned-by", "", "lineage: ticket id(s) this one was born from, comma-separated (non-gating)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return exitUsage
 	}
@@ -115,7 +116,10 @@ func runTicketNew(args []string) int {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return errf("%v", err)
 	}
-	if err := os.WriteFile(path, []byte(ticket.Scaffold(id, title, *project, *impact, *complexity, *cost)), 0o644); err != nil {
+	// spawned-by ids are passed through unvalidated, exactly like depends-on at
+	// creation time; `pickle board audit` is what checks they exist.
+	lineage := ticket.ParseDepends(*spawnedBy)
+	if err := os.WriteFile(path, []byte(ticket.Scaffold(id, title, *project, *impact, *complexity, *cost, lineage)), 0o644); err != nil {
 		return errf("%v", err)
 	}
 	if err := board.AddTODORow(filepath.Join(root, "tickets", "BOARD.md"), *project, id, title, *impact, *complexity, *cost); err != nil {

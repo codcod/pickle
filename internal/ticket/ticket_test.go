@@ -3,6 +3,7 @@ package ticket
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -11,6 +12,7 @@ id: T-001
 title: a title with # hash
 project: pickle
 depends-on: [T-002, T-003]
+spawned-by: [T-004]
 impact: high
 complexity: medium
 cost: M
@@ -83,6 +85,14 @@ func TestLoadAllToleratesMissingDirs(t *testing.T) {
 	if tickets[0].Base() != "T-001-foo" {
 		t.Errorf("Base = %q", tickets[0].Base())
 	}
+	if got := tickets[0].DependsOn; len(got) != 2 || got[0] != "T-002" {
+		t.Errorf("DependsOn = %v, want [T-002 T-003]", got)
+	}
+	// lineage is parsed with the same parser but kept in its own field, so the
+	// two relationships can never be confused for one another
+	if got := tickets[0].SpawnedBy; len(got) != 1 || got[0] != "T-004" {
+		t.Errorf("SpawnedBy = %v, want [T-004]", got)
+	}
 }
 
 func TestSlugify(t *testing.T) {
@@ -123,12 +133,12 @@ func TestValidGrade(t *testing.T) {
 }
 
 func TestScaffoldIsAuditClean(t *testing.T) {
-	out := Scaffold("T-013", "Review the Jira board", "pickle", "high", "medium", "M")
+	out := Scaffold("T-013", "Review the Jira board", "pickle", "high", "medium", "M", nil)
 	fm, ok := ParseFrontmatter(out)
 	if !ok {
 		t.Fatal("scaffold has no frontmatter")
 	}
-	for _, k := range []string{"id", "title", "project", "depends-on", "impact", "complexity", "cost"} {
+	for _, k := range []string{"id", "title", "project", "depends-on", "spawned-by", "impact", "complexity", "cost"} {
 		if _, has := fm[k]; !has {
 			t.Errorf("scaffold frontmatter missing %q", k)
 		}
@@ -141,6 +151,38 @@ func TestScaffoldIsAuditClean(t *testing.T) {
 	}
 }
 
+func TestScaffoldRendersSpawnedBy(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		in   []string
+		want string
+	}{
+		{"none", nil, "[]"},
+		{"empty slice", []string{}, "[]"},
+		{"one", []string{"T-001"}, "[T-001]"},
+		{"two", []string{"T-001", "T-002"}, "[T-001, T-002]"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out := Scaffold("T-013", "x", "pickle", "high", "medium", "M", c.in)
+			fm, ok := ParseFrontmatter(out)
+			if !ok {
+				t.Fatal("scaffold has no frontmatter")
+			}
+			if fm["spawned-by"] != c.want {
+				t.Errorf("spawned-by = %q, want %q", fm["spawned-by"], c.want)
+			}
+			// round-trips through the parser the audit uses
+			if got := ParseDepends(fm["spawned-by"]); len(got) != len(c.in) {
+				t.Errorf("ParseDepends(%q) = %v, want %d ids", fm["spawned-by"], got, len(c.in))
+			}
+			// decision 7: the pair reads together, lineage directly under deps
+			if !strings.Contains(out, "depends-on: []\nspawned-by: "+c.want+"\n") {
+				t.Errorf("spawned-by is not immediately after depends-on:\n%s", out)
+			}
+		})
+	}
+}
+
 // TestScaffoldSectionsMatchTemplate is the drift guard (T-003 decision 4): the
 // scaffold's ## section set must equal the embedded TEMPLATE.md's.
 func TestScaffoldSectionsMatchTemplate(t *testing.T) {
@@ -150,7 +192,7 @@ func TestScaffoldSectionsMatchTemplate(t *testing.T) {
 		t.Skipf("TEMPLATE.md not found: %v", err)
 	}
 	want := SectionHeadings(string(data))
-	got := SectionHeadings(Scaffold("T-001", "x", "pickle", "high", "medium", "M"))
+	got := SectionHeadings(Scaffold("T-001", "x", "pickle", "high", "medium", "M", nil))
 	if len(want) != len(got) {
 		t.Fatalf("section count differs: template %v vs scaffold %v", want, got)
 	}

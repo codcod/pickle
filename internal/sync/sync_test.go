@@ -34,7 +34,7 @@ func newProject(t *testing.T) (string, *config.Config) {
 // addTODO writes a TO DO ticket + its board row (the path ticket-new uses).
 func addTODO(t *testing.T, root, id, title, impact string) {
 	t.Helper()
-	body := ticket.Scaffold(id, title, "demo", impact, "medium", "M")
+	body := ticket.Scaffold(id, title, "demo", impact, "medium", "M", nil)
 	dst := filepath.Join(root, "tickets", "1-to-do", id+"-"+ticket.Slugify(title)+".md")
 	if err := os.WriteFile(dst, []byte(body), 0o644); err != nil {
 		t.Fatal(err)

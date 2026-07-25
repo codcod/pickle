@@ -3,6 +3,7 @@ id: T-015
 title: consolidate board status-heading matching and fill sync test gaps
 project: pickle
 depends-on: []
+spawned-by: []
 impact: low
 complexity: low
 cost: S
@@ -52,6 +53,13 @@ change. Two items, both in the `internal/board` + `internal/sync` layer:
    it sits in the package that already owns the parsing counterpart, `ParseDepends` — and route
    the other two through it. Pure refactor; the existing move/sync tests are the guard.
 
+5. **`ticket.Scaffold`'s positional arity** (added by the T-024 review, finding N7). The
+   signature is now `Scaffold(id, title, project, impact, complexity, cost string,
+   spawnedBy []string)` (`internal/ticket/ticket.go:293`) — six adjacent `string` parameters in
+   which `impact`/`complexity`/`cost` are silently swappable by a caller. Consider a small
+   params struct. Natural to do in the same pass as item 4, since both touch this function's
+   surface; strictly optional.
+
 Soft coupling: builds on T-008 (board sync) and T-002 (board audit engine), both merged, and on
 T-024 for item 4 (which introduces the third renderer); no hard `depends-on:` — item 4 is
 trivially skippable if T-024 has not landed, and the rest of the target code is already on
@@ -70,3 +78,5 @@ trivially skippable if T-024 has not landed, and the rest of the target code is 
 - 2026-07-24 — created (TO DO). source: T-008 review (non-blocking findings N1 duplication + N2 test gap)
 - 2026-07-25 — scope extended: item 4 (id-list renderer consolidation), from the T-024
   applicability audit's non-blocking finding N5
+- 2026-07-25 — scope extended: item 5 (Scaffold params struct), from the T-024 review's
+  non-blocking finding N7

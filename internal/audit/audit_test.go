@@ -27,6 +27,7 @@ id: %s
 title: %s title
 project: %s
 depends-on: %s
+spawned-by: []
 impact: %s
 complexity: medium
 cost: M
@@ -37,6 +38,13 @@ cost: M
 ## History
 - 2026-07-23 — created (%s). source: test
 `, id, id, project, depends, impact, id, hist)
+}
+
+// withSpawnedBy overrides the fixture's default `spawned-by: []`. Kept as a
+// string rewrite rather than a ticketFile parameter so the ten existing call
+// sites stay untouched (same trick as internal/move/move_test.go's depends-on).
+func withSpawnedBy(body, ids string) string {
+	return strings.Replace(body, "spawned-by: []", "spawned-by: "+ids, 1)
 }
 
 const goodBoard = `# Board
@@ -121,6 +129,35 @@ func TestAudit(t *testing.T) {
 			mk(t, root, "tickets/BOARD.md", goodBoard+
 				"## IN DEVELOPMENT\n### pickle\n| id | t |\n|---|---|\n| T-002 | bar |\n")
 		}, true, "dependency T-001 is in 1-to-do"},
+
+		// --- spawned-by: lineage, validated for existence but never a gate (T-024) ---
+		{"valid spawned-by", func(t *testing.T, root string) {
+			mk(t, root, "tickets/2-ready/T-002-bar.md",
+				withSpawnedBy(ticketFile("T-002", "pickle", "[]", "high", "READY"), "[T-001]"))
+			mk(t, root, "tickets/BOARD.md", goodBoard+
+				"## READY\n### pickle\n| id | t |\n|---|---|\n| T-002 | bar |\n")
+		}, false, ""},
+		{"dangling spawned-by", func(t *testing.T, root string) {
+			mk(t, root, "tickets/1-to-do/T-001-foo.md",
+				withSpawnedBy(ticketFile("T-001", "pickle", "[]", "high", "TO DO"), "[T-404]"))
+		}, true, "spawned-by T-404 does not exist"},
+		{"self-referencing spawned-by", func(t *testing.T, root string) {
+			mk(t, root, "tickets/1-to-do/T-001-foo.md",
+				withSpawnedBy(ticketFile("T-001", "pickle", "[]", "high", "TO DO"), "[T-001]"))
+		}, true, "spawned-by lists itself"},
+		{"missing spawned-by key", func(t *testing.T, root string) {
+			mk(t, root, "tickets/1-to-do/T-001-foo.md",
+				strings.Replace(ticketFile("T-001", "pickle", "[]", "high", "TO DO"), "spawned-by: []\n", "", 1))
+		}, true, `missing "spawned-by"`},
+		// The defining guarantee: an in-development ticket whose lineage parent is
+		// neither done nor merged is still clean. The identical shape with
+		// depends-on is the "in-dev dep not done" error case above.
+		{"in-dev spawned-by parent not done", func(t *testing.T, root string) {
+			mk(t, root, "tickets/3-in-development/T-002-bar.md",
+				withSpawnedBy(ticketFile("T-002", "pickle", "[]", "high", "IN DEVELOPMENT"), "[T-001]"))
+			mk(t, root, "tickets/BOARD.md", goodBoard+
+				"## IN DEVELOPMENT\n### pickle\n| id | t |\n|---|---|\n| T-002 | bar |\n")
+		}, false, ""},
 	}
 
 	for _, tc := range cases {

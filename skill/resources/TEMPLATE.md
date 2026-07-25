@@ -4,6 +4,7 @@ title: <short title>
 project: <child-project name>   # which registered child-project this ticket targets
                                 # (a name from `pickle project list` / pickle.toml)
 depends-on: []              # hard dependencies only (other T-NNN ids, any child-project); [] if none
+spawned-by: []              # lineage only — ticket(s) this was born from; [] if none; NEVER gates pickup
 impact: critical|high|medium|low
 complexity: high|medium|low
 cost: S|M|L|XL               # implementation effort — see tickets/README.md §3
@@ -20,7 +21,9 @@ this is what the ticket *is*, in its latest form. Note soft couplings to other t
 here (cross-reference by id) — hard dependencies go in `depends-on:` frontmatter instead.
 The `project:` frontmatter names which child-project this feature targets; a cross-child
 soft coupling (e.g. a frontend feature that pairs with a backend one) is noted here, a hard
-one goes in `depends-on:`.>
+one goes in `depends-on:`. If this ticket was born from another one — a review finding, a
+board audit, a refinement split — record that parent in `spawned-by:` (lineage, never a
+blocker).>
 
 ## Implementation Plan
 
