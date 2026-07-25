@@ -424,4 +424,4 @@ due):
 - 2026-07-24 — IN REVIEW → REWORK: review: 4 blocking findings (upgrade argv ignored; docs coverage for --dry-run, pickle.toml survival, normalisation)
 - 2026-07-24 — REWORK → IN REVIEW: findings fixed
 - 2026-07-24 — IN REVIEW → DONE: re-review PASS: findings 1-4 verified fixed; finding 11 -> T-018
-- 2026-07-24 — merged to main (4bcfc00)
+- 2026-07-25 — merged to main (4bcfc00)
