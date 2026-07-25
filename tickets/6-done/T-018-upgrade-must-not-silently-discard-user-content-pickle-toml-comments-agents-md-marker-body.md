@@ -1483,3 +1483,4 @@ nothing was spawned for it.
 - 2026-07-25 — IN REVIEW → REWORK: re-review: 1 blocking (R1 not closed: refusal contract over-generalised to "anywhere in the file"); R2/R3 closed, mutation battery 9/11 confirmed
 - 2026-07-25 — REWORK → IN REVIEW: S1 fixed: refusal boundary stated positionally, verified end-to-end for all 8 shapes; both mirror fixtures fail under the false-claim mutation
 - 2026-07-25 — IN REVIEW → DONE: re-review: S1 closed (refusal contract true for all 10 measured shapes, pinned both directions); non-blocking N1 -> T-026, N2 -> T-019
+- 2026-07-25 — merged to main (1485242)

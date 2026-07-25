@@ -80,7 +80,7 @@ Last updated: 2026-07-25 (board sync)
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main 2026-07-24 (fd70a82) |
 | T-008 | board sync | yes — merged to main 2026-07-24 (9b87a61) |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — merged to main 2026-07-24 (e4aaed7) |
-| T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | no — publish-gated (branch feat/T-018-upgrade-must-not-silently-discard-user-content-pickle-toml-comments-agents-md-marker-body) |
+| T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main 2026-07-25 (1485242) |
 
 ## DROPPED
 
