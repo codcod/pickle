@@ -10,7 +10,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-25 (board sync)
+Last updated: 2026-07-25 (T-029 review: → DONE, spawned T-031/T-032)
 
 ---
 
@@ -41,7 +41,6 @@ Last updated: 2026-07-25 (board sync)
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-029 | regression-test the non-gating guarantee at the move.go pickup gate | medium | low | S | [] |
 
 ## TO DO (impact order, per child)
 
@@ -55,6 +54,7 @@ Last updated: 2026-07-25 (board sync)
 | T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
 | T-020 | doctor: detect AGENTS.md marker-block drift | medium | low | S | [] |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | medium | low | S | [] |
+| T-031 | harden the internal/cli test harness (captureStdout stdout restore + pipe lifecycle, TestMain sandbox lifecycle) | medium | low | S | [] |
 | T-021 | project add|remove leave the AGENTS.md marker block stale | medium | low | S | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | medium | medium | M | [] |
@@ -67,6 +67,7 @@ Last updated: 2026-07-25 (board sync)
 | T-025 | backfill true historical spawned-by lineage from existing source: lines | low | low | S | [T-024] |
 | T-027 | audit: flag depends-on entries that reference the ticket itself | low | low | S | [] |
 | T-028 | guard TEMPLATE.md frontmatter against audit requiredKeys | low | low | S | [] |
+| T-032 | unify the test payload-root idiom into one CWD-independent helper | low | low | S | [] |
 
 ## DONE
 
@@ -85,6 +86,7 @@ Last updated: 2026-07-25 (board sync)
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — merged to main 2026-07-24 (e4aaed7) |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main 2026-07-25 (1485242) |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — main (3c4c131, squashed) |
+| T-029 | regression-test the non-gating guarantee at the move.go pickup gate | no — publish-gated (branch feat/T-029-regression-test-non-gating-pickup-gate) |
 
 ## DROPPED
 

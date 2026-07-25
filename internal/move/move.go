@@ -95,7 +95,9 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 		}
 	}
 
-	// Cross-child dependency + merge gate: pickup only.
+	// Cross-child dependency + merge gate: pickup only. depends-on only —
+	// spawned-by is lineage and must never gate a pickup, which is what
+	// move_test.go's TestSpawnedByDoesNotGatePickup guards.
 	if target.Dir == "3-in-development" {
 		for _, dep := range t.DependsOn {
 			dt, ok := byID[dep]

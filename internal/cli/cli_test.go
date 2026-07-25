@@ -1,13 +1,64 @@
 package cli
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
 )
+
+// repoRoot is the module root, resolved before TestMain moves the process CWD.
+// Nothing in this package may reach for the payload with a relative path: the
+// original os.DirFS(filepath.Join("..", "..")) only worked because `go test`
+// starts in internal/cli/, which is exactly what TestMain changes.
+var repoRoot string
+
+// TestMain makes CWD safety the default rather than opt-in. Commands in this
+// package resolve their target by walking *up* from the process CWD
+// (loadConfig -> os.Getwd -> config.Find), so a test that forgot newProject's
+// t.Chdir would find pickle's own pickle.toml and mutate the real board —
+// burning a global ticket id, which is never reused. Running the whole package
+// from a throwaway directory means such a test fails loudly instead.
+//
+// TestCWDIsSandboxed proves this actually holds.
+func TestMain(m *testing.M) {
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: getwd: %v\n", err)
+		os.Exit(1)
+	}
+	repoRoot, err = filepath.Abs(filepath.Join(wd, "..", ".."))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: resolve repo root: %v\n", err)
+		os.Exit(1)
+	}
+	// Keep the path in a named variable the cleanup below references: the
+	// acceptance test's mutation C deletes the Chdir call and requires a test
+	// failure, not an unused-variable compile error.
+	sandbox, err := os.MkdirTemp("", "pickle-cli-sandbox")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: sandbox: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.Chdir(sandbox); err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: chdir sandbox: %v\n", err)
+		os.Exit(1)
+	}
+
+	code := m.Run()
+
+	// Step out before removing it: each test's t.Chdir restored the sandbox as
+	// the CWD, and deleting the directory you are standing in is sloppy.
+	// os.Exit runs no deferred functions, so this cannot be a defer.
+	_ = os.Chdir(repoRoot)
+	_ = os.RemoveAll(sandbox)
+	os.Exit(code)
+}
 
 func TestRunExitCodes(t *testing.T) {
 	cases := []struct {
@@ -46,22 +97,81 @@ func TestRunExitCodes(t *testing.T) {
 
 // newProject installs a throwaway project into a temp dir and chdirs into it.
 //
-// The chdir is not optional: runTicketNew resolves its target through
-// loadConfig() -> os.Getwd() + config.Find(wd), which walks *up* from the
-// process CWD. Without it a `ticket new` test running in internal/cli/ would
-// find pickle's own pickle.toml and write a real ticket into the real board,
-// burning a global id (ids are never reused). Because CWD is process-global,
-// no test using this helper may call t.Parallel().
+// The chdir puts the test *inside* its own install: runTicketNew resolves its
+// target through loadConfig() -> os.Getwd() + config.Find(wd), which walks *up*
+// from the process CWD, so a command only reaches this install if the CWD is in
+// it. TestMain's sandbox is the second line of defence — it makes forgetting
+// this call a loud failure rather than a write into the real board — but it is
+// not a substitute, because a sandboxed CWD resolves no config at all.
+//
+// The payload comes from repoRoot, not a relative path: TestMain has already
+// moved the CWD away from internal/cli/.
+//
+// Because both the CWD and os.Stdout (see captureStdout) are process-global, no
+// test in this package may call t.Parallel().
 func newProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	if _, err := install.Run(os.DirFS(filepath.Join("..", "..")), root, "test", install.Options{
+	if _, err := install.Run(os.DirFS(repoRoot), root, "test", install.Options{
 		ProjectName: "demo", ProjectPath: ".", Claude: false,
 	}); err != nil {
 		t.Fatalf("install: %v", err)
 	}
 	t.Chdir(root)
 	return root
+}
+
+// TestCWDIsSandboxed proves TestMain's sandbox actually holds: from the default
+// process CWD no pickle.toml is discoverable, so a config-resolving command run
+// without newProject fails loudly instead of writing into the real board. Delete
+// TestMain's os.Chdir and this test fails — that is the point of it.
+func TestCWDIsSandboxed(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path, err := config.Find(wd); err == nil {
+		t.Fatalf("default test CWD %s resolves a real config at %s — the TestMain sandbox is broken", wd, path)
+	}
+}
+
+// captureStdout runs fn with os.Stdout redirected to a pipe and returns what it
+// printed. The commands in this package print their diagnostics with fmt.Printf
+// to the real os.Stdout (no injectable writer), so this is the only way to
+// assert them. os.Stdout is process-global — like the CWD, it forbids
+// t.Parallel() in this package.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	// Restore through t.Cleanup, never by an assignment after fn(): a t.Fatal or
+	// panic inside fn calls runtime.Goexit, which would skip the restore and
+	// leave this pipe installed as os.Stdout for every later test in the package.
+	t.Cleanup(func() { os.Stdout = orig })
+
+	// Drain concurrently: fn writing more than the pipe buffer (~64 KiB) would
+	// block forever against a reader that only starts after it returns, hanging
+	// the test instead of failing it.
+	done := make(chan string, 1)
+	go func() {
+		b, _ := io.ReadAll(r)
+		done <- string(b)
+	}()
+
+	fn()
+
+	if err := w.Close(); err != nil { // unblocks the reader
+		t.Fatalf("close pipe writer: %v", err)
+	}
+	out := <-done
+	if err := r.Close(); err != nil {
+		t.Fatalf("close pipe reader: %v", err)
+	}
+	return out
 }
 
 // TestTicketNewSpawnedBy covers the --spawned-by flag end to end: the scaffold
@@ -108,8 +218,19 @@ func TestTicketNewSpawnedByUnknownID(t *testing.T) {
 	if body := readTicket(t, root, "T-001"); !strings.Contains(body, "spawned-by: [T-404]") {
 		t.Errorf("scaffold missing spawned-by: [T-404]:\n%s", body)
 	}
-	if got := Run(nil, "test", []string{"board", "audit"}); got == exitOK {
-		t.Error("board audit = 0, want non-zero for a dangling spawned-by id")
+	// Assert the diagnostic, not just the exit code: a bare non-zero exit would
+	// also be satisfied by an unrelated audit error, so it would not pin the
+	// dangling-id rule at all. The substring is internal/audit's wording, the
+	// same string TestAudit/dangling_spawned-by pins.
+	var code int
+	out := captureStdout(t, func() {
+		code = Run(nil, "test", []string{"board", "audit"})
+	})
+	if code == exitOK {
+		t.Errorf("board audit = 0, want non-zero for a dangling spawned-by id; output:\n%s", out)
+	}
+	if !strings.Contains(out, "spawned-by T-404 does not exist") {
+		t.Errorf("board audit did not report the dangling id:\n%s", out)
 	}
 }
 

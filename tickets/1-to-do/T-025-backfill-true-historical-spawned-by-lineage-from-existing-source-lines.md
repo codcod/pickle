@@ -41,7 +41,9 @@ Everything not evidenced stays `[]`.
 **Post-T-024 update (2026-07-25).** T-024 has shipped and the set has already grown — the table
 above is a floor, not a ceiling. Tickets born *since* the field existed already carry real
 values and need **no** backfill: `T-029` and `T-030` were filed with
-`--spawned-by "T-024"` by T-024's own review. Tickets created in the gap — filed before the
+`--spawned-by "T-024"` by T-024's own review, and `T-031`/`T-032` with `--spawned-by "T-029"` by
+T-029's (2026-07-25) — the born-with-lineage set keeps growing as reviews spawn follow-ups, which is
+the mechanism this ticket is compensating for the absence of. Tickets created in the gap — filed before the
 field existed but after this ticket was written — still need entries, and their evidence is
 their `source:` line: `T-027` ("refinement of T-024"), `T-028` ("applicability audit of T-024"),
 and **this ticket itself** ("T-024 refinement") — all `[T-024]`. Re-derive the full set at
@@ -71,3 +73,5 @@ unknown-key). Once T-024 ships, this ticket's own `spawned-by:` should be set to
 - 2026-07-25 — created (TO DO). source: T-024 refinement (deferred real-lineage backfill)
 - 2026-07-25 — impact sweep after T-024 was reviewed: candidate set extended (T-025/T-027/T-028
   need `[T-024]`; T-029/T-030 already carry it from creation)
+- 2026-07-25 — impact sweep after T-029 was reviewed: no new backfill candidates (T-031/T-032 were
+  born with `spawned-by: [T-029]`); note added that the born-with-lineage set keeps growing

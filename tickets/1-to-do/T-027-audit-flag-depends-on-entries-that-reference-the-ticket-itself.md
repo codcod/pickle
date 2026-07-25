@@ -55,6 +55,19 @@ Soft coupling to **T-024** (which lands the parallel `spawned-by` self-check and
 this asymmetry exists). Not a hard dependency: the two edits touch the same loop but neither
 needs the other. Whichever lands second should match the wording of the first.
 
+**Drive-by requested by T-029's review (finding N6).** T-029 added a comment at
+`internal/move/move.go:98-100` that names the test guarding the "lineage never gates a pickup"
+invariant (`TestSpawnedByDoesNotGatePickup`). Its twin at `internal/audit/audit.go:138-139` states
+the same invariant but does **not** name its guard,
+`TestAudit/"in-dev spawned-by parent not done"` (`internal/audit/audit_test.go:155`) — so the
+"greppable pair" only greps in one direction. Since this ticket already edits both
+`internal/audit/audit.go` and `internal/audit/audit_test.go`, add the case name to that comment
+here rather than opening a ticket for one line. Purely cosmetic; no behaviour change.
+
+Also note that T-029 now pins the audit string `"spawned-by T-404 does not exist"` from a **second**
+package (`internal/cli/cli_test.go:232`, alongside `audit_test.go:143`). If this ticket's wording
+alignment touches that message, two packages must be updated.
+
 ## Implementation Plan
 
 <!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->

@@ -131,6 +131,28 @@ T-002 review; items 4 and 5 by the T-003 review (which is why this now also depe
 Realistic inputs today (commands, relative paths, names, ordinary titles, History reasons
 without stray arrows) are unaffected — this is hardening, hence non-blocking.
 
+### Note for whoever refines this ticket (added by T-029's review, 2026-07-25)
+
+This ticket's own text asks for "cli-level tests for `project add|list|remove` and `board audit`"
+and for `ticket new` — i.e. **the same package and the same file**, `internal/cli/cli_test.go`, that
+**T-029** just built a test harness in. Two hard constraints follow:
+
+- **Go allows exactly one `TestMain` per package.** T-029 added one (it chdirs the whole package into
+  a throwaway sandbox so a test that forgets `newProject`'s `t.Chdir` fails loudly instead of writing
+  into the real board). Adding a second is a compile error — **extend** the existing one.
+- **Asserting `board audit` / `project list` output requires capturing `os.Stdout`**, because those
+  commands print with `fmt.Printf` and take no injectable writer. T-029 shipped a `captureStdout(t,
+  fn)` helper for exactly this; reuse it rather than inventing a second mechanism. Consequence: no
+  test in package `cli` may call `t.Parallel()` — both the CWD and `os.Stdout` are process-global.
+  T-029 deliberately did **not** refactor `runBoardAudit` to take an `io.Writer` (that would be a
+  half-migration across the package); if this ticket wants that refactor, it is a separate decision to
+  raise at refinement, for all commands at once.
+
+**T-031** (spawned by T-029's review) hardens that harness — `captureStdout`'s stdout restore and pipe
+lifecycle, `TestMain`'s sandbox lifecycle. If T-031 lands first this ticket inherits a fixed harness;
+if it lands second, two sets of edits to the same helpers must be reconciled. No `depends-on` either
+way, but check T-031's status before picking this up.
+
 ## Implementation Plan
 
 <!-- empty until refined; must meet the READY gate (skill rules §4) before moving to 2-ready/ -->

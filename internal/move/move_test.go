@@ -30,11 +30,16 @@ func newProject(t *testing.T) (string, *config.Config) {
 	return root, cfg
 }
 
-// newTicket writes a TO DO ticket directly (bypassing the CLI) with the given
-// depends-on, and returns its id.
-func newTicket(t *testing.T, root, id, title string, deps ...string) {
+// newTicketFull writes a TO DO ticket directly (bypassing the CLI) with the given
+// depends-on and spawned-by.
+//
+// Lineage goes in typed, because ticket.Scaffold takes a spawnedBy parameter;
+// only depends-on needs the string rewrite, since Scaffold hardcodes
+// `depends-on: []`. (internal/audit's fixtures rewrite both — but they are raw
+// string literals, not Scaffold output.)
+func newTicketFull(t *testing.T, root, id, title string, deps, spawnedBy []string) {
 	t.Helper()
-	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M", nil)
+	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M", spawnedBy)
 	if len(deps) > 0 {
 		body = strings.Replace(body, "depends-on: []", "depends-on: ["+strings.Join(deps, ", ")+"]", 1)
 	}
@@ -47,6 +52,12 @@ func newTicket(t *testing.T, root, id, title string, deps ...string) {
 	if err := board.AddTODORow(bp, "demo", id, title, "medium", "medium", "M"); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// newTicket writes a TO DO ticket with the given depends-on and no lineage.
+func newTicket(t *testing.T, root, id, title string, deps ...string) {
+	t.Helper()
+	newTicketFull(t, root, id, title, deps, nil)
 }
 
 func assertClean(t *testing.T, root string, cfg *config.Config) {
@@ -161,6 +172,24 @@ func TestDependencyGate(t *testing.T) {
 	b, _ := os.ReadFile(donePath)
 	os.WriteFile(donePath, append(b, []byte("- 2026-07-23 — merged to main (abc1234)\n")...), 0o644)
 	mustMove(t, root, cfg, "T-002", "in-development", "")
+	assertClean(t, root, cfg)
+}
+
+// TestSpawnedByDoesNotGatePickup is the move-side twin of the audit's
+// "in-dev spawned-by parent not done" case (internal/audit/audit_test.go):
+// lineage never blocks a pickup, so a ticket whose spawned-by parent is still in
+// 1-to-do/ picks up cleanly. The identical tree shape with depends-on instead is
+// TestDependencyGate's first rejection above — same fixture, opposite verdict.
+//
+// Load-bearing check: adding t.SpawnedBy to Move's pickup gate loop must make
+// this test fail. Before T-029 that mutation left the whole suite green, because
+// only the audit half of the guarantee was guarded.
+func TestSpawnedByDoesNotGatePickup(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, "T-001", "Parent") // stays in 1-to-do: neither done nor merged
+	newTicketFull(t, root, "T-002", "Child", nil, []string{"T-001"})
+	mustMove(t, root, cfg, "T-002", "ready", "")
+	mustMove(t, root, cfg, "T-002", "in-development", "") // must NOT be gated
 	assertClean(t, root, cfg)
 }
 
