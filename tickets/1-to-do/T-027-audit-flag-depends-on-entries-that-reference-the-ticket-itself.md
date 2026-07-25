@@ -41,6 +41,15 @@ Duplicates (`[T-001, T-001]`) are likewise accepted. A shared `^T-\d+$` check in
 fixes both messages at once. Coordinate with **T-030**, which proposes validating the same
 tokens at *creation* time; the two should share one helper rather than diverge.
 
+**Resolved by T-030's refinement (2026-07-25) — the helper is decided, so import it, don't invent
+one.** T-030 (now READY) exports it from `internal/ticket`: `ticket.ValidID(s string) bool` for the
+shape check and `ticket.ParseIDList(raw string) ([]string, error)` for the validate-and-de-duplicate
+list form, both sitting beside `ParseDepends`/`ValidGrade`. This ticket's audit-side loops should call
+`ticket.ValidID`. Note the division of labour T-030 fixed deliberately and this ticket must preserve:
+**shape** is checked at creation, **existence** stays the audit's job — a `depends-on` pointing at a
+not-yet-filed ticket is legal input that the audit flags, not a creation-time error. If T-027 somehow
+lands before T-030, put the regex in `internal/ticket` anyway, in that exported form.
+
 ### Scope
 
 - `internal/audit/audit.go` — one condition in the `depends-on` existence loop.

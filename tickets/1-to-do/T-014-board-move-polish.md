@@ -28,6 +28,18 @@ surface, none of which change the happy path:
    `title` (via `ticket new`/`AddTODORow`) and the child name substituted into `BOARD.md`
    (this **supersedes T-013 item 5**). Escape/replace `|` and collapse newlines in every cell
    `board.renderRow` emits (one choke point), and add a table test.
+
+   **Note added by T-030's refinement (2026-07-25).** A newline in a *title* was measurably worse
+   than "malformed row": it **split the row across two physical lines**
+   (`| T-003 | evil` / `project: nope | medium | … |`) and `board audit` still reported 0 errors,
+   because the row-presence check finds the id on the first line. T-030 (READY) closes the
+   `ticket new` route by **rejecting** newline-bearing titles at the input boundary, so after it
+   lands this item's newline case is no longer reproducible through `ticket new` — reproduce it via
+   `ticket move --reason` or a hand-edited ticket instead. The `|` case is unaffected and still
+   reproduces exactly as written above (re-measured: `ticket new 'pipe | in title'` yields an 8-cell
+   row in a 6-column table, audit-clean). Render-boundary escaping remains this ticket's job; T-030
+   deliberately did **not** do it. Consider whether the audit should also reject a row whose cell
+   count is wrong — that is what would have caught both.
 3. **create-sub-group spacing.** When `MoveRow` creates a *new* `### <child>` sub-group at the
    end of a section, the inserted row is left with no blank line before the following `## `
    heading (cosmetic; the empty-existing-subgroup case was already fixed in T-007). Emit a
