@@ -1,8 +1,9 @@
 ## Ticket flow (start here)
 
 **Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the live index of every ticket by
-status. Nothing is built directly from a chat message, an idea, or a review finding — only from
-a ticket whose Implementation Plan has met the READY gate.
+status. No feature is built directly from a chat message or a raw idea — work enters only as a
+ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it
+earns a **disposition** (rules §5), and most are resolved without a new ticket.
 
 - The flow engine is the **ticket-flow skill** at `.agents/skills/ticket-flow/`. It holds
   the rules (`resources/tickets-README.md`), the ticket template

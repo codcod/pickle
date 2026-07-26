@@ -307,3 +307,15 @@ block + `tickets/NOTES.md`). No other doc surfaces.
 - 2026-07-26 — created (TO DO). source: chat — design-alternative analysis of T-039's bug class
   (markdown-board integrity vs SQLite vs generated board); spawned-by T-039
 - 2026-07-26 — TO DO → READY: plan complete; decisions D1-D8 approved by user
+- 2026-07-26 — **two findings folded in from T-036's review** (not spawned as tickets; already
+  covered by D2/D5 and the generated-board design, so no plan change is needed — recorded here as
+  the itemised provenance the disposition table points at):
+  1. `BOARD.md`'s IN REVIEW `branch` cell held the filename slug
+     (`feat/T-036-ratify-the-four-…-default`) while the real branch was
+     `feat/T-036-review-disposition-valves` — a fresh instance of the T-023 class D2 kills.
+  2. `BOARD.md:28`'s `Last updated:` preamble still read "T-036 refined → READY" after the ticket
+     had moved twice: `pickle ticket move` never refreshes that line, only `board sync` does
+     (`internal/sync/sync.go:184-186`). Regeneration on every move closes it.
+  Also note for **Task 7**: T-036 rewrote §5 of `tickets-README.md` and `review-protocol.md` plus
+  three spots in `SKILL.md`, so the "grep for board-edit steps" sweep now runs against new line
+  numbers in all three files.

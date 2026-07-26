@@ -106,8 +106,10 @@ user-facing surface.>
 ## Review
 
 <Empty until IN REVIEW. Filled in by the review protocol (`review-protocol.md`): a findings
-table (severity: blocking/non-blocking, description, suggestion), the verdict, notes from any
-scoped re-review, and pointers to any new tickets spawned from non-blocking findings.>
+table with the columns id, severity (blocking/non-blocking), disposition, description, evidence
+and suggestion — legal disposition values, and which one is the default, are defined in
+`tickets/README.md §5`; then a one-line disposition summary, the verdict, notes from any scoped
+re-review, and the id of any ticket a finding was spawned into or absorbed by.>
 
 ## History
 
@@ -117,7 +119,8 @@ scoped re-review, and pointers to any new tickets spawned from non-blocking find
      - 2026-07-13 — TO DO → READY: implementation plan complete
      - 2026-07-14 — READY → IN DEVELOPMENT: picked up, branch feat/T-NNN-<slug>
      - 2026-07-15 — IN DEVELOPMENT → IN REVIEW: acceptance test green
-     - 2026-07-16 — IN REVIEW → DONE: review clean; non-blocking → T-MMM
+     - 2026-07-16 — IN REVIEW → DONE: review clean; 6 non-blocking, all dispositioned
+       (3 fixed in review, 2 absorbed by T-KKK, 1 → T-MMM)
      - 2026-07-17 — merged to main (MR !12)
 -->
 

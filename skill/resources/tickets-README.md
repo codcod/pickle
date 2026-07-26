@@ -153,6 +153,16 @@ All other transitions are forward-only, as diagrammed.
   `source:` line, which it complements rather than replaces — the History line keeps the prose
   reason, `spawned-by:` makes the link queryable). `pickle ticket new --spawned-by "T-NNN"`
   fills it in.
+  Because follow-up tickets are **batched by theme** (§5), one `spawned-by:` link routinely stands
+  for several findings: the link records *which ticket* a follow-up was born from, and the
+  parent's Review table is the itemised record of *which findings* it carries. Never split a
+  follow-up per finding to make the lineage granular — that is the spawn rate §5 exists to hold
+  down.
+- **Splitting at refinement.** A ticket may be split while being refined, and the parts carry
+  `spawned-by:` the original. Split **only when the part is independently schedulable** — it
+  could be picked up, built and reviewed on its own, and someone would choose to. Otherwise it
+  stays a task inside the plan: a plan with six tasks is one ticket, not six. The same promotion
+  test as §5 applies, for the same reason.
 
 ## 4. The READY gate
 
@@ -179,24 +189,62 @@ every item below:
 
 Until all seven hold, the ticket stays in `1-to-do/`.
 
-## 5. The review loop — blocking vs. non-blocking findings
+## 5. Findings — severity, then disposition
 
 Trigger: **"validate ticket T-NNN"** (or **"review ticket T-NNN"** — synonyms). Runs the
 skill's `resources/review-protocol.md` (plus the project's layered review addenda, if any —
 overarching + the ticket's child; see the protocol's intro), which audits implementation,
-quality, consistency, and docs, then classifies every finding:
+quality, consistency, and docs, then gives every finding a **severity** and — if it is
+non-blocking — a **disposition**.
+
+**Severity** decides whether the ticket can ship:
 
 - **Blocking** — breaks the golden path, ships wrong behaviour, or contradicts a locked
   decision. → ticket moves to **`5-rework/`**. Fix *only the findings* on the same branch, then
   move back to `4-in-review/` for a **scoped re-review** (verify the findings are resolved — do
-  not re-audit the whole feature from scratch).
-- **Non-blocking** — quality/consistency/polish that doesn't block shipping. → recorded in the
-  ticket's Review section, spawned as **new TO DO ticket(s)** (each with its own `project:`
-  target and `spawned-by:` naming the reviewed ticket — lineage, which never blocks the
-  follow-up; see §3), and the original ticket proceeds to `6-done/`.
+  not re-audit the whole feature from scratch). A blocking finding is never dispositioned: it is
+  fixed, and the ticket does not proceed until it is.
+- **Non-blocking** — quality/consistency/polish that doesn't block shipping. The reviewed ticket
+  proceeds to `6-done/`, and each finding takes exactly one disposition below.
+
+**Disposition** decides what happens to the finding. The four are **exhaustive** — every
+non-blocking finding gets exactly one, recorded in a `disposition` column of the ticket's
+Review table:
+
+| disposition | when |
+|---|---|
+| **fixed inline** | prose or idiom **this branch authored, or made false** — and no behaviour change. Recorded in the table like any other finding; never a silent edit. |
+| **folded** | an existing ticket already owns the ground. Add an item to it — or cite the item already there — and reference its id here. |
+| **new ticket** | it would **actually be scheduled**. Batched by theme (below), each with its own `project:` target and `spawned-by:` naming the reviewed ticket — lineage, which never blocks the follow-up; see §3. |
+| **noted** | none of the above. Recorded here with its evidence and closed. **This is the default.** |
+
+Five rules make that table decide cases instead of merely listing options:
+
+- **One finding, one disposition.** If a finding has separable parts that deserve different
+  dispositions — a wrong comment *and* the substantive defect it hid, say — split it into two
+  rows first. A row carrying two dispositions was never actually classified.
+- **The inline bar is about causation, not authorship.** "Made false" covers a statement
+  elsewhere in the tree that *this* change falsified — a plan that still lists the shipped
+  feature as pending, a doc comment the new command invalidated. It does **not** cover a defect
+  that was already there: pre-existing errors are `folded` or `noted`, however tempting the
+  one-line fix. Ask "did this branch break it?", not "is it small?".
+- **`noted` is the default, not the leftover.** A finding earns a new ticket by passing the
+  promotion test — *"would this actually be scheduled?"* — **not** by being a genuine defect.
+  Competent reviewers always find genuine defects, so "is it real?" answers yes every time and
+  rations nothing.
+- **Batching is mandatory, not encouraged.** One new ticket per *theme*, never one per finding.
+  Seven findings about the same subsystem are one ticket with seven items.
+- **`noted` is not "ignored".** The finding stays in the Review table permanently, with its
+  evidence. A later reviewer can promote it by citing that row — the same recoverability
+  `7-dropped/` gives a ticket.
 
 Findings are written into the ticket's own **Review** section — reviews produce no separate
-file.
+file. Recording is what keeps *"a review does not re-implement the ticket"* true in substance:
+`fixed inline` relaxes **where** a trivial fix may happen, never **whether** it is written down.
+
+**These four dispositions apply at every gate that can spawn a ticket**, not only at review —
+the pickup applicability gate (§8) and refinement splits (§3) use the same vocabulary, the same
+promotion test, and the same default.
 
 ## 6. The board — a maintained index (agent rule)
 
@@ -241,12 +289,19 @@ READY-gated executable prompt) + `## Review` (empty until reviewed) + `## Histor
                        └──▶ back to 4-in-review/ (scoped re-review)
 ```
 
-Nothing is built directly from a chat message, a review finding, or a raw idea — only from a
-ticket whose Implementation Plan has met the READY gate.
+**No feature is built** directly from a chat message, a raw idea, or a review finding — work
+enters only as a ticket whose Implementation Plan has met the READY gate. A *finding* is a
+different question: it earns a **disposition** (§5), and three of the four resolve it without a
+new ticket — including `fixed inline`, a bounded and recorded edit on the branch already under
+review. The pipeline above governs **features**; §5 governs **findings**.
 
 **Pickup is gated by a freshness check.** Before a READY ticket enters `3-in-development/`,
 its plan's assumptions are re-verified against the *current* target child-project (a ticket can
 age while the tree moves under it) by a spawned, unbiased sub-agent — scoped to the ticket's own
 assumptions plus the board delta since it went READY, run on every pickup. A plan found
-stale is routed back to `2-ready/`/`1-to-do/` to be re-refined rather than implemented. See
-the skill's *implement a ticket* procedure for the full step.
+stale is routed back to `2-ready/`/`1-to-do/` to be re-refined rather than implemented.
+The gate's own findings take **the four dispositions of §5**, with the same default: an
+amendment to the plan under pickup is `fixed inline` (edit the plan, record it in History) or
+`folded`; genuinely adjacent work is `noted` unless it passes the promotion test. A gate that
+files a ticket per observation converts every pickup into backlog growth. See the skill's
+*implement a ticket* procedure for the full step.

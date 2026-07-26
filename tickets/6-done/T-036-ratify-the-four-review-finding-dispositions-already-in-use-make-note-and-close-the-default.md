@@ -388,7 +388,281 @@ justified by measurement after this lands rather than assumed now.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+<!-- the acceptance-test-B evidence in the three "implementer's" subsections at the end was
+     produced during implementation, as the plan requires; everything before them is the review -->
+
+**Verdict: PASS — 0 blocking, 11 non-blocking, all dispositioned (5 fixed inline, 2 folded,
+4 noted, 0 new tickets). Reviewed on `feat/T-036-review-disposition-valves` @ f05b207 (+ this
+review's fixups), un-merged and publish-gated.**
+
+This is the first review conducted **under the rules it is validating** — the repo self-hosts the
+payload through the `.agents/skills/ticket-flow → skill/` symlink, so checking the branch out
+swapped the protocol in. An 11-finding review that spawns **zero** tickets is the change working:
+under the old §5 every one of those 11 was legally obliged to become a `1-to-do/` ticket. Record
+that as T-045's first datapoint, with the caveat the implementer states honestly below — one
+review is not a spawn rate.
+
+### Checklist
+
+- [x] Implementation audit — acceptance test re-run verbatim (A **and** the 30-row B replay
+      re-verified against the frozen tables), tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — payload *is* the docs; whole-tree sweep + fresh-install end-to-end
+      check (step 4a)
+- [x] Findings recorded with severity **and** disposition per rules §5; disposition summary
+      present (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6b)
+- [x] `BOARD.md` updated (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented for approval; bookkeeping committed
+      (step 9)
+
+### Implementation audit (step 2)
+
+| Item | Result | Evidence |
+|---|---|---|
+| Task 1 — rules §5 rewritten: severity/disposition split, four-row table, inline bar, promotion test, batching | **met** | `tickets-README.md:192-247` |
+| Task 1 — §3 lineage bullet notes batching; new "Splitting at refinement" bullet | **met** | `tickets-README.md:156-165` |
+| Task 1 — §8 pickup paragraph routed through §5's dispositions | **met** | `tickets-README.md:303-307` |
+| Task 1 (amendment 1) — §8's "nothing is built from … a review finding" contradiction reworded | **met** | `tickets-README.md:292-296` — pipeline governs *features*, §5 governs *findings* |
+| Task 2 — protocol §0 scope block: "never inline drift" → bounded inline path, "does not re-implement" kept | **met** | `review-protocol.md:21-28` |
+| Task 2 — protocol §5 rewritten, `disposition` column required, blocking cell `—`, summary line mandated | **met** | `review-protocol.md:103-130` |
+| Task 2 — line-116/117 cosmetic carve-out deleted whole (no orphan clause) | **met** | `rg 'purely-cosmetic\|patched directly' skill/` → 0 hits |
+| Task 2 — §6b and the step-5 checklist item updated | **met** | `review-protocol.md:140-142, 190` |
+| Task 3 — SKILL.md validate step 1, implement step 3, refine split rule (+ renumber 5→7) | **met** | `SKILL.md:205-211, 170-175, 145-152`; new rules-summary bullet at `:92-97` |
+| Task 4 — TEMPLATE.md Review columns incl. `disposition`, pointing at `tickets/README.md §5` | **met** | `TEMPLATE.md:108-112` |
+| Task 4 — History example reshaped to a disposition summary | **partially met → N2** | planned text is untestable; corrected inline |
+| Task 4b — `install.go:586` `markerBlock`, `testdata/markerblock.golden`, `AGENTS.md:20-23` all moved in step | **met** | `TestMarkerBlockGolden` green; fresh install rendered the new paragraph verbatim |
+| Task 5 — `TestPayloadDispositionVocabulary`, four explicit paths, the two amended assertions | **met** | `install_test.go:624-683`; assertion 1 verified **red on `main`** (`git show main:…review-protocol.md` → 1 hit) |
+| Acceptance A — `just build && just test && just lint`, `gofmt -l` | **met** | all green |
+| Acceptance A — `board audit` 45 tickets / 0 / 0 | **met** | verbatim |
+| Acceptance A (amendment 2) — `doctor`: 0 errors, exactly 1 warning, and it is the pre-existing payload-version one | **met** | `payload version "0.0.0-skeleton" differs from binary …` only |
+| Acceptance B — 30 rows, 3 criteria | **met, independently re-verified** | see below |
+| Decisions 1–3, 5–10 | honoured | — |
+| Decision 4 (inline bar *verbatim*) | **deliberately deviated, recorded** | F3; ratification requested — see N10 |
+
+**Acceptance B re-verified against the frozen tables, not the ticket's prose.** Row counts
+`rg '^\| N' 6-done/T-{008,024,029,030}` → 3 / 13 / 9 / 6; the replay's set is T-008's 2
+non-blocking (N3 is labelled `trivial (patched inline)`, correctly held out as a precedent),
+T-024's 13, T-029's 9 (N8/N9 `informational, no action` included per amendment 5), T-030's 6 =
+**30** ✓. Splits N3→N3a/N3b on T-029 and T-030 are both justified by the frozen record carrying
+two dispositions in one cell (`T-030:688` literally reads "fixed inline (comment reworded);
+substantive note folded into T-027") ✓. The summary arithmetic checks: 9 + 8 + 13 + 2 = 32 rows
+from 30 findings ✓; the 13 new-ticket rows collapse to exactly the 6 tickets history filed
+(T-015, T-029, T-030, T-031, T-032, T-038) ✓. Criterion 1 (no row ambiguous), 2 (all 9 historical
+inline fixes authorized) and 3 (≤ 6 new tickets) all hold. One claim inside criterion 2 is
+overstated — N5.
+
+**Fresh-install end-to-end (beyond the plan's acceptance test).** `pickle install` into a scratch
+repo shipped the rewritten §5 and the reworded marker block byte-for-byte. That is how N1 was
+caught: the miscount ships to every adopting project, not just this repo.
+
+### Findings (step 5)
+
+| # | severity | disposition | description | evidence | resolution |
+|---|---|---|---|---|---|
+| N1 | non-blocking | **fixed inline** | Rules §5 introduced its rule list as "**Four** rules" while **five** bullets follow (F2 added "one finding, one disposition" without updating the count). An off-by-one in the normative section the ticket exists to author, shipped to every installed project. | `tickets-README.md:221` + 5 bullets at `:223,226,231,235,237`; reproduced in a fresh `pickle install` | "Four" → "Five" |
+| N2 | non-blocking | **fixed inline** | TEMPLATE.md's History example deviates from task 4's specified text and drops the per-disposition counts §5's own summary rule now requires. **The deviation was forced, not sloppy:** the planned string `(3 inline, 2 folded, 1 → T-MMM)` contains `folded`, which task 5's assertion forbids outside the rules — tasks 4 and 5 are mutually unsatisfiable as written. It went unrecorded, which is the actual defect. | measured: restoring the planned text fails `TestPayloadDispositionVocabulary` (`install_test.go:675`) | Reworded to keep the counts without the token: "6 non-blocking, all dispositioned (3 fixed in review, 2 absorbed by T-KKK, 1 → T-MMM)" |
+| N3 | non-blocking | **fixed inline** | The new test was inserted directly beneath `TestVerifyStampedVersion`'s doc comment, so godoc/`go doc` attach that pre-existing paragraph to `TestPayloadDispositionVocabulary` and the older test is left undocumented. The branch did not author the comment — it **made it false**, which is exactly the widened bar's own case. | `install_test.go:624-628` before the fix | Comment moved back onto its function |
+| N4 | non-blocking | **fixed inline** | `SKILL.md` contained the literal token `fixed inline` — the one thing the new guard asserts appears only in the rules — and the assertion passed **purely because the phrase happened to soft-wrap** across two lines. The drift-guard's stated invariant was already false in the tree it guards. | `rg -U 'fixed\s+inline' skill/` → `SKILL.md:173-174` | Reworded to "takes the inline disposition"; the invariant now actually holds |
+| N5 | non-blocking | **fixed inline** | Criterion 2's parenthetical "only 1 of the 9 was, under the old rules" is wrong, and it is the headline number for the inline valve's measured gain. T-024 **N9 and N13** were typos in `skill/resources/tickets-README.md` — payload prose, i.e. squarely inside the old carve-out's "workflow scaffolding itself". Meanwhile the one it credits (T-005, a Go doc comment at `cli.go:14`) was the *stretch*, authorized only because that review said so. | `T-024:393,396`; old carve-out text at `main:review-protocol.md:116-117`; `T-005:33` | Corrected at the site, below |
+| N6 | non-blocking | **noted** | `TestPayloadDispositionVocabulary`'s second assertion is a raw substring test over soft-wrapped markdown, so it fails in both directions: it **under-detects** a genuine restatement that happens to wrap (N4) and **over-constrains** legitimate prose that merely uses the words (N2 — an example History line is not "restating the list", which is all decision 2 forbids). Not fixed here: normalising whitespace or narrowing the assertion changes test behaviour, so the inline bar excludes it, and "loosen a payload assertion" fails the promotion test on its own. | `install_test.go:669-682`; N2 and N4 are the two live instances | Recorded for whoever trips it next; promote by citing this row |
+| N7 | non-blocking | **folded** (T-044) | `BOARD.md`'s IN REVIEW `branch` cell reads `feat/T-036-ratify-the-four-…-default` — the filename slug — while the real branch is `feat/T-036-review-disposition-valves`. Pre-existing class (T-029 N9 → T-023, dropped), not this branch's doing. | `BOARD.md:45` vs `git branch --show-current` | T-044 **D2 drops the `branch` column** and "kills the T-023 class" (`T-044:121-122`) — no new item needed. This instance was hand-corrected as step-7 bookkeeping (the DONE row `move` wrote carried the same wrong branch, which a human would try to check out at merge time); the *defect* is still `folded`, not fixed |
+| N8 | non-blocking | **folded** (T-044) | `BOARD.md`'s preamble still reads "Last updated: 2026-07-26 (T-036 refined → READY …)" although the row has since moved twice. `pickle ticket move` never refreshes that line; only `board sync` does (`sync.go:184`). The board's most-read line contradicts its own table. | `BOARD.md:28`; `internal/sync/sync.go:184-186`. Measured: `board sync --dry-run` reports `OUT OF SYNC (1 change(s)) — reformat only (… Last-updated)` against the **pre-review** board too (reproduced in a scratch copy of `tickets/` at `HEAD` with T-036 back in `4-in-review/`), so any board `ticket move` last touched is permanently "drifted" | T-044 makes the board generated and normalises `Last updated:` on every write (`T-044:133,146`); this instance refreshed by hand as step-7 bookkeeping |
+| N9 | non-blocking | **noted** | Mild tension the ticket did not close: §5 says "a blocking finding is **never** dispositioned: it is fixed", while §8 gives the pickup gate's findings the same four dispositions and calls a plan amendment `fixed inline` — and this very ticket's History labels two such amendments "**blocking** amendments". Coherent if §5's sentence is read as review-scoped (it sits in the `5-rework/` bullet), which is the natural reading; a clause would remove the doubt. | `tickets-README.md:205-206` vs `:303-305`; `T-036` History 2026-07-26 pickup line | Left as is; the review-scoped reading is sound |
+| N10 | non-blocking | **noted** | The shipped inline bar is **not** decision 4's verbatim T-030 wording: F3 widened "prose or idiom in code authored on this same branch" to "**authored, or made false**". A recorded, argued deviation from a confirmed decision — normally blocking. It is not, because the plan was **internally unsatisfiable**: acceptance criterion 2 requires T-008 N3 (`PLAN.md:11`, prose the branch *falsified*) to be authorized, and the verbatim bar rejects it. Reverting would fail the ticket's own acceptance test, so rework has no coherent scope. The widening stays bounded — T-024 N11 and T-030 N5 are pre-existing defects with tempting one-line fixes and both still land on `folded`. | ticket F3; `T-008:389`; `tickets-README.md:216,226-230` | **Requires the user's explicit ratification** (see below); no code change |
+| N11 | non-blocking | **noted** | Protocol step 9 still frames the hand-back as "findings by severity … any newly-spawned tickets", the pre-change shape; with §5 rewritten it should ask for the disposition summary. Not falsified by the branch, just left incomplete. | `review-protocol.md:162` | Recorded; a one-clause edit for whoever next touches step 9 (T-016 is queued on this file) |
+
+**Disposition summary:** 11 non-blocking findings, 0 blocking. **5 fixed inline** (N1, N2, N3,
+N4, N5) · **2 folded** into T-044 (N7, N8) · **4 noted** (N6, N9, N10, N11) · **0 new tickets**.
+Under the old §5 all 11 were obliged to become `1-to-do/` tickets.
+
+### The one thing the user must ratify — the widened inline bar (N10)
+
+Confirmed decision 4 said "adopt T-030's bar **verbatim**, do not invent new wording". The shipped
+bar is `prose or idiom **this branch authored, or made false** — and no behaviour change`. The
+implementer flagged this himself and asked for it to be weighed; the review's position:
+
+- **Accept it.** The verbatim bar's justification was that it is field-tested — but its three
+  T-030 datapoints were *all* branch-authored, the one sample that cannot distinguish "authored"
+  from "caused". Replaying it over 30 rows is precisely what the acceptance test was for, and it
+  broke on the first case outside T-030 (T-008 N3: `PLAN.md` listed `board sync` as pending after
+  the branch had delivered it — a one-word fix to a line the change itself made wrong).
+- The bar still refuses the dangerous case: pre-existing defects. Two rows in the replay
+  (T-024 N11, T-030 N5) and one in *this* review (N7, N8 → T-044) are exactly that, and all
+  three come out `folded`, not inline. "Did this branch break it?" is a sharper question than
+  "is it small?" and it is the one now written into the rules.
+- This review then immediately exercised it: **N3 is a "made false", not an "authored", case.**
+  Under the verbatim bar the orphaned doc comment would have had to become a ticket.
+
+If the user rejects the widening, this goes to `5-rework/` with a scope of exactly two things:
+revert the bar to T-030's wording and re-cut acceptance criterion 2 (which the verbatim bar
+cannot satisfy).
+
+### Consistency & docs notes (steps 3, 4, 4a)
+
+- **Single-source-of-truth held.** The vocabulary is defined once, in rules §5. `review-protocol.md`
+  §5 explicitly says "do not restate the list of dispositions here" and doesn't; `TEMPLATE.md`
+  points at `tickets/README.md §5`, the established idiom that resolves through the installed
+  pointer file (`internal/install/install.go:623`); `SKILL.md` references §5 five times. This is
+  the T-024-N9/T-040 drift pattern being deliberately avoided.
+- **Cross-reference idiom respected.** Inside `review-protocol.md`, foreign references read "the
+  rules §5" (`:24,110,118,122,158,190`) while bare `§5`/`§6a` (`:23`) mean the protocol's own
+  sections — the distinction amendment 3 asked for. Two lines apart it is subtle but correct.
+- **No stale instruction survives.** `rg 'non-blocking' --glob '!tickets/**'` shows every
+  remaining occurrence is either the new severity language or a still-true summary — the mermaid
+  edge `IN_REVIEW --> DONE: review clean OR only non-blocking findings` (`:75`) and the ASCII
+  `6-done/ (clean / non-blocking only)` (`:287`) both hold under the new §5, as the docs step
+  claimed.
+- **Docs coverage (4a.1) is complete because the payload *is* the doc.** `README.md` genuinely has
+  zero disposition content (verified), so "no change" is right, not an omission. `PLAN.md` is a
+  historical record per the standing T-024 N12 precedent, and its line 51 ("classifying findings
+  blocking vs non-blocking") remains true. No docs build is configured for this child.
+- **The generated block is consistent with the payload it points at.** After task 4b all four
+  copies of the reworded sentence agree: `install.go:586`, the regenerated golden, this repo's
+  `AGENTS.md:20-23`, and a fresh install's rendering. Had 4b been skipped as the original plan
+  intended, `pickle install` would have emitted a block contradicting its own rules — the pickup
+  gate's most valuable catch.
+- **Quality.** The new test asserts *decisions*, not wording, exactly as task 5 demanded, and its
+  doc comment explains why each assertion exists — with the one caveat at N6. No production code
+  changed apart from one string literal; risk is confined to prose and one golden file.
+
+### Impact sweep (step 8)
+
+No ticket lists T-036 in `depends-on:` (`board audit` clean, and `rg 'T-036' 1-to-do/ 2-ready/`
+returns only narrative references). Four tickets reference it; none has an invalidated assumption:
+
+- **T-045** — measurement-gated on exactly this change. Its assumption ("re-measure the spawn rate
+  after T-036 lands") is now *satisfiable*: this review is datapoint 1, and it is a strong one
+  (11 findings → 0 tickets). History line added there so the count starts from a recorded base.
+- **T-044** — absorbs N7 and N8; its D2 (drop the `branch` column) and generated-board design
+  already cover both. Item noted in its Description. Sequencing recorded at pickup — T-036 lands
+  first — still holds, and its Task 7 must now expect the *new* §5 text in the three payload files.
+- **T-041** (marker-block freshness) — this ticket hand-edited `AGENTS.md` to match `markerBlock`,
+  which is the drift T-041 exists to detect. Strengthens its case; no assumption broken.
+- **T-040** — its reference was already corrected at T-036's refinement ("the TO DO cap moved from
+  T-036 to T-045"); still accurate. The `.gitkeep` finding folded in at pickup is untouched.
+- **T-016** and **T-022** — both edit files this ticket rewrote (`review-protocol.md` step 4b;
+  payload conditionals). Neither is refined, so no plan text went stale; the soft coupling now
+  points at new line numbers, which is a refinement-time concern. N11's one-clause edit to step 9
+  is a natural drive-by for whichever lands first.
+
+### Acceptance test B — the 30-row retroactive replay (implementer's run)
+
+Every finding re-classified against the **new** rules §5 only. `→` marks a new ticket.
+
+| # | historical disposition | new disposition | note |
+|---|---|---|---|
+| **T-008** N1 | → T-015 | **new ticket** → T-015 | batched with N2 |
+| T-008 N2 | → T-015 | **new ticket** → T-015 | same ticket, one theme |
+| **T-024** N1 | → T-029 | **new ticket** → T-029 | batched with N5, N6 |
+| T-024 N2 | → T-030 | **new ticket** → T-030 | distinct theme (input sanitisation) |
+| T-024 N3 | absorbed by T-027 | **folded** (T-027) | |
+| T-024 N4 | patched during review | **fixed inline** | branch-authored doc comment |
+| T-024 N5 | → T-029 | **new ticket** → T-029 | strengthening an assertion changes test behaviour → not inline |
+| T-024 N6 | → T-029 | **new ticket** → T-029 | |
+| T-024 N7 | → T-015 item 5 | **folded** (T-015) | |
+| T-024 N8 | already deferred, T-015 item 4 | **folded** (T-015) | needed the amended `folded` wording — see F1 |
+| T-024 N9 | patched during review | **fixed inline** | payload prose edited on this branch |
+| T-024 N10 | patched during review | **fixed inline** | sentence inserted by this branch |
+| T-024 N11 | → T-019 item 3 | **folded** (T-019) | pre-existing error — correctly *not* inline |
+| T-024 N12 | no action — deliberate | **noted** | the disposition's own precedent |
+| T-024 N13 | patched during review | **fixed inline** | payload heading this branch made false |
+| **T-029** N1 | → T-031 | **new ticket** → T-031 | batched with N2, N3a, N4 |
+| T-029 N2 | → T-031 | **new ticket** → T-031 | |
+| T-029 N3a | → T-031 | **new ticket** → T-031 | **split** — see F2 |
+| T-029 N3b | → T-031 | **fixed inline** | the imprecise comment half, branch-authored |
+| T-029 N4 | → T-031 | **new ticket** → T-031 | |
+| T-029 N5 | → T-032 | **new ticket** → T-032 | distinct theme (duplication) |
+| T-029 N6 | noted in T-027's couplings | **folded** (T-027) | |
+| T-029 N7 | → T-031 | **fixed inline** | comment nit, branch-authored — **the valve working**: a ticket item under the old rules |
+| T-029 N8 | informational, no action | **noted** | |
+| T-029 N9 | already T-023 | **folded** (T-023) | |
+| **T-030** N1 | → T-038 | **new ticket** → T-038 | batched with N2 |
+| T-030 N2 | → T-038 | **new ticket** → T-038 | |
+| T-030 N3a | fixed inline | **fixed inline** | **split** from N3b — see F2 |
+| T-030 N3b | folded into T-027 | **folded** (T-027) | |
+| T-030 N4 | fixed inline | **fixed inline** | |
+| T-030 N5 | folded into T-019 item 4 | **folded** (T-019) | pre-existing — correctly *not* inline |
+| T-030 N6 | fixed inline | **fixed inline** | the clearest instance of the bar |
+
+Out-of-set inline precedents (criterion 2 ranges over these, they are not rows in the 30):
+
+| precedent | new disposition | note |
+|---|---|---|
+| T-005, sole finding (`cli.go:14`) | **fixed inline** | doc comment this branch authored |
+| T-008 N3 (`PLAN.md:11`) | **fixed inline** | **only via "made false"** — see F3 |
+
+**Disposition summary:** 32 dispositioned rows from 30 findings (2 splits) — 9 fixed inline,
+8 folded, 13 → 6 new tickets, 2 noted. Plus the 2 out-of-set precedents: **11 inline total**.
+
+**Criteria:**
+
+1. **PASS** — all 32 rows map to exactly one disposition, zero ambiguous, after the three
+   wording fixes below.
+2. **PASS** — all 9 inline fixes authorized (only 1 of the 9 was, under the old rules), and the
+   new bar authorizes 2 *more* (T-029 N3b, N7) that were ticket items historically.
+
+   > **Review correction (N5, 2026-07-26).** "Only 1 of the 9" is wrong. The old carve-out was
+   > "trivial, purely-cosmetic spec typos **in the workflow scaffolding itself**", so T-024 **N9**
+   > and **N13** — both typos in `skill/resources/tickets-README.md` — were squarely authorized,
+   > and T-005's Go doc comment (`cli.go:14`) was the one that stretched the rule. **3 of the 9
+   > were authorized** under the old rules, not 1; the inline valve's measured gain on this data is
+   > 6 newly-authorized fixes plus the 2 that were ticket items (T-029 N3b, N7), not 8 plus 2. The
+   > criterion still passes — every one of the 9 is authorized by the new bar — and the direction
+   > of the argument is unchanged.
+3. **PASS** — exactly **6** new tickets, equal to the 6 actually filed. Not fewer.
+
+### Findings the replay produced — three wording fixes, applied
+
+The replay was run to test the wording, and it failed three times before passing. Each fix is
+wording, not an exception list, as the plan requires.
+
+- **F1 — `folded` did not cover the commonest case.** T-024 N8's ground was already an *item* in
+  T-015; nothing needed adding. As written ("add an item to it") the row forced a choice between
+  `folded` and `noted` — an ambiguity, and criterion 1 fails on a single one. Now: "add an item to
+  it — **or cite the item already there**".
+- **F2 — compound findings had no rule.** T-030 N3 carried **two** dispositions in the frozen
+  record ("fixed inline (comment reworded); substantive note folded into T-027"), and T-029 N3 is
+  the same shape. A vocabulary cannot fix that; a rule can. Added: **one finding, one
+  disposition** — split separable parts into rows first, because "a row carrying two dispositions
+  was never actually classified." This is the one structural gap the replay found that no amount
+  of careful wording on the four rows would have closed.
+- **F3 — the inline bar under-authorized by exactly one, and it is a deviation from confirmed
+  decision 4.** Decision 4 adopted T-030's bar *verbatim* — "prose or idiom in code authored on
+  this same branch". Replayed beyond T-030's own findings it fails **T-008 N3**: `PLAN.md:11`
+  listed `board sync` as still pending, which T-008 had just delivered. That prose was **not
+  authored on the branch** — the branch *falsified* it. Under the verbatim bar it must become a
+  ticket or a `noted`, for a one-word edit to a file the change itself made wrong; criterion 2
+  fails. The bar is now **"prose or idiom this branch authored, or made false"**, with an
+  explicit rule that it is **about causation, not size**: "did this branch break it?", not "is it
+  small?".
+
+  This is a deliberate, recorded deviation from a confirmed decision, and the reviewer should
+  weigh it. The defence: decision 4's stated reason was that T-030's bar is *field-tested*, and
+  it was — on three findings, **all** of them branch-authored, which is precisely the sample that
+  cannot distinguish "authored" from "caused". Widening it is what the 30-row replay is for. It
+  stays bounded and still discriminates on this data: T-024 N11 and T-030 N5 are pre-existing
+  defects with tempting one-line fixes, and both correctly remain `folded`.
+
+### Honest reading of criterion 3
+
+Criterion 3 passes at exactly 6 — it does not improve on history, and the replay explains why:
+**these reviewers were already batching well.** 13 new-ticket findings became 6 tickets, and the
+worst historical case (T-018: 7 findings → 1 ticket) is not even in the replay set. The
+measured gain on this data is therefore the inline valve (9 → 11 authorized) and nothing else.
+
+The rest of the expected effect is **prospective and untested here**: `noted` as the default and
+the promotion test bite at the moment a reviewer decides, and this replay cannot simulate that
+decision honestly — the historical reviewers did not ask "would this be scheduled?", so
+re-answering it for them would be inventing data. What the board does suggest is where it would
+have bitten: of the 6 tickets, T-029 and T-030 were built, while **T-015, T-031 and T-032 were
+never scheduled and were absorbed into epics** at the 2026-07-26 triage. That is the promotion
+test's target, but it is an observation, not a criterion.
+
+This is the first datapoint for **T-045**, and it should be recorded there as one: the spawn rate
+cannot be re-measured from a replay, only from the next three real reviews.
 
 ## History
 
@@ -444,3 +718,6 @@ justified by measurement after this lands rather than assumed now.
   fresh clone would lack three status dirs, which `board audit` cannot detect by design. Harmless
   for this pickup — `move.go:124` does `MkdirAll` before the rename and `LoadAll` treats a
   vanished-empty dir as zero tickets.
+- 2026-07-26 — READY → IN DEVELOPMENT: picked up, branch feat/T-036-review-disposition-valves
+- 2026-07-26 — IN DEVELOPMENT → IN REVIEW: acceptance green: A clean, B 30-row replay passes all 3 criteria
+- 2026-07-26 — IN REVIEW → DONE: review PASS: 0 blocking, 11 non-blocking all dispositioned (5 fixed inline, 2 folded into T-044, 4 noted, 0 new tickets); acceptance A re-run clean and the 30-row B replay independently re-verified; the widened inline bar (F3, decision-4 deviation) is accepted pending user ratification

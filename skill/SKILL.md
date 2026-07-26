@@ -1,6 +1,6 @@
 ---
 name: ticket-flow
-description: Operate a ticket-based, board-driven feature flow (installed by the `pickle` CLI) across one or more connected child-projects. Use when asked to "make it a ticket", "refine ticket T-NNN" (make it ready), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses. One markdown ticket per feature; a ticket's status is the directory it lives in; each ticket targets one registered child-project via `project:` frontmatter; a hand-maintained BOARD.md is the live index; reviews classify findings as blocking vs non-blocking; pushing a child-project requires explicit user approval.
+description: Operate a ticket-based, board-driven feature flow (installed by the `pickle` CLI) across one or more connected child-projects. Use when asked to "make it a ticket", "refine ticket T-NNN" (make it ready), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses. One markdown ticket per feature; a ticket's status is the directory it lives in; each ticket targets one registered child-project via `project:` frontmatter; a hand-maintained BOARD.md is the live index; reviews classify findings by severity (blocking vs non-blocking) and then disposition each non-blocking one, defaulting to note-and-close; pushing a child-project requires explicit user approval.
 ---
 
 # Ticket flow
@@ -89,6 +89,12 @@ WIP limits, and an optional per-child review addendum. Defaults:
 - **READY gate.** A ticket is READY only when its `## Implementation Plan` is a complete,
   self-contained prompt: feature branch (in the child), prerequisites, confirmed decisions,
   concrete tasks, a runnable acceptance test, a docs step, and a finish step.
+- **Findings — severity, then disposition.** A review gives every finding a severity (blocking →
+  `5-rework/` for a scoped fix; non-blocking → the ticket proceeds) and every non-blocking
+  finding exactly one of **four dispositions** defined in rules §5, recorded in the ticket's
+  `## Review` table. The default is to note and close; a follow-up ticket must pass §5's
+  promotion test and is **batched by theme**, never one per finding. The same four apply at the
+  pickup applicability gate and to refinement splits.
 - **Board rule.** Update `BOARD.md` on **every** ticket move — same change as the directory
   move and the `## History` append.
 - **WIP limits per child.** `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, counted independently
@@ -136,9 +142,13 @@ When asked to refine ticket T-NNN (or "make it ready"):
 4. **Write the Implementation Plan** against the READY gate (rules §4): feature branch (in the
    child's repo), prerequisite gate, confirmed decisions, concrete tasks with exact paths,
    runnable acceptance test, docs step, finish step.
-5. **Re-grade** impact/complexity/cost against the backlog; add new hard `depends-on:` entries
+5. **Split only what is independently schedulable** (rules §3). Refinement is a spawn gate like
+   any other: a part becomes its own ticket only if it could be picked up, built and reviewed
+   alone *and* someone would choose to. Otherwise it stays a task in this plan — six tasks are
+   one ticket, not six. Anything genuinely out of scope is dispositioned per the rules §5.
+6. **Re-grade** impact/complexity/cost against the backlog; add new hard `depends-on:` entries
    (possibly cross-child) only with user sign-off.
-6. When all seven gate items hold: `pickle ticket move T-NNN ready --reason "plan complete"`
+7. When all seven gate items hold: `pickle ticket move T-NNN ready --reason "plan complete"`
    (moves the file, appends History, updates the board).
 
 ## Procedure: implement a ticket
@@ -157,9 +167,12 @@ When asked to implement ticket T-NNN:
      locked-decision docs).
    - **Scope the mandate to the ticket's own assumptions plus the board delta since it went
      READY.** For each assumption, confirm it is still **true**, **required**, and **worth it**.
-   - The agent returns a **findings list classified like a review**. **Present it and get
-     approval on the routing:** clean → proceed; plan invalidated → move back to
-     `2-ready/`/`1-to-do/` and re-refine; adjacent work → new `1-to-do/` ticket(s).
+   - The agent returns a **findings list classified like a review** — severity *and* disposition
+     per the rules §5. **Present it and get approval on the routing:** clean → proceed; plan
+     invalidated → move back to `2-ready/`/`1-to-do/` and re-refine; otherwise disposition each
+     finding, defaulting to note-and-close. An amendment to the plan being picked up takes the
+     inline disposition (edit the plan, record it in the ticket's History); adjacent work earns a
+     ticket only by passing §5's promotion test, batched by theme.
 4. **Move** the ticket: `pickle ticket move T-NNN in-development --reason "picked up"`.
 5. **Create the feature branch** `feat/T-NNN-<slug>` **inside the target child-project's repo**
    (from the agreed base, default `main`).
@@ -192,8 +205,10 @@ child). In short:
 
 1. The ticket must be in `4-in-review/`. Audit implementation, quality, consistency, and docs
    (running the child's configured commands); classify each finding **blocking** (→
-   `5-rework/`, scoped re-review after the fix) vs **non-blocking** (→ new `1-to-do/` ticket(s),
-   each filed with `--spawned-by "<reviewed ticket id>"`; original proceeds to `6-done/`).
+   `5-rework/`, scoped re-review after the fix) vs **non-blocking** (→ one of the four
+   dispositions in the rules §5, whose default is to note and close; the original proceeds to
+   `6-done/`). A follow-up ticket is the exception, is batched by theme, and is filed with
+   `--spawned-by "<reviewed ticket id>"`.
 2. Findings go into the ticket's own `## Review` section — no separate file.
 3. On a concluding verdict, **move the ticket** (`pickle ticket move …`).
 4. **Present the child-project commit message** (and merge-request attributes) **to the user

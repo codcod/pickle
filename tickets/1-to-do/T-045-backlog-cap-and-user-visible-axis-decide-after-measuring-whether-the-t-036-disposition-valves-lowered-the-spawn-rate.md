@@ -123,3 +123,10 @@ before planning any board change here).
   cap) and 4 (`user-visible:` axis) are CLI+schema backstops for the leak T-036's text valves
   plug, so their justification is to be re-measured after T-036 lands rather than assumed now.
   Both carry unresolved design problems recorded in the Description.
+- 2026-07-26 — **measurement datapoint 1 recorded** (patched by T-036's review impact sweep, not a
+  status change). T-036's own review ran under the new §5 — the repo self-hosts the payload — and
+  produced **11 non-blocking findings → 0 new tickets** (5 fixed inline, 2 folded into T-044,
+  4 noted). Under the old §5 all 11 were obliged to become `1-to-do/` tickets. Two more reviews
+  are needed before this ticket may be refined, per the gate above. Caveat carried over from
+  T-036's own "honest reading": a retroactive replay cannot measure a spawn rate, only real
+  reviews can, and one review is not a rate either. The disposition columns are now the data.

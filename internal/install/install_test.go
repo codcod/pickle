@@ -621,6 +621,63 @@ func TestMarkerBlockGolden(t *testing.T) {
 	}
 }
 
+// TestPayloadDispositionVocabulary pins the two decisions behind T-036, not the
+// prose that expresses them.
+//
+//  1. The payload must not tell a reviewer that a fix on the branch under review
+//     is forbidden. The old protocol said "never inline drift", which made a
+//     new ticket the only legal move for any non-blocking finding and left the
+//     shipped flow minting tickets faster than any project retires them.
+//  2. The four dispositions are defined in exactly one place. Restating a list
+//     in a second file is how this payload has drifted before, so the two
+//     dispositions that exist only as vocabulary — "fixed inline" and "folded" —
+//     must appear in the rules and nowhere else. The other two ("new ticket",
+//     "noted") are ordinary English that legitimately occurs in running prose,
+//     so asserting on them would fail for reasons unrelated to drift.
+func TestPayloadDispositionVocabulary(t *testing.T) {
+	const rules = "skill/resources/tickets-README.md"
+	// The four payload files a reviewer or implementer actually reads. Note
+	// SKILL.md is at skill/SKILL.md, not under skill/resources/.
+	files := []string{
+		rules,
+		"skill/resources/review-protocol.md",
+		"skill/SKILL.md",
+		"skill/resources/TEMPLATE.md",
+	}
+
+	body := make(map[string]string, len(files))
+	for _, rel := range files {
+		b, err := os.ReadFile(filepath.Join(payloadRoot(), filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatalf("read %s: %v", rel, err)
+		}
+		body[rel] = string(b)
+	}
+
+	// 1. The prohibition is gone for good.
+	for _, rel := range files {
+		if strings.Contains(body[rel], "never inline drift") {
+			t.Errorf("%s still forbids inline fixes (%q): a bounded, recorded inline fix is now a legal disposition (rules §5)",
+				rel, "never inline drift")
+		}
+	}
+
+	// 2. The vocabulary lives in the rules and is referenced, never restated.
+	for _, token := range []string{"fixed inline", "folded"} {
+		if !strings.Contains(body[rules], token) {
+			t.Errorf("%s does not define the %q disposition; the rules are its single source of truth", rules, token)
+		}
+		for _, rel := range files {
+			if rel == rules {
+				continue
+			}
+			if strings.Contains(body[rel], token) {
+				t.Errorf("%s restates the %q disposition; reference the rules §5 instead so the list cannot drift", rel, token)
+			}
+		}
+	}
+}
+
 // TestVerifyStampedVersion covers the guard that stops Upgrade reporting a
 // version it did not actually put on disk. The config writer's own parse-back
 // check makes this unreachable today; it exists so that a future regression

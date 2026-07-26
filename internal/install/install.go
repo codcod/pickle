@@ -583,8 +583,9 @@ func markerBlock(cfg *config.Config) string {
 	return "## Ticket flow (start here)\n" +
 		"\n" +
 		"**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the live index of every ticket by\n" +
-		"status. Nothing is built directly from a chat message, an idea, or a review finding — only from\n" +
-		"a ticket whose Implementation Plan has met the READY gate.\n" +
+		"status. No feature is built directly from a chat message or a raw idea — work enters only as a\n" +
+		"ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it\n" +
+		"earns a **disposition** (rules §5), and most are resolved without a new ticket.\n" +
 		"\n" +
 		"- The flow engine is the **ticket-flow skill** at `.agents/skills/ticket-flow/`. It holds\n" +
 		"  the rules (`resources/tickets-README.md`), the ticket template\n" +

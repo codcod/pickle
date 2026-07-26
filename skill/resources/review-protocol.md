@@ -19,9 +19,13 @@ Reviewing a ticket runs **this generic protocol → overarching addendum → the
 child addendum** (whichever exist).
 
 > **Scope.** A review does **not** re-implement the ticket. It verifies, audits, records
-> findings *into the ticket*, and updates the board. Fixes become either a scoped rework pass
-> on the same ticket (blocking findings, §5) or a *new* ticket in `tickets/1-to-do/`
-> (non-blocking findings, §5) — never inline drift.
+> findings *into the ticket*, and updates the board. A **blocking** finding becomes a scoped
+> rework pass on the same ticket (§5, §6a). A **non-blocking** finding takes one of the four
+> dispositions defined in **the rules §5**, whose default is to record and close. Exactly one of
+> the four permits a fix during the review itself; the rules state its bar, it is deliberately
+> narrow, and it is **never silent** — every disposition is written into the findings table. That
+> recording is what keeps this scope rule true in substance while letting a reviewer correct a
+> typo it would be absurd to schedule.
 >
 > **Review on the ticket's feature branch.** The work under review lives on the un-merged
 > `feat/T-NNN-<slug>` branch in the ticket's target child-project — check it out to audit and
@@ -96,25 +100,34 @@ If the project ships documentation:
 
 Follow any project-specific documentation rules named in `AGENTS.md`.
 
-## 5. Classify and record findings — blocking vs. non-blocking
+## 5. Classify and record findings — severity, then disposition
 
-Write directly into the ticket's own **`## Review`** section (no separate file):
+Write directly into the ticket's own **`## Review`** section (no separate file).
 
-- A **findings table**: severity (**blocking** / **non-blocking**), description, evidence,
-  suggestion.
+A **findings table**, with severity and disposition as **separate columns**: id, **severity**
+(blocking / non-blocking), **disposition**, description, evidence, suggestion. Both vocabularies
+are defined in **the rules §5**, which is their single source of truth — do not restate the list
+of dispositions here.
+
 - **Blocking** — breaks the golden path, ships wrong behaviour, contradicts a locked decision,
-  or is missing required docs coverage (4a.1). **Do not fix it inline.** The ticket moves to
+  or is missing required docs coverage (4a.1). **Do not fix it inline**, and leave the
+  disposition cell `—`: a blocking finding is not dispositioned, it is fixed. The ticket moves to
   `tickets/5-rework/` (step 6a) for a scoped fix, then back to `tickets/4-in-review/` for a
   scoped re-review.
-- **Non-blocking** — quality/consistency/polish that doesn't block shipping. Spawn a **new
-  ticket** in `tickets/1-to-do/` (from this skill's `resources/TEMPLATE.md`, graded per the
-  rules §3) for each, and reference the new id(s) here. Each spawned ticket records its
-  lineage — `spawned-by: [<reviewed ticket id>]`, i.e.
-  `pickle ticket new … --spawned-by "T-NNN"` — which is provenance only and does **not** make
-  the follow-up wait on the ticket under review. The original ticket proceeds to
-  `tickets/6-done/` (step 6b).
-- Trivial, purely-cosmetic spec typos in the workflow scaffolding itself may be patched directly
-  and noted here.
+- **Non-blocking** — quality/consistency/polish that doesn't block shipping. Give each one
+  **exactly one** disposition per the rules §5, and record it. The default is to note and close;
+  a follow-up ticket must pass that section's promotion test — *"would this actually be
+  scheduled?"* — and must be **batched by theme**, one ticket carrying several findings rather
+  than one ticket per finding. Spawn it with
+  `pickle ticket new … --spawned-by "T-NNN"` (from this skill's `resources/TEMPLATE.md`, graded
+  per the rules §3); the lineage is provenance only and does **not** make the follow-up wait on
+  the ticket under review. Reference the new id in the table; a finding absorbed by an existing
+  ticket cites that ticket's id. The reviewed ticket proceeds to `tickets/6-done/` (step 6b).
+
+Close with a one-line **disposition summary** under the table, counting each disposition and
+naming the ids involved — so the shape of the review is legible without reading every row. It is
+also the number to watch: a review that mints a ticket per finding is not reviewing, it is
+deferring.
 
 ## 6. Move the ticket
 
@@ -124,9 +137,9 @@ the skill's procedure) then addresses *only the listed findings* on the same bra
 the ticket back to `tickets/4-in-review/` (History line on each move); a **scoped re-review**
 verifies just those findings and concludes via 6a/6b again.
 
-**6b. If there are no blocking findings** (zero, or only non-blocking already spawned as new
-tickets): move `tickets/4-in-review/T-NNN-*.md` → `tickets/6-done/`; append a `## History` line
-noting the verdict and any spawned ids.
+**6b. If there are no blocking findings** (zero, or only non-blocking with every one
+dispositioned): move `tickets/4-in-review/T-NNN-*.md` → `tickets/6-done/`; append a `## History`
+line noting the verdict and the disposition summary, including any spawned ids.
 
 ## 7. Update the board and other references
 
@@ -140,8 +153,9 @@ noting the verdict and any spawned ids.
 
 Re-read every ticket in `tickets/2-ready/` and `tickets/1-to-do/` that lists this ticket in
 `depends-on:` (or references it in Description) and check whether the implementation invalidated
-any assumption they encode. Patch the affected tickets, or open a new `tickets/1-to-do/` ticket
-if the change is large.
+any assumption they encode. Patching the affected ticket **is** the expected outcome — record the
+correction in its History. This sweep is a spawn gate like any other, so anything it turns up that
+is not a patch takes a disposition per the rules §5, and a new ticket needs the promotion test.
 
 ## 9. Finish
 
@@ -173,7 +187,7 @@ if the change is large.
 - [ ] Quality audit (step 3)
 - [ ] Consistency audit (step 4)
 - [ ] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a, if the project ships docs)
-- [ ] Findings classified blocking/non-blocking and recorded in the ticket's `## Review`; non-blocking → new `tickets/1-to-do/` ticket(s) (step 5)
+- [ ] Findings recorded in the ticket's `## Review` with severity **and** disposition per the rules §5; disposition summary line present (step 5)
 - [ ] Ticket moved to `tickets/6-done/` or `tickets/5-rework/`; `## History` appended (step 6)
 - [ ] `BOARD.md` updated; other references if needed (step 7)
 - [ ] Remaining-tickets impact sweep done (step 8)

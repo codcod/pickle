@@ -25,7 +25,8 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 > `MoveRow` re-rendered it from frontmatter. Left escaped for legibility; T-044 deletes
 > `insertIntoBoard` outright and needs no fixture to write the failing test.
 
-Last updated: 2026-07-26 (T-036 refined → READY, retitled, valves 3–4 split out as T-045)
+Last updated: 2026-07-26 (T-036 reviewed → DONE: 0 blocking, 11 non-blocking all dispositioned,
+0 new tickets; awaiting the human's merge)
 
 ---
 
@@ -56,7 +57,6 @@ Last updated: 2026-07-26 (T-036 refined → READY, retitled, valves 3–4 split 
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | high | medium | M | [] |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
@@ -131,6 +131,7 @@ sequence, do not run concurrently.
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — main (3c4c131, squashed) |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — main (0b7cd91, squashed) |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — main (a29fde1, squashed) |
+| T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | no — publish-gated (branch feat/T-036-review-disposition-valves) |
 
 ## DROPPED
 
