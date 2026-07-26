@@ -13,6 +13,10 @@ cost: M
 
 ## Description
 
+> **PARKED (triage 2026-07-26).** Real, but explicitly unscheduled: nothing is blocked on
+> this and no user has asked for it. Do not pick it up without a demand signal. Unparking is a
+> user decision — note it in History.
+
 Make the **docs-readability reviewer part of the flow `pickle` ships**, not just a workspace
 dev tool. Today a docs-readability capability exists only as *development* tooling for building
 pickle (a Pi extension + an opencode subagent + a shared prompt, all kept **outside** the
@@ -84,3 +88,4 @@ or make any review block on the reviewer's availability.
 ## History
 
 - 2026-07-24 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — parked (stays in TO DO, unscheduled). source: board triage — backlog growth analysis

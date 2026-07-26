@@ -75,3 +75,4 @@ unknown-key). Once T-024 ships, this ticket's own `spawned-by:` should be set to
   need `[T-024]`; T-029/T-030 already carry it from creation)
 - 2026-07-25 — impact sweep after T-029 was reviewed: no new backfill candidates (T-031/T-032 were
   born with `spawned-by: [T-029]`); note added that the born-with-lineage set keeps growing
+- 2026-07-26 — TO DO → DROPPED: lineage archaeology with no consumer; source: History lines already carry provenance

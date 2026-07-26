@@ -13,6 +13,10 @@ cost: M
 
 ## Description
 
+> **PARKED (triage 2026-07-26).** Real, but explicitly unscheduled: nothing is blocked on
+> this and no user has asked for it. Do not pick it up without a demand signal. Unparking is a
+> user decision — note it in History.
+
 With `--agent pi`, scaffold `.pi/` with a guardrails extension adapted from `pickle.toml`: a
 git-staging deny-list, a publish gate for child-projects (push / MR require confirmation), and a
 self-install guard, plus a short `.pi/README`. Mirrors the reference guardrails pattern. This is
@@ -41,3 +45,4 @@ burden sits here, not there.
 ## History
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P4)
+- 2026-07-26 — parked (stays in TO DO, unscheduled). source: board triage — backlog growth analysis

@@ -48,6 +48,14 @@ Options to weigh during refinement:
 - cap the derived slug at a sane length and document the cell as advisory;
 - drop the column.
 
+**Second confirmed instance (2026-07-26 board triage).** T-030's real branch is
+`feat/T-030-validate-ticket-new-input` (verified with `git branch --list`); the board correctly
+carried that value, and a `./pickle board sync` run during triage overwrote it with the
+slug-derived `feat/T-030-ticket-new-writes-unsanitised-input-into-frontmatter-newline-injection`.
+The overwrite was reverted by hand. Two-for-two on the tickets whose plans chose a human-scale
+branch name, which retires the "rare edge case" reading: `sync` destroys a correct cell whenever
+the title is long, i.e. exactly when the derived name is least usable.
+
 Soft coupling: **T-014** (board-row and move polish) owns the neighbouring board-cell mechanics —
 these may want to land together.
 

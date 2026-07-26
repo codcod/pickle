@@ -40,6 +40,18 @@ surface, none of which change the happy path:
    row in a 6-column table, audit-clean). Render-boundary escaping remains this ticket's job; T-030
    deliberately did **not** do it. Consider whether the audit should also reject a row whose cell
    count is wrong — that is what would have caught both.
+
+   **Note added by the 2026-07-26 board triage.** `pickle board sync` **actively re-corrupts**
+   this, which makes a hand-repair of `BOARD.md` worthless and raises the priority of doing the
+   escaping at the render choke point. Measured: T-021's live row (title `project add|remove …`)
+   was hand-repaired to `project add\|remove …` — 6 rendered columns, audit-clean — and the very
+   next `./pickle board sync` rewrote it straight back to the unescaped 7-cell form, because
+   `sync.rowFor` (`internal/sync/sync.go:281`) assigns `Title: t.Front["title"]` verbatim into
+   `board.RowData` with no escaping before `board.RenderRow`. So `sync` is a *second* unescaped
+   render path alongside `MoveRow`/`AddTODORow`; whatever choke point this item establishes must
+   cover it, and the acceptance test should assert that `board sync` is idempotent on a title
+   containing `|`. The T-035 hand-repair was dropped for exactly this reason — the data fix does
+   not hold until this item lands.
 3. **create-sub-group spacing.** When `MoveRow` creates a *new* `### <child>` sub-group at the
    end of a section, the inserted row is left with no blank line before the following `## `
    heading (cosmetic; the empty-existing-subgroup case was already fixed in T-007). Emit a

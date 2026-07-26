@@ -10,13 +10,20 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-25 (T-030 pickup gate: spawned T-034/T-035)
+> ⚠️ **Do not run `pickle board sync` on this file until T-037 lands.** Three confirmed
+> data-loss behaviours, all reproduced 2026-07-26: it **deletes the prose notes** in the TO DO
+> section while reporting "reformat only" (T-037), it **un-escapes the `\|`** in T-021's title
+> back into a malformed 7-cell row (T-014·2), and it **overwrites a hand-corrected `branch`
+> cell** with the slug-derived guess (T-023). `pickle board audit` and `pickle ticket move` are
+> safe and were used for every move recorded here.
+
+Last updated: 2026-07-26 (triage: T-036/T-037 filed; T-035/T-025 dropped; T-026 regraded high; T-009/T-010/T-016 parked)
 
 ---
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
@@ -47,30 +54,40 @@ Last updated: 2026-07-25 (T-030 pickup gate: spawned T-034/T-035)
 
 ### pickle
 
+**Parked: T-009, T-010, T-016.** Real but explicitly **unscheduled** — nothing is blocked on
+them and no user has asked. Do not pick one up without a demand signal. Parked status is
+recorded in each ticket's Description and History (the board's grade cells are rewritten from
+frontmatter by `pickle board sync`, so it cannot be encoded there). Triage 2026-07-26.
+
+**Merge candidates** (proposed 2026-07-26, not yet executed): audit hardening + cell escaping
+(T-027, T-028, T-033, T-034, T-014·2) · marker-block freshness (T-020, T-021) · one-predicate
+refactors (T-015, T-017, T-032) · test harness + cli coverage (T-031, T-012) · surface polish
+(T-013, T-014·1, T-019, T-023).
+
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-009 | opencode wiring | medium | medium | M | [T-004] |
-| T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
+| T-036 | review protocol spawns unbounded follow-up tickets; add inline-fix, note-and-close and backlog-cap valves | high | medium | M | [] |
+| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
+| T-037 | board sync silently deletes hand-written prose from BOARD.md sections | high | medium | M | [] |
+| T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
 | T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
 | T-020 | doctor: detect AGENTS.md marker-block drift | medium | low | S | [] |
+| T-021 | project add\|remove leave the AGENTS.md marker block stale | medium | low | S | [] |
 | T-031 | harden the internal/cli test harness (captureStdout stdout restore + pipe lifecycle, TestMain sandbox lifecycle) | medium | low | S | [] |
 | T-033 | board audit: flag duplicate frontmatter keys | medium | low | S | [] |
 | T-034 | board audit: flag table rows with the wrong cell count; harden AddTODORow insert point | medium | low | S | [] |
-| T-021 | project add|remove leave the AGENTS.md marker block stale | medium | low | S | [] |
-| T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
-| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | medium | medium | M | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
 | T-015 | consolidate board status-heading matching and fill sync test gaps | low | low | S | [] |
-| T-016 | ship docs-readability as an optional review step (Step 4b) | low | medium | M | [] |
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
 | T-023 | board branch column is derived from the filename slug, not the ticket's real branch | low | low | S | [] |
-| T-025 | backfill true historical spawned-by lineage from existing source: lines | low | low | S | [T-024] |
 | T-027 | audit: flag depends-on entries that reference the ticket itself | low | low | S | [] |
 | T-028 | guard TEMPLATE.md frontmatter against audit requiredKeys | low | low | S | [] |
 | T-032 | unify the test payload-root idiom into one CWD-independent helper | low | low | S | [] |
-| T-035 | repair the corrupted T-021 board row (unescaped pipe in title) | low | low | S | [] |
+| T-009 | opencode wiring | medium | medium | M | [T-004] |
+| T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
+| T-016 | ship docs-readability as an optional review step (Step 4b) | low | medium | M | [] |
 
 ## DONE
 
@@ -97,6 +114,8 @@ Last updated: 2026-07-25 (T-030 pickup gate: spawned T-034/T-035)
 
 | id | title | reason |
 |---|---|---|
+| T-035 | repair the corrupted T-021 board row (unescaped pipe in title) | board row repaired inline during triage; ticket overhead exceeded the one-character fix |
+| T-025 | backfill true historical spawned-by lineage from existing source: lines | lineage archaeology with no consumer; source: History lines already carry provenance |
 
 ---
 

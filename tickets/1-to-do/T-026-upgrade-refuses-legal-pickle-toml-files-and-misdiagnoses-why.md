@@ -4,7 +4,7 @@ title: upgrade refuses legal pickle.toml files and misdiagnoses why
 project: pickle
 depends-on: []
 spawned-by: []
-impact: medium
+impact: high
 complexity: medium
 cost: M
 ---

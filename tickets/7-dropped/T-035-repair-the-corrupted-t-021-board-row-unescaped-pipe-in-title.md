@@ -95,3 +95,4 @@ Soft couplings (no `depends-on`, no ordering enforced):
 ## History
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: board row repaired inline during triage; ticket overhead exceeded the one-character fix
