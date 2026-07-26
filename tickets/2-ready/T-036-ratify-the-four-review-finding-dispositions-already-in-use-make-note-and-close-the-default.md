@@ -120,6 +120,15 @@ Soft couplings (no hard `depends-on:`): **T-016** adds a Step 4b to the same pro
 spawn-rate warning needs `spawned-by:` to be populated, which is what dropped **T-025** would
 have done — resurrect it before building the metric, not after.
 
+**T-036 must land before T-044** (added at pickup, 2026-07-26). T-044 is now READY and second in
+the queue, and its Task 7 edits **three of the four payload files this ticket edits**
+(`tickets-README.md`, `SKILL.md`, `review-protocol.md`) — with a genuine adjacent-line collision
+in the protocol's `## Review` checklist (this ticket rewrites line 176; T-044 rewrites line 178)
+and a second one in `install.go`'s `markerBlock`, which amendment 1 below pulls into this
+ticket's scope. This ticket is the smaller of the two and is top of READY; landing it first lets
+T-044's "grep for board-edit steps" run against a stable tree. This is sequencing, not a
+`depends-on:`.
+
 ## Implementation Plan
 
 ### Feature branch
@@ -191,15 +200,23 @@ None. No `depends-on:`. Confirm before starting:
   (batching), so `spawned-by:` is one id but the parent's Review table is the itemised record.
 - §8, the pickup-freshness paragraph (lines 247–252): route the gate's "adjacent work" through
   §5's dispositions instead of straight to new tickets.
+- **§8, line 244 — the contradiction (added at pickup, amendment 1).** "Nothing is built directly
+  from a chat message, **a review finding**, or a raw idea — only from a ticket whose
+  Implementation Plan has met the READY gate." That forbids `fixed inline` outright. It sits in
+  §8 but outside the range cited above, so the original task list would have shipped a
+  self-contradictory payload — the exact "two overlapping rules for the same case" defect this
+  plan invokes to justify deleting the line-116 carve-out. Reword so the pipeline rule keeps its
+  force for *features* while the four dispositions govern *findings*.
 
 **2. `skill/resources/review-protocol.md` — the procedure.**
 
 - §0 scope block, lines 21–24: replace "— never inline drift" with the bounded inline path,
   pointing at rules §5 for the vocabulary. Keep "a review does not re-implement the ticket".
 - §5, lines 99–117: rewrite the non-blocking bullet to route per rules §5, with the findings
-  table gaining a **required `disposition` column**. Delete the line-116 "trivial cosmetic spec
+  table gaining a **required `disposition` column**. Delete the "trivial cosmetic spec
   typos" carve-out — it is subsumed by `fixed inline` and its survival would give two
-  overlapping rules for the same case.
+  overlapping rules for the same case. **It spans lines 116–117**, not 116 alone ("… may be
+  patched directly" / "and noted here."); deleting only 116 orphans the trailing clause.
 - §6b, line 127: "only non-blocking already spawned as new tickets" → "only non-blocking, all
   dispositioned".
 - Checklist, line 176: update to "findings classified and **dispositioned** per rules §5".
@@ -222,17 +239,43 @@ None. No `depends-on:`. Confirm before starting:
   `review clean; 6 non-blocking (3 inline, 2 folded, 1 → T-MMM)` — the T-030 shape, which is
   what a correctly-dispositioned review now looks like.
 
+**4b. The generated `AGENTS.md` marker block — same contradiction, three more copies**
+(added at pickup, amendment 1).
+
+The sentence from task 1's line 244 is **triplicated** outside the payload, and the original plan
+declared all three out of scope. They must move in step or `pickle install` will emit a block that
+contradicts the rules it points at:
+
+- `internal/install/install.go:586` — inside `markerBlock`; reword to match.
+- `internal/install/testdata/markerblock.golden:4` — regenerate (there is an `-update`-style
+  golden path; check the test's own mechanism rather than hand-editing).
+- `AGENTS.md:21` — this repo's own rendered block, between the `pickle:begin`/`pickle:end`
+  markers. Hand-edit to match the new `markerBlock` output exactly, since `pickle upgrade`
+  rewrites this region and any divergence resurfaces as drift.
+
 **5. `internal/install/install_test.go` — pin the two decisions mechanically.**
 
-Add `TestPayloadDispositionVocabulary`, using the existing `payloadRoot()` idiom (`:15`) to read
-`skill/resources/*.md`. Assert exactly two things — the *decisions*, not the prose:
+Add `TestPayloadDispositionVocabulary`, using the existing `payloadRoot()` idiom (`:15`). Read the
+**four explicit paths** — `skill/resources/tickets-README.md`, `skill/resources/review-protocol.md`,
+`skill/SKILL.md`, `skill/resources/TEMPLATE.md`. (Amendment 3: the original plan said
+`skill/resources/*.md`, which does not contain `SKILL.md` — that lives at `skill/SKILL.md` — and
+would sweep in `resources/BOARD.md`, which T-044 deletes.) Assert exactly two things — the
+*decisions*, not the prose:
 
 - the string `never inline drift` appears **nowhere** in the payload (guards decision 4 against
-  a future revert);
-- each of the four disposition tokens appears in `tickets-README.md`, **and none of the four
-  lists is restated** in `review-protocol.md`/`SKILL.md`/`TEMPLATE.md` — approximated as: those
-  three files each contain the reference string `rules §5` and do **not** contain all four
-  tokens.
+  a future revert). Verified at pickup: exactly one occurrence today, `review-protocol.md:24`, so
+  the assertion is currently red and turns green only when task 2 lands.
+- **`fixed inline` and `folded` appear in `tickets-README.md` and in no other payload file.**
+  (Amendment 3: the original "does not contain all four tokens" assertion was near-vacuous — it
+  passes whenever any *one* token is absent, so a file could restate three of the four and stay
+  green. These two are the novel tokens and the only discriminating ones; `new ticket` and `noted`
+  legitimately occur in running prose elsewhere.)
+
+Do **not** assert on a `rules §5` reference string (amendment 3): it appears zero times in the
+payload today, and `TEMPLATE.md` uses a different established idiom (`tickets/README.md §N`).
+Inside `review-protocol.md`, write cross-references as `the rules §5` — the existing idiom at
+`:111`/`:166` — because the protocol has its own §5 and a bare "§5" there reads as a
+self-reference.
 
 Keep it to those two assertions. A test that pins wording rather than decisions would be
 re-writing the diff, and this repo already carries enough drift-guard debt (T-040, T-042).
@@ -243,51 +286,73 @@ re-writing the diff, and this repo already carries enough drift-guard debt (T-04
 
 ```
 just build && just test && just lint
-./pickle board audit          # expect: 0 error(s), 0 warning(s)
-./pickle doctor               # expect: clean; skill dir still a symlink, untouched
+./pickle board audit          # expect: 45 tickets, 0 error(s), 0 warning(s)
+./pickle doctor               # expect: 0 error(s), 1 warning(s) — see below
 ```
 
 Expected: `go test ./...` passes including the new `TestPayloadDispositionVocabulary`;
 `gofmt -l` and `go vet ./...` clean. `board audit` ticket count unchanged (no ticket moves in
 this task list beyond T-036's own).
 
+**`doctor` cannot report "clean" here — amendment 2.** The original plan expected clean; measured
+at pickup, `main` already emits `payload version "0.0.0-skeleton" differs from binary "v0.0.0-…"`
+because `pickle.toml` pins the skeleton version while a locally-built binary stamps a VCS
+version. So the bar is: **0 errors, exactly 1 warning, and that warning is the pre-existing
+payload-version one** — no new warning, and the skill dir still a symlink to `skill/`. Taken
+literally, the old wording would have failed the acceptance test through no fault of the change.
+
 **B. Retroactive replay — the real test of "precise enough that two reviewers agree".**
 
 The historical findings tables in `6-done/` are frozen data. Re-classify, against the **new**
-rules §5 only, every non-blocking finding in the four reviews that recorded per-finding
-dispositions:
+rules §5 only, every finding in the four reviews that recorded per-finding dispositions.
+Counts verified against the actual tables at pickup:
 
-| review | findings |
-|---|---|
-| T-008 | 2 |
-| T-024 | 13 |
-| T-029 | 7 |
-| T-030 | 6 |
-| **total** | **28** |
+| review | non-blocking | also replayed | row total |
+|---|---|---|---|
+| T-008 | 2 (N1–N2) | — | 2 |
+| T-024 | 13 (N1–N13) | — | 13 |
+| T-029 | 7 (N1–N7) | N8, N9 (`informational, no action`) | 9 |
+| T-030 | 6 (N1–N6) | — | 6 |
+| **total** | **28** | **2** | **30** |
+
+**Amendment 5 — the set was wrong twice.** T-029 N8/N9 are labelled `informational, no action`
+rather than `non-blocking`, so the 28-row set excluded **the only empirical precedent for the
+`noted` disposition this ticket is ratifying** (besides T-024 N12). They are now in: replay **30
+rows**. And criterion 2 below ranges over 9 inline fixes, **two of which are outside even the
+30** — T-005's sole finding (T-005 is not one of the four replayed reviews) and T-008 N3 (labelled
+`trivial (patched inline)`, not `non-blocking`). They are replayed as named precedents, not as
+table rows.
 
 Pass criteria, all three required:
 
-1. **Every one of the 28 maps to exactly one disposition** — zero findings ambiguous between
+1. **Every one of the 30 maps to exactly one disposition** — zero findings ambiguous between
    two. Ambiguity is the failure mode the bar exists to prevent; a single ambiguous finding
    means the wording is not done.
-2. **All 9 inline fixes** (T-005 ×1, T-008 ×1, T-024 ×4, T-030 ×3) are **authorized** by the new
-   bar. Under the old rules only the T-005 one was.
+2. **All 9 inline fixes are authorized** by the new bar: T-005 ×1 (`T-005:33`, "patched directly
+   during review"), T-008 N3, T-024 ×4 (N4, N9, N10, N13), T-030 ×3 (N3, N4, N6). Under the old
+   rules only the T-005 one was. The T-005 and T-008 N3 checks are precedent checks against the
+   bar's wording, since neither is a row in the 30.
 3. **The new rules produce no more new tickets than were actually filed** for those four
-   reviews (actual: T-015, T-029, T-030, T-031, T-032, T-038 = 6).
+   reviews (actual: T-015, T-029, T-030, T-031, T-032, T-038 = 6 — verified at pickup).
 
-Record the 28-row replay table in the ticket's `## Review` section as the evidence. If criterion
+Record the 30-row replay table in the ticket's `## Review` section as the evidence. If criterion
 1 fails, the fix is wording — not an exception list.
 
 ### Docs update
 
-The payload **is** the docs for this change; tasks 1–4 are the documentation. Confirmed by
-inspection that no other surface documents review dispositions:
+The payload **is** the docs for this change; tasks 1–4b are the documentation.
 
-- `README.md` — no matches for blocking/non-blocking dispositions; **no change**.
-- `PLAN.md` — historical record; **no change** (T-024 N12 precedent).
-- `AGENTS.md` marker block — points at `resources/review-protocol.md` by path only, states no
-  disposition rules; **no change**, and `markerBlock` (`install.go:535-614`) needs no edit, so
-  `testdata/markerblock.golden` is untouched.
+- `README.md` — verified: zero matches for blocking/non-blocking dispositions; **no change**.
+- `PLAN.md` — historical record; **no change** (T-024 N12 precedent). Its line 51 ("reviewing and
+  classifying findings blocking vs non-blocking") stays true.
+- `AGENTS.md` marker block — **corrected at pickup (amendment 1): this DOES need to change.** The
+  original plan's claim that it "states no disposition rules" was wrong; `install.go:586` carries
+  the "nothing is built from … a review finding" sentence. See task 4b —
+  `markerBlock`, `testdata/markerblock.golden` and `AGENTS.md` all move with it.
+- Also verified as **still true, no change**: `tickets-README.md:75` (mermaid `review clean OR only
+  non-blocking findings`), `:239` (ASCII `6-done/ (clean / non-blocking only)`), `SKILL.md:3`
+  (frontmatter description) and `install.go:616` `ticketsReadme` (points at the protocol by path
+  only).
 
 ### Finish
 
@@ -354,3 +419,28 @@ justified by measurement after this lands rather than assumed now.
   but does not reshape the product), and the widened three-gate scope plus the 28-finding
   replay puts cost at the top of M rather than into L.
 - 2026-07-26 — TO DO → READY: plan complete
+- 2026-07-26 — pickup applicability gate run (unbiased sub-agent, rules §8). Verdict **proceed
+  with amendments**; nothing invalidated. The gate confirmed 13 of 16 line citations exact (3 off
+  by ≤1) and re-verified every historical number the plan rests on — 2/13/7/6 = 28 findings, the
+  9 inline fixes, the 6 tickets actually spawned — all exact. Two blocking amendments applied:
+  (1) `tickets-README.md:244` ("nothing is built directly from … a review finding") flatly
+  contradicts `fixed inline` and sits *outside* the §8 range the plan cited, so the original task
+  list would have shipped a self-contradictory payload; the same sentence is triplicated at
+  `install.go:586`, `testdata/markerblock.golden:4` and `AGENTS.md:21`, all three of which the plan
+  had declared out of scope — **user chose to fix all four surfaces**, adding task 4b;
+  (2) acceptance test A expected `./pickle doctor` clean, but the pinned
+  `payload_version = "0.0.0-skeleton"` guarantees 1 warning against any dev build, so the test was
+  red at baseline regardless of this change. Three non-blocking amendments: task 5's glob missed
+  `skill/SKILL.md` (not under `resources/`) and its "not all four tokens" assertion was
+  near-vacuous — replaced with "`fixed inline` and `folded` appear in `tickets-README.md` only";
+  the `rules §5` reference string does not exist in the payload yet and collides with TEMPLATE.md's
+  `tickets/README.md §N` idiom; the line-116 carve-out actually spans 116–117.
+  Acceptance test B widened 28 → **30 rows** (user decision): T-029 N8/N9, labelled
+  `informational, no action`, were excluded — and they are the `noted` disposition's own
+  precedent, so the criterion most at risk was untested. Sequencing recorded: **T-036 lands
+  before T-044**, whose Task 7 edits three of the same payload files.
+  One adjacent finding **folded into T-040** rather than spawned: none of the seven `.gitkeep`
+  files `install.go:311-319` creates is tracked here, so `3-in-development/` has vanished and a
+  fresh clone would lack three status dirs, which `board audit` cannot detect by design. Harmless
+  for this pickup — `move.go:124` does `MkdirAll` before the rename and `LoadAll` treats a
+  vanished-empty dir as zero tickets.

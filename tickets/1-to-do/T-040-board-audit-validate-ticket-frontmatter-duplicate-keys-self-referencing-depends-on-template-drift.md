@@ -44,13 +44,45 @@ and `board.rowRE` (`internal/board/board.go:29`). Composing all three from one f
 optional and this ticket's call; if it is deferred, it belongs with **T-042** (duplicated
 internals) rather than here.
 
+### Folded in from the T-036 pickup gate (2026-07-26) — a fourth check
+
+**The status directories themselves are never validated.** `tickets/3-in-development/` does not
+exist in this repo right now, and `board audit` reports 0 errors. Nor is it a local accident:
+`git ls-files tickets/` returns **no `.gitkeep` files at all**, so none of the seven that
+`install.go:311-319` creates is tracked. `4-in-review/` and `5-rework/` survive only as untracked
+local leftovers — **a fresh clone of this repo would be missing three of its seven status
+directories.**
+
+Two independent defects, both in this epic's "the audit is the only component that sees every
+ticket" theme:
+
+1. **`audit.Audit` (`internal/audit/audit.go:27`) has no directory-existence check**, and cannot
+   acquire one incidentally: it consumes `ticket.LoadAll`, which at
+   `internal/ticket/ticket.go:365-376` deliberately `continue`s past a `ReadDir` error with the
+   comment *"absent (vanished-empty) dir is not an error"* — because git does not track empty
+   directories. So the absence is swallowed one layer below the audit. Any check must either look
+   at the directories directly or have `LoadAll` distinguish "empty" from "absent". Note the
+   swallowing is load-bearing for the WIP pre-check in `internal/move/move.go:92-99`; do not
+   simply make it an error.
+2. **The `.gitkeep` scaffold is not preserved in this repo.** Whatever the audit learns to detect,
+   the seven files should be tracked here — this is the same class of defect as T-028 above:
+   a guarantee `install` makes to users that this repo, self-hosting the flow, does not keep.
+
+Deliberately *not* urgent: `internal/move/move.go:124` runs `os.MkdirAll` before the rename, so
+every move re-creates what it needs and the flow self-heals. This is a "fresh clone looks broken
+and the audit lies about it" defect, not a functional one.
+
 ### Cross-references
 
 - **T-044** (which superseded T-039, 2026-07-26) replaces the audit's board cross-check with a
   staleness check in the same file — the old plan's row-shape checks are gone. Still the same
   `internal/audit/audit.go` + test table: sequence to avoid edit collisions.
-- **T-036** proposes a TO DO cap enforced by the audit; if it lands first, this epic inherits its
-  test scaffolding.
+- **T-045** (not T-036 — corrected 2026-07-26 when the valves were split out) proposes a TO DO cap
+  enforced by the audit; if it lands first, this epic inherits its test scaffolding. Note T-045 is
+  measurement-gated and may well be dropped, so do not plan around it.
+- **`pickle doctor`** (`internal/doctor/doctor.go:79`) checks only the skill dir's `SKILL.md` and
+  `resources/tickets-README.md` — nothing under `tickets/`. If the directory check belongs in
+  `doctor` rather than `audit`, that is this ticket's call to make at refinement.
 
 ## Implementation Plan
 
@@ -64,3 +96,11 @@ internals) rather than here.
 
 - 2026-07-26 — created (TO DO). source: board triage — epic merged from T-027, T-028 and T-033,
   all three moved to 7-dropped/ as absorbed
+- 2026-07-26 — a fourth check folded in from the **T-036 pickup applicability gate** (rather than
+  spawned as its own ticket): status directories are never validated. `3-in-development/` is
+  currently absent and `board audit` reports 0 errors; no `.gitkeep` is tracked anywhere under
+  `tickets/`, so a fresh clone lacks three status dirs. Fits this epic's existing theme and file
+  (`internal/audit/audit.go`), and the absence is swallowed by `ticket.LoadAll`'s deliberate
+  vanished-empty-dir `continue`, which the WIP pre-check depends on — so it needs this epic's
+  judgement, not a standalone ticket. Also corrected a reference this epic inherited: the TO DO cap
+  moved from T-036 to T-045 at T-036's refinement.
