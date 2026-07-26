@@ -21,7 +21,7 @@ func installFixture(t *testing.T) string {
 	_, err := install.Run(os.DirFS(payloadRoot()), root, "test-ver", install.Options{
 		ProjectName: "demo",
 		ProjectPath: ".",
-		Claude:      true,
+		Agents:      install.Agents{Claude: true},
 	})
 	if err != nil {
 		t.Fatalf("install.Run: %v", err)
@@ -43,7 +43,7 @@ func hasErrContaining(errs []string, sub string) bool {
 
 func TestCheckHealthyInstall(t *testing.T) {
 	root := installFixture(t)
-	res := Check(root, "test-ver")
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
 	if len(res.Errors) != 0 {
 		t.Fatalf("expected no errors on a healthy install, got: %v", res.Errors)
 	}
@@ -102,7 +102,7 @@ func TestCheckBrokenArtifacts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := installFixture(t)
 			tc.break_(t, root)
-			res := Check(root, "test-ver")
+			res := Check(root, "test-ver", os.DirFS(payloadRoot()))
 			if len(res.Errors) == 0 {
 				t.Fatalf("expected an error, got none (passed: %v)", res.Passed)
 			}
@@ -115,7 +115,7 @@ func TestCheckBrokenArtifacts(t *testing.T) {
 
 func TestCheckVersionDriftWarns(t *testing.T) {
 	root := installFixture(t) // installed at payload_version "test-ver"
-	res := Check(root, "v9.9.9")
+	res := Check(root, "v9.9.9", os.DirFS(payloadRoot()))
 	if len(res.Errors) != 0 {
 		t.Fatalf("version drift must not be an error: %v", res.Errors)
 	}

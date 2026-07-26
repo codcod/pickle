@@ -8,6 +8,7 @@
 package install
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -32,7 +33,61 @@ const (
 	// relative symlink target it points at (SkillDir, from inside .claude/skills/).
 	ClaudeSkillLink   = ".claude/skills/ticket-flow"
 	ClaudeSkillTarget = "../../.agents/skills/ticket-flow"
+
+	// OpencodeConfigFile is the opencode config `--agent opencode` scaffolds
+	// (whole-file, only when absent — pickle never parses or merges JSONC);
+	// OpencodeAsset is the embedded template it is written from.
+	OpencodeConfigFile = "opencode.jsonc"
+	OpencodeAsset      = "agents/opencode/opencode.jsonc"
+	// PiExtensionsDir holds the pi extension files `--agent pi` scaffolds.
+	PiExtensionsDir = ".pi/extensions"
 )
+
+// AgentAsset pairs an installed agent-scaffold path (relative to the project
+// root, slash-separated) with its source inside the embedded payload.
+type AgentAsset struct {
+	Installed string
+	Asset     string
+}
+
+// PiScaffolds are the pi extension files `--agent pi` lays down. Unlike
+// opencode.jsonc they are pickle-owned: refreshed by upgrade (when present),
+// removed by uninstall, drift-checked by doctor. User customizations belong in
+// sibling extension files, never in these.
+var PiScaffolds = []AgentAsset{
+	{Installed: ".pi/extensions/docs-readability.ts", Asset: "agents/pi/extensions/docs-readability.ts"},
+	{Installed: ".pi/extensions/pickle-guardrails.ts", Asset: "agents/pi/extensions/pickle-guardrails.ts"},
+}
+
+// Agents selects which coding agents install wires up (the --agent flag).
+// Claude gets the .claude view + CLAUDE.md marker; opencode gets opencode.jsonc
+// (docs-readability subagent + bash guardrails); pi gets .pi/extensions/*.
+// There is no autodetection — the set is exactly what the user names.
+type Agents struct {
+	Claude   bool
+	Opencode bool
+	Pi       bool
+}
+
+// ParseAgents parses a --agent value: a comma-separated subset of "claude",
+// "opencode", "pi". Empty tokens (an empty flag, stray commas) and unknown
+// names are errors — callers apply the "claude" default before parsing.
+func ParseAgents(s string) (Agents, error) {
+	var a Agents
+	for _, tok := range strings.Split(s, ",") {
+		switch strings.TrimSpace(tok) {
+		case "claude":
+			a.Claude = true
+		case "opencode":
+			a.Opencode = true
+		case "pi":
+			a.Pi = true
+		default:
+			return Agents{}, fmt.Errorf("unknown agent %q (legal: claude, opencode, pi)", strings.TrimSpace(tok))
+		}
+	}
+	return a, nil
+}
 
 // Options configures a single install run.
 type Options struct {
@@ -42,8 +97,8 @@ type Options struct {
 	Test        string
 	Lint        string
 	Docs        string
-	Claude      bool // install the Claude view (.claude symlink) + CLAUDE.md
-	ClaudeLink  bool // make CLAUDE.md a symlink to AGENTS.md instead of a marker block
+	Agents      Agents // which agents to wire up (no autodetection)
+	ClaudeLink  bool   // make CLAUDE.md a symlink to AGENTS.md instead of a marker block
 }
 
 // Result records what the run created, left in place, or removed, for the CLI
@@ -53,11 +108,16 @@ type Result struct {
 	Created []string
 	Skipped []string
 	Removed []string
+	// Notes carries longer, human-directed guidance (e.g. the opencode blocks to
+	// merge by hand when opencode.jsonc already exists) for the CLI to print
+	// after the created/skipped lists.
+	Notes []string
 }
 
 func (r *Result) created(f string) { r.Created = append(r.Created, f) }
 func (r *Result) skipped(f string) { r.Skipped = append(r.Skipped, f) }
 func (r *Result) removed(f string) { r.Removed = append(r.Removed, f) }
+func (r *Result) note(n string)    { r.Notes = append(r.Notes, n) }
 
 // Run performs the install into root using the embedded payload FS (rooted at
 // the binary's "skill" tree) and payloadVersion (stamped into pickle.toml).
@@ -92,7 +152,7 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", markerBlock(cfg), &res); err != nil {
 		return res, err
 	}
-	if opts.Claude {
+	if opts.Agents.Claude {
 		if err := ensureSymlink(
 			filepath.Join(root, filepath.FromSlash(ClaudeSkillLink)),
 			ClaudeSkillTarget, &res); err != nil {
@@ -106,7 +166,67 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 			return res, err
 		}
 	}
+	if opts.Agents.Opencode {
+		if err := installOpencode(payload, root, &res); err != nil {
+			return res, err
+		}
+	}
+	if opts.Agents.Pi {
+		if err := installPi(payload, root, &res); err != nil {
+			return res, err
+		}
+	}
 	return res, nil
+}
+
+// installOpencode lays down opencode.jsonc — whole-file, only when absent.
+// OpenCode picks up AGENTS.md and .agents/skills/ natively, so this config
+// (the docs-readability subagent + bash guardrails) is the only
+// opencode-specific artifact. An existing opencode.jsonc is user-owned JSONC
+// that pickle never parses or merges: it is left untouched and the template is
+// returned as a note so the user can merge the blocks by hand.
+func installOpencode(payload fs.FS, root string, res *Result) error {
+	tmpl, err := fs.ReadFile(payload, OpencodeAsset)
+	if err != nil {
+		return fmt.Errorf("read embedded %s: %w", OpencodeAsset, err)
+	}
+	dst := filepath.Join(root, OpencodeConfigFile)
+	if _, err := os.Lstat(dst); err == nil {
+		res.skipped(OpencodeConfigFile + " (exists — left untouched; merge the pickle blocks by hand)")
+		res.note(OpencodeConfigFile + " already exists and pickle never merges JSONC. Add the\n" +
+			"docs-readability agent and the guardrail rules yourself — the template to copy from:\n\n" +
+			string(tmpl))
+		return nil
+	}
+	if err := os.WriteFile(dst, tmpl, 0o644); err != nil {
+		return err
+	}
+	res.created(OpencodeConfigFile)
+	return nil
+}
+
+// installPi writes the pi extension scaffolds (guardrails + docs-readability
+// reviewer). They are pickle-owned: created or refreshed in place.
+func installPi(payload fs.FS, root string, res *Result) error {
+	if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(PiExtensionsDir)), 0o755); err != nil {
+		return err
+	}
+	for _, f := range PiScaffolds {
+		data, err := fs.ReadFile(payload, f.Asset)
+		if err != nil {
+			return fmt.Errorf("read embedded %s: %w", f.Asset, err)
+		}
+		dst := filepath.Join(root, filepath.FromSlash(f.Installed))
+		if cur, err := os.ReadFile(dst); err == nil && bytes.Equal(cur, data) {
+			res.skipped(f.Installed + " (current)")
+			continue
+		}
+		if err := os.WriteFile(dst, data, 0o644); err != nil {
+			return err
+		}
+		res.created(f.Installed)
+	}
+	return nil
 }
 
 // Upgrade refreshes the installed skill payload and the AGENTS.md/CLAUDE.md
@@ -154,6 +274,29 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		}
 	}
 
+	// Agent scaffolds: install choices are not persisted anywhere, so upgrade
+	// probes the filesystem (T-006 decision D6) — it refreshes exactly the pi
+	// files that are already present. opencode.jsonc is user-owned after
+	// creation and is never touched.
+	for _, f := range PiScaffolds {
+		dst := filepath.Join(root, filepath.FromSlash(f.Installed))
+		if _, err := os.Lstat(dst); err != nil {
+			continue // not installed — not upgrade's business
+		}
+		data, err := fs.ReadFile(payload, f.Asset)
+		if err != nil {
+			return res, fmt.Errorf("read embedded %s: %w", f.Asset, err)
+		}
+		if cur, err := os.ReadFile(dst); err == nil && bytes.Equal(cur, data) {
+			res.skipped(f.Installed + " (current)")
+			continue
+		}
+		if err := os.WriteFile(dst, data, 0o644); err != nil {
+			return res, err
+		}
+		res.created(f.Installed + " (refreshed)")
+	}
+
 	if cfg.PayloadVersion == payloadVersion {
 		res.skipped(config.FileName + " (already at " + payloadVersion + ")")
 		return res, nil
@@ -193,11 +336,14 @@ type UninstallOptions struct {
 	DryRun bool
 }
 
-// Uninstall removes the installed skill dir + Claude symlinks and strips the
-// pickle marker block(s), leaving tickets/ and pickle.toml untouched so a later
-// install/upgrade re-attaches cleanly. Idempotent: re-running on an already-clean
-// tree reports nothing removed.
-func Uninstall(root string, opts UninstallOptions) (Result, error) {
+// Uninstall removes the installed skill dir, Claude symlinks and agent
+// scaffolds, and strips the pickle marker block(s), leaving tickets/ and
+// pickle.toml untouched so a later install/upgrade re-attaches cleanly. The
+// payload is needed only to recognise a pristine opencode.jsonc (removed iff
+// still byte-identical to the shipped template — a user-modified one is theirs
+// and stays). Idempotent: re-running on an already-clean tree reports nothing
+// removed.
+func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error) {
 	var res Result
 
 	skillDir := filepath.Join(root, filepath.FromSlash(SkillDir))
@@ -236,6 +382,47 @@ func Uninstall(root string, opts UninstallOptions) (Result, error) {
 	}
 	if err := uninstallMarkerFile(filepath.Join(root, "CLAUDE.md"), opts, &res); err != nil {
 		return res, err
+	}
+
+	// Pi scaffolds (pickle-owned): removed when present. The .pi tree is pruned
+	// only when left empty — user-written extensions keep their directories.
+	for _, f := range PiScaffolds {
+		dst := filepath.Join(root, filepath.FromSlash(f.Installed))
+		if _, err := os.Lstat(dst); err != nil {
+			continue
+		}
+		if opts.DryRun {
+			res.removed(f.Installed + " (dry-run)")
+			continue
+		}
+		if err := os.Remove(dst); err != nil {
+			return res, fmt.Errorf("remove %s: %w", f.Installed, err)
+		}
+		res.removed(f.Installed)
+	}
+	if !opts.DryRun {
+		// os.Remove fails on a non-empty dir — exactly the contract wanted here.
+		_ = os.Remove(filepath.Join(root, filepath.FromSlash(PiExtensionsDir)))
+		_ = os.Remove(filepath.Join(root, ".pi"))
+	}
+
+	// opencode.jsonc: removed only while still byte-identical to the shipped
+	// template. Anything else is the user's config — pickle wrote it whole at
+	// most once and never merges, so an edited file must survive.
+	ocDst := filepath.Join(root, OpencodeConfigFile)
+	if cur, err := os.ReadFile(ocDst); err == nil {
+		tmpl, terr := fs.ReadFile(payload, OpencodeAsset)
+		if terr == nil && bytes.Equal(cur, tmpl) {
+			if opts.DryRun {
+				res.removed(OpencodeConfigFile + " (dry-run)")
+			} else if err := os.Remove(ocDst); err != nil {
+				return res, fmt.Errorf("remove %s: %w", OpencodeConfigFile, err)
+			} else {
+				res.removed(OpencodeConfigFile)
+			}
+		} else {
+			res.skipped(OpencodeConfigFile + " (user-modified, left in place)")
+		}
 	}
 
 	return res, nil

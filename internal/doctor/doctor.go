@@ -1,12 +1,15 @@
 // Package doctor implements `pickle doctor`: the install-side analogue of
 // `board audit`. It is a pure, fixture-testable check of an installed project's
-// integrity — the embedded skill payload, the .claude view symlink, the
-// AGENTS.md/CLAUDE.md marker block, pickle.toml, and each registered child's git
-// repo. Like audit, it never prints or exits — it returns findings.
+// integrity — the installed skill payload, the .claude view symlink, the
+// AGENTS.md/CLAUDE.md marker block, the agent scaffolds, pickle.toml, and each
+// registered child's git repo. Like audit, it never prints or exits — it
+// returns findings.
 package doctor
 
 import (
+	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -35,15 +38,17 @@ func (r *Result) ok(msg string) { r.Passed = append(r.Passed, msg) }
 
 // Check inspects an installed pickle project rooted at root (the directory that
 // holds pickle.toml). version is the running binary's version, used only for a
-// payload-drift warning. Filesystem checks run even when pickle.toml fails to
-// parse; per-child checks run only when it loaded.
-func Check(root, version string) Result {
+// payload-drift warning; payload is the binary's embedded payload, used only to
+// drift-check the pickle-owned agent scaffolds. Filesystem checks run even when
+// pickle.toml fails to parse; per-child checks run only when it loaded.
+func Check(root, version string, payload fs.FS) Result {
 	var r Result
 
 	cfg := checkConfig(root, &r)
 	checkSkill(root, &r)
 	checkClaudeView(root, &r)
 	checkMarkers(root, &r)
+	checkAgentScaffolds(root, payload, &r)
 	if cfg != nil {
 		checkChildren(root, cfg, &r)
 		checkVersion(cfg, version, &r)
@@ -146,6 +151,34 @@ func hasMarkerBlock(path string) bool {
 	bi := strings.Index(text, install.MarkerBegin)
 	ei := strings.Index(text, install.MarkerEnd)
 	return bi >= 0 && ei > bi
+}
+
+// checkAgentScaffolds verifies the pi agent scaffolds. They are optional (laid
+// down only by `--agent pi`) and pickle-owned: an absent file is not a finding,
+// but a present one that differs from this binary's embedded copy earns a
+// drift warning — `pickle upgrade` refreshes it. opencode.jsonc is user-owned
+// after creation (pickle writes it whole at most once and never merges JSONC),
+// so doctor deliberately performs no opencode checks.
+func checkAgentScaffolds(root string, payload fs.FS, r *Result) {
+	if payload == nil {
+		return
+	}
+	for _, f := range install.PiScaffolds {
+		cur, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f.Installed)))
+		if err != nil {
+			continue // absent — pi scaffolds not installed
+		}
+		want, err := fs.ReadFile(payload, f.Asset)
+		if err != nil {
+			r.errf("agents: embedded asset %s unreadable: %v", f.Asset, err)
+			continue
+		}
+		if !bytes.Equal(cur, want) {
+			r.warnf("agents: %s differs from the shipped version — run `pickle upgrade` (customizations belong in sibling files)", f.Installed)
+			continue
+		}
+		r.ok(fmt.Sprintf("agent scaffold current (%s)", f.Installed))
+	}
 }
 
 // checkChildren verifies every registered child path resolves to a git repo

@@ -22,18 +22,18 @@ are fixed in T-006's own rework pass, not here.)
 1. **The status prose duplicates the table it sits under.** `README.md:87-90` re-lists all eight
    command→ticket mappings that the `[done: T-NNN]` tags at `README.md:75-83` already carry, so
    every future command change needs two edits and they will drift. Replace with a single
-   sentence and let the table's tags be the single source of truth. While there: "the full
+   sentence and let the table's tags be the single source of truth. ~~While there: "the full
    command surface is implemented" is true of *commands* only — `install --agent` is still an
-   accepted no-op (`internal/cli/install.go:27`), as `README.md:198-199` admits a few sections
-   later; word it so the two passages agree (e.g. note that agent breadth beyond Claude Code is
-   still pending, tracked by T-009/T-010).
+   accepted no-op…~~ *(obsoleted 2026-07-26 by T-009: `--agent claude,opencode,pi` is fully
+   implemented and documented; the two passages no longer disagree. Only the
+   prose-duplicates-table complaint remains.)*
 
-2. **Phased-plan tagging is inconsistent.** In `README.md:322-331` only P5 carries
-   `**[done: T-011]**`, yet P1 (T-002/T-003) and P3 (T-007/T-008) are fully delivered and
-   untagged. Tag them. P2 is a deliberate exception: its "skill install (Claude Code + **Zed/Pi**)"
-   clause (`README.md:326-328`) is still outstanding (T-009/T-010), so either split that clause
-   out to P4 so P2 can be tagged truthfully, or leave P2 untagged with a one-line note saying
-   why. Decide during refinement.
+2. **Phased-plan tagging is inconsistent.** In `README.md` (phased-plan section) P5 carries
+   `**[done: T-011]**` and T-009 tagged P4, yet P1 (T-002/T-003) and P3 (T-007/T-008) are fully
+   delivered and untagged. Tag them. *(Updated 2026-07-26 by the T-009 review: P4 is now done
+   and tagged, so P2's outstanding "Zed/Pi" clause argument is weaker — the agent breadth
+   shipped in T-009. Re-check whether P2 can simply be tagged now; line refs shifted again by
+   T-009's README edits.)*
 
 3. **A factual error about `board audit`'s severity** (added by the T-024 review's whole-tree
    sweep, finding N11). `README.md:316` claims the `ticket move` pickup gate "is intentionally
@@ -86,3 +86,4 @@ are fixed in T-006's own rework pass, not here.)
 - 2026-07-24 — created (TO DO). source: pickle ticket new
 - 2026-07-25 — re-anchored by the T-018 re-review: items 1/2 line refs shifted by T-018's README edits; noted that `README.md:102-104` belongs to T-018's rework
 - 2026-07-25 — scope extended: item 3 (README.md:316 misstates board audit's severity), from the T-024 review's whole-tree sweep (finding N11)
+- 2026-07-26 — patched by the T-009 review (impact sweep): item 1's "--agent is a no-op" clause and item 2's "Zed/Pi outstanding" premise are obsolete (T-009 shipped the agent breadth and tagged P4); line refs below the install section shifted again

@@ -1,0 +1,67 @@
+// OpenCode config scaffolded by `pickle install --agent opencode`.
+//
+// OpenCode picks up the ticket flow natively — AGENTS.md as project context and
+// the ticket-flow skill via .agents/skills/ticket-flow/SKILL.md — so this file
+// only adds the two genuinely OpenCode-specific pieces:
+//
+//   1. the `docs-readability` reviewer subagent (review protocol Step 4b), and
+//   2. declarative guardrails for the flow's non-negotiable git rules.
+//
+// This file was written whole because no opencode.jsonc existed at install time.
+// It is YOURS from here on: `pickle upgrade` never touches it, and
+// `pickle uninstall` removes it only if it is still byte-identical to this
+// template. Extend it freely (see https://opencode.ai/config.json).
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // docs-readability reviewer — a read-only Gemini subagent that suggests
+  // readability improvements to AsciiDoc/Markdown prose during a ticket review
+  // (review protocol Step 4b). It only *suggests*; the flow agent applies
+  // approved edits. Reached via your GitHub Copilot login
+  // (`opencode auth login` -> GitHub Copilot). Adjust the model id to taste:
+  // `opencode models github-copilot | grep -i gemini`.
+  //
+  // Other agent sessions (pi, zed, …) can reach this same reviewer by shelling
+  // out to: opencode run --agent docs-readability --file <changed.adoc|.md> "…"
+  "agent": {
+    "docs-readability": {
+      "description": "Suggests readability improvements to changed AsciiDoc/Markdown prose. Suggestions only.",
+      "mode": "subagent",
+      "model": "github-copilot/gemini-2.5-pro",
+      "temperature": 0.2,
+      "prompt": "{file:./.agents/skills/ticket-flow/resources/docs-readability.prompt.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "webfetch": "deny",
+        "websearch": "deny"
+      }
+    }
+  },
+
+  // Guardrails encoding the ticket flow's non-negotiable git rules (see the
+  // AGENTS.md marker block -> Commit policy) as bash command patterns.
+  // Patterns are matched against the parsed command; the LAST matching rule
+  // wins, so the catch-all "*" must come first and specific rules after.
+  "permission": {
+    "bash": {
+      "*": "allow",
+
+      // Rule 1 — explicit pathspecs only: never `git add -A` / `git add .` /
+      // `git commit -a`.
+      "git add -A*": "deny",
+      "git add --all*": "deny",
+      "git add .": "deny",
+      "git add . *": "deny",
+      "git commit -a*": "deny",
+      "git commit --all*": "deny",
+
+      // Rule 2 — publish gate: no push / merge request without explicit user
+      // approval (present the commit message + MR attributes first). Merging
+      // is always the human's.
+      "git push*": "ask",
+      "glab mr create*": "ask",
+      "gh pr create*": "ask"
+    }
+  }
+}

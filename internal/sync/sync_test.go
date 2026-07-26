@@ -19,7 +19,7 @@ func newProject(t *testing.T) (string, *config.Config) {
 	root := t.TempDir()
 	payload := os.DirFS(filepath.Join("..", ".."))
 	if _, err := install.Run(payload, root, "test", install.Options{
-		ProjectName: "demo", ProjectPath: ".", Claude: false,
+		ProjectName: "demo", ProjectPath: ".", Agents: install.Agents{},
 	}); err != nil {
 		t.Fatalf("install: %v", err)
 	}

@@ -2,15 +2,21 @@ package main
 
 import "embed"
 
-// payloadFS is the embedded skill payload — the canonical ticket-flow skill
-// (skill/SKILL.md plus skill/resources/: the rules, the ticket template, the
-// review protocol, and the board skeleton) that `pickle install` writes into a
-// project's .agents/skills/ticket-flow/. The tree mirrors the installed skill
-// layout so SKILL.md's "resources/..." references resolve. Embedding it in the
-// binary lets pickle install the flow with no network and no runtime dependency.
-// `all:` includes files that begin with `.` or `_`.
+// payloadFS is the embedded install payload:
 //
-//go:embed all:skill
+//   - skill/  — the canonical ticket-flow skill (skill/SKILL.md plus
+//     skill/resources/: the rules, the ticket template, the review protocol,
+//     and the shared docs-readability reviewer prompt) that `pickle install`
+//     writes into a project's .agents/skills/ticket-flow/. The tree mirrors
+//     the installed skill layout so SKILL.md's "resources/..." references
+//     resolve.
+//   - agents/ — the per-agent scaffolds `pickle install --agent …` lays down:
+//     agents/opencode/opencode.jsonc and agents/pi/extensions/*.ts.
+//
+// Embedding both in the binary lets pickle install the flow with no network and
+// no runtime dependency. `all:` includes files that begin with `.` or `_`.
+//
+//go:embed all:skill all:agents
 var payloadFS embed.FS
 
 // version is the build version. Override at build time with:

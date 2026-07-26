@@ -26,7 +26,7 @@ func TestRunProducesInstall(t *testing.T) {
 	root := t.TempDir()
 	payload := os.DirFS(payloadRoot())
 
-	res, err := Run(payload, root, "test-ver", Options{ProjectName: "demo", ProjectPath: ".", Claude: true})
+	res, err := Run(payload, root, "test-ver", Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestRunProducesInstall(t *testing.T) {
 func TestRunIsIdempotent(t *testing.T) {
 	root := t.TempDir()
 	payload := os.DirFS(payloadRoot())
-	opts := Options{ProjectName: "demo", ProjectPath: ".", Claude: true}
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
 
 	if _, err := Run(payload, root, "v1", opts); err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestSelfHostSymlinkGuard(t *testing.T) {
 	}
 	payload := os.DirFS(payloadRoot())
 
-	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: ".", Claude: true}); err != nil {
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}); err != nil {
 		t.Fatal(err)
 	}
 	fi, err := os.Lstat(skillPath)
@@ -156,7 +156,7 @@ func TestSelfHostSymlinkGuard(t *testing.T) {
 func TestUpgrade(t *testing.T) {
 	root := t.TempDir()
 	payload := os.DirFS(payloadRoot())
-	opts := Options{ProjectName: "demo", ProjectPath: ".", Claude: true}
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
 
 	if _, err := Run(payload, root, "v1", opts); err != nil {
 		t.Fatal(err)
@@ -223,7 +223,7 @@ func TestUpgrade(t *testing.T) {
 func TestUpgradeSelfHostSymlinkGuard(t *testing.T) {
 	root := t.TempDir()
 	payload := os.DirFS(payloadRoot())
-	opts := Options{ProjectName: "demo", ProjectPath: ".", Claude: true}
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
 	if _, err := Run(payload, root, "v1", opts); err != nil {
 		t.Fatal(err)
 	}
@@ -261,12 +261,12 @@ func TestUpgradeSelfHostSymlinkGuard(t *testing.T) {
 func TestUninstall(t *testing.T) {
 	root := t.TempDir()
 	payload := os.DirFS(payloadRoot())
-	opts := Options{ProjectName: "demo", ProjectPath: ".", Claude: true}
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
 	if _, err := Run(payload, root, "v1", opts); err != nil {
 		t.Fatal(err)
 	}
 
-	res, err := Uninstall(root, UninstallOptions{})
+	res, err := Uninstall(payload, root, UninstallOptions{})
 	if err != nil {
 		t.Fatalf("Uninstall: %v", err)
 	}
@@ -292,12 +292,12 @@ func TestUninstall(t *testing.T) {
 func TestUninstallDryRun(t *testing.T) {
 	root := t.TempDir()
 	payload := os.DirFS(payloadRoot())
-	opts := Options{ProjectName: "demo", ProjectPath: ".", Claude: true}
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
 	if _, err := Run(payload, root, "v1", opts); err != nil {
 		t.Fatal(err)
 	}
 
-	res, err := Uninstall(root, UninstallOptions{DryRun: true})
+	res, err := Uninstall(payload, root, UninstallOptions{DryRun: true})
 	if err != nil {
 		t.Fatalf("Uninstall dry-run: %v", err)
 	}
@@ -315,6 +315,7 @@ func TestUninstallDryRun(t *testing.T) {
 
 func TestUninstallSelfHostSymlinkGuard(t *testing.T) {
 	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
 	skillPath := filepath.Join(root, filepath.FromSlash(SkillDir))
 	os.MkdirAll(filepath.Dir(skillPath), 0o755)
 	external := t.TempDir()
@@ -325,7 +326,7 @@ func TestUninstallSelfHostSymlinkGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := Uninstall(root, UninstallOptions{}); err != nil {
+	if _, err := Uninstall(payload, root, UninstallOptions{}); err != nil {
 		t.Fatalf("Uninstall: %v", err)
 	}
 

@@ -22,11 +22,25 @@ func runInstall(args []string) int {
 	test := fs.String("test", "", "child test command (optional)")
 	lint := fs.String("lint", "", "child lint command (optional)")
 	docs := fs.String("docs", "", "child docs command (optional)")
-	noClaude := fs.Bool("no-claude", false, "skip Claude Code artifacts (.claude symlink + CLAUDE.md)")
+	noClaude := fs.Bool("no-claude", false, "deprecated: use --agent to choose agents (drops claude from the set)")
 	claudeSymlink := fs.Bool("claude-symlink", false, "make CLAUDE.md a symlink to AGENTS.md instead of a marker block")
-	_ = fs.String("agent", "", "reserved (pi/opencode wiring lands later); Claude is on by default")
+	agentSpec := fs.String("agent", "", `comma-separated agents to wire up: claude, opencode, pi (default "claude")`)
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
+	}
+
+	spec := *agentSpec
+	if spec == "" {
+		spec = "claude"
+	}
+	agents, err := install.ParseAgents(spec)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "pickle install: %v\n", err)
+		return exitUsage
+	}
+	if *noClaude {
+		fmt.Fprintln(os.Stderr, "pickle install: --no-claude is deprecated; use --agent to choose agents (e.g. --agent opencode)")
+		agents.Claude = false
 	}
 
 	root, err := os.Getwd()
@@ -45,7 +59,7 @@ func runInstall(args []string) int {
 		Test:        *test,
 		Lint:        *lint,
 		Docs:        *docs,
-		Claude:      !*noClaude,
+		Agents:      agents,
 		ClaudeLink:  *claudeSymlink,
 	})
 	for _, c := range res.Created {
@@ -53,6 +67,9 @@ func runInstall(args []string) int {
 	}
 	for _, s := range res.Skipped {
 		fmt.Printf("  = %s\n", s)
+	}
+	for _, n := range res.Notes {
+		fmt.Printf("\n%s\n", n)
 	}
 	if err != nil {
 		return errf("%v", err)
@@ -158,7 +175,7 @@ func runDoctor(args []string) int {
 	}
 	root := filepath.Dir(cfgPath)
 
-	res := doctor.Check(root, Version)
+	res := doctor.Check(root, Version, Payload)
 	if *verbose {
 		for _, p := range res.Passed {
 			fmt.Printf("ok: %s\n", p)
@@ -195,7 +212,7 @@ func runUninstall(args []string) int {
 	}
 	root := filepath.Dir(cfgPath)
 
-	res, err := install.Uninstall(root, install.UninstallOptions{DryRun: *dryRun})
+	res, err := install.Uninstall(Payload, root, install.UninstallOptions{DryRun: *dryRun})
 	for _, r := range res.Removed {
 		fmt.Printf("  - %s\n", r)
 	}

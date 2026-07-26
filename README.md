@@ -72,7 +72,7 @@ lives in [`tickets/`](tickets/), the skill is discoverable via `.agents/skills/t
 ## Commands
 
 ```
-pickle install                          scaffold + install skill + markers + pickle.toml + first child   [done: T-004]
+pickle install [--agent …]              scaffold + install skill + markers + pickle.toml + first child   [done: T-004]
 pickle project add|list|remove          manage connected child-projects                                  [done: T-001]
 pickle upgrade                          refresh installed skill payload + markers                        [done: T-006]
 pickle doctor                           verify install integrity                                         [done: T-005]
@@ -188,30 +188,56 @@ A board differing from a fresh render only in the `Last updated:` date is in syn
 
 ```
 pickle install [--project <name>] [--path <path>] [--build/--test/--lint/--docs <cmd>]
-               [--no-claude] [--claude-symlink]
+               [--agent claude,opencode,pi] [--claude-symlink]
 ```
 
 Run once in a project to lay down the flow. It:
 
-- copies the embedded skill payload into `.agents/skills/ticket-flow/` (real files);
-- symlinks the Claude Code view `.claude/skills/ticket-flow -> ../../.agents/skills/ticket-flow`;
+- copies the embedded skill payload into `.agents/skills/ticket-flow/` (real files) —
+  including `resources/docs-readability.prompt.md`, the shared system prompt for the optional
+  docs-readability reviewer (review protocol Step 4b);
 - scaffolds `tickets/` (the seven ordered status dirs, each with a `.gitkeep`), renders a
   fresh `tickets/BOARD.md` (a generated file — see `board sync`), scaffolds `tickets/NOTES.md`
   for hand-written planning notes, and writes a short `tickets/README.md` pointer;
 - injects an idempotent `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block into
-  `AGENTS.md` and `CLAUDE.md` (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md`;
-  `--no-claude` skips all Claude artifacts);
+  `AGENTS.md`;
 - writes `pickle.toml` registering the first child-project (`--project`, default: the root dir
-  name; `--path`, default `.`).
+  name; `--path`, default `.`);
+- wires up each agent named in `--agent` (see below).
+
+### `--agent` — which coding agents to wire up
+
+`--agent` takes a comma-separated set of `claude`, `opencode`, `pi` (default: `claude`).
+There is **no autodetection** — the set is exactly what you name. Every agent reads the same
+`AGENTS.md` + `.agents/skills/ticket-flow/` core; the per-agent artifacts are:
+
+| Agent | Artifacts | Ownership |
+|---|---|---|
+| `claude` | `.claude/skills/ticket-flow` symlink + `CLAUDE.md` marker block (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md` instead) | pickle-owned |
+| `opencode` | `opencode.jsonc` — the `docs-readability` reviewer subagent + declarative bash guardrails (explicit-pathspec staging, publish gate). OpenCode picks up `AGENTS.md` and the skill natively; this config is the only opencode-specific piece | **user-owned once written** (see below) |
+| `pi` | `.pi/extensions/pickle-guardrails.ts` (the same rules as a Pi `tool_call` gate) + `.pi/extensions/docs-readability.ts` (a `docs_readability` tool + `/docs-readability` command) | pickle-owned |
+
+`--no-claude` is **deprecated**: it still works (drops `claude` from the set, with a warning)
+— use `--agent` instead.
+
+**`opencode.jsonc` policy.** pickle writes it whole **only if absent** and never parses or
+merges JSONC: if the file already exists it is left byte-for-byte untouched and the template is
+printed for you to merge by hand. From then on the file is yours — `upgrade` never touches it,
+and `uninstall` removes it only while it is still byte-identical to the shipped template.
+
+**The docs-readability reviewer** is a read-only, suggestions-only Gemini reviewer for the
+`.adoc`/`.md` files a ticket changed (review protocol **Step 4b** — optional, never blocking).
+Both scaffolds default to `github-copilot/gemini-2.5-pro` (one-time GitHub Copilot login;
+adjust with `opencode models github-copilot | grep -i gemini`, or
+`DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` for the pi extension). Sessions in other
+agents (zed, Claude Code, …) can reach the opencode reviewer by shelling out:
+`opencode run --agent docs-readability --file <changed.md> "…"` — or record a conscious skip.
 
 **Per-project** (never writes to `~/` or outside the root), **idempotent, and safe to re-run**:
 the payload and marker block are refreshed in place while instance data (`BOARD.md`,
 `NOTES.md`, tickets, `pickle.toml`) is preserved once present. After installing, a post-install `board audit`
 self-check must pass. An existing `.agents/skills/ticket-flow` **symlink** (a dev/self-host
 link) is left untouched.
-
-The pi/opencode agent wiring (`.pi/`, opencode) lands later (their own tickets); today
-`install` covers the agent-agnostic `.agents/` skill + `AGENTS.md` and the Claude Code view.
 
 ## `pickle upgrade`
 
@@ -249,6 +275,11 @@ replace wholesale, by design:
 - the skill directory `.agents/skills/ticket-flow/`, which is pickle-owned and re-copied in
   full. Do not keep hand-written files there (a self-host *symlink* is left untouched).
 
+Agent scaffolds follow the same probe-what-exists rule: the pickle-owned `.pi/extensions/`
+files are refreshed **if present** (put customizations in sibling extension files — `doctor`
+warns when a pickle-owned one drifts), while `opencode.jsonc` is user-owned after creation and
+is **never** touched by upgrade.
+
 ## `pickle uninstall`
 
 ```
@@ -256,10 +287,13 @@ pickle uninstall [--dry-run|-n]
 ```
 
 Detaches the flow from the project, leaving your work behind. It removes
-`.agents/skills/ticket-flow/`, the `.claude/skills/ticket-flow` symlink, and the
+`.agents/skills/ticket-flow/`, the `.claude/skills/ticket-flow` symlink, the
 `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block from `AGENTS.md`/`CLAUDE.md` (a
 `CLAUDE.md` that is a symlink to `AGENTS.md` is removed outright; a regular file keeps everything
-outside the markers, and the file itself is never deleted).
+outside the markers, and the file itself is never deleted), and the agent scaffolds: the
+pickle-owned `.pi/extensions/` files go (pruning `.pi/` only when left empty — your own
+extensions keep it alive), and `opencode.jsonc` goes **only** while still byte-identical to the
+shipped template; one you have edited is yours and stays.
 
 **`tickets/` and `pickle.toml` are both left intact** — the board, the tickets, and the
 child-project registry are instance data, so a later `pickle install` or `pickle upgrade`
@@ -351,7 +385,8 @@ Cutting an actual release is tag-driven and documented in [`RELEASING.md`](RELEA
   `upgrade`, `uninstall`.
 - **P3 — moves + state machine.** `ticket move` (state machine, per-child WIP, cross-child merge
   gate); `board sync`.
-- **P4 — multi-agent breadth.** opencode wiring; Pi guardrail scaffold.
+- **P4 — multi-agent breadth.** `--agent claude,opencode,pi`: opencode wiring, Pi guardrail
+  scaffold, and the shipped docs-readability reviewer (review Step 4b). **[done: T-009]**
 - **P5 — distribution.** goreleaser cross-compiled release build, Homebrew tap, tag-driven
   release CI, install docs. **[done: T-011]**
 
@@ -360,11 +395,12 @@ Cutting an actual release is tag-driven and documented in [`RELEASING.md`](RELEA
 ```
 .
 ├── main.go              entrypoint
-├── assets.go            //go:embed all:skill  (the payload + build version)
+├── assets.go            //go:embed all:skill all:agents  (the payload + build version)
 ├── internal/cli/        command surface (dispatch + one file per command)
 ├── skill/               embedded skill payload (source of truth for the flow)
 │   ├── SKILL.md
-│   └── resources/       tickets-README.md, TEMPLATE.md, review-protocol.md, BOARD.md
+│   └── resources/       tickets-README.md, TEMPLATE.md, review-protocol.md, docs-readability.prompt.md
+├── agents/              embedded per-agent scaffolds (opencode/opencode.jsonc, pi/extensions/*.ts)
 ├── tickets/             pickle's OWN board (self-hosted flow) + seeded backlog
 ├── pickle.toml          overarching config + [[project]] registry (child: pickle)
 ├── AGENTS.md            marker block: start at tickets/BOARD.md + project config

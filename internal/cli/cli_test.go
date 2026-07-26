@@ -114,7 +114,7 @@ func newProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	if _, err := install.Run(os.DirFS(repoRoot), root, "test", install.Options{
-		ProjectName: "demo", ProjectPath: ".", Claude: false,
+		ProjectName: "demo", ProjectPath: ".", Agents: install.Agents{},
 	}); err != nil {
 		t.Fatalf("install: %v", err)
 	}

@@ -11,8 +11,10 @@
   // *suggests*; the flow agent applies approved edits. Reached via your GitHub
   // Copilot login (`opencode auth login` -> GitHub Copilot). Its system prompt
   // is the SAME shared file the Pi extension (.pi/extensions/docs-readability.ts)
-  // uses, so both backends behave identically. The prompt lives OUTSIDE `skill/`
-  // so it is never bundled into `pickle install`. Confirm/adjust the model id
+  // uses, so both backends behave identically. The prompt SHIPS in the skill
+  // payload (skill/resources/, reached here via the .agents/skills/ticket-flow
+  // self-host symlink) — `pickle install` scaffolds this same reviewer into
+  // projects (T-009). Confirm/adjust the model id
   // with `opencode models github-copilot | grep -i gemini`.
   "agent": {
     "docs-readability": {
@@ -20,7 +22,7 @@
       "mode": "subagent",
       "model": "github-copilot/gemini-2.5-pro",
       "temperature": 0.2,
-      "prompt": "{file:./.agents/docs-readability.prompt.md}",
+      "prompt": "{file:./.agents/skills/ticket-flow/resources/docs-readability.prompt.md}",
       "permission": {
         "edit": "deny",
         "bash": "deny",

@@ -76,10 +76,11 @@ ticket's changed **AsciiDoc or Markdown** docs during review. It exposes:
 Gemini is reached via your `pi` `/login` provider (GitHub Copilot by default, or
 `export GEMINI_API_KEY=…`). The reviewer only *suggests*; you approve and apply
 edits with the normal tools. Its system prompt is the shared file
-[`../.agents/docs-readability.prompt.md`](../.agents/docs-readability.prompt.md)
+[`../skill/resources/docs-readability.prompt.md`](../skill/resources/docs-readability.prompt.md)
 — the same one the OpenCode `docs-readability` subagent uses (`../opencode.jsonc`).
-That prompt is kept **outside** `skill/` so it is never embedded into
-`pickle install`; this reviewer is dev tooling, not part of the shipped flow.
+The prompt **ships** in the skill payload, and `pickle install --agent pi`
+scaffolds this same reviewer into projects (see `agents/pi/`); this file is the
+dev-repo copy.
 
 ## Notes
 

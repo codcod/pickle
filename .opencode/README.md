@@ -63,8 +63,10 @@ The `docs-readability` subagent (defined in `../opencode.jsonc` under
 `agent.docs-readability`) is read-only (`edit`/`bash` denied — it only
 *suggests*), pinned to a Gemini model reached through your **GitHub Copilot**
 login. It reviews **AsciiDoc or Markdown** prose. Its system prompt is the shared file
-[`../.agents/docs-readability.prompt.md`](../.agents/docs-readability.prompt.md)
-— the same one the Pi backend (`.pi/extensions/docs-readability.ts`) uses. Point
+[`../skill/resources/docs-readability.prompt.md`](../skill/resources/docs-readability.prompt.md)
+(shipped in the skill payload; `pickle install --agent opencode` scaffolds this
+same reviewer into projects) — the same one the Pi backend
+(`.pi/extensions/docs-readability.ts`) uses. Point
 it at a ticket's changed `.adoc`/`.md` files for an optional readability pass;
 the flow agent then approves and applies the suggestions inline.
 

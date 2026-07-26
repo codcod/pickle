@@ -31,10 +31,13 @@ which change the golden path:
    exercised by manual acceptance. Add a table-driven test that runs `runInstall` against a
    temp cwd (via a test payload FS) and asserts the exit code + that the produced tree passes
    `audit.Audit`.
-4. **`--agent` handling** — the flag is currently accepted but is a pure no-op (Claude is on by
-   default; pi/opencode wiring is deferred to T-010/T-009). Until those land, either reject
-   unknown `--agent` values with a clear "not yet supported" message, or document it as reserved
-   and warn — so a user passing `--agent pi` isn't silently misled.
+4. ~~**`--agent` handling**~~ *(obsoleted 2026-07-26 by T-009: `--agent` is now fully parsed
+   and wired — unknown values are a usage error, `--no-claude` warns deprecated. Nothing left
+   here.)* **Replaced by a folded T-009 review finding (F4):** the top-level `pickle help`
+   text still says install lays the skill down "for detected agents"
+   (`internal/cli/cli.go` usage string) — but there is **no autodetection** (a T-009 locked
+   decision): the set is exactly what `--agent` names, default `claude`. Reword the help line
+   (e.g. "for the agents named by --agent, default claude").
 5. *(moved to T-014)* board-cell escaping — the child-name substitution into `BOARD.md` shares
    the unescaped-`|`/newline gap now tracked, generally, as **T-014 item 2** (cell escaping at
    the `board.renderRow` choke point). Fix it there rather than here.
@@ -146,3 +149,4 @@ All items are input-hardening / polish on the install surface, hence non-blockin
 - 2026-07-25 — broadened by the T-018 gate + review: added injectMarker file-mode preservation (item 10) and two more summary/help labels (item 8)
 - 2026-07-25 — broadened again by the T-018 re-review (R8/R9): verifyStampedVersion test seam, Config{} default leak + writeConfig constants, partially-applied upgrade on refusal (item 8)
 - 2026-07-25 — re-anchored by the T-018 S1 re-review: install.go refs (:126 -> :129, :130 -> :133, :162 -> :168, :180-191 -> :173-184, :163-168 -> :165-167)
+- 2026-07-26 — item 4 rewritten by the T-009 review (impact sweep): the "--agent is a no-op" premise is obsolete; replaced with the folded F4 finding (`pickle help` says "detected agents", contradicting T-009's no-autodetection decision). Line refs in items 6–10 may have shifted (~200 lines added to internal/install/install.go by T-009); re-anchor at refinement

@@ -13,11 +13,10 @@ Last updated: 2026-07-26
 
 ## IN DEVELOPMENT
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | [T-004] |
 
 ## IN REVIEW
 
@@ -72,6 +71,7 @@ Last updated: 2026-07-26
 | T-006 | upgrade + uninstall | yes — merged to main (4bcfc00) |
 | T-007 | ticket move (state machine + per-child WIP + cross-child merge gate) | yes — merged to main (fd70a82) |
 | T-008 | board sync | yes — MERGED: feat/T-008-board-sync squashed → main (9b87a61), user-approved; branch deleted |
+| T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | no — publish-gated |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — MERGED: feat/T-024-spawned-by-lineage-frontmatter → main (3c4c131, squashed) |
