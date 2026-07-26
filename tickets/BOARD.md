@@ -17,17 +17,16 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 > cell** with the slug-derived guess (T-023). `pickle board audit` and `pickle ticket move` are
 > safe and were used for every move recorded here.
 
-Last updated: 2026-07-26 (triage: T-036/T-037 filed; T-035/T-025 dropped; T-026 regraded high; T-009/T-010/T-016 parked)
+Last updated: 2026-07-26 (T-030 merged to main: review SHIP → DONE; T-038 filed)
 
 ---
 
 ## IN DEVELOPMENT
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | branch | depends-on |
 |---|---|---|---|
-| T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | feat/T-030-ticket-new-writes-unsanitised-input-into-frontmatter-newline-injection | [] |
 
 ## IN REVIEW
 
@@ -108,6 +107,7 @@ refactors (T-015, T-017, T-032) · test harness + cli coverage (T-031, T-012) ·
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main 2026-07-25 (1485242) |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — main (3c4c131, squashed) |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — main (0b7cd91, squashed) |
+| T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | no — publish-gated (branch feat/T-030-validate-ticket-new-input) |
 
 ## DROPPED
 

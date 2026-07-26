@@ -112,7 +112,9 @@ When asked to turn an idea, finding, or request into a ticket:
 3. **Author** the ticket: run `pickle ticket new "<title>" --project <name>` to allocate the
    next `T-NNN` (max across *all* status dirs + 1), scaffold from `resources/TEMPLATE.md` into
    `1-to-do/` with `project:` set, and add the board row under that child's sub-group. When the
-   ticket is born from another one, add `--spawned-by "T-NNN[,T-MMM]"`. Then fill in the
+   ticket is born from another one, add `--spawned-by "T-NNN[,T-MMM]"`. The title must be a
+   single line and the ids must be `T-NNN`, or the command rejects the invocation and writes
+   nothing — put multi-line context in the Description, not the title. Then fill in the
    Description prose.
 4. **Grade it** (impact / complexity / cost) **against the existing backlog** — re-grade
    neighbours if the comparison shifts them.

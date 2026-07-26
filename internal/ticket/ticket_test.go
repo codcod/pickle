@@ -3,6 +3,7 @@ package ticket
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -52,6 +53,73 @@ func TestParseDepends(t *testing.T) {
 	}{{"[]", 0}, {"", 0}, {"[T-001]", 1}, {"[T-001, T-002]", 2}} {
 		if got := ParseDepends(c.in); len(got) != c.want {
 			t.Errorf("ParseDepends(%q) = %v", c.in, got)
+		}
+	}
+}
+
+func TestValidID(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		want bool
+	}{
+		{"T-1", true}, {"T-001", true}, {"T-9999", true},
+		{"", false}, {"banana", false}, {"t-001", false}, {"T-", false},
+		{"T-001x", false}, {"T-001]", false}, {"T-001\nimpact: critical", false},
+		// ValidID deliberately does not trim: tokenizing is the caller's job.
+		{" T-001 ", false},
+	} {
+		if got := ValidID(c.in); got != c.want {
+			t.Errorf("ValidID(%q) = %v, want %v", c.in, got, c.want)
+		}
+	}
+}
+
+func TestParseIDList(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		want []string
+	}{
+		{"", nil},
+		{"[]", nil},
+		{"T-001,T-002", []string{"T-001", "T-002"}},
+		{"[T-001, T-002]", []string{"T-001", "T-002"}},
+		// Duplicates collapse, first-seen order survives (T-030 decision 3).
+		{"T-001,T-001", []string{"T-001"}},
+		{"T-002,T-001,T-002", []string{"T-002", "T-001"}},
+		// Order is preserved, never sorted.
+		{"[T-002, T-001]", []string{"T-002", "T-001"}},
+		// Unbalanced brackets are accepted and normalised, not rejected: the
+		// brackets are the frontmatter's own list syntax, not part of the id,
+		// and ParseDepends strips them. Only what remains must be a valid id.
+		{"T-001]", []string{"T-001"}},
+		{"[T-001", []string{"T-001"}},
+	} {
+		got, err := ParseIDList(c.in)
+		if err != nil {
+			t.Errorf("ParseIDList(%q) returned error %v, want %v", c.in, err, c.want)
+			continue
+		}
+		if !slices.Equal(got, c.want) {
+			t.Errorf("ParseIDList(%q) = %v, want %v", c.in, got, c.want)
+		}
+	}
+
+	for _, c := range []struct{ in, wantSubstr string }{
+		{"T-001,banana", "banana"},
+		{"banana", "banana"},
+		{"T-001]\nimpact: critical", "impact: critical"},
+		{"t-001", "t-001"},
+	} {
+		got, err := ParseIDList(c.in)
+		if err == nil {
+			t.Errorf("ParseIDList(%q) = %v, want an error", c.in, got)
+			continue
+		}
+		if got != nil {
+			t.Errorf("ParseIDList(%q) returned %v alongside its error, want nil", c.in, got)
+		}
+		if !strings.Contains(err.Error(), c.wantSubstr) {
+			t.Errorf("ParseIDList(%q) error = %q, want it to name %q", c.in, err, c.wantSubstr)
 		}
 	}
 }

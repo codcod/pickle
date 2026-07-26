@@ -153,8 +153,16 @@ Soft couplings (no `depends-on`, no ordering enforced):
   returns, so any call to it must be the last statement in its test.
 - **T-034** / **T-035** — filed from this ticket's pickup gate (2026-07-25). T-034 is the audit-side
   detection of a malformed board *row* (wrong cell count / split row) plus the insert-point scan it
-  breaks; T-035 repairs the one such row already in this repo's board. Both are downstream of the
+  breaks; T-035 repaired the one such row already in this repo's board. Both are downstream of the
   same "the validator endorses a malformed artifact" theme and neither blocks this ticket.
+
+  **Update (2026-07-26, main):** a backlog triage on `main` **dropped T-035** — the T-021 row was
+  escaped inline to `project add\|remove` and the ticket judged not worth its own overhead. The
+  rendering is fixed; the insert-point wall is **not** (`strings.Split` is not escape-aware, so
+  `cells[3]` is still a title fragment with `impactRank` 0 — re-measured against the repaired row).
+  **T-034 is now the sole owner** of that residual. Nothing here changes: this ticket never touched
+  either half. Note the branch has not seen the drop, so its `tickets/` still lists T-035 in
+  `1-to-do/` — see the merge-conflict note in the Implementation notes.
 
 ## Implementation Plan
 
@@ -499,9 +507,239 @@ no-op:
    Present the message; after approval, finalize (squash or keep history — user's choice), push, open
    the MR. Merging is the human's.
 
+## Implementation notes (2026-07-25)
+
+Branch `feat/T-030-validate-ticket-new-input`, three commits on top of `255458a`:
+`6bfb88a` (code + tests), `4af9ca5` (docs). Plan executed as amended; no deviations from the seven
+confirmed decisions.
+
+### Files touched
+
+| file | what |
+|---|---|
+| `internal/ticket/ticket.go` | `idRE` beside `filenameRE`; exported `ValidID` and `ParseIDList` (+35) |
+| `internal/ticket/ticket_test.go` | `TestValidID`, `TestParseIDList` (+68) |
+| `internal/cli/ticket.go` | `validateTitle`; both validators wired in before `loadConfig()` (+48) |
+| `internal/cli/cli_test.go` | 4 tests, 15 subtests, `assertNoTickets` helper (+137) |
+| `README.md`, `skill/SKILL.md`, `skill/resources/tickets-README.md` | input contract (+28/-11) |
+
+`ParseDepends` left untouched, as decided — its two remaining production callers
+(`internal/ticket/ticket.go:374-375`, in `LoadAll`) parse files already on disk, where rejecting is
+not an option.
+
+### The messages a user now sees
+
+```
+pickle: title may not contain newlines (it is written into the frontmatter, the heading and a board cell)
+pickle: title is empty
+pickle: title may not be "---"
+pickle: --spawned-by: "banana" is not a ticket id (expected T-NNN)
+pickle: --spawned-by: "T-001]\nimpact: critical" is not a ticket id (expected T-NNN)
+```
+
+All on **stderr** (`errf`), exit code **1** (`exitError`) per decision 7.
+
+### Acceptance test result
+
+All 8 steps green. Step 3 end-to-end in a throwaway install: the two hostile creations and the
+malformed id all exited 1, `--spawned-by "T-001,T-001"` produced `spawned-by: [T-001]`,
+`tickets/1-to-do/` held exactly `T-001` and `T-002`, both board rows well-formed on one physical
+line each, `board audit` 0/0. Step 7's `diff` silent — a full `just test` leaves the real `tickets/`
+untouched. Additionally `-race -count=2` on both packages.
+
+The three mutations are each load-bearing:
+
+| mutation | result |
+|---|---|
+| A — `validateTitle` call deleted | `TestTicketNewRejectsInjectionInTitle` fails on all 7 subtests, and on **all three** assertion kinds (exit code, `T-001-untitled.md` written, `BOARD.md` changed) — confirming the tree-unchanged half is not decoration |
+| B — `ValidID` → `return true` | `TestValidID`, `TestParseIDList`, `TestTicketNewRejectsMalformedSpawnedBy` (3 subtests) fail |
+| C — seen-set dropped from `ParseIDList` | `TestParseIDList` and `TestTicketNewDeduplicatesSpawnedBy` fail |
+
+Mutation C was written as "remove the `if seen[tok] { continue }` but keep the assignment", on the
+stated grounds that deleting the whole seen-set would make the package fail to **compile**.
+
+> **Correction (review finding N4, 2026-07-26): that reason was false, and it is measured false.**
+> Deleting the *whole* seen-set — the `seen := map[string]bool{}` declaration, the `if seen[tok]`
+> guard and the `seen[tok] = true` write — compiles cleanly and fails exactly
+> `TestParseIDList` (`ParseIDList("T-001,T-001") = [T-001 T-001], want [T-001]`) and
+> `TestTicketNewDeduplicatesSpawnedBy`, with nothing else red in `go test ./...`. Verified twice:
+> by the reviewer and again by the implementer in a throwaway copy of the branch.
+>
+> What actually fails to compile is a **half** edit that removes the guard and the write but leaves
+> the declaration — `seen` then being declared and not used. That is a broken edit, not "dropping
+> the seen-set", and it is what the implementer did.
+>
+> The conclusion is unaffected: mutation C is load-bearing either way, and the substituted form is a
+> valid mutation. Recorded rather than quietly amended because this ticket has already carried one
+> enshrined false premise — the plan asserted three times that a bare `---` would truncate the
+> frontmatter, which the pickup gate had to disprove — and a durable record that repeats the pattern
+> is worse than the original error.
+
+### Notes for the reviewer
+
+1. **`ParseIDList`'s error wording is pinned in `internal/ticket`, not `internal/cli`.** `errf`
+   writes to stderr and this package has no stderr capture, so the CLI tests assert exit code +
+   untouched tree only. Called out in the plan as a choice to declare; declaring it here.
+2. **`pickle help` was verified, not changed** — it does list `--spawned-by`, on the continuation
+   line `internal/cli/cli.go:95`. An earlier grep of mine appeared to show it missing; it was the
+   grep, not the help.
+3. **`T-00N-untitled.md` is still reachable** by design, via a non-whitespace unsluggable title such
+   as `###` (`Slugify("###") == "untitled"`). Widening the check would make it a character
+   whitelist, which Task 3 item 4 forbids. `TestTicketNewAcceptsAwkwardButLegalTitle` pins `###`,
+   `|`, tabs and a leading `--flag` as **accepted**.
+4. **A `|` in a title still reaches the board row unescaped** — deliberately **T-014**'s, and the
+   new positive test pins that it is accepted rather than rejected, so T-014 has a stable contract
+   to escape against. Note `\|` would not be enough on its own — now confirmed empirically, not just
+   predicted: a triage escaped T-021's row that way on 2026-07-26 and the insert-point wall survived
+   (see **T-034**, which inherited the residual when T-035 was dropped).
+5. **Finding N3 is only half closed.** `ticket new` can no longer produce a malformed id, but
+   `internal/audit/audit.go:80` still says "does not exist" about one that arrives by hand-edit or
+   a bad merge, until **T-027** applies `ticket.ValidID` in the audit's loops.
+6. **T-012 impact.** This lands the reject-newline half of its **item 5**, and its **item 4**
+   ("cli-level tests for `ticket new`") is partly consumed: the failure modes now covered are
+   rejected titles and malformed `--spawned-by`; still uncovered are illegal grade and unregistered
+   `--project` (both verified working by hand at the pickup gate, neither test-guarded). T-012
+   should be re-read against this before its own refinement.
+7. **`--spawned-by T-404` (valid shape, no such ticket) is still accepted at creation** and still
+   flagged by the audit — `TestTicketNewSpawnedByUnknownID` continues to pass unchanged, which is
+   the shape-vs-existence split working as intended.
+8. **A `tickets/BOARD.md` merge conflict is guaranteed, and `board sync` must not be used to fix
+   it.** While this branch was in review, a backlog triage landed on `main` (`0205953`, plus
+   `b1f1e53`): it filed T-036/T-037, dropped T-025 and T-035 to `7-dropped/`, regraded T-026/T-036/
+   T-037 to `high`, parked T-009/T-010/T-016, escaped T-021's title, and added prose notes to the TO
+   DO section. This branch's board predates all of it and additionally carries T-030's IN REVIEW
+   transition, which `main` deliberately does not show yet.
+
+   Resolution, agreed with the triage agent: **take `main`'s TO DO and DROPPED sections; take this
+   branch's IN REVIEW section** (the T-030 row with its corrected branch cell and the `(1/1)` count).
+   Do **not** run `pickle board sync` to reconcile — it deletes the hand-written prose notes,
+   un-escapes T-021's title, and overwrites T-030's real branch cell with a slug-derived guess. That
+   destructive behaviour is **T-037**; the slug guess is **T-023**; the WIP count is **T-014** item 1.
+   `pickle board audit` and `pickle ticket move` are safe.
+
+   Also note this branch's `tickets/` still contains T-025 and T-035 in `1-to-do/` because it never
+   saw the drop commits; `main`'s versions in `7-dropped/` win.
+9. **Impact sweep deliberately deferred to the review step** (user decision, 2026-07-25), matching
+   how T-029's sweep of T-012/T-025/T-027 was done in its review and squashed into the merge commit.
+   Recorded here so the evidence survives a fresh reviewer context. Three targets, all *evidence*
+   notes on existing tickets rather than new findings:
+
+   - **T-023** (board branch column derived from the filename slug) — second live instance, and a
+     strong one: the derived cell read
+     `feat/T-030-ticket-new-writes-unsanitised-input-into-frontmatter-newline-injection` (71 chars)
+     against the real branch `feat/T-030-validate-ticket-new-input`. The plan named a short branch
+     deliberately, so the divergence is designed-in, not incidental drift. Hand-corrected in
+     `6e96e07`.
+   - **T-014 item 1** (WIP counts not refreshed on a move) — second recorded instance after T-007.
+     The IN REVIEW heading stayed `(0/1)` after this ticket entered review; hand-corrected in
+     `6e96e07`. Supports firming up that item's parenthetical "and consider auditing it as a
+     warning". Note it will go stale **again** at the DONE move (`(1/1)` → `(0/1)`), since
+     `ticket move` never recomputes the heading.
+   - **T-012** — this ticket lands the reject-newline half of its **item 5** ("escape or reject
+     markdown-breaking characters in the title"), so item 5 goes partly stale; and its **item 4**
+     ("cli-level tests for `ticket new`") is partly consumed — rejected titles and malformed
+     `--spawned-by` are now covered, illegal grade and unregistered `--project` are still not. Both
+     were verified working by hand at the pickup gate but remain untested. T-030's own out-of-scope
+     section commits to leaving this note.
+
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Verdict: SHIP — 0 blocking, 6 non-blocking.** Reviewed 2026-07-26 on
+`feat/T-030-validate-ticket-new-input` against `main`. Steps 2–4a were run by an **independent
+sub-agent** rather than the implementer, since the implementer wrote the code under review; its two
+most consequential findings (N1, N4) were then re-verified by the implementer against the built
+binary. No project review addenda are configured (`pickle.toml` has both `review_addendum` slots
+commented out), so only the generic protocol applied.
+
+- [x] Implementation audit — acceptance test re-run verbatim, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep; **no docs build configured** (step 4a)
+- [x] Findings classified and recorded; routed per step 5 (see disposition note below)
+- [x] Ticket moved to `tickets/6-done/`; `## History` appended (step 6b)
+- [x] `BOARD.md` updated (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented for approval (step 9)
+
+### Step 2 — implementation audit: all 8 acceptance steps PASS
+
+| step | result |
+|---|---|
+| 1. baseline `just test` / `just lint` | PASS — 9 packages `ok`, `go vet` silent, `gofmt -l` empty |
+| 2. new tests by name | PASS — `TestValidID`, `TestParseIDList`, plus 11 CLI subtests |
+| 3. e2e in a throwaway install | PASS — all 8 sub-assertions, incl. `spawned-by: [T-001]` and exactly two files in `1-to-do/` |
+| 4. mutation A (drop the `validateTitle` call) | PASS — fails 7/7 subtests on **all three** assertion kinds; nothing else red |
+| 5. mutation B (`ValidID` → `true`) | PASS — 3 named tests only |
+| 6. mutation C (drop the seen-set) | PASS — 2 named tests only (see **N4**: the stated reason for substituting it was false) |
+| 7. real `tickets/` untouched by a full test run | PASS — `diff` silent after `go clean -testcache` |
+| 8. final state | PASS — lint clean, `board audit` 35 tickets 0/0 |
+
+Additionally `-race -count=3 -shuffle=on` on both packages: `ok`. All **seven confirmed design
+decisions honoured**, including both pickup-gate amendments — `ParseIDList` really is called above
+`loadConfig()`, and the `---` comment really does disclaim the truncation rationale rather than
+repeat it.
+
+### Findings
+
+| # | severity | finding | evidence | disposition |
+|---|---|---|---|---|
+| N1 | non-blocking | `validateTitle` blocks only `\n`/`\r`; `U+0085`/`U+2028`/`U+2029` still inject a frontmatter key. Pickle is unaffected (`ParseFrontmatter` splits on `\n` only) but YAML 1.1 readers truncate the title and see a phantom key | `internal/cli/ticket.go:160`; reproduced: `title: a<U+0085>project: nope`, `board audit` clean, Psych → `{"title"=>"a", …}` | **→ T-038** |
+| N2 | non-blocking | An over-long title fails with `open …: file name too long` — the OS's `NAME_MAX`, not a validated contract; leaks an absolute path | `ticket new "$(python3 -c "print('a'*250)")"`; tree stays consistent (no file, no row, audit clean) | **→ T-038** |
+| N3 | non-blocking | `idRE`'s comment claims `internal/audit` shares the definition. It has no regex at all, so nothing is unified; and `T-\d+` is still spelled out in `filenameRE` and `board.rowRE` | `internal/audit/audit.go` imports no `regexp`; `ticket.go:95`, `board.go:29` | **fixed inline** (comment reworded); substantive note **folded into T-027** |
+| N4 | non-blocking | The implementation notes' reason for substituting mutation C is factually wrong — the literal mutation compiles | verified twice; see the correction block in the notes above | **fixed inline** (correction recorded, not quietly amended) |
+| N5 | non-blocking | `PLAN.md:227`'s `ticket new` synopsis is stale — no `--spawned-by`, no input contract (pre-existing, from T-024) | the only synopsis in the tree disagreeing with `README.md:274` / `ticket.go:35` / `pickle help` | **folded into T-019** (item 4) |
+| N6 | non-blocking | `fmt.Errorf` with no formatting verbs where `errors.New` is idiomatic | `internal/cli/ticket.go:158,161,169` | **fixed inline** |
+
+**Disposition note.** Protocol §5 says spawn one `1-to-do/` ticket per non-blocking finding, which
+would have added six to a backlog the 2026-07-26 triage had just cut down — the exact pattern
+**T-036** was filed to stop. With user approval the findings were instead routed three ways: three
+fixed inline (all prose or idiom **in code authored in this same branch**, no behaviour change), one
+new ticket for the two findings that *do* change behaviour beyond locked decision 1 (**T-038**), and
+two folded into the tickets that already own the ground (**T-019**, **T-027**). Net: one new ticket
+instead of six, nothing dropped. This is a deliberate deviation from §5, taken before T-036 has
+landed, and is recorded here as precedent to weigh when T-036 is refined.
+
+### Checked and deliberately not raised
+
+- **A `|` in a title still produces an 8-cell row in a 6-column table, audit-clean**, and still
+  defeats the impact-ordering insert scan. This is byte-for-byte `main`'s behaviour;
+  `TestTicketNewAcceptsAwkwardButLegalTitle` pins the input as *accepted*, which is exactly the
+  stable contract **T-014** needs to escape against. The deferral is correct and does not make this
+  change unsafe to ship.
+- **No other producer is unguarded.** `internal/install` writes no tickets; `internal/move`
+  (`move.go:150`) and `internal/sync` (`sync.go:280`) re-render rows from titles **already on
+  disk**, where rejecting would be wrong. `ticket new` is the only creation path, and both
+  `ticket.Scaffold` and `board.AddTODORow` have exactly one production caller each, now downstream
+  of the validators.
+- **The `ParseDepends` layering survives hand-fuzzing** — `"[T-001"`, `"T-001]"`, `","`, `"   "`,
+  `T-0`, a 20-digit id, and embedded newlines all behave as pinned; every accepted value yields a
+  well-formed single-line `spawned-by:`.
+- **Shipped payload verified**, not assumed: `assets.go:13` is `//go:embed all:skill`, and
+  `strings ./pickle` finds the new prose in the rebuilt binary.
+
+### Step 4a — documentation
+
+Coverage **met** in all three places and correctly **not** duplicated: `README.md:282-288`,
+`skill/SKILL.md:112-117`, `skill/resources/tickets-README.md:113-116` (§3 Filename) and `:148-150`
+(§3 Lineage). The half-stale `README` line the pickup gate flagged is gone and now states the
+shape-at-creation / existence-at-audit split accurately — both halves verified empirically. Whole-tree
+sweep found one stale synopsis (N5). **No docs build exists** — `pickle.toml:31` has `docs`
+commented out and CI runs only vet/gofmt/test/build — so there was nothing to compile; confirmed
+rather than assumed, as the plan required.
+
+### Step 8 — impact sweep
+
+- **T-027** — corrected: it adds the *first* external `ValidID` caller rather than replacing a
+  duplicate (N3). Materially changes its estimate.
+- **T-019** — gained `PLAN.md`'s stale synopsis as item 4 (N5).
+- **T-038** — new, `spawned-by: [T-030]`, carrying N1 + N2.
+- **T-014** — its newline case is no longer reproducible via `ticket new`; the `|` case is, and is
+  now pinned by a positive test. Already noted on the ticket at refinement.
+- **T-034** — inherited the T-021 insert-point wall when T-035 was dropped; the `\|` escape fixed
+  rendering only. Recorded on both tickets on `main` (`b1f1e53`).
+- **T-012**, **T-023**, **T-014·1** — see the sweep recorded in the Implementation notes above.
+- **T-031**, **T-033** — unaffected; this ticket avoided the `captureStdout` trap rather than
+  inheriting it (the new tests do not call it at all).
 
 ## History
 
@@ -531,3 +769,5 @@ no-op:
   while filing: `insertIntoBoard` reads impact as `cells[3]` of a plain `|` split, so the corrupt row
   has rank 0 and every new row piles up in front of it.
 - 2026-07-25 — READY → IN DEVELOPMENT: picked up; pickup gate clean (0 blocking, 7 amendments applied)
+- 2026-07-25 — IN DEVELOPMENT → IN REVIEW: acceptance green; 3 mutations load-bearing; docs updated
+- 2026-07-26 — IN REVIEW → DONE: review clean: 0 blocking, 6 non-blocking (T-038 filed; N5->T-019, N3->T-027; N3/N4/N6 inline)

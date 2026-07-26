@@ -109,7 +109,10 @@ All other transitions are forward-only, as diagrammed.
   belongs to is orthogonal to its id (a ticket may even be re-homed to another child without
   renumbering). **Tickets are never deleted:** `6-done/` and `7-dropped/` are permanent
   archives — pruning them would both lose the record and break the `max()+1` id rule.
-- **Filename.** `T-NNN-<slug>.md`.
+- **Filename.** `T-NNN-<slug>.md`. The slug is derived from the title, so a **title is a single
+  line of text**: `pickle ticket new` rejects an empty or multi-line title outright rather than
+  rewriting it, because the title becomes the filename, the `# T-NNN — …` heading and a `BOARD.md`
+  cell at once.
 - **Target child-project.** `project:` frontmatter — a registered child name (§0). Required on
   every ticket; validated by `pickle board audit`.
 - **Priority.** `impact` / `complexity` / `cost` frontmatter:
@@ -142,7 +145,10 @@ All other transitions are forward-only, as diagrammed.
   behaviour: it gates nothing.** There is no transition guard — a ticket may enter
   `3-in-development/` no matter what state its `spawned-by` parents are in, terminal ones
   included; `pickle board audit` only checks that each id exists and that a ticket does not cite
-  itself. Never fold a "created because of" relationship into `depends-on:` to make it visible:
+  itself. `pickle ticket new` additionally checks each id's **shape** (`T-NNN`) and drops repeats,
+  so a typo is reported as a malformed id rather than as a missing ticket; **existence** stays the
+  audit's job, since citing a ticket that has not been filed yet is legal.
+  Never fold a "created because of" relationship into `depends-on:` to make it visible:
   that would wrongly block pickup. Set at creation and left alone thereafter (like the History
   `source:` line, which it complements rather than replaces — the History line keeps the prose
   reason, `spawned-by:` makes the link queryable). `pickle ticket new --spawned-by "T-NNN"`

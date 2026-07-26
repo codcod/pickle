@@ -278,11 +278,15 @@ Allocates the next `T-NNN` (one global namespace = `max(existing) + 1`), writes 
 audit-passing scaffold to `tickets/1-to-do/T-NNN-<slug>.md` (filled frontmatter + the standard
 section skeleton), and inserts the board row under the child's `### <child>` sub-group in the
 TO DO section, in impact order. `--project` must name a registered child; grades default to
-`medium`/`medium`/`M` and must be legal. `--spawned-by` records **lineage** — the ticket(s) this
-one was born from (a review finding, an audit, a split) — comma-separated, brackets optional,
-defaulting to `[]`. It is provenance, not a dependency: it never gates pickup, and the ids are
-checked for existence by `board audit`, not at creation. The agent fills the Description prose
-afterwards; the full `TEMPLATE.md` (installed with the skill) is the authoring guide.
+`medium`/`medium`/`M` and must be legal. The `<title>` may not be empty or contain newlines —
+it is written into the frontmatter, the heading and a board cell, so a newline would corrupt all
+three; a rejected invocation writes nothing at all. `--spawned-by` records **lineage** — the
+ticket(s) this one was born from (a review finding, an audit, a split) — comma-separated, brackets
+optional, defaulting to `[]`. It is provenance, not a dependency: it never gates pickup. Each id is
+checked for **shape** (`T-NNN`) at creation, while whether it **exists** is checked by
+`board audit` — a forward reference to a ticket not yet filed is legal input. Repeated ids are
+de-duplicated. The agent fills the Description prose afterwards; the full `TEMPLATE.md` (installed
+with the skill) is the authoring guide.
 
 ## `pickle ticket move`
 

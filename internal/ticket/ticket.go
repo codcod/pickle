@@ -93,6 +93,13 @@ func (t *Ticket) Project() string { return t.Front["project"] }
 
 var (
 	filenameRE = regexp.MustCompile(`^(T-\d+)-[A-Za-z0-9._-]+\.md$`)
+	// idRE is the canonical ticket-id shape, the same `T-\d+` filenameRE anchors.
+	// Exported through ValidID so that creation time (internal/cli) and the audit
+	// will share one definition rather than growing a second: internal/audit does
+	// not validate id shape at all today, and T-027 is to add that using ValidID
+	// instead of its own regex. The shape is still spelled out separately in
+	// filenameRE above and in board.rowRE; unifying those is T-027's call.
+	idRE       = regexp.MustCompile(`^T-\d+$`)
 	fmKeyRE    = regexp.MustCompile(`^([A-Za-z-]+):\s*(.*)$`)
 	inlineHash = regexp.MustCompile(`\s+#.*$`)
 	historyRE  = regexp.MustCompile(`^-\s*\d{4}-\d{2}-\d{2}\s*[—-]+\s*(.+)$`)
@@ -137,6 +144,37 @@ func ParseDepends(raw string) []string {
 		}
 	}
 	return out
+}
+
+// ValidID reports whether s has the canonical ticket-id shape (T-<digits>).
+// It is a *shape* check only: whether the ticket exists is the audit's job, since
+// a forward reference to a not-yet-filed ticket is legal input (rules §3).
+//
+// Deliberately does not trim: callers that accept human input tokenize first
+// (see ParseIDList, which trims via ParseDepends).
+func ValidID(s string) bool { return idRE.MatchString(s) }
+
+// ParseIDList parses a comma-separated (or bracketed) ticket-id list like
+// ParseDepends, but validates each token's shape and drops duplicates, keeping
+// first-seen order. For flag input, where rejecting is possible; ParseDepends
+// stays lenient for already-written frontmatter, where it is not.
+//
+// The error names the offending token so a malformed id is reported as malformed
+// rather than as a missing ticket.
+func ParseIDList(raw string) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	for _, tok := range ParseDepends(raw) {
+		if !ValidID(tok) {
+			return nil, fmt.Errorf("%q is not a ticket id (expected T-NNN)", tok)
+		}
+		if seen[tok] {
+			continue
+		}
+		seen[tok] = true
+		out = append(out, tok)
+	}
+	return out, nil
 }
 
 // LastHistoryStatus returns the display name of the newest status-bearing History

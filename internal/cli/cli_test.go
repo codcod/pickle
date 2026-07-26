@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -231,6 +232,142 @@ func TestTicketNewSpawnedByUnknownID(t *testing.T) {
 	}
 	if !strings.Contains(out, "spawned-by T-404 does not exist") {
 		t.Errorf("board audit did not report the dangling id:\n%s", out)
+	}
+}
+
+// TestTicketNewRejectsInjectionInTitle pins T-030 decision 1: an unusable title
+// is rejected before anything is written.
+//
+// The tree-unchanged assertion is the load-bearing half. An exit-code-only test
+// would also pass on a validator that rejected *after* writing the ticket file or
+// the board row — precisely the weakness T-029 found next door in
+// TestTicketNewSpawnedByUnknownID — and the whole point of the fix is that
+// nothing malformed reaches disk.
+func TestTicketNewRejectsInjectionInTitle(t *testing.T) {
+	for _, tc := range []struct{ name, title string }{
+		{"injects a frontmatter key", "evil\nproject: nope"},
+		{"injects an id", "x\nid: T-999"},
+		{"carriage return", "a\r\nb"},
+		{"frontmatter terminator after a newline", "a\n---\nb"},
+		// The only case that reaches the "---" branch: the newline rule catches
+		// the case above first, and a bare "---" never gets past the "-" prefix
+		// guard in runTicketNew.
+		{"padded frontmatter terminator", "  ---  "},
+		{"whitespace only", "   "},
+		{"empty", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
+			root := newProject(t)
+			boardPath := filepath.Join(root, "tickets", "BOARD.md")
+			before, err := os.ReadFile(boardPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if got := Run(nil, "test", []string{"ticket", "new", tc.title, "--project", "demo"}); got != exitError {
+				t.Errorf("Run(ticket new %q) = %d, want %d", tc.title, got, exitError)
+			}
+			assertNoTickets(t, root)
+			after, err := os.ReadFile(boardPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Errorf("BOARD.md changed on a rejected title %q", tc.title)
+			}
+		})
+	}
+}
+
+// TestTicketNewRejectsMalformedSpawnedBy covers the other unvalidated input. The
+// exit code and the untouched tree are asserted here; the *wording* ("is not a
+// ticket id") is pinned in internal/ticket's TestParseIDList, because errf writes
+// to stderr and this package has no stderr capture (captureStdout would not see
+// it) — see T-031.
+func TestTicketNewRejectsMalformedSpawnedBy(t *testing.T) {
+	for _, tc := range []struct{ name, spawnedBy string }{
+		{"not an id", "banana"},
+		{"injects a frontmatter key", "T-001]\nimpact: critical"},
+		{"wrong case", "t-001"},
+	} {
+		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
+			root := newProject(t)
+			boardPath := filepath.Join(root, "tickets", "BOARD.md")
+			before, err := os.ReadFile(boardPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			args := []string{"ticket", "new", "sneaky", "--project", "demo", "--spawned-by", tc.spawnedBy}
+			if got := Run(nil, "test", args); got != exitError {
+				t.Errorf("Run(--spawned-by %q) = %d, want %d", tc.spawnedBy, got, exitError)
+			}
+			assertNoTickets(t, root)
+			after, err := os.ReadFile(boardPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Errorf("BOARD.md changed on a rejected --spawned-by %q", tc.spawnedBy)
+			}
+		})
+	}
+}
+
+// TestTicketNewDeduplicatesSpawnedBy pins T-030 decision 3: a repeated id is
+// normalised away rather than rejected or written twice.
+func TestTicketNewDeduplicatesSpawnedBy(t *testing.T) {
+	root := newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "real parent", "--project", "demo"}); got != exitOK {
+		t.Fatalf("seeding T-001: exit %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "new", "dupes", "--project", "demo", "--spawned-by", "T-001,T-001"}); got != exitOK {
+		t.Fatalf("ticket new = %d, want %d", got, exitOK)
+	}
+	if body := readTicket(t, root, "T-002"); !strings.Contains(body, "spawned-by: [T-001]") {
+		t.Errorf("want spawned-by: [T-001] (de-duplicated):\n%s", body)
+	}
+	if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+		t.Fatalf("board audit = %d, want clean (%d)", got, exitOK)
+	}
+}
+
+// TestTicketNewAcceptsAwkwardButLegalTitle guards against the rejection turning
+// into a character whitelist: punctuation that Slugify strips, a leading "-"
+// inside the title, and a '|' (whose escaping is T-014's job at the render
+// boundary, not a reason to reject input) must all still be accepted.
+func TestTicketNewAcceptsAwkwardButLegalTitle(t *testing.T) {
+	for _, title := range []string{
+		"add --flag support (finally)",
+		"### hashes ###",
+		"pipe | in title",
+		"tabs\tand  spaces",
+	} {
+		t.Run(title, func(t *testing.T) { // no t.Parallel: newProject chdirs
+			root := newProject(t)
+			if got := Run(nil, "test", []string{"ticket", "new", title, "--project", "demo"}); got != exitOK {
+				t.Fatalf("Run(ticket new %q) = %d, want %d", title, got, exitOK)
+			}
+			if body := readTicket(t, root, "T-001"); !strings.Contains(body, "title: "+title) {
+				t.Errorf("scaffold missing the title verbatim:\n%s", body)
+			}
+		})
+	}
+}
+
+// assertNoTickets fails if any ticket file exists in 1-to-do/. The counterpart to
+// readTicket, which cannot express absence: it t.Fatalf's when the id is missing.
+func assertNoTickets(t *testing.T, root string) {
+	t.Helper()
+	dir := filepath.Join(root, "tickets", "1-to-do")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".md") {
+			t.Errorf("%s was written despite a rejected invocation", e.Name())
+		}
 	}
 }
 
