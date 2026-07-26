@@ -402,3 +402,4 @@ block + `tickets/NOTES.md`). No other doc surfaces.
 - 2026-07-26 — READY → IN DEVELOPMENT: picked up
 - 2026-07-26 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-07-26 — IN REVIEW → DONE: review pass: 0 blocking, 5 non-blocking (2 fixed inline, 2 folded to T-019/T-043, 1 noted); no tickets spawned
+- 2026-07-26 — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted

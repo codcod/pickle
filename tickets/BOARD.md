@@ -80,7 +80,7 @@ Last updated: 2026-07-26
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — MERGED: feat/T-030-validate-ticket-new-input → main (a29fde1, squashed) |
 | T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | yes — MERGED: feat/T-036-review-disposition-valves → main (5367843, squashed) |
-| T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | no — publish-gated |
+| T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
 
 ## DROPPED
 
