@@ -56,6 +56,7 @@ Last updated: 2026-07-26
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
 | T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |
+| T-048 | render the user manual to PDF and EPUB with snowball | low | low | S | [] |
 
 ## DONE
 
