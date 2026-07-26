@@ -312,3 +312,4 @@ This ticket *is* the docs. Registration of the new surface:
 - 2026-07-26 — READY → IN DEVELOPMENT: picked up
 - 2026-07-26 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-07-26 — IN REVIEW → DONE: review clean: 2 non-blocking findings, both fixed inline (F1, F2); acceptance verbatim green
+- 2026-07-26 — merged to main (local squash merge 7a0995d)
