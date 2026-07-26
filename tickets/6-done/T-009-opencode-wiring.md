@@ -323,3 +323,4 @@ Presented to the user with a recommendation to discard for this review.
 - 2026-07-26 — READY → IN DEVELOPMENT: picked up; applicability gate clean (plan refined same day, no board delta)
 - 2026-07-26 — IN DEVELOPMENT → IN REVIEW: acceptance test green; build/test/lint clean
 - 2026-07-26 — IN REVIEW → DONE: review clean: 4 non-blocking (3 fixed inline, 1 folded into T-013)
+- 2026-07-26 — MERGED: feat/T-009-agent-enablement → main (22d2871, squash), user-approved; branch deleted
