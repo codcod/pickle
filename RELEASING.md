@@ -31,6 +31,9 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
+The workflow can also be re-run manually for an **existing** tag via *Actions → release →
+Run workflow* (`workflow_dispatch` with the tag name), e.g. after fixing a secret.
+
 That produces, for `darwin`/`linux` × `amd64`/`arm64`:
 
 - a **GitHub release** with `.tar.gz` archives + `checksums.txt`;

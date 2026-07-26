@@ -8,6 +8,7 @@ project_name: pickle
 before:
   hooks:
     - go mod tidy
+    - go test ./...
 
 builds:
   - id: pickle
@@ -38,14 +39,16 @@ release:
   github:
     owner: codcod
     name: pickle
+  draft: false
+  prerelease: auto
 
 checksum:
   name_template: "checksums.txt"
 
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
 changelog:
-  # git-based (not github) so `goreleaser check` and snapshot builds work before
-  # a remote exists; GitHub auto-detects the release target once origin is set.
-  use: git
   sort: asc
   filters:
     exclude:
@@ -59,6 +62,7 @@ changelog:
 # via `go install` or the release archives.
 homebrew_casks:
   - name: pickle
+    binaries: [pickle]
     repository:
       owner: codcod
       name: homebrew-taps
@@ -66,11 +70,10 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/codcod/pickle"
     description: "Ticket-based, board-driven feature flow as a CLI"
-    # Remove the quarantine attribute so the unsigned binary runs without a
-    # Gatekeeper prompt.
+    # Strip macOS quarantine so the unsigned binary runs without a Gatekeeper prompt.
     hooks:
       post:
         install: |
-          if OS.mac?
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/pickle"]
           end
