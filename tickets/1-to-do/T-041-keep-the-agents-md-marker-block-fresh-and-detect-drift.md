@@ -51,8 +51,9 @@ hand-edits.
   WIP limits unconditionally — the same contradiction seen from the other surface. When both land,
   the payload defers to the block and the block is finally trustworthy; they are worth sequencing
   together but do not share code.
-- **T-036**'s note-and-close valve and **T-039**'s parse-back gate are unrelated in code but share
-  the "never silently destroy user content" principle.
+- **T-036**'s note-and-close valve and **T-044**'s generated-board design (superseded T-039's
+  parse-back gate, 2026-07-26) are unrelated in code but share the "never silently destroy user
+  content" principle.
 
 ## Implementation Plan
 

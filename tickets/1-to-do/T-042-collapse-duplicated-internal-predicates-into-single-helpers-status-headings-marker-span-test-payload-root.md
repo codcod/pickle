@@ -77,9 +77,12 @@ does deliberately. Unify on the absolute, CWD-independent form.
 - **T-043** (test harness + coverage) touches `internal/cli/cli_test.go` and the same test files
   as item 3. Land one before the other, not concurrently; item 3 is arguably T-043's prerequisite,
   though not a hard `depends-on`.
-- **T-039** touches `internal/board` and `internal/sync` heavily (render, sync rebuild). Item 2
+- **T-044** (which superseded T-039, 2026-07-26) rewrites `internal/board` and `internal/sync`
+  heavily (single renderer, sync becomes regenerate) and **deletes** several of the helpers this
+  ticket would unify (`sectionSpan`, `subgroupSpan`, sync's `matchStatus`) — re-verify this
+  ticket's scope after T-044 lands. Item 2
   edits `board.Parse`/`ParseCells`/`sectionSpan` and item 1 of T-015's test gap edits
-  `internal/sync` — **high collision risk**. Sequence after T-039, or coordinate carefully.
+  `internal/sync` — **high collision risk**. Sequence after T-044, or coordinate carefully.
 - **T-040** may compose a shared `T-\d+` fragment from `filenameRE` (`internal/ticket/ticket.go:95`)
   and `board.rowRE` (`internal/board/board.go:29`). If T-040 defers that, it belongs here.
 - **T-013 item 6** ("project-root resolution is triplicated" across the setup commands) is the same

@@ -10,18 +10,20 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-> ⚠️ **Do not run `pickle board sync` on this file until T-039 lands.** Three confirmed
+> ⚠️ **Do not run `pickle board sync` on this file until T-044 lands.** Three confirmed
 > data-loss behaviours, all reproduced 2026-07-26: it **deletes the prose notes** below while
 > reporting "reformat only", it **un-escapes the pipe** in T-021's title back into a malformed
 > row, and it **overwrites a hand-corrected `branch` cell** with the slug-derived guess. All
-> three are now T-039's scope. `pickle board audit` is safe; `pickle ticket move` is safe except
-> that it re-renders the moved row unescaped — see below.
+> three dissolve under T-044 (READY), which makes this file a pure generated artifact — T-039,
+> which would have hardened the current design instead, was dropped as superseded 2026-07-26.
+> `pickle board audit` is safe; `pickle ticket move` is safe except that it re-renders the
+> moved row unescaped — see below.
 >
 > **T-021's DROPPED row is a live reproduction.** Escaping it to `\|` fixes the rendered table
 > but not `insertIntoBoard`, whose `strings.Split(line, "|")` is not escape-aware, so the row
 > still splits into 4 fields in a 3-column section. It re-corrupted on the 2026-07-26 merge when
-> `MoveRow` re-rendered it from frontmatter. Left escaped for legibility; T-039 owns the real fix
-> and needs no fixture to write the failing test.
+> `MoveRow` re-rendered it from frontmatter. Left escaped for legibility; T-044 deletes
+> `insertIntoBoard` outright and needs no fixture to write the failing test.
 
 Last updated: 2026-07-26 (T-036 refined → READY, retitled, valves 3–4 split out as T-045)
 
@@ -55,6 +57,7 @@ Last updated: 2026-07-26 (T-036 refined → READY, retitled, valves 3–4 split 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
 | T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | high | medium | M | [] |
+| T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -86,18 +89,16 @@ T-036 (backlog cap, `user-visible:` axis). Both are backstops for the leak T-036
 must not be refined until T-036 has landed and the spawn rate has been re-measured over at
 least three reviews. Dropping it is a legitimate outcome.
 
-**Known cross-epic decisions.** T-039 owns escape-vs-replace; **T-043 item 5 must defer to it**.
-**T-044 is a design alternative to T-039** (generated board vs hardened hand-maintained board) —
-refine one, not both; whichever is accepted absorbs or retires the other (T-014·4 move atomicity
-survives either way).
-T-042 collides with T-039 (`internal/board`, `internal/sync`) and with T-043 (`cli_test.go`) —
+**Known cross-epic decisions.** **T-044 won the T-039-vs-T-044 design decision** (2026-07-26):
+the board becomes a generated artifact; T-039 (harden the hand-maintained design) was dropped as
+superseded, and its move-atomicity residue (T-014·4) is folded into T-044. Escape-vs-replace is
+settled by T-044's one-way cell sanitisation — **T-043 item 5 defers to T-044**.
+T-042 collides with T-044 (`internal/board`, `internal/sync`) and with T-043 (`cli_test.go`) —
 sequence, do not run concurrently.
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
-| T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | high | high | L | [] |
-| T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | high | medium | M | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
@@ -153,6 +154,7 @@ sequence, do not run concurrently.
 | T-032 | unify the test payload-root idiom into one CWD-independent helper | absorbed into T-042 (board triage merge); content preserved here as the record |
 | T-031 | harden the internal/cli test harness (captureStdout stdout restore + pipe lifecycle, TestMain sandbox lifecycle) | absorbed into T-043 (board triage merge); content preserved here as the record |
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | absorbed into T-043 (board triage merge); content preserved here as the record |
+| T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | superseded by T-044 (generated board); move-atomicity residue folded into T-044 |
 
 ---
 

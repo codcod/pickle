@@ -46,9 +46,9 @@ internals) rather than here.
 
 ### Cross-references
 
-- **T-039** adds *board-row shape* checks to the same audit. Disjoint subject (rows vs
-  frontmatter) but the same file and test table — sequence them to avoid edit collisions, and
-  consider a shared table-driven fixture.
+- **T-044** (which superseded T-039, 2026-07-26) replaces the audit's board cross-check with a
+  staleness check in the same file — the old plan's row-shape checks are gone. Still the same
+  `internal/audit/audit.go` + test table: sequence to avoid edit collisions.
 - **T-036** proposes a TO DO cap enforced by the audit; if it lands first, this epic inherits its
   test scaffolding.
 

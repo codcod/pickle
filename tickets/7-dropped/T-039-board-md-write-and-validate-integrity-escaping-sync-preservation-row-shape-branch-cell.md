@@ -13,6 +13,14 @@ cost: L
 
 ## Description
 
+> **SUPERSEDED by T-044 (refinement decision, 2026-07-26) — this ticket is closed, its
+> problem is not.** T-044 removes the design flaw this epic would have hardened: BOARD.md
+> becomes a pure generated artifact, so the escape-vs-replace question, the sync-preservation
+> class, the row-shape checks and the branch cell all dissolve by construction. The one item
+> T-044's design does not solve — move atomicity (T-014·4) — is folded into T-044 (its
+> decision D7). The absorbed sources below (T-014, T-023, T-034, T-037, in `7-dropped/`)
+> remain the authoritative evidence record, now serving T-044. Do not implement from here.
+
 **Epic — merged from T-014, T-023, T-034 and T-037 by the 2026-07-26 board triage.** Every
 absorbed ticket is in `tickets/7-dropped/` with its full evidence, measurements and line
 references intact; read them for detail. This ticket is the single refinable, reviewable unit.
@@ -88,3 +96,4 @@ unit, split it back: the goal is fewer review cycles, not a bigger ticket.
 
 - 2026-07-26 — created (TO DO). source: board triage — epic merged from T-014, T-023, T-034 and
   T-037, all four moved to 7-dropped/ as absorbed
+- 2026-07-26 — TO DO → DROPPED: superseded by T-044 (generated board); move-atomicity residue folded into T-044

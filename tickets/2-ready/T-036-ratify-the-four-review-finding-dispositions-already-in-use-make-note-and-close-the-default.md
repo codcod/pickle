@@ -115,7 +115,8 @@ should be re-measured after this lands, not assumed now.
 
 Soft couplings (no hard `depends-on:`): **T-016** adds a Step 4b to the same protocol file and
 **T-022** rewrites payload conditionals in the same tree — sequence to avoid edit collisions.
-**T-039** owns the board-column mechanics any new grade axis would need. A future automated
+**T-044** owns the board-column mechanics any new grade axis would need (superseded T-039,
+2026-07-26; columns become a render-side change). A future automated
 spawn-rate warning needs `spawned-by:` to be populated, which is what dropped **T-025** would
 have done — resurrect it before building the metric, not after.
 

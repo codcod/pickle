@@ -51,19 +51,21 @@ entirely by manual acceptance tests.
 | 6 | `LastHistoryStatus` transition parsing. |
 | 7 | **`Save` is neither atomic nor mode-preserving** (added 2026-07-25 by a T-018 gate finding) — a crash mid-write truncates `pickle.toml`, and the file's mode is not preserved. This is the only item here that is a correctness bug rather than coverage; consider hoisting it if the epic is split. |
 
-### Deferral: item 5 belongs to T-039
+### Deferral: item 5 belongs to T-044 (was T-039, dropped as superseded 2026-07-26)
 
 T-012 item 5 ("`ticket new` writes the raw title into the board row") is the **same escape-versus-
-replace question** that **T-039** exists to settle across `renderRow`, `AddTODORow`, `MoveRow` and
-`sync.rowFor`. This epic must **not** choose independently: take T-039's decision and test against
-it. If T-039 has not landed at refinement time, either sequence after it or scope item 5 out.
+replace question** that **T-044** settles across the render path (one-way `sanitizeCell`; the
+parse-back machinery is deleted). This epic must **not** choose independently: take T-044's
+decision and test against it. If T-044 has not landed at refinement time, either sequence after
+it or scope item 5 out. (T-039, which previously owned this decision, was dropped as superseded
+by T-044, 2026-07-26.)
 
 ### Sequencing
 
 - **T-042** item 3 unifies the test payload-root idiom across five files including
   `internal/cli/cli_test.go`. Arguably a prerequisite here, though not a hard `depends-on` —
   decide the order at refinement rather than editing the same files concurrently.
-- **T-039** owns the item 5 decision, as above.
+- **T-044** owns the item 5 decision, as above (previously T-039, dropped as superseded).
 - T-012's original `depends-on: [T-001, T-002, T-003]` are all in `6-done/` and merged, so the
   gate is satisfied; the epic carries no hard dependency forward.
 

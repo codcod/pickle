@@ -92,7 +92,10 @@ If a real key is still wanted, the costs are:
 - **TEMPLATE.md drift.** `Scaffold` never reads `TEMPLATE.md`; the only guard compares `## `
   headings (`ticket_test.go:256`), not frontmatter. A frontmatter-superset test is owned by
   **T-040**.
-- **A board column depends on T-039.** `insertIntoBoard` reads impact as a fixed `cells[3]` of
+- **A board column depends on T-044 (was T-039, dropped as superseded 2026-07-26).**
+  T-044 makes the board fully generated, so a new column becomes a render-side change and the
+  fragility below disappears with `insertIntoBoard`. Until it lands, the old mechanics apply:
+  `insertIntoBoard` reads impact as a fixed `cells[3]` of
   a plain `|` split (`board.go:282-288`); inserting a column before `impact` silently breaks
   impact-ordered insertion with nothing failing loudly. Column work also touches `board.go:120`,
   `:79-113`, `AddTODORow`'s signature `:236` (5 call sites), `sync.go:272-300`,
@@ -100,8 +103,8 @@ If a real key is still wanted, the costs are:
   only pick it up via `board sync`. Two independent sort implementations (`board.go:16-20` and
   `sync.go:49-52`) must be kept in agreement or `sync` reports drift forever.
 
-Soft couplings: **T-039** (board write integrity — prerequisite in practice for any new
-column), **T-040** (frontmatter validation, TEMPLATE drift test), **T-042** (`Scaffold` params
+Soft couplings: **T-044** (generated board — prerequisite in practice for any new column;
+superseded T-039), **T-040** (frontmatter validation, TEMPLATE drift test), **T-042** (`Scaffold` params
 struct), **T-025** (dropped; needed for a spawn-rate metric), **T-044** (if BOARD.md becomes a
 generated artifact, the column-mechanics cost above largely evaporates — re-read that ticket
 before planning any board change here).
