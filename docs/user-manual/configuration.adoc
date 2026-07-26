@@ -1,0 +1,61 @@
+[#configuration]
+= Configuration — `pickle.toml`
+
+`pickle.toml` lives at the overarching-project root and is *tool-managed*, but
+only one command rewrites a file you already own:
+
+* *`project add|remove`* re-render the whole file to a canonical layout. That
+  re-render *does not preserve comments* — this is the one case where
+  hand-written notes are lost.
+* *`upgrade`* rewrites only the `payload_version` line. Comments, blank lines,
+  key order and every other line's spacing survive; that one line comes back
+  normalised to `payload_version = "value"`, with any inline comment after the
+  value kept — so that one line's alignment and quoting style are not
+  preserved. Because the edit is line-based, some shapes are beyond it: a
+  quoted `"payload_version"` key, a `payload_version` whose own value is a
+  multi-line string, or a multi-line string holding a line that looks like a
+  `[table]` header or like the key itself, sitting *above* the key (above the
+  first `[table]` header, in a file that has no `payload_version` yet). The
+  result is parsed and compared against the original before anything is
+  written, so those shapes make `upgrade` *refuse and change nothing*, with an
+  error telling you to set the version by hand. Position is what decides it,
+  not the mere presence of a multi-line string: the scan stops at the key, so
+  a multi-line string _below_ the key is never read and cannot trigger a
+  refusal, and one above it is read correctly as long as it holds neither of
+  those two lines.
+* *`install`* writes `pickle.toml` only when it does not yet exist; on an
+  existing file it reports `= pickle.toml (exists)` and leaves it alone.
+
+Hand-edits are always preserved on load.
+
+== The keys
+
+*Overarching:*
+
+* `payload_version` — the payload pinned into this project (stamped by
+  install/upgrade).
+* `review_addendum` (optional) — a project-wide review addendum layered on the
+  skill's review protocol.
+* `[commit]` table — `overarching_auto`, `child_publish_gated`. Both default
+  to *`true`* when the key or the whole table is absent — the cautious
+  reading, and what `install` writes: a child is not pushed without your
+  approval. Set either to `false` explicitly to opt out; the wording rendered
+  into `AGENTS.md` follows whichever way they are set (see <<cmd-upgrade>>).
+
+*Per child — the `\[[project]]` array* (one entry per connected child):
+
+* `name`, `path` (relative to the root);
+* `build` / `test` / `lint` / optional `docs` — the child's own commands, used
+  by the agent when implementing and reviewing tickets that target it (this
+  repository, for example, registers `docs = "just docs-check"` to validate
+  this manual);
+* `branch_prefix` (default `feat/`);
+* `wip_in_development` / `wip_in_review` (default 1);
+* optional per-child `review_addendum`.
+
+== Parsing
+
+TOML is decoded with
+https://github.com/BurntSushi/toml[`github.com/BurntSushi/toml`] — a
+*build-time* dependency compiled into the static binary; nothing is fetched at
+runtime.

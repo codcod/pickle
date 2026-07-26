@@ -73,6 +73,17 @@ are fixed in T-006's own rework pass, not here.)
 > Configuration paragraph itself, so item 1's "prose duplicates the table" complaint should be
 > re-checked against the new wording before acting on it.
 
+> **Scope shrunk to item 4 only (2026-07-26, by T-047).** T-047 rewrote `README.md` to a
+> shop window (about + install) and moved the command reference into `docs/user-manual/`:
+> item 1's duplicated status prose and command table were deleted outright (the manual's
+> overview table carries no `[done: T-NNN]` tags), and item 3's misstatement was fixed — not
+> ported — in `docs/user-manual/cli-reference.adoc` (the `ticket move` section now states the
+> gate is stricter *in substance*: it demands a `MERGED` History line, while the audit errors
+> on undone deps and warns on done-but-unmerged). Item 2 was already mooted upstream by commit
+> `f7b0a0a`, which deleted the `## Phased build plan` section wholesale. **Remaining scope:
+> item 4** — the stale `PLAN.md:227` `ticket new` synopsis. Re-grade at refinement (likely
+> impact low / cost S still holds; consider retitling to reflect the PLAN.md-only scope).
+
 ## Implementation Plan
 
 <!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->
@@ -87,3 +98,4 @@ are fixed in T-006's own rework pass, not here.)
 - 2026-07-25 — re-anchored by the T-018 re-review: items 1/2 line refs shifted by T-018's README edits; noted that `README.md:102-104` belongs to T-018's rework
 - 2026-07-25 — scope extended: item 3 (README.md:316 misstates board audit's severity), from the T-024 review's whole-tree sweep (finding N11)
 - 2026-07-26 — patched by the T-009 review (impact sweep): item 1's "--agent is a no-op" clause and item 2's "Zed/Pi outstanding" premise are obsolete (T-009 shipped the agent breadth and tagged P4); line refs below the install section shifted again
+- 2026-07-26 — scope shrunk by T-047: items 1 and 3 superseded (README rewritten, command reference moved to docs/ with item 3's error fixed), item 2 mooted by commit f7b0a0a (phased-plan section deleted); only item 4 (PLAN.md synopsis) remains

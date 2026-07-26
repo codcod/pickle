@@ -13,11 +13,10 @@ Last updated: 2026-07-26
 
 ## IN DEVELOPMENT
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-047 | AsciiDoc user manual in docs/ + slim README to about & install | [] |
 
 ## IN REVIEW
 
@@ -80,6 +79,7 @@ Last updated: 2026-07-26
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — MERGED: feat/T-030-validate-ticket-new-input → main (a29fde1, squashed) |
 | T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | yes — MERGED: feat/T-036-review-disposition-valves → main (5367843, squashed) |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
+| T-047 | AsciiDoc user manual in docs/ + slim README to about & install | no — publish-gated |
 
 ## DROPPED
 

@@ -1,0 +1,61 @@
+[#installation]
+= Installation
+
+[NOTE]
+====
+*Two different "installs."* This page installs the *`pickle` binary* on your
+machine. The `pickle install` _command_ (see <<cmd-install>>) is a separate
+step you run *inside a project* to lay down the flow (skill, board, markers).
+====
+
+== Homebrew
+
+Via the tap:
+
+[source,sh]
+----
+brew install codcod/taps/pickle
+----
+
+== go install
+
+Go 1.26+, any platform:
+
+[source,sh]
+----
+go install github.com/codcod/pickle@latest
+----
+
+NOTE: `brew install` / `go install` work once the GitHub repo + tap exist and a
+release tag is cut — see `RELEASING.md` in the repository.
+
+== From source
+
+Requires Go 1.26+ and (optionally) https://github.com/casey/just[`just`].
+Releasing also needs https://goreleaser.com[`goreleaser`]
+(`brew install goreleaser`).
+
+[source,sh]
+----
+git clone https://github.com/codcod/pickle
+cd pickle
+just build         # → ./pickle   (or: go build -o pickle .)
+just test          # go test ./...
+just lint          # go vet + gofmt check
+just dist-check    # validate .goreleaser.yaml
+just dist-snapshot # local cross-compiled build into ./dist (no publish)
+./pickle version
+----
+
+Cutting an actual release is tag-driven and documented in the repository's
+`RELEASING.md`.
+
+== Then, inside any project
+
+[source,sh]
+----
+pickle install        # lay down the ticket flow — see the CLI reference
+pickle version
+----
+
+Continue with <<your-first-project>>.

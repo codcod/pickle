@@ -1,0 +1,390 @@
+[#cli-reference]
+= Commands
+
+Every command, its synopsis, and its contract. {product} operates on the
+current working directory (finding `pickle.toml` upward from it); nothing is
+ever written to `~/` or outside the project root.
+
+== Overview
+
+[cols="2,3"]
+|===
+| Command | What it does
+
+| `pickle install [--agent …]`
+| Scaffold `tickets/` + install the skill + inject markers + write
+  `pickle.toml` + register the first child-project.
+
+| `pickle project add\|list\|remove`
+| Manage connected child-projects.
+
+| `pickle upgrade`
+| Refresh the installed skill payload + marker block to the binary's version.
+
+| `pickle doctor`
+| Verify install integrity.
+
+| `pickle uninstall [--dry-run]`
+| Remove skill/symlinks/markers; keep `tickets/` + `pickle.toml`.
+
+| `pickle ticket new "<title>" --project <name>`
+| Allocate `T-NNN`, scaffold the ticket, regenerate the board.
+
+| `pickle ticket move T-NNN <status>`
+| Move the file + append History + regenerate the board, atomically.
+
+| `pickle board audit`
+| Check every ticket invariant + board freshness.
+
+| `pickle board sync`
+| Regenerate the board from ticket state.
+
+| `pickle version` · `pickle help`
+| Print the version / the usage summary.
+|===
+
+[#cmd-install]
+== `pickle install`
+
+----
+pickle install [--project <name>] [--path <path>] [--build/--test/--lint/--docs <cmd>]
+               [--agent claude,opencode,pi] [--claude-symlink]
+----
+
+Run once in a project to lay down the flow. It:
+
+* copies the embedded skill payload into `.agents/skills/ticket-flow/` (real
+  files) — including `resources/docs-readability.prompt.md`, the shared system
+  prompt for the optional docs-readability reviewer (review protocol Step 4b);
+* scaffolds `tickets/` (the seven ordered status dirs, each with a
+  `.gitkeep`), renders a fresh `tickets/BOARD.md` (a generated file — see
+  <<cmd-board-sync>>), scaffolds `tickets/NOTES.md` for hand-written planning
+  notes, and writes a short `tickets/README.md` pointer;
+* injects an idempotent `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker
+  block into `AGENTS.md`;
+* writes `pickle.toml` registering the first child-project (`--project`,
+  default: the root dir name; `--path`, default `.`);
+* wires up each agent named in `--agent` (see below).
+
+=== `--agent` — which coding agents to wire up
+
+`--agent` takes a comma-separated set of `claude`, `opencode`, `pi` (default:
+`claude`). There is *no autodetection* — the set is exactly what you name.
+Every agent reads the same `AGENTS.md` + `.agents/skills/ticket-flow/` core;
+the per-agent artifacts are:
+
+[cols="1,3,1"]
+|===
+| Agent | Artifacts | Ownership
+
+| `claude`
+| `.claude/skills/ticket-flow` symlink + `CLAUDE.md` marker block
+  (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md` instead)
+| pickle-owned
+
+| `opencode`
+| `opencode.jsonc` — the `docs-readability` reviewer subagent + declarative
+  bash guardrails (explicit-pathspec staging, publish gate). OpenCode picks up
+  `AGENTS.md` and the skill natively; this config is the only
+  opencode-specific piece
+| *user-owned once written* (see below)
+
+| `pi`
+| `.pi/extensions/pickle-guardrails.ts` (the same rules as a Pi `tool_call`
+  gate) + `.pi/extensions/docs-readability.ts` (a `docs_readability` tool +
+  `/docs-readability` command)
+| pickle-owned
+|===
+
+`--no-claude` is *deprecated*: it still works (drops `claude` from the set,
+with a warning) — use `--agent` instead.
+
+*`opencode.jsonc` policy.* pickle writes it whole *only if absent* and never
+parses or merges JSONC: if the file already exists it is left byte-for-byte
+untouched and the template is printed for you to merge by hand. From then on
+the file is yours — `upgrade` never touches it, and `uninstall` removes it
+only while it is still byte-identical to the shipped template.
+
+*The docs-readability reviewer* is a read-only, suggestions-only Gemini
+reviewer for the `.adoc`/`.md` files a ticket changed (review protocol
+*Step 4b* — optional, never blocking). Both scaffolds default to
+`github-copilot/gemini-2.5-pro` (one-time GitHub Copilot login; adjust with
+`opencode models github-copilot | grep -i gemini`, or
+`DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` for the pi extension).
+Sessions in other agents (zed, Claude Code, …) can reach the opencode reviewer
+by shelling out:
+`opencode run --agent docs-readability --file <changed.md> "…"` — or record a
+conscious skip.
+
+*Per-project* (never writes to `~/` or outside the root), *idempotent, and
+safe to re-run*: the payload and marker block are refreshed in place while
+instance data (`BOARD.md`, `NOTES.md`, tickets, `pickle.toml`) is preserved
+once present. After installing, a post-install `board audit` self-check must
+pass. An existing `.agents/skills/ticket-flow` *symlink* (a dev/self-host
+link) is left untouched.
+
+[#cmd-project]
+== `pickle project add | list | remove`
+
+----
+pickle project add <name> <path>
+pickle project list
+pickle project remove <name>
+----
+
+Manages the registry of connected child-projects in `pickle.toml` (see
+<<multi-project>>):
+
+* `add` registers another child — its name becomes a legal `project:`
+  frontmatter value, and per-child keys (commands, branch prefix, WIP limits)
+  can then be set in `pickle.toml`.
+* `list` prints the registered children.
+* `remove` unregisters a child — *refused while the child has live tickets*,
+  so a board can never reference an unknown target.
+
+`add` and `remove` re-render `pickle.toml` to a canonical layout; hand-written
+comments in the file do not survive that re-render (see <<configuration>>).
+
+[#cmd-upgrade]
+== `pickle upgrade`
+
+----
+pickle upgrade
+----
+
+Refreshes an existing install to the running binary's payload. It re-copies
+the embedded skill payload into `.agents/skills/ticket-flow/` (removing files
+that the new payload dropped), re-injects the `AGENTS.md` marker block, and
+stamps `payload_version` in `pickle.toml`. Takes no flags and no arguments.
+
+*It never reads or writes anything under `tickets/`* — your board and tickets
+are instance data and are not upgrade's business. Only artifacts that already
+exist are refreshed: `CLAUDE.md` is re-injected only if it is a regular file
+(a `CLAUDE.md -> AGENTS.md` symlink is left alone), and the
+`.claude/skills/ticket-flow` view is re-linked only if it is already there. A
+self-host *symlinked* `.agents/skills/ticket-flow` is left untouched, never
+followed and overwritten.
+
+Idempotent: re-running at the current version still refreshes the payload and
+marker block (so drift is corrected) and reports `already at <version>`
+instead of failing. A post-upgrade `board audit` self-check must pass.
+
+Upgrade will not cost you hand-written content in `pickle.toml`: stamping a
+new version rewrites *only* the `payload_version` line, leaves every other
+line alone, and refuses outright if it cannot do so safely (see
+<<configuration>>). Two things it _does_ replace wholesale, by design:
+
+* the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region of
+  `AGENTS.md`/`CLAUDE.md`. It is regenerated from `pickle.toml`, so everything
+  it states about your project comes back — the registered child names, each
+  child's `build`/`test`/`lint`/`docs` commands, each child's
+  `branch_prefix`, each child's WIP limits, and the `[commit]` policy
+  wording — but anything you wrote in there yourself does not. Keep notes
+  *outside* the markers, where pickle never looks. Because that block is what
+  an agent reads first, the `[commit]` keys decide whether it is told to hold
+  a child-project back pending your approval or to push as the work needs.
+* the skill directory `.agents/skills/ticket-flow/`, which is pickle-owned and
+  re-copied in full. Do not keep hand-written files there (a self-host
+  _symlink_ is left untouched).
+
+Agent scaffolds follow the same probe-what-exists rule: the pickle-owned
+`.pi/extensions/` files are refreshed *if present* (put customizations in
+sibling extension files — `doctor` warns when a pickle-owned one drifts),
+while `opencode.jsonc` is user-owned after creation and is *never* touched by
+upgrade.
+
+[#cmd-doctor]
+== `pickle doctor`
+
+----
+pickle doctor [--verbose|-v]
+----
+
+Verifies install integrity and exits non-zero on any error. It checks that:
+
+* `pickle.toml` parses;
+* the skill directory `.agents/skills/ticket-flow/` resolves to a directory
+  and holds every payload file;
+* the `.claude/skills/ticket-flow` symlink (when present) is a symlink and not
+  broken;
+* `AGENTS.md` (and a regular-file `CLAUDE.md`) carry the pickle marker block;
+* pickle-owned agent scaffolds (`.pi/extensions/*.ts`) match the shipped
+  version — a drifted file is a *warning* pointing at `pickle upgrade`
+  (customizations belong in sibling files);
+* each registered child's `path` is a git repository;
+* the installed `payload_version` matches the binary — a mismatch is a
+  *warning* pointing at `pickle upgrade`.
+
+`--verbose` (`-v`) also lists the checks that passed.
+
+[#cmd-uninstall]
+== `pickle uninstall`
+
+----
+pickle uninstall [--dry-run|-n]
+----
+
+Detaches the flow from the project, leaving your work behind. It removes
+`.agents/skills/ticket-flow/`, the `.claude/skills/ticket-flow` symlink, the
+`<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block from
+`AGENTS.md`/`CLAUDE.md` (a `CLAUDE.md` that is a symlink to `AGENTS.md` is
+removed outright; a regular file keeps everything outside the markers, and the
+file itself is never deleted), and the agent scaffolds: the pickle-owned
+`.pi/extensions/` files go (pruning `.pi/` only when left empty — your own
+extensions keep it alive), and `opencode.jsonc` goes *only* while still
+byte-identical to the shipped template; one you have edited is yours and
+stays.
+
+*`tickets/` and `pickle.toml` are both left intact* — the board, the tickets,
+and the child-project registry are instance data, so a later `pickle install`
+or `pickle upgrade` re-attaches cleanly to the same configuration.
+
+`--dry-run` (`-n`) lists what would be removed and changes nothing.
+Idempotent: on an already-clean tree it reports nothing removed rather than
+failing. A self-host *symlinked* skill directory has only the link removed —
+the tree it points at is never deleted.
+
+[#cmd-ticket-new]
+== `pickle ticket new`
+
+----
+pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"]
+----
+
+Allocates the next `T-NNN` (one global namespace = `max(existing) + 1`),
+writes a clean, audit-passing scaffold to `tickets/1-to-do/T-NNN-<slug>.md`
+(filled frontmatter + the standard section skeleton), and regenerates
+`BOARD.md` (the row lands under the child's `### <child>` sub-group in the
+TO DO section, in impact order). `--project` must name a registered child;
+grades default to `medium`/`medium`/`M` and must be legal. The `<title>` may
+not be empty or contain newlines — it is written into the frontmatter and the
+heading, so a newline would corrupt both; a rejected invocation writes nothing
+at all. (A `|` in a title is fine: board cells are sanitised one-way at render
+time.) `--spawned-by` records *lineage* — the ticket(s) this one was born from
+(a review finding, an audit, a split) — comma-separated, brackets optional,
+defaulting to `[]`. It is provenance, not a dependency: it never gates pickup.
+Each id is checked for *shape* (`T-NNN`) at creation, while whether it
+*exists* is checked by `board audit` — a forward reference to a ticket not yet
+filed is legal input. Repeated ids are de-duplicated. The agent fills the
+Description prose afterwards; the full `TEMPLATE.md` (installed with the
+skill) is the authoring guide.
+
+[#cmd-ticket-move]
+== `pickle ticket move`
+
+----
+pickle ticket move <T-NNN> <status> [--reason "<why>"]
+----
+
+Moves a ticket through the flow as *one operation*: write the updated ticket
+(with its dated `## History` transition line) to the target
+`tickets/<status>/` dir, remove the old file, and regenerate `BOARD.md`. The
+new file is written *before* the old one is removed, so a crash can never
+leave a ticket whose History records a transition that did not happen.
+`<status>` accepts the dir name (`3-in-development`), the short form
+(`in-development`), or the display name (`"in review"`).
+
+*State machine* (anything else is rejected):
+
+----
+to-do → ready → in-development → in-review → done
+                                     ↘ rework → in-review
+backward/abort:  in-development → ready,  ready → to-do,  (any non-terminal) → dropped
+----
+
+`done` and `dropped` are terminal. Gates enforced before anything is written:
+
+* *Sign-off* — `--reason` is required for every backward move, every
+  `→ rework`, and every `→ dropped`; the human running/approving the command
+  is the sign-off, and the reason is recorded in History (and the
+  DROPPED/REWORK board cell). Forward moves may omit it.
+* *Per-child WIP* — moving into `in-development`/`in-review` cannot exceed
+  that child's limit (from `pickle.toml`); counts only the ticket's own
+  `project`.
+* *Dependency + cross-child merge gate* (pickup only) — every `depends-on:`
+  target must be `done` *and* carry a `MERGED` History line (the cross-child
+  proxy for "merged to its own base"). This is stricter in substance than
+  `board audit`: the audit errors on a dependency that is not done and warns
+  on one that is done but unmerged, while the pickup gate demands the `MERGED`
+  History line outright. *`spawned-by:` takes no part in this gate* — lineage
+  is provenance, so a ticket is pickable however its parents stand.
+
+After applying, `ticket move` runs `board audit` as a self-check and fails
+loudly if the tree is no longer clean.
+
+[#cmd-board-audit]
+== `pickle board audit`
+
+A pure, dependency-free check of the flow invariants over `tickets/` +
+`pickle.toml`. It exits non-zero (and prints `ERROR:`/`WARNING:` lines plus a
+summary) when any invariant fails:
+
+* each ticket file sits in a known status dir and is named `T-NNN-<slug>.md`;
+* frontmatter is complete (`id`, `title`, `project`, `depends-on`,
+  `spawned-by`, `impact`, `complexity`, `cost`), grades are legal, the id
+  matches the filename, and ids are unique globally;
+* `project:` names a *registered child*, every `depends-on:` target exists,
+  and every `spawned-by:` target exists without a ticket citing itself —
+  lineage is checked for existence but *never gates* anything;
+* `BOARD.md` matches a fresh render of the ticket files — the board is a
+  *generated artifact*, so any hand-edit or staleness is exactly one error:
+  `BOARD.md is stale or hand-edited — run pickle board sync`;
+* *per-child* WIP limits (`wip_in_development`/`wip_in_review`) hold;
+* each ticket's last History transition matches its directory;
+* nothing is in `3-in-development/` with a dependency not yet in `6-done/`
+  (warning if a done dependency has no `MERGED` History line) —
+  `spawned-by:` parents are deliberately exempt.
+
+[NOTE]
+====
+*Upgrading an existing project:* `spawned-by:` is a *required* key, and
+`pickle upgrade` never touches tickets. Tickets written before this key
+existed therefore report `frontmatter missing "spawned-by"` until you backfill
+them — add `spawned-by: []` under each ticket's `depends-on:` line (a one-line
+mechanical edit per file).
+====
+
+Missing empty status directories are treated as empty, not errors (git does
+not track empty dirs).
+
+[#cmd-board-sync]
+== `pickle board sync`
+
+----
+pickle board sync [--dry-run]
+----
+
+*Regenerates `BOARD.md` wholesale from ground truth* (ticket files +
+frontmatter + `pickle.toml`). The board is a pure generated artifact: the
+whole file — banner, preamble, WIP-limit lines, and the seven status
+sections — is a render, and *nothing in it is preserved*; hand-written
+planning notes belong in `tickets/NOTES.md`, which sync never touches. *"In
+sync" is defined as `board audit` reporting zero errors*, so a successful sync
+always leaves the board audit-clean.
+
+Everything on the board is derived:
+
+* section per status directory, one `### <child>` sub-group per registered
+  child, `(n/limit)` WIP counts computed at render time;
+* deterministic ordering — TO DO/READY by descending impact (ties by id),
+  everything else by id; every DONE/DROPPED ticket is always listed (nothing
+  "ages off");
+* DONE `merged` from the ticket's merge History line (`yes — merged to …` /
+  `no — publish-gated`), DROPPED `reason` and REWORK `open findings` from the
+  last transition's `--reason`;
+* every cell passes one-way sanitisation (`|` → `¦`, newlines → space) —
+  cells are never parsed back, so a pipe in a title cannot corrupt the table.
+
+A board differing from a fresh render only in the `Last updated:` date is in
+sync — no write. `--dry-run` reports the drift, writes nothing, and *exits
+non-zero if the board would change* (wire it into CI). After a write, sync
+runs `board audit` as a self-check.
+
+[#cmd-version]
+== `pickle version` and `pickle help`
+
+`pickle version` prints the build version: the value stamped at build time
+(goreleaser / `just build`), falling back to the module version the Go
+toolchain records (so a `go install …@vX.Y.Z` binary reports its tag), and
+`dev` only when neither exists. `pickle help` prints the usage summary; so does
+any unknown command, with a non-zero exit.

@@ -1,0 +1,59 @@
+= pickle Documentation
+include::attributes.adoc[]
+
+This directory contains the {product} user manual, written in AsciiDoc.
+
+== The book
+
+link:user-manual.adoc[User Manual]::
+  Everything beyond "what is it and how do I install it" (which is the
+  repository link:../README.md[README]'s job). Three parts:
++
+--
+* *Start Here* — link:user-manual/quickstart.adoc[quickstart],
+  link:user-manual/installation.adoc[installation],
+  link:user-manual/your-first-project.adoc[your first project].
+* *Concepts* — how the ticket flow works:
+  link:user-manual/concepts/the-flow.adoc[the flow],
+  link:user-manual/concepts/tickets.adoc[tickets],
+  link:user-manual/concepts/lifecycle.adoc[lifecycle],
+  link:user-manual/concepts/multi-project.adoc[multi-project].
+* *CLI Reference* — link:user-manual/cli-reference.adoc[every command] and the
+  link:user-manual/configuration.adoc[`pickle.toml` reference].
+--
+
+The normative rules of the flow live in the ticket-flow skill installed into
+each project (`{skill-dir}/resources/tickets-README.md`) — the manual explains
+and summarises them; where the two disagree, the skill wins.
+
+== Layout
+
+----
+docs/
+├── README.adoc            ← this index
+├── attributes.adoc        ← shared attributes (product name, URLs)
+├── user-manual.adoc       ← book master document
+└── user-manual/
+    ├── quickstart.adoc
+    ├── installation.adoc
+    ├── your-first-project.adoc
+    ├── concepts/
+    │   ├── the-flow.adoc
+    │   ├── tickets.adoc
+    │   ├── lifecycle.adoc
+    │   └── multi-project.adoc
+    ├── cli-reference.adoc
+    └── configuration.adoc
+----
+
+== Validating
+
+There is no PDF/EPUB build — the sources are the deliverable. A validation pass
+renders the book to `/dev/null` and fails on any warning (broken includes,
+dangling cross-references):
+
+[source,sh]
+----
+bundle install     # installs Asciidoctor (Gemfile at the repo root)
+just docs-check    # bundle exec asciidoctor --failure-level=WARN -o /dev/null docs/user-manual.adoc
+----

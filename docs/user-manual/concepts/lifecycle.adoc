@@ -1,0 +1,97 @@
+[#lifecycle]
+= Lifecycle
+
+The seven statuses, the gates between them, and what a review does. Summarises
+§2, §4, §5 and §8 of the skill's rules.
+
+== The seven statuses
+
+[cols="1,1,3"]
+|===
+| Directory | Status | Meaning
+
+| `1-to-do/` | TO DO | An idea captured; unrefined.
+| `2-ready/` | READY | Refined; the Implementation Plan satisfies the READY gate.
+| `3-in-development/` | IN DEVELOPMENT | Being built on a `feat/T-NNN-<slug>` branch in the target child's repo.
+| `4-in-review/` | IN REVIEW | Built, acceptance test green; awaiting the review protocol.
+| `5-rework/` | REWORK | Review found blocking findings; back for a scoped fix.
+| `6-done/` | DONE | Built, reviewed, all blocking findings resolved. Terminal.
+| `7-dropped/` | DROPPED | Abandoned or obsoleted, kept with a reason. Terminal.
+|===
+
+== The state machine
+
+----
+to-do → ready → in-development → in-review → done
+                                     ↘ rework → in-review
+backward/abort:  in-development → ready,  ready → to-do,  (any non-terminal) → dropped
+----
+
+`pickle ticket move` enforces it — anything else is rejected. Backward and
+abort moves always need a `--reason`; dropping a ticket from development,
+review, or rework additionally needs explicit user sign-off.
+
+== The READY gate
+
+"Refined" is objective. A ticket is READY only when its Implementation Plan is
+a complete, self-contained prompt (§4):
+
+1. *Feature branch* named, cut inside the target child's repo.
+2. *Prerequisite gate* stated (or "none").
+3. *Confirmed design decisions* the implementer must honour.
+4. *Tasks* — concrete, with exact paths in the target child.
+5. *Acceptance test* — runnable commands + expected results, re-runnable
+   verbatim.
+6. *Docs update* — which docs, or "no user-facing surface".
+7. *Finish* — summary + a suggested Conventional Commit message (ticket id in
+   brackets at the end of the subject).
+
+== Pickup gates
+
+Before a READY ticket enters development, three checks run:
+
+* *Dependencies* — every `depends-on:` target is done *and merged* to the base
+  of its own child's repo (see <<tickets>>).
+* *WIP limits* — per child: `3-in-development/` ≤ 1 and `4-in-review/` ≤ 1 by
+  default (tunable in `pickle.toml`). Exceeding a limit is a rule violation,
+  not a judgement call.
+* *Applicability* — a freshness re-check of the plan's assumptions against the
+  current tree, run on every pickup; a stale plan is routed back to be
+  re-refined rather than implemented (§8).
+
+== Reviews: severity, then disposition
+
+A review gives every finding a *severity*:
+
+* *Blocking* — breaks the golden path, ships wrong behaviour, or contradicts a
+  locked decision. The ticket moves to `5-rework/`; only the listed findings
+  are fixed, on the same branch, then a *scoped* re-review verifies them.
+* *Non-blocking* — the ticket proceeds to `6-done/`, and each finding takes
+  exactly one of four *dispositions*, recorded in the ticket's `## Review`
+  table:
+
+[cols="1,3"]
+|===
+| Disposition | When
+
+| *fixed inline* | Prose or idiom this branch authored or made false — and no
+  behaviour change. Recorded, never a silent edit.
+| *folded* | An existing ticket already owns the ground; add or cite an item
+  there.
+| *new ticket* | It would *actually be scheduled*. Batched by theme — never
+  one ticket per finding — with `spawned-by:` naming the reviewed ticket.
+| *noted* | None of the above: recorded with its evidence and closed.
+  *This is the default.*
+|===
+
+The same four dispositions apply at every gate that can spawn a ticket — the
+pickup applicability gate and refinement splits use the same vocabulary and
+the same default (§5).
+
+== Done ≠ merged
+
+DONE records the review verdict. *Merging is always the human's* and may lag —
+a dependency counts as satisfied only once its code is actually on the base a
+new branch would fork from. When you merge, append a dated
+`merged to <base> (<MR ref>)` History line to the done ticket and run
+`pickle board sync`.

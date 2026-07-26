@@ -1,0 +1,85 @@
+[#tickets]
+= Tickets
+
+The single artifact everything flows through. Authored from the skill's
+`resources/TEMPLATE.md`; the rules summarised here are §3 and §7 of the skill's
+`tickets-README.md`.
+
+== Identity
+
+* *ID* — `T-NNN`, monotonically increasing, *never reused*, one global
+  namespace shared across all child-projects: a new ticket's number is
+  `max(existing across all status dirs, including done and dropped) + 1`.
+  Tickets are never deleted — `6-done/` and `7-dropped/` are permanent
+  archives; pruning them would lose the record *and* break the `max()+1` rule.
+* *Filename* — `T-NNN-<slug>.md`; the slug derives from the title, so a title
+  is a single line of text (enforced by `pickle ticket new`).
+
+== Frontmatter
+
+[cols="1,3"]
+|===
+| Key | Meaning
+
+| `id`, `title`
+| Identity; the title also becomes the heading and a board cell.
+
+| `project`
+| The one registered child-project this ticket targets. Its `feat/` branch is
+  cut in that child's repo.
+
+| `impact`
+| `critical` (reshapes the product) · `high` (major capability/adoption lever)
+  · `medium` (meaningful quality/consistency win) · `low` (narrow/cosmetic).
+
+| `complexity`
+| `high` (multi-step, open design questions) · `medium` (one solid ticket) ·
+  `low` (small bounded diff).
+
+| `cost`
+| `S` (< ~1 session) · `M` (~1 session) · `L` (multi-session) · `XL` (very
+  large and/or recurring).
+
+| `depends-on`
+| *Hard dependencies* — other `T-NNN` ids (any child). Gates pickup: a ticket
+  may not enter development while a dependency is not done *and merged* to the
+  base of its own child's repo.
+
+| `spawned-by`
+| *Lineage* — the ticket(s) this one was born from (a review finding, an
+  audit, a refinement split). Provenance only: it *never* gates anything.
+|===
+
+While a ticket is unrefined, a grade may be an adjacent-pair range
+(`low-medium`, `M-L`, …) to encode honest uncertainty; refinement collapses it
+to a single value. Grade every new ticket *against the existing backlog* — the
+board renders TO DO/READY by descending impact within each child's group.
+
+== Dependencies vs lineage
+
+The two frontmatter lists share a wire format and are opposites in behaviour:
+
+* `depends-on:` *blocks*. The pickup gate requires every target to be in
+  `6-done/` with a dated `merged to <base>` History line — done records the
+  review verdict; *merging is the human's and may lag*.
+* `spawned-by:` *records*. It makes "created because of" queryable without
+  wrongly blocking pickup — never fold provenance into `depends-on:` to make
+  it visible. Follow-up tickets are batched by theme, so one `spawned-by:`
+  link routinely stands for several findings.
+
+Soft couplings (nice-to-know, not blocking) are narrative cross-references in
+the Description — never `depends-on:`. Creating a genuinely new hard dependency
+requires asking the human first.
+
+== Body
+
+Four sections, always in this order (the template is the authoring guide):
+
+1. `## Description` — the current spec, in prose; kept up to date as
+   understanding evolves.
+2. `## Implementation Plan` — empty until refined; once READY it is the
+   executable prompt an implementer runs top-to-bottom (see <<lifecycle>>).
+3. `## Review` — empty until reviewed; findings land here, never in a separate
+   file.
+4. `## History` — append-only, dated, newest last: every status transition
+   (`OLD → NEW: reason`), the creation source, and the human's merge record.

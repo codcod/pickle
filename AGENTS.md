@@ -49,7 +49,7 @@ earns a **disposition** (rules §5), and most are resolved without a new ticket.
 - **Build target.** Every ticket targets one registered child-project via `project:`
   frontmatter (`pickle project list`). Registered child-projects: `pickle`.
 - **Commands** (each child's, from `pickle.toml`):
-  - `pickle`: build `just build` · test `just test` · lint `just lint`
+  - `pickle`: build `just build` · test `just test` · lint `just lint` · docs `just docs-check`
 - **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of
   the subject** (e.g. `feat(cli): add board audit (T-2)`). Branch per child:
   - `pickle`: `feat/T-NNN-<slug>`

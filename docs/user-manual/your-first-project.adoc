@@ -1,0 +1,115 @@
+[#your-first-project]
+= Your First Project
+
+An end-to-end walkthrough: install the flow, register a child-project, and take
+one ticket through the whole lifecycle. Along the way it marks which steps are
+the *agent's judgment* (driven by the installed skill) and which are *CLI
+mechanics* (deterministic commands) — the split the whole tool is built around
+(see <<the-flow>>).
+
+== 1. Install the flow
+
+With the binary installed (<<installation>>), run once in your project root:
+
+[source,sh]
+----
+cd your-repo
+pickle install --agent claude          # or: --agent claude,opencode,pi
+----
+
+This scaffolds `tickets/` (seven status directories plus the generated
+`BOARD.md` and hand-written `NOTES.md`), installs the ticket-flow skill into
+`.agents/skills/ticket-flow/`, injects a marker block into `AGENTS.md`, wires
+up each named agent, and writes `pickle.toml` registering the *first
+child-project* — by default the project itself, at `.`. Full flag reference:
+<<cmd-install>>.
+
+Verify:
+
+[source,sh]
+----
+pickle doctor
+----
+
+== 2. Register child-projects (optional)
+
+If your overarching project holds several cooperating build targets — say a
+frontend and a backend, each its own git repo — register them:
+
+[source,sh]
+----
+pickle project add backend services/backend
+pickle project add frontend apps/frontend
+pickle project list
+----
+
+Every ticket targets exactly one registered child; a single-child project is
+just the degenerate case. See <<multi-project>>.
+
+== 3. File a ticket — judgment
+
+Ask your agent in plain language:
+
+----
+make it a ticket: add a health-check endpoint to the API
+----
+
+The agent determines the target child, checks for duplicates, runs
+`pickle ticket new` (mechanics: id allocation, template scaffold, board
+regeneration), then writes the Description prose and grades the ticket against
+the backlog (judgment). The ticket lands in `tickets/1-to-do/`.
+
+== 4. Refine it — judgment
+
+----
+refine ticket T-1
+----
+
+The agent turns the Description into an Implementation Plan that satisfies the
+READY gate — feature branch, prerequisites, confirmed decisions, concrete
+tasks, a runnable acceptance test, a docs step, a finish step
+(see <<lifecycle>>) — surfacing open decisions to *you* along the way. When the
+gate holds, `pickle ticket move T-1 ready` moves the file, appends a History
+line, and regenerates the board atomically.
+
+== 5. Implement it — judgment on top of mechanics
+
+----
+implement ticket T-1
+----
+
+The agent re-verifies the plan is still worth executing (the applicability
+gate), then `pickle ticket move T-1 in-development` — the CLI *enforces* the
+state machine, per-child WIP limits, and the dependency merge gate before
+anything is written. Work happens on a `feat/T-1-<slug>` branch inside the
+target child's repo. When the acceptance test is green the ticket moves to
+`in-review` and the agent hands back.
+
+By default child-projects are *publish-gated*: the agent commits locally but
+never pushes or opens a merge request without your explicit approval.
+
+== 6. Review it — judgment
+
+----
+review ticket T-1
+----
+
+The agent follows the skill's review protocol: every finding gets a severity
+(blocking findings send the ticket to `5-rework/` for a scoped fix;
+non-blocking ones are dispositioned and recorded in the ticket's `## Review`
+table — see <<lifecycle>>). On a clean verdict the ticket moves to `6-done/`
+and the agent presents the commit message and merge request for your approval.
+
+== 7. Merge it — yours
+
+Merging is always the human's. After you merge, record it: append a dated
+`merged to <base> (<MR ref>)` History line to the done ticket and run
+`pickle board sync` — the board's `merged` cell renders from that line, and
+dependent tickets become pickable.
+
+== The rhythm
+
+File → refine → implement → review → done, one artifact per feature, the board
+always generated from ground truth. Periodically ask the agent to *"audit the
+board"* (or run `pickle board audit` yourself) to verify every invariant
+mechanically.

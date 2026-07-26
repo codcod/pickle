@@ -81,8 +81,9 @@ If a real key is still wanted, the costs are:
 
 - **Migration break.** Adding `user-visible` to `requiredKeys` (`audit.go:23`) fails every
   pre-existing ticket — 43 here, plus every installed project, since `pickle upgrade` never
-  touches tickets. This is exactly the `spawned-by:` pain already documented at
-  `README.md:149-152`. Optional-but-validated-when-present avoids it.
+  touches tickets. This is exactly the `spawned-by:` pain already documented in
+  `docs/user-manual/cli-reference.adoc` (the upgrade note under `board audit`; moved out of
+  `README.md` by T-047). Optional-but-validated-when-present avoids it.
 - **Do not extend `ValidGrade`'s caller loop.** `audit.go:55` iterates
   `impact/complexity/cost`, and `ValidGrade` returns `false` for an unknown kind
   (`ticket.go:258-264`) — adding the key to that list fails every ticket. A boolean needs its
@@ -130,3 +131,4 @@ before planning any board change here).
   are needed before this ticket may be refined, per the gate above. Caveat carried over from
   T-036's own "honest reading": a retroactive replay cannot measure a spawn rate, only real
   reviews can, and one review is not a rate either. The disposition columns are now the data.
+- 2026-07-26 — patched by the T-047 review (impact sweep): README passage it cited moved to docs/user-manual/cli-reference.adoc

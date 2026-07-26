@@ -19,6 +19,10 @@ lint:
     go vet ./...
     @test -z "$(gofmt -l .)" || (echo "gofmt needed:"; gofmt -l .; exit 1)
 
+# Validate the AsciiDoc manual (broken includes/xrefs fail the check)
+docs-check:
+    bundle exec asciidoctor --failure-level=WARN -o /dev/null docs/user-manual.adoc
+
 # Print the version the binary reports
 show-version: build
     ./pickle version

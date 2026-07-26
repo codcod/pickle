@@ -1,0 +1,71 @@
+[#the-flow]
+= The Flow
+
+{product} installs and operates a *ticket-based, board-driven feature flow*.
+This page is the flow in one sitting; the pages after it go deeper. The
+*normative* rules live in the ticket-flow skill installed into your project
+(`{skill-dir}/resources/tickets-README.md`, cited here as §0–§8) — this manual
+summarises them and the skill wins on any disagreement.
+
+== One artifact per feature
+
+Every change to a project flows through exactly one artifact: a *ticket* — a
+markdown file with a stable id (`T-NNN`), a target child-project, an
+append-only History, and a status. No feature is built directly from a chat
+message or a raw idea — work enters only as a ticket whose Implementation Plan
+has met the READY gate (§8, §4; see <<lifecycle>>).
+
+== Status is the directory
+
+A ticket's status *is* the directory it lives in — `tickets/1-to-do/` through
+`tickets/7-dropped/`. There is no `status:` field; a second source of truth
+would drift (§1). Moving a ticket = moving the file + appending one dated
+History line, and `pickle ticket move` does both atomically.
+
+== The board is generated
+
+`tickets/BOARD.md` is the live index — every ticket grouped by status,
+sub-grouped by child-project, priority-ordered. It is a *generated artifact*:
+rendered wholesale from the ticket files by `pickle ticket new`,
+`pickle ticket move`, and `pickle board sync`. Never edit it by hand — edit the
+tickets and the board follows (§6). Hand-written planning prose lives in
+`tickets/NOTES.md`, which the tooling never touches.
+
+== Judgment vs mechanics
+
+The tool's design principle is to split the two:
+
+* *Judgment* — what a ticket says, how it is graded, refined, reviewed — lives
+  in the embedded ticket-flow *skill* plus the project's `AGENTS.md`. {product}
+  ships it as content for your coding agent and never automates it.
+* *Mechanics* — scaffold directories, allocate the next `T-NNN`, move a ticket
+  file + append History + regenerate the board atomically, audit the
+  invariants — are deterministic *CLI commands*.
+
+The embedded payload lives in the {product} repository's `skill/` directory —
+laid out exactly as the installed skill (`SKILL.md` +
+`resources/{tickets-README,TEMPLATE,review-protocol,docs-readability.prompt}.md`) — and is compiled
+into the binary via `//go:embed`. {product} *self-hosts* this flow: its own
+board lives in the repository's `tickets/`, and its `pickle.toml` registers the
+repo itself as the sole child-project.
+
+== The pipeline
+
+----
+1-to-do/ → explore/refine → 2-ready/ → pick up
+                                          │
+                                          ▼
+                        3-in-development/ (feat/T-NNN-* branch, in the target child's repo)
+                                          │
+                                          ▼
+                           4-in-review/ → "review ticket T-NNN"
+                                          │
+                       ┌──────────────────┴───────────────────┐
+                       ▼                                      ▼
+                  5-rework/ (blocking)          6-done/ (clean / non-blocking only)
+                       │
+                       └──▶ back to 4-in-review/ (scoped re-review)
+----
+
+Each stage is described in <<lifecycle>>; the anatomy of the artifact itself in
+<<tickets>>; how several build targets share one board in <<multi-project>>.

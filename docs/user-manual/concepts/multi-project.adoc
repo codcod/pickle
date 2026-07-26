@@ -1,0 +1,39 @@
+[#multi-project]
+= Multi-Project
+
+The overarching project (where {product} is installed and the board lives) can
+hold several *connected child-projects* — cooperating build targets such as the
+frontend and backend of one application, each its own git repo. Summarises §0
+of the skill's rules.
+
+== The locked model
+
+* *one shared board*, sub-grouped by child-project;
+* *one global ticket-id namespace* (`T-NNN`, `max()+1` across all children);
+* each ticket names its target child in a *`project:` frontmatter field*;
+* each child is *its own git repo*; `feat/T-NNN-<slug>` branches are cut
+  inside it;
+* *WIP limits are per child* (so two children may each carry one
+  in-development ticket);
+* children are registered explicitly with `pickle project add <name> <path>`
+  (recorded in `pickle.toml`).
+
+A single-child project is just the degenerate case — `pickle install` registers
+the project itself (at `.`) as the first child.
+
+== What a child carries
+
+Each `\[[project]]` entry in `pickle.toml` records the child's name and path,
+its build/test/lint (and optional docs) commands, its branch prefix (default
+`feat/`), its WIP limits, and an optional per-child review addendum — see
+<<configuration>>. The agent uses the child's own commands when implementing
+and reviewing a ticket that targets it.
+
+== Crossing children
+
+Dependencies and lineage may both cross children: a frontend ticket may
+`depends-on:` a backend one (gating its pickup until the backend work is done
+*and merged in the backend repo*), and a ticket in one child may be
+`spawned-by:` a review in another (gating nothing). The seven status
+directories stay *flat* — a ticket's child is its `project:` field, and the
+board groups by child; tickets are never split into per-child subdirectories.

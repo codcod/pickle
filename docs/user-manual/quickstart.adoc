@@ -1,0 +1,62 @@
+[#quickstart]
+= Quickstart
+
+The fastest path from nothing to a ticket on a board. Under ten minutes; every
+step links out for detail.
+
+TIP: Something not working? Run `pickle doctor` — it verifies the install
+(skill, symlinks, markers, child paths) and tells you what to fix.
+
+== 1. Prerequisites
+
+* A project in a git repository.
+* A coding agent — Claude Code, opencode, or Pi.
+
+== 2. Install the binary
+
+[source,sh]
+----
+brew install codcod/taps/pickle    # or: go install github.com/codcod/pickle@latest
+pickle version
+----
+
+Other options (from source, the two-installs distinction): see
+<<installation>>.
+
+== 3. Install the flow into your project
+
+[source,sh]
+----
+cd your-repo
+pickle install
+----
+
+This lays down the ticket-flow skill (`.agents/skills/ticket-flow/`), the
+`tickets/` directory with its generated `BOARD.md`, an agent-instruction marker
+block in `AGENTS.md`, and `pickle.toml` registering your project as the first
+child-project. It is idempotent — safe to re-run. Details: <<cmd-install>>.
+
+== 4. File your first ticket
+
+Open your coding agent in the project and ask, in plain language:
+
+----
+make it a ticket: add a health-check endpoint to the API
+----
+
+The agent — driven by the installed skill — authors a correctly-formatted
+ticket in `tickets/1-to-do/T-1-….md` and regenerates `tickets/BOARD.md`.
+
+== 5. Look at the board
+
+Open `tickets/BOARD.md`: every ticket, grouped by status, sub-grouped by
+child-project. It is a generated file — never edit it by hand
+(see <<the-flow>>).
+
+== Where next
+
+* <<your-first-project>> — the full loop: file → refine → implement → review →
+  done.
+* <<the-flow>> — what the flow is and why it is split between an agent skill
+  and a CLI.
+* <<cli-reference>> — every command.

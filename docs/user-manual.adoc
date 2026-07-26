@@ -1,0 +1,35 @@
+= pickle User Manual
+:doctype: book
+:toc:
+:toclevels: 3
+:sectnums:
+:icons: font
+
+include::attributes.adoc[]
+
+[part]
+== Start Here
+
+include::user-manual/quickstart.adoc[leveloffset=+1]
+
+include::user-manual/installation.adoc[leveloffset=+1]
+
+include::user-manual/your-first-project.adoc[leveloffset=+1]
+
+[part]
+== Concepts
+
+include::user-manual/concepts/the-flow.adoc[leveloffset=+1]
+
+include::user-manual/concepts/tickets.adoc[leveloffset=+1]
+
+include::user-manual/concepts/lifecycle.adoc[leveloffset=+1]
+
+include::user-manual/concepts/multi-project.adoc[leveloffset=+1]
+
+[part]
+== CLI Reference
+
+include::user-manual/cli-reference.adoc[leveloffset=+1]
+
+include::user-manual/configuration.adoc[leveloffset=+1]

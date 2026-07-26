@@ -71,7 +71,8 @@ than in a new ticket):
    `internal/install/install.go:168` reports an *in-place single-line edit* of `pickle.toml` as
    `+` (created) — the same created-vs-refreshed dishonesty on a new call site; and
    `internal/cli/cli.go:87-88`'s one-line help for `upgrade` never mentions that it stamps
-   `payload_version` in `pickle.toml`, which `README.md` does mention and which is the file most
+   `payload_version` in `pickle.toml`, which the user manual does mention (`docs/user-manual/cli-reference.adoc`, upgrade section;
+   moved out of `README.md` by T-047) and which is the file most
    users care about.
    **Three more, added 2026-07-25 by the T-018 re-review (non-blocking findings R8, R9):**
    - **`verifyStampedVersion` is 100% covered and 0% bound.** `install.go:173-184` is unit-tested
@@ -150,3 +151,4 @@ All items are input-hardening / polish on the install surface, hence non-blockin
 - 2026-07-25 — broadened again by the T-018 re-review (R8/R9): verifyStampedVersion test seam, Config{} default leak + writeConfig constants, partially-applied upgrade on refusal (item 8)
 - 2026-07-25 — re-anchored by the T-018 S1 re-review: install.go refs (:126 -> :129, :130 -> :133, :162 -> :168, :180-191 -> :173-184, :163-168 -> :165-167)
 - 2026-07-26 — item 4 rewritten by the T-009 review (impact sweep): the "--agent is a no-op" premise is obsolete; replaced with the folded F4 finding (`pickle help` says "detected agents", contradicting T-009's no-autodetection decision). Line refs in items 6–10 may have shifted (~200 lines added to internal/install/install.go by T-009); re-anchor at refinement
+- 2026-07-26 — patched by the T-047 review (impact sweep): README passage it cited moved to docs/user-manual/cli-reference.adoc

@@ -65,7 +65,8 @@ Both are one-boundary changes in the same function that T-030 created, which is 
 ticket. Extend `validateTitle` (`internal/cli/ticket.go:139-171`), extend
 `TestTicketNewRejectsInjectionInTitle`'s hostile table, and keep
 `TestTicketNewAcceptsAwkwardButLegalTitle` green — the rejection must not become a character
-whitelist. Update the input contract in the three places T-030 documented it: `README.md`,
+whitelist. Update the input contract in the three places T-030 documented it (README's copy moved to the
+manual by T-047): `docs/user-manual/cli-reference.adoc` (`ticket new` section),
 `skill/SKILL.md`, `skill/resources/tickets-README.md` §3.
 
 Explicitly out of scope: everything T-030 deferred and the review re-confirmed as correctly
@@ -96,3 +97,4 @@ Soft couplings (no `depends-on`, no ordering enforced):
 ## History
 
 - 2026-07-26 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — patched by the T-047 review (impact sweep): README passage it cited moved to docs/user-manual/cli-reference.adoc
