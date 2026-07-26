@@ -70,6 +70,13 @@ Out of scope: the escaping rule itself (**T-014**), the audit check that would h
 (**T-034**), and the input-boundary rejection that stops newlines but deliberately **not** pipes
 (**T-030**).
 
+> **DROPPED 2026-07-26 — read this before assuming the row is fixed.** The rendering half was
+> repaired inline (`| T-021 | project add\|remove … |`) and this ticket dropped as not worth the
+> overhead. That is correct as far as it goes, but the **insert-point wall documented above survives
+> the escape**: `strings.Split` is not escape-aware, so `cells[3]` is still garbage and every new TO
+> DO row is still inserted in front of T-021. **T-034** owns that residual. Do not read the drop as
+> "the T-021 row is now fully sound".
+
 ### Couplings
 
 `spawned-by: [T-030]` — found by T-030's applicability gate.
@@ -96,3 +103,12 @@ Soft couplings (no `depends-on`, no ordering enforced):
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
 - 2026-07-26 — TO DO → DROPPED: board row repaired inline during triage; ticket overhead exceeded the one-character fix
+- 2026-07-26 — correction to the drop note above (append-only, so the original line stands): the
+  inline repair escaped the title to `project add\|remove`, which fixes the **rendered** table but
+  **not** the functional half this ticket documented. `insertIntoBoard` splits rows with
+  `strings.Split(lines[i], "|")` (`internal/board/board.go:282`), which is not escape-aware, so the
+  escaped row still yields 8 fields and `cells[3]` is still the title fragment
+  `"remove leave the AGENTS.md marker block stale"` → `impactRank` **0**. Re-measured against the
+  repaired board on 2026-07-26. The insert-point wall therefore survives the drop and every new TO
+  DO row is still inserted in front of T-021. That residual is **T-034**'s, which documents this
+  exact analysis — the drop is sound *because* T-034 owns it, not because the bug is gone.

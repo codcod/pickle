@@ -61,6 +61,29 @@ needs no injected newline at all — one unescaped `|` in a title is enough, and
 carrying it. Note that escaping as `\|` does **not** fix this parse (`strings.Split` is not
 escape-aware); either replace the character or make the row split escape-aware here.
 
+**Confirmed empirically on 2026-07-26, and this ticket now owns the whole residual.** The 2026-07-26
+triage repaired the row inline as `| T-021 | project add\|remove leave the AGENTS.md marker block
+stale | medium | low | S | [] |` and dropped **T-035**. Re-measured against that *repaired* row:
+
+```
+n fields : 9      (a 6-column row still splits into 8)
+cells[3] : "remove leave the AGENTS.md marker block stale"
+impactRank -> 0   ← the wall is intact
+```
+
+So the prediction above held: the escape fixed the rendered table and nothing else. With T-035
+dropped, **this ticket is the only remaining owner** of the insert-point bug, and `tickets/BOARD.md`
+is a live reproduction — no fixture needed to write the failing test. Two consequences for the
+plan when this is refined:
+
+- The regression gate can no longer be "0 errors against the real `tickets/`" as originally scoped,
+  because the real board still contains the offending row. Either the cell-count check must treat
+  `\|` as escaped (making the row legal, 6 cells) *and* the row split must be made escape-aware
+  together, or the row must be re-repaired by replacement. Decide those two as one question — they
+  are the same decision seen from the audit side and the insert side.
+- **T-014** item 2 must be told which way this goes: if the answer is "replace, don't escape", its
+  `\|` escaping proposal is wrong and the render boundary should substitute instead.
+
 ### Scope
 
 - **Audit:** a check that every board row in every section has exactly the column count its
