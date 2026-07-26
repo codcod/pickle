@@ -107,7 +107,7 @@ refactors (T-015, T-017, T-032) · test harness + cli coverage (T-031, T-012) ·
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main 2026-07-25 (1485242) |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — main (3c4c131, squashed) |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — main (0b7cd91, squashed) |
-| T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | no — publish-gated (branch feat/T-030-validate-ticket-new-input) |
+| T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — main (a29fde1, squashed) |
 
 ## DROPPED
 

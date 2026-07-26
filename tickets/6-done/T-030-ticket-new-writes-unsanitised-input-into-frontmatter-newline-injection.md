@@ -771,3 +771,4 @@ rather than assumed, as the plan required.
 - 2026-07-25 — READY → IN DEVELOPMENT: picked up; pickup gate clean (0 blocking, 7 amendments applied)
 - 2026-07-25 — IN DEVELOPMENT → IN REVIEW: acceptance green; 3 mutations load-bearing; docs updated
 - 2026-07-26 — IN REVIEW → DONE: review clean: 0 blocking, 6 non-blocking (T-038 filed; N5->T-019, N3->T-027; N3/N4/N6 inline)
+- 2026-07-26 — MERGED: feat/T-030-validate-ticket-new-input → main (a29fde1, squashed)
