@@ -22,8 +22,7 @@ type Status struct {
 	Terminal bool
 }
 
-// Statuses lists every status in board order. Terminal statuses (done/dropped)
-// may age off the board.
+// Statuses lists every status in board order.
 var Statuses = []Status{
 	{"1-to-do", "TO DO", false},
 	{"2-ready", "READY", false},
@@ -213,9 +212,55 @@ func LastHistoryStatus(text string) string {
 	return status
 }
 
-// HasMergeLine reports whether the History records a merge ("… — MERGED: …").
-func HasMergeLine(text string) bool {
+// LastHistoryReason returns the ": <reason>" clause of the newest status-bearing
+// History transition (the text `move --reason` appends), or "" when the last
+// transition carries no reason. Merge notes and created lines are skipped — they
+// are not transitions. The board renderer derives the DROPPED `reason` and REWORK
+// `open findings` cells from this, so those facts live only in the ticket (D3).
+func LastHistoryReason(text string) string {
 	inHistory := false
+	reason := ""
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			inHistory = strings.TrimSpace(line) == "## History"
+			continue
+		}
+		if !inHistory {
+			continue
+		}
+		m := historyRE.FindStringSubmatch(strings.TrimSpace(line))
+		if m == nil {
+			continue
+		}
+		body := strings.TrimSpace(m[1])
+		if mergedRE.MatchString(body) {
+			continue // merge note, not a status transition
+		}
+		idx := strings.LastIndex(body, "→")
+		if idx < 0 {
+			continue // created line or free-form note
+		}
+		target := body[idx+len("→"):]
+		parts := strings.SplitN(target, ":", 2)
+		if _, ok := StatusByName(strings.ToUpper(strings.TrimSpace(parts[0]))); !ok {
+			continue
+		}
+		if len(parts) == 2 {
+			reason = strings.TrimSpace(parts[1])
+		} else {
+			reason = ""
+		}
+	}
+	return reason
+}
+
+// MergeLine returns the text of the newest merge History line ("merged to main
+// (abc1234)" from "- 2026-07-23 — merged to main (abc1234)"), or "" when the
+// History records no merge. The board renderer derives the DONE `merged` cell
+// from this (D3), so HasMergeLine and the cell can never disagree.
+func MergeLine(text string) string {
+	inHistory := false
+	merge := ""
 	for _, line := range strings.Split(text, "\n") {
 		if strings.HasPrefix(line, "## ") {
 			inHistory = strings.TrimSpace(line) == "## History"
@@ -225,12 +270,19 @@ func HasMergeLine(text string) bool {
 			continue
 		}
 		if m := historyRE.FindStringSubmatch(strings.TrimSpace(line)); m != nil {
-			if mergedRE.MatchString(strings.TrimSpace(m[1])) {
-				return true
+			if body := strings.TrimSpace(m[1]); mergedRE.MatchString(body) {
+				merge = body
 			}
 		}
 	}
-	return false
+	return merge
+}
+
+// HasMergeLine reports whether the History records a merge ("… — MERGED: …").
+// Defined in terms of MergeLine so the gate check and the board's `merged`
+// cell can never disagree.
+func HasMergeLine(text string) bool {
+	return MergeLine(text) != ""
 }
 
 // Legal grade values (single values or adjacent-pair ranges). These are the one

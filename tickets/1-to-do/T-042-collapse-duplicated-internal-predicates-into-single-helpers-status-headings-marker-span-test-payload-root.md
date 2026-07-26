@@ -43,21 +43,17 @@ in `internal/install`, route all three callers through it, and export a thin
 T-017 also carried a second item: **dry-run labels don't match the real run's labels** for the
 skill dir. Same theme — the preview and the act must agree.
 
-### 2. Board status-heading matching — four copies (T-015)
+### 2. Board status-heading matching — ~~four copies~~ **resolved by T-044** (T-015)
 
-"Match a `## ` heading to its status display name, longest-name-first so a prefix cannot shadow a
-longer one" exists in `board.Parse`, `board.ParseCells`, `sync.matchStatus`, and a variant in
-`board.sectionSpan` (`board.go:~329`). Extract `board.MatchStatusHeading(line) string` (returning
-`""` for a non-status heading) and route all four through it; the shared helper can memoise the
-sorted status-name slice instead of rebuilding it per call.
+**Patched 2026-07-26 by T-044's review impact sweep.** T-044 deleted three of the four copies
+(`board.ParseCells`, `sync.matchStatus`, `board.sectionSpan`) along with the whole parse-back
+machinery; the heading-match loop now exists exactly once, in the read-only `board.Parse`
+(drift summary only). No duplication remains — this item is **dropped from scope**.
 
-T-015's second item is a **test gap, not duplication**: `TestSyncTerminalMembership`
-(`internal/sync`) covers only the first half of decision D3 ("a DONE ticket not on the board is
-not re-added"); the second half ("a DONE ticket under the **wrong** section is relocated to DONE
-with its `merged` cell") is unwritten. Writing it requires deciding whether a `merged` cell should
-survive relocation *from a wrong section* — it currently does not, because `board.ParseCells` keys
-carry-over cells by the columns of the section the row was found in. Likely acceptable (a misfiled
-row's cells were never DONE-shaped); encode whichever way in the test.
+T-015's second item (the `TestSyncTerminalMembership` / D3 carry-over test gap) is likewise
+obsolete: sync no longer carries cells over at all — terminal cells are derived from ticket
+History at render time and every DONE/DROPPED ticket is always rendered (T-044 D3/D4). The
+epic's remaining scope is items 1 (marker span) and 3 (test payload root).
 
 ### 3. Test payload root — five copies, four of them CWD-relative (T-032)
 
@@ -77,12 +73,11 @@ does deliberately. Unify on the absolute, CWD-independent form.
 - **T-043** (test harness + coverage) touches `internal/cli/cli_test.go` and the same test files
   as item 3. Land one before the other, not concurrently; item 3 is arguably T-043's prerequisite,
   though not a hard `depends-on`.
-- **T-044** (which superseded T-039, 2026-07-26) rewrites `internal/board` and `internal/sync`
-  heavily (single renderer, sync becomes regenerate) and **deletes** several of the helpers this
-  ticket would unify (`sectionSpan`, `subgroupSpan`, sync's `matchStatus`) — re-verify this
-  ticket's scope after T-044 lands. Item 2
-  edits `board.Parse`/`ParseCells`/`sectionSpan` and item 1 of T-015's test gap edits
-  `internal/sync` — **high collision risk**. Sequence after T-044, or coordinate carefully.
+- **T-044** (which superseded T-039, 2026-07-26) rewrote `internal/board` and `internal/sync`
+  heavily (single renderer, sync becomes regenerate) and **deleted** the helpers item 2 would
+  have unified (`ParseCells`, `sectionSpan`, `subgroupSpan`, sync's `matchStatus`) — the sweep
+  after T-044's review dropped item 2 from scope (see above). The former collision risk with
+  T-044 is gone; only the T-043 sequencing note (item 3) remains live.
 - **T-040** may compose a shared `T-\d+` fragment from `filenameRE` (`internal/ticket/ticket.go:95`)
   and `board.rowRE` (`internal/board/board.go:29`). If T-040 defers that, it belongs here.
 - **T-013 item 6** ("project-root resolution is triplicated" across the setup commands) is the same
@@ -101,3 +96,6 @@ does deliberately. Unify on the absolute, CWD-independent form.
 
 - 2026-07-26 — created (TO DO). source: board triage — epic merged from T-015, T-017 and T-032,
   all three moved to 7-dropped/ as absorbed
+- 2026-07-26 — patched by T-044's review impact sweep: item 2 (status-heading duplication +
+  D3 carry-over test gap) dropped from scope — its targets were deleted by the generated-board
+  rewrite; remaining scope is items 1 and 3

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/ticket"
 )
@@ -75,14 +76,17 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 	if err := scaffoldTickets(root, &res); err != nil {
 		return res, err
 	}
-	if err := writeBoard(payload, root, opts.ProjectName, &res); err != nil {
+	cfg, err := writeConfig(root, payloadVersion, opts, &res)
+	if err != nil {
+		return res, err
+	}
+	if err := writeBoard(root, cfg, &res); err != nil {
+		return res, err
+	}
+	if err := writeNotes(root, &res); err != nil {
 		return res, err
 	}
 	if err := writeTicketsReadme(root, &res); err != nil {
-		return res, err
-	}
-	cfg, err := writeConfig(root, payloadVersion, opts, &res)
-	if err != nil {
 		return res, err
 	}
 	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", markerBlock(cfg), &res); err != nil {
@@ -328,24 +332,42 @@ func scaffoldTickets(root string, res *Result) error {
 	return nil
 }
 
-// writeBoard seeds tickets/BOARD.md from the embedded skeleton (substituting the
-// date and the first child's name) — only if absent, to preserve instance data.
-func writeBoard(payload fs.FS, root, child string, res *Result) error {
+// writeBoard seeds tickets/BOARD.md as a fresh render of the (normally empty)
+// ticket tree — only if absent, to preserve instance data. The board is a
+// generated artifact (T-044): there is no skeleton to copy.
+func writeBoard(root string, cfg *config.Config, res *Result) error {
 	dst := filepath.Join(root, "tickets", "BOARD.md")
 	if _, err := os.Stat(dst); err == nil {
 		res.skipped("tickets/BOARD.md (exists)")
 		return nil
 	}
-	data, err := fs.ReadFile(payload, "skill/resources/BOARD.md")
-	if err != nil {
-		return fmt.Errorf("read embedded BOARD.md: %w", err)
-	}
-	out := strings.ReplaceAll(string(data), "<YYYY-MM-DD>", time.Now().Format("2006-01-02"))
-	out = strings.ReplaceAll(out, "<child-project>", child)
+	tickets, _ := ticket.LoadAll(root)
+	out := board.Render(tickets, cfg, time.Now().Format("2006-01-02"))
 	if err := os.WriteFile(dst, []byte(out), 0o644); err != nil {
 		return err
 	}
 	res.created("tickets/BOARD.md")
+	return nil
+}
+
+// notesScaffold is the initial tickets/NOTES.md: the home for the hand-written
+// prose the generated board cannot carry.
+const notesScaffold = "# Notes\n\n" +
+	"Hand-written planning notes live here — triage records, parked-ticket notes,\n" +
+	"cross-ticket decisions, dependency rationale. `BOARD.md` is generated from the\n" +
+	"ticket files (run `pickle board sync`), so nothing hand-written survives there.\n"
+
+// writeNotes scaffolds tickets/NOTES.md — only if absent, like the board.
+func writeNotes(root string, res *Result) error {
+	dst := filepath.Join(root, "tickets", "NOTES.md")
+	if _, err := os.Stat(dst); err == nil {
+		res.skipped("tickets/NOTES.md (exists)")
+		return nil
+	}
+	if err := os.WriteFile(dst, []byte(notesScaffold), 0o644); err != nil {
+		return err
+	}
+	res.created("tickets/NOTES.md")
 	return nil
 }
 
@@ -582,7 +604,7 @@ func markerBlock(cfg *config.Config) string {
 
 	return "## Ticket flow (start here)\n" +
 		"\n" +
-		"**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the live index of every ticket by\n" +
+		"**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the generated index of every ticket by\n" +
 		"status. No feature is built directly from a chat message or a raw idea — work enters only as a\n" +
 		"ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it\n" +
 		"earns a **disposition** (rules §5), and most are resolved without a new ticket.\n" +
@@ -609,21 +631,27 @@ func markerBlock(cfg *config.Config) string {
 		"\n" +
 		"### Board rule\n" +
 		"\n" +
-		"Every ticket move = move the file + one dated `## History` line + one `tickets/BOARD.md`\n" +
-		"edit, in the same change. A move that doesn't touch the board is a bug. Prefer\n" +
-		"`pickle ticket move` — it does all three atomically."
+		"`tickets/BOARD.md` is **generated** — regenerated wholesale from the ticket files by\n" +
+		"`pickle ticket new`, `pickle ticket move` and `pickle board sync`. **Never edit it by\n" +
+		"hand**; hand-written planning notes go in `tickets/NOTES.md`. Every ticket move = move\n" +
+		"the file + one dated `## History` line, and the board regenerates. Prefer\n" +
+		"`pickle ticket move` — it does all of it atomically."
 }
 
 const ticketsReadme = "# `tickets/` — the ticket-based feature flow\n\n" +
 	"The live board. Every change flows through one artifact per feature: a **ticket** — a\n" +
 	"markdown file whose status is the directory it lives in, targeting a registered\n" +
 	"child-project via `project:` frontmatter, with an append-only History.\n\n" +
-	"- **Start at [`BOARD.md`](BOARD.md)** — the maintained index of every ticket by status.\n" +
+	"- **Start at [`BOARD.md`](BOARD.md)** — the generated index of every ticket by status.\n" +
+	"  It is regenerated by `pickle ticket new`, `pickle ticket move` and `pickle board sync`;\n" +
+	"  never edit it by hand.\n" +
+	"- **Hand-written planning notes live in [`NOTES.md`](NOTES.md)** — the board cannot\n" +
+	"  carry them.\n" +
 	"- **The rules, ticket template, and review protocol live in the ticket-flow skill:**\n" +
 	"  - rules: `.agents/skills/ticket-flow/resources/tickets-README.md` (so `§N` references\n" +
 	"    resolve there)\n" +
 	"  - template: `.agents/skills/ticket-flow/resources/TEMPLATE.md`\n" +
 	"  - review protocol: `.agents/skills/ticket-flow/resources/review-protocol.md`\n" +
 	"- **Build target:** every ticket targets a registered child-project (see `../pickle.toml`).\n\n" +
-	"This directory holds **instance data only** (the board + the tickets). See `../AGENTS.md`\n" +
-	"for the project configuration and commit policy.\n"
+	"This directory holds **instance data only** (the tickets, the generated board, the notes).\n" +
+	"See `../AGENTS.md` for the project configuration and commit policy.\n"

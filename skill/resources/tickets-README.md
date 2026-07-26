@@ -2,7 +2,8 @@
 
 Every change to this project flows through **one artifact per feature: a ticket** — a markdown
 file that carries a stable unique id, a status expressed by *where it lives*, an append-only
-history, and a **target child-project**. A hand-maintained `BOARD.md` is the live index.
+history, and a **target child-project**. A **generated** `BOARD.md` is the live index —
+rendered from the ticket files, never edited by hand (§6).
 
 This project is an **overarching project** that may contain several **connected
 child-projects** — cooperating build targets (e.g. the frontend and backend of one
@@ -16,7 +17,8 @@ case.
 ```
 tickets/
 ├── README.md              ← short pointer to the ticket-flow skill (these rules live in the skill)
-├── BOARD.md               ← the maintained index — see §6
+├── BOARD.md               ← the generated index — never hand-edited; see §6
+├── NOTES.md               ← hand-written planning notes (the board cannot carry them)
 ├── 1-to-do/               ← TO DO           — captured, needs exploration/refinement
 ├── 2-ready/               ← READY           — refined; implementation plan complete
 ├── 3-in-development/      ← IN DEVELOPMENT  — being built on a feature branch
@@ -30,7 +32,8 @@ Keep `tickets/` at a visible, top-level location in the overarching project — 
 most-opened surface in the repo; do not bury it in a hidden directory. The seven status
 directories are **flat** — tickets are **not** split into per-child subdirectories; a ticket's
 child-project is its `project:` frontmatter field, and the board (§6) groups by child. The
-project's `tickets/` holds **instance data only** (the board + the tickets); this rules
+project's `tickets/` holds **instance data only** (the tickets, the generated board, the
+notes); this rules
 document, the ticket template, and the review protocol live in the ticket-flow skill and are
 referenced, not copied.
 
@@ -52,7 +55,7 @@ ticket body** — a second source of truth would drift. Status transitions are r
 dated lines in the ticket's **History** section, in the form
 `YYYY-MM-DD — OLD → NEW: one-clause reason` (first line: `created (TO DO). source: …`; a
 human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>)`). Moving a ticket =
-move the file + one appended History line + one `BOARD.md` edit, all in the same change (§6).
+move the file + one appended History line; the board regenerates from the result (§6).
 
 ## 2. Statuses
 
@@ -86,8 +89,8 @@ stateDiagram-v2
     DROPPED --> [*]
 ```
 
-**Backward and abort moves** (each one = file move + dated History line + board edit, always
-with a reason):
+**Backward and abort moves** (each one = file move + dated History line, always with a
+reason — the reason renders into the board's DROPPED/REWORK cell):
 
 - `3-in-development/ → 2-ready/` — implementation stalled or a prerequisite turned out
   broken, but the plan itself still holds. Note in History whether the `feat/` branch was
@@ -124,8 +127,8 @@ All other transitions are forward-only, as diagrammed.
     and/or recurring cost).
   While a ticket is unrefined, a grade may be an **adjacent-pair range** (`low-medium`,
   `medium-high`, `S-M`, `M-L`, `L-XL`) to encode honest uncertainty; refinement should
-  collapse it to a single value. Priority order is **not** encoded in filenames — it lives in
-  `BOARD.md` (§6), which lists TO DO/READY by descending impact within each child's group.
+  collapse it to a single value. Priority order is **not** encoded in filenames — the board
+  (§6) renders TO DO/READY by descending impact within each child's group, ties by id.
   **Assess every new ticket against the existing backlog** before filing it, and re-grade the
   board.
 - **Dependencies (may cross child-projects).** Hard dependencies go in `depends-on:` frontmatter
@@ -135,7 +138,7 @@ All other transitions are forward-only, as diagrammed.
   verdict; **merging is the human's and may lag** — a dependency is satisfied only once its code
   is actually on the base a new `feat/` branch would fork from **in the child it targets**. When
   the human reports a merge, append a dated `merged to <base>` History line to the done ticket
-  and tick the board's `merged` column. Soft couplings (nice-to-know, not blocking) are
+  (the board's `merged` cell renders from that line) and run `pickle board sync`. Soft couplings (nice-to-know, not blocking) are
   narrative cross-references in the Description — never `depends-on`. Creating a genuine new hard
   dependency between two independent tickets requires asking the human first.
 - **Lineage (`spawned-by`).** Provenance goes in `spawned-by:` frontmatter — the ticket(s) this
@@ -246,22 +249,25 @@ file. Recording is what keeps *"a review does not re-implement the ticket"* true
 the pickup applicability gate (§8) and refinement splits (§3) use the same vocabulary, the same
 promotion test, and the same default.
 
-## 6. The board — a maintained index (agent rule)
+## 6. The board — a generated index (agent rule)
 
-`BOARD.md` is a hand-maintained index, not generated. It shows every ticket grouped by status;
-within each status section tickets are **sub-grouped by child-project** under a `### <child>`
-heading, with TO DO/READY ordered by impact inside each child's group. It carries a
-dependencies column and the per-child WIP limits.
+`BOARD.md` is a **generated artifact**: the ticket files and their status directories are the
+single source of truth, and the board is rendered from them wholesale by `pickle ticket new`,
+`pickle ticket move` and `pickle board sync`. It shows every ticket grouped by status; within
+each status section tickets are **sub-grouped by child-project** under a `### <child>` heading,
+with TO DO/READY ordered deterministically (impact descending, ties by id) inside each child's
+group. WIP counts, the DONE `merged` cell and the DROPPED/REWORK reason cells are all derived —
+from the config, the merge History line, and the last transition's `--reason` respectively.
 
-> **Board rule: update `BOARD.md` on every ticket move.** Any move between status directories —
-> including the History append — is incomplete until the board reflects it in the same change.
-> A ticket move that doesn't touch the board is a bug.
+> **Board rule: never edit `BOARD.md` by hand.** Edit the tickets — the board follows. If the
+> board looks wrong or stale, run `pickle board sync`; `pickle board audit` reports a stale or
+> hand-edited board as one error. Hand-written planning prose (triage records, parked notes,
+> cross-ticket decisions) lives in `tickets/NOTES.md`, which the tooling never touches.
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1, `4-in-review/` ≤ 1 (tune per
-project). Stated at the top of the board, counted independently for each child (so two children
-may each carry one in-development ticket). Exceeding a limit is a rule violation, not a
-judgement call. `pickle board audit` counts WIP per child; `pickle board sync` repairs the
-board layout from the tickets.
+project). Rendered at the top of the board from `pickle.toml`, counted independently for each
+child (so two children may each carry one in-development ticket). Exceeding a limit is a rule
+violation, not a judgement call. `pickle board audit` counts WIP per child.
 
 ## 7. Ticket structure
 

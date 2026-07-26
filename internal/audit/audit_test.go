@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 )
 
@@ -47,14 +48,6 @@ func withSpawnedBy(body, ids string) string {
 	return strings.Replace(body, "spawned-by: []", "spawned-by: "+ids, 1)
 }
 
-const goodBoard = `# Board
-## TO DO
-### pickle
-| id | title |
-|---|---|
-| T-001 | foo |
-`
-
 // writeGood lays down a clean, audit-passing tree at root.
 func mk(t *testing.T, root, rel, content string) {
 	t.Helper()
@@ -69,8 +62,17 @@ func mk(t *testing.T, root, rel, content string) {
 
 func writeGood(t *testing.T, root string) {
 	mk(t, root, "pickle.toml", cfgBody)
-	mk(t, root, "tickets/BOARD.md", goodBoard)
 	mk(t, root, "tickets/1-to-do/T-001-foo.md", ticketFile("T-001", "pickle", "[]", "high", "TO DO"))
+	renderBoard(t, root)
+}
+
+// renderBoard regenerates BOARD.md from the tree — the board is a generated
+// artifact (T-044), so a "good" board is by definition a fresh render.
+func renderBoard(t *testing.T, root string) {
+	t.Helper()
+	if err := board.Regenerate(root, loadCfg(t, root)); err != nil {
+		t.Fatalf("regenerate board: %v", err)
+	}
 }
 
 func loadCfg(t *testing.T, root string) *config.Config {
@@ -109,33 +111,40 @@ func TestAudit(t *testing.T) {
 		{"unregistered project", func(t *testing.T, root string) {
 			mk(t, root, "tickets/1-to-do/T-001-foo.md", ticketFile("T-001", "nope", "[]", "high", "TO DO"))
 		}, true, `project "nope" is not a registered child`},
-		{"board status mismatch", func(t *testing.T, root string) {
-			mk(t, root, "tickets/BOARD.md", strings.Replace(goodBoard, "## TO DO", "## READY", 1))
-		}, true, "listed under READY"},
-		{"missing from board", func(t *testing.T, root string) {
-			mk(t, root, "tickets/BOARD.md", "# Board\n## TO DO\n### pickle\n")
-		}, true, "missing from the board"},
+		// The board is a generated artifact: the one board invariant is that it
+		// matches a fresh render (D6). Any hand-edit — a stray row, a moved row, a
+		// deleted section — collapses into the same single staleness error.
+		{"stale board (hand-edited row)", func(t *testing.T, root string) {
+			b, _ := os.ReadFile(filepath.Join(root, "tickets/BOARD.md"))
+			mk(t, root, "tickets/BOARD.md", strings.Replace(string(b),
+				"| T-001 |", "| T-999 | ghost | low | low | S | [] |\n| T-001 |", 1))
+		}, true, "stale or hand-edited"},
+		{"stale board (ticket changed, board not regenerated)", func(t *testing.T, root string) {
+			mk(t, root, "tickets/2-ready/T-002-bar.md", ticketFile("T-002", "pickle", "[]", "high", "READY"))
+		}, true, "stale or hand-edited"},
+		{"missing board", func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/BOARD.md")); err != nil {
+				t.Fatal(err)
+			}
+		}, true, "BOARD.md"},
 		{"history mismatch", func(t *testing.T, root string) {
 			mk(t, root, "tickets/1-to-do/T-001-foo.md", ticketFile("T-001", "pickle", "[]", "high", "DONE"))
 		}, true, "last History status is DONE"},
 		{"wip breach", func(t *testing.T, root string) {
 			mk(t, root, "tickets/3-in-development/T-010-a.md", ticketFile("T-010", "pickle", "[]", "high", "IN DEVELOPMENT"))
 			mk(t, root, "tickets/3-in-development/T-011-b.md", ticketFile("T-011", "pickle", "[]", "high", "IN DEVELOPMENT"))
-			mk(t, root, "tickets/BOARD.md", goodBoard+
-				"## IN DEVELOPMENT\n### pickle\n| id | t |\n|---|---|\n| T-010 | a |\n| T-011 | b |\n")
+			renderBoard(t, root)
 		}, true, "in 3-in-development (limit 1)"},
 		{"in-dev dep not done", func(t *testing.T, root string) {
 			mk(t, root, "tickets/3-in-development/T-002-bar.md", ticketFile("T-002", "pickle", "[T-001]", "high", "IN DEVELOPMENT"))
-			mk(t, root, "tickets/BOARD.md", goodBoard+
-				"## IN DEVELOPMENT\n### pickle\n| id | t |\n|---|---|\n| T-002 | bar |\n")
+			renderBoard(t, root)
 		}, true, "dependency T-001 is in 1-to-do"},
 
 		// --- spawned-by: lineage, validated for existence but never a gate (T-024) ---
 		{"valid spawned-by", func(t *testing.T, root string) {
 			mk(t, root, "tickets/2-ready/T-002-bar.md",
 				withSpawnedBy(ticketFile("T-002", "pickle", "[]", "high", "READY"), "[T-001]"))
-			mk(t, root, "tickets/BOARD.md", goodBoard+
-				"## READY\n### pickle\n| id | t |\n|---|---|\n| T-002 | bar |\n")
+			renderBoard(t, root)
 		}, false, ""},
 		{"dangling spawned-by", func(t *testing.T, root string) {
 			mk(t, root, "tickets/1-to-do/T-001-foo.md",
@@ -155,8 +164,7 @@ func TestAudit(t *testing.T) {
 		{"in-dev spawned-by parent not done", func(t *testing.T, root string) {
 			mk(t, root, "tickets/3-in-development/T-002-bar.md",
 				withSpawnedBy(ticketFile("T-002", "pickle", "[]", "high", "IN DEVELOPMENT"), "[T-001]"))
-			mk(t, root, "tickets/BOARD.md", goodBoard+
-				"## IN DEVELOPMENT\n### pickle\n| id | t |\n|---|---|\n| T-002 | bar |\n")
+			renderBoard(t, root)
 		}, false, ""},
 	}
 

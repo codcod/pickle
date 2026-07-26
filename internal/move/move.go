@@ -1,6 +1,6 @@
 // Package move implements `pickle ticket move`: a ticket's status transition as
 // one operation — relocate the file between tickets/<status>/ dirs, append a dated
-// ## History line, and rewrite the board row — behind a state machine, per-child
+// ## History line, and regenerate the board — behind a state machine, per-child
 // WIP limits, sign-off (--reason) rules, and a cross-child dependency+merge gate.
 // A completed move leaves internal/audit.Audit reporting zero errors.
 package move
@@ -115,23 +115,27 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 	}
 
 	// --- apply (all checks passed) ---
+	// D7 (T-014·4): write the updated text to the NEW path first, then remove the
+	// old file — never append-then-rename. A crash between the two leaves a
+	// duplicate id, which the audit reports and a human recovers by deleting the
+	// stale copy; it can no longer leave a ticket whose History records a
+	// transition that did not happen.
 	newText := appendHistory(t.Text, from.Name, target.Name, reason)
-	if err := os.WriteFile(t.Path, []byte(newText), 0o644); err != nil {
-		return res, err
-	}
 	newRel := filepath.Join("tickets", target.Dir, t.Base()+".md")
 	newPath := filepath.Join(root, newRel)
 	if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
 		return res, err
 	}
-	if err := os.Rename(t.Path, newPath); err != nil {
+	if err := os.WriteFile(newPath, []byte(newText), 0o644); err != nil {
+		return res, err
+	}
+	if err := os.Remove(t.Path); err != nil {
 		return res, err
 	}
 	res.Path = newRel
 
-	if err := board.MoveRow(filepath.Join(root, "tickets", "BOARD.md"), target.Name, proj,
-		rowData(t, cfg, target, reason)); err != nil {
-		return res, fmt.Errorf("moved file but failed to update board: %w", err)
+	if err := board.Regenerate(root, cfg); err != nil {
+		return res, fmt.Errorf("moved file but failed to regenerate board: %w", err)
 	}
 
 	// Post-move self-check: the tree must stay audit-clean.
@@ -142,27 +146,6 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 			len(a.Errors), strings.Join(a.Errors, "; "))
 	}
 	return res, nil
-}
-
-func rowData(t *ticket.Ticket, cfg *config.Config, target ticket.Status, reason string) board.RowData {
-	d := board.RowData{
-		ID:         t.ID,
-		Title:      t.Front["title"],
-		Impact:     t.Front["impact"],
-		Complexity: t.Front["complexity"],
-		Cost:       t.Front["cost"],
-		DependsOn:  renderDepends(t.DependsOn),
-		Reason:     reason,
-	}
-	prefix := config.DefaultBranchPrefix
-	if p, ok := cfg.Project(t.Project()); ok && p.BranchPrefix != "" {
-		prefix = p.BranchPrefix
-	}
-	d.Branch = prefix + t.ID + "-" + t.Slug
-	if target.Dir == "6-done" {
-		d.Merged = "no — publish-gated (branch " + d.Branch + ")"
-	}
-	return d
 }
 
 func checkWIP(tickets []*ticket.Ticket, cfg *config.Config, proj string, target ticket.Status) error {
@@ -237,10 +220,6 @@ func sanitizeReason(reason string) string {
 	r = strings.ReplaceAll(r, "\n", " ")
 	r = strings.ReplaceAll(r, "→", "->")
 	return strings.TrimSpace(r)
-}
-
-func renderDepends(deps []string) string {
-	return "[" + strings.Join(deps, ", ") + "]"
 }
 
 func contains(s []string, v string) bool {

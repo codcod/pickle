@@ -1,6 +1,6 @@
 ## Ticket flow (start here)
 
-**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the live index of every ticket by
+**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the generated index of every ticket by
 status. No feature is built directly from a chat message or a raw idea — work enters only as a
 ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it
 earns a **disposition** (rules §5), and most are resolved without a new ticket.
@@ -36,6 +36,8 @@ earns a **disposition** (rules §5), and most are resolved without a new ticket.
 
 ### Board rule
 
-Every ticket move = move the file + one dated `## History` line + one `tickets/BOARD.md`
-edit, in the same change. A move that doesn't touch the board is a bug. Prefer
-`pickle ticket move` — it does all three atomically.
+`tickets/BOARD.md` is **generated** — regenerated wholesale from the ticket files by
+`pickle ticket new`, `pickle ticket move` and `pickle board sync`. **Never edit it by
+hand**; hand-written planning notes go in `tickets/NOTES.md`. Every ticket move = move
+the file + one dated `## History` line, and the board regenerates. Prefer
+`pickle ticket move` — it does all of it atomically.

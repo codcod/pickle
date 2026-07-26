@@ -1,22 +1,43 @@
-// Package board parses BOARD.md into the rows the audit cross-checks against the
-// ticket files: which ticket id is listed under which status section and which
-// child sub-group.
+// Package board renders tickets/BOARD.md as a pure generated artifact of the
+// ticket files (the single source of truth) and parses it read-only for the
+// sync drift summary. Nothing ever parses board cells back into data: every
+// cell passes one-way through sanitizeCell at render time (T-044).
 package board
 
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
-// impactRank orders TO DO rows by impact (highest first).
+// impactRank orders TO DO/READY rows by impact (highest first).
 var impactRank = map[string]int{
 	"low": 1, "low-medium": 2, "medium": 3, "medium-high": 4,
 	"high": 5, "high-critical": 6, "critical": 7,
+}
+
+// boardOrder is the fixed order the status sections are rendered in (active
+// work first), by status display name.
+var boardOrder = []string{
+	"IN DEVELOPMENT", "IN REVIEW", "REWORK", "READY", "TO DO", "DONE", "DROPPED",
+}
+
+// sectionHeading is the canonical `## ` heading text per status.
+var sectionHeading = map[string]string{
+	"IN DEVELOPMENT": "IN DEVELOPMENT",
+	"IN REVIEW":      "IN REVIEW",
+	"REWORK":         "REWORK",
+	"READY":          "READY (impact order, per child)",
+	"TO DO":          "TO DO (impact order, per child)",
+	"DONE":           "DONE",
+	"DROPPED":        "DROPPED",
 }
 
 // Row is one ticket listed on the board.
@@ -30,8 +51,9 @@ var rowRE = regexp.MustCompile(`^\|\s*(T-\d+)\s*\|`)
 
 // Parse reads BOARD.md and returns every ticket row with its section + sub-group.
 // Rows are attributed to the current `## <status>` heading (longest status-name
-// match first) and the current `### <child>` sub-heading. The `T-NNN` template
-// placeholder row is ignored.
+// match first) and the current `### <child>` sub-heading. This is read-only
+// membership parsing for the sync drift summary — cell contents are never read
+// back (they are sanitised one-way at render time).
 func Parse(path string) ([]Row, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -73,55 +95,17 @@ func Parse(path string) ([]Row, error) {
 	return rows, nil
 }
 
-// RowData carries the section-specific cells a board row can hold. `ticket move`
-// (and, later, `board sync`) fill the fields relevant to the target section; the
-// section's column list decides which are rendered.
-type RowData struct {
-	ID         string
-	Title      string
-	Impact     string
-	Complexity string
-	Cost       string
-	DependsOn  string // "[T-002]" or "[]"
-	Branch     string // "feat/T-007-ticket-move"
-	Merged     string // DONE column
-	Reason     string // DROPPED reason / REWORK open findings
-}
-
-func (d RowData) cell(col string) string {
-	switch col {
-	case "id":
-		return d.ID
-	case "title":
-		return d.Title
-	case "impact":
-		return d.Impact
-	case "complexity":
-		return d.Complexity
-	case "cost":
-		return d.Cost
-	case "depends-on":
-		return d.DependsOn
-	case "branch":
-		return d.Branch
-	case "merged":
-		return d.Merged
-	case "reason", "open findings":
-		return d.Reason
-	}
-	return ""
-}
-
 // SectionColumns is the ordered column list for a status section's table. It
-// returns nil for an unknown section name.
+// returns nil for an unknown section name. There is deliberately no `branch`
+// column: the real branch lives in the ticket's plan and History (D2).
 func SectionColumns(statusName string) []string {
 	switch statusName {
 	case "TO DO", "READY":
 		return []string{"id", "title", "impact", "complexity", "cost", "depends-on"}
 	case "IN DEVELOPMENT", "IN REVIEW":
-		return []string{"id", "title", "branch", "depends-on"}
+		return []string{"id", "title", "depends-on"}
 	case "REWORK":
-		return []string{"id", "title", "branch", "open findings"}
+		return []string{"id", "title", "open findings"}
 	case "DONE":
 		return []string{"id", "title", "merged"}
 	case "DROPPED":
@@ -130,243 +114,149 @@ func SectionColumns(statusName string) []string {
 	return nil
 }
 
-func renderRow(cols []string, d RowData) string {
+var cellBreakRE = regexp.MustCompile(`[\r\n]+`)
+
+// sanitizeCell is the single one-way choke point every rendered cell passes
+// through: pipes become a broken bar (so a title can never split a table row),
+// newline runs collapse to one space, and the result is trimmed. Nothing ever
+// parses a cell back, so there is no escape scheme to keep in sync (T-044
+// decision 9).
+func sanitizeCell(s string) string {
+	s = cellBreakRE.ReplaceAllString(s, " ")
+	s = strings.ReplaceAll(s, "|", "¦")
+	return strings.TrimSpace(s)
+}
+
+func headerRow(cols []string) string {
+	return "| " + strings.Join(cols, " | ") + " |"
+}
+
+func separatorRow(cols []string) string {
+	return "|" + strings.Repeat("---|", len(cols))
+}
+
+// cellFor derives one cell's value from the ticket itself — never from a
+// previous board (D3: terminal cells come from History; D2: no branch cell).
+func cellFor(t *ticket.Ticket, col string) string {
+	switch col {
+	case "id":
+		return t.ID
+	case "title":
+		return t.Front["title"]
+	case "impact", "complexity", "cost":
+		return t.Front[col]
+	case "depends-on":
+		return "[" + strings.Join(t.DependsOn, ", ") + "]"
+	case "merged":
+		if m := ticket.MergeLine(t.Text); m != "" {
+			return "yes — " + m
+		}
+		return "no — publish-gated"
+	case "reason", "open findings":
+		return ticket.LastHistoryReason(t.Text)
+	}
+	return ""
+}
+
+func renderRow(t *ticket.Ticket, cols []string) string {
 	cells := make([]string, len(cols))
 	for i, c := range cols {
-		cells[i] = d.cell(c)
+		cells[i] = sanitizeCell(cellFor(t, c))
 	}
 	return "| " + strings.Join(cells, " | ") + " |"
 }
 
-// RenderRow renders a single board row for a status section, filling only the
-// cells that section's columns call for. It returns "" for an unknown section.
-func RenderRow(statusName string, d RowData) string {
-	cols := SectionColumns(statusName)
-	if cols == nil {
-		return ""
-	}
-	return renderRow(cols, d)
-}
-
-// HeaderRow renders a markdown table header line for the given columns.
-func HeaderRow(cols []string) string {
-	return "| " + strings.Join(cols, " | ") + " |"
-}
-
-// SeparatorRow renders the markdown table separator line for the given columns.
-func SeparatorRow(cols []string) string {
-	return "|" + strings.Repeat("---|", len(cols))
-}
-
-// ParseCells reads BOARD.md and returns, per ticket id, a map of column-name to
-// cell value using the columns of the section the row sits in. It is the
-// carry-over source for `board sync`: cells that are human bookkeeping rather
-// than ticket frontmatter (DONE `merged`, DROPPED `reason`, REWORK `open
-// findings`) can be preserved across a rebuild. The T-NNN placeholder is ignored.
-func ParseCells(path string) (map[string]map[string]string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, len(ticket.Statuses))
-	for i, s := range ticket.Statuses {
-		names[i] = s.Name
-	}
-	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })
-
-	out := map[string]map[string]string{}
-	status := ""
-	for _, line := range strings.Split(string(data), "\n") {
-		switch {
-		case strings.HasPrefix(line, "## "):
-			heading := strings.ToUpper(strings.TrimSpace(line[3:]))
-			status = ""
-			for _, n := range names {
-				if strings.HasPrefix(heading, n) {
-					status = n
-					break
-				}
+// sortRows orders a sub-group: TO DO/READY by descending impact (tie id asc);
+// every other section by id ascending (D1 — deterministic, no hand-curated order).
+func sortRows(group []*ticket.Ticket, name string) {
+	byImpact := name == "TO DO" || name == "READY"
+	sort.SliceStable(group, func(i, j int) bool {
+		if byImpact {
+			ri, rj := impactRank[group[i].Front["impact"]], impactRank[group[j].Front["impact"]]
+			if ri != rj {
+				return ri > rj
 			}
-		default:
-			if status == "" {
-				continue
-			}
-			trimmed := strings.TrimSpace(line)
-			m := rowRE.FindStringSubmatch(trimmed)
-			if m == nil || m[1] == "T-NNN" {
-				continue
-			}
-			cols := SectionColumns(status)
-			if cols == nil {
-				continue
-			}
-			out[m[1]] = zipCells(cols, splitCells(trimmed))
 		}
-	}
-	return out, nil
-}
-
-// splitCells splits a "| a | b | c |" table row into its trimmed cell values.
-func splitCells(row string) []string {
-	parts := strings.Split(row, "|")
-	if len(parts) >= 2 {
-		parts = parts[1 : len(parts)-1] // drop the empty leading/trailing fields
-	}
-	cells := make([]string, len(parts))
-	for i, p := range parts {
-		cells[i] = strings.TrimSpace(p)
-	}
-	return cells
-}
-
-func zipCells(cols, cells []string) map[string]string {
-	m := make(map[string]string, len(cols))
-	for i, c := range cols {
-		if i < len(cells) {
-			m[c] = cells[i]
-		}
-	}
-	return m
-}
-
-// AddTODORow inserts a ticket row into the TO DO section under the child's
-// `### <child>` sub-group, in impact order (highest first; ties keep existing
-// order). The sub-group is created (with a standard header) if it does not exist.
-// It is a thin wrapper over the shared section insert used by MoveRow.
-func AddTODORow(boardPath, child, id, title, impact, complexity, cost string) error {
-	return insertIntoBoard(boardPath, "TO DO", child, RowData{
-		ID: id, Title: title, Impact: impact, Complexity: complexity, Cost: cost, DependsOn: "[]",
+		return group[i].Num < group[j].Num
 	})
 }
 
-// MoveRow removes any existing row for d.ID from the board and inserts a freshly
-// rendered row into the target status section under the ticket's `### <child>`
-// sub-group (created if absent). TO DO/READY insert in descending-impact order;
-// every other section appends. Now-empty sub-groups are left in place.
-func MoveRow(boardPath, statusName, child string, d RowData) error {
-	return insertIntoBoard(boardPath, statusName, child, d)
-}
+// Render produces the entire BOARD.md text from the ticket files and config —
+// a pure function of its inputs (same inputs ⇒ byte-identical output). The
+// whole file is generated, preamble included (D5/decision 10): a banner
+// comment, the title, a short pointer paragraph, the per-child WIP-limit
+// lines, `Last updated: <date>`, then the seven status sections, each child
+// sub-grouped with WIP counts computed at render time. Every DONE/DROPPED
+// ticket is always rendered (D4 — no aging).
+func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
+	lines := []string{
+		"<!-- generated by pickle — do not edit; run pickle board sync -->",
+		"",
+		"# Board",
+		"",
+		"This file is generated from the ticket files (the single source of truth) by",
+		"`pickle ticket new`, `pickle ticket move` and `pickle board sync`. Do not edit it by",
+		"hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTES.md).",
+		"",
+		"**WIP limits (per child-project):**",
+	}
+	for _, p := range cfg.Projects {
+		lines = append(lines, fmt.Sprintf("- `%s`: `3-in-development/` ≤ %d · `4-in-review/` ≤ %d",
+			p.Name, p.WIPInDevelopment, p.WIPInReview))
+	}
+	lines = append(lines, "", "Last updated: "+date)
 
-func insertIntoBoard(boardPath, statusName, child string, d RowData) error {
-	cols := SectionColumns(statusName)
-	if cols == nil {
-		return fmt.Errorf("unknown board section %q", statusName)
-	}
-	data, err := os.ReadFile(boardPath)
-	if err != nil {
-		return err
-	}
-	lines := removeRowByID(strings.Split(string(data), "\n"), d.ID)
-	row := renderRow(cols, d)
-	impactOrdered := statusName == "TO DO" || statusName == "READY"
+	for _, name := range boardOrder {
+		st, _ := ticket.StatusByName(name)
+		lines = append(lines, "", "## "+sectionHeading[name])
 
-	secStart, secEnd := sectionSpan(lines, statusName)
-	if secStart == -1 {
-		return fmt.Errorf("%s: no %s section", boardPath, statusName)
-	}
-	subStart, subEnd := subgroupSpan(lines, secStart, secEnd, child)
-	if subStart == -1 { // create the sub-group at the end of the section
-		block := []string{"", "### " + child, "", HeaderRow(cols), SeparatorRow(cols), row}
-		return write(boardPath, insertLines(lines, secEnd, block))
-	}
-
-	newRank := impactRank[d.Impact]
-	insertAt, lastRow := -1, -1
-	for i := subStart + 1; i < subEnd; i++ {
-		m := rowRE.FindStringSubmatch(strings.TrimSpace(lines[i]))
-		if m == nil || m[1] == "T-NNN" {
-			continue
-		}
-		lastRow = i
-		if impactOrdered && insertAt == -1 {
-			cells := strings.Split(lines[i], "|")
-			rowImpact := ""
-			if len(cells) > 3 {
-				rowImpact = strings.TrimSpace(cells[3])
-			}
-			if impactRank[rowImpact] < newRank {
-				insertAt = i
-			}
-		}
-	}
-	if insertAt == -1 {
-		if lastRow != -1 {
-			insertAt = lastRow + 1
-		} else { // empty sub-group: insert right after the header separator line
-			insertAt = subStart + 1
-			for i := subStart + 1; i < subEnd; i++ {
-				if strings.HasPrefix(strings.TrimSpace(lines[i]), "|---") {
-					insertAt = i + 1
+		cols := SectionColumns(name)
+		for _, p := range cfg.Projects {
+			var group []*ticket.Ticket
+			for _, t := range tickets {
+				if t.Dir == st.Dir && t.Project() == p.Name {
+					group = append(group, t)
 				}
 			}
+			sortRows(group, name)
+
+			sub := "### " + p.Name
+			if name == "IN DEVELOPMENT" {
+				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, len(group), p.WIPInDevelopment)
+			} else if name == "IN REVIEW" {
+				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, len(group), p.WIPInReview)
+			}
+			lines = append(lines, "", sub, "", headerRow(cols), separatorRow(cols))
+			for _, t := range group {
+				lines = append(lines, renderRow(t, cols))
+			}
 		}
 	}
-	return write(boardPath, insertLines(lines, insertAt, []string{row}))
+	return strings.Join(lines, "\n") + "\n"
 }
 
-// removeRowByID drops any board row whose id equals id (in any section). Empty
-// sub-groups are intentionally left in place (matching the skeleton convention).
-func removeRowByID(lines []string, id string) []string {
-	out := make([]string, 0, len(lines))
-	for _, ln := range lines {
-		if m := rowRE.FindStringSubmatch(strings.TrimSpace(ln)); m != nil && m[1] == id {
-			continue
-		}
-		out = append(out, ln)
-	}
-	return out
-}
-
-// sectionSpan returns [start,end) line indices for the "## <name>..." section, or
-// (-1, len) if the section is absent. name is the upper-case status display name.
-func sectionSpan(lines []string, name string) (int, int) {
-	start, end := -1, len(lines)
+// NormalizeLastUpdated blanks the date on the `Last updated:` line so two
+// renders (or a render and the file on disk) can be compared for real drift.
+func NormalizeLastUpdated(text string) string {
+	lines := strings.Split(text, "\n")
 	for i, ln := range lines {
-		if !strings.HasPrefix(ln, "## ") {
-			continue
-		}
-		head := strings.ToUpper(strings.TrimSpace(ln[3:]))
-		if start == -1 && strings.HasPrefix(head, name) {
-			start = i
-		} else if start != -1 && i > start {
-			return start, i
+		if strings.HasPrefix(ln, "Last updated:") {
+			lines[i] = "Last updated:"
 		}
 	}
-	return start, end
+	return strings.Join(lines, "\n")
 }
 
-// subgroupSpan returns [start,end) for the "### <child>" sub-group inside
-// [secStart,secEnd), or (-1,-1) if absent.
-func subgroupSpan(lines []string, secStart, secEnd int, child string) (int, int) {
-	start := -1
-	for i := secStart + 1; i < secEnd; i++ {
-		if strings.HasPrefix(lines[i], "### ") &&
-			strings.TrimSpace(strings.SplitN(lines[i][4:], " (", 2)[0]) == child {
-			start = i
-			break
-		}
+// Regenerate renders the board from the ticket tree under root and writes it —
+// the one write path `ticket new`, `ticket move` and `board sync` all share.
+// It refuses to render over structural load problems rather than generating a
+// board that silently omits the unloadable tickets.
+func Regenerate(root string, cfg *config.Config) error {
+	tickets, issues := ticket.LoadAll(root)
+	if len(issues) > 0 {
+		return fmt.Errorf("cannot regenerate the board while tickets have load problems: %s",
+			strings.Join(issues, "; "))
 	}
-	if start == -1 {
-		return -1, -1
-	}
-	end := secEnd
-	for i := start + 1; i < secEnd; i++ {
-		if strings.HasPrefix(lines[i], "### ") || strings.HasPrefix(lines[i], "## ") {
-			end = i
-			break
-		}
-	}
-	return start, end
-}
-
-func insertLines(lines []string, at int, block []string) []string {
-	out := make([]string, 0, len(lines)+len(block))
-	out = append(out, lines[:at]...)
-	out = append(out, block...)
-	out = append(out, lines[at:]...)
-	return out
-}
-
-func write(path string, lines []string) error {
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644)
+	text := Render(tickets, cfg, time.Now().Format("2006-01-02"))
+	return os.WriteFile(filepath.Join(root, "tickets", "BOARD.md"), []byte(text), 0o644)
 }

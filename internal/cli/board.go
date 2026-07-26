@@ -9,7 +9,7 @@ import (
 )
 
 // Board mechanics. `board audit` is the keystone (P1): a pure check over tickets/
-// + pickle.toml. `board sync` (P3) repairs the hand-maintained board from state.
+// + pickle.toml. `board sync` (P3) regenerates the board from ticket state.
 
 func runBoard(args []string) int {
 	if len(args) == 0 {

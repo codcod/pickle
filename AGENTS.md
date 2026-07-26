@@ -4,7 +4,7 @@
 in any project (see [`README.md`](README.md)). This repo **self-hosts that flow**: its own
 work is planned and tracked through the very ticket flow it ships.
 
-Two consequences of self-hosting that the generated block below cannot know, and which
+Consequences of self-hosting that the generated block below cannot know, and which
 therefore live out here where `pickle upgrade` will not overwrite them:
 
 - The sole registered child-project is **this repo itself**, at the root (`.`) — see
@@ -13,11 +13,24 @@ therefore live out here where `pickle upgrade` will not overwrite them:
 - `.agents/skills/ticket-flow/` is a symlink to [`skill/`](skill/), which is also the payload
   embedded in the binary. Editing the skill here changes what `pickle install` ships — and it
   is why `upgrade` leaves this repo's skill directory alone instead of replacing it.
+- **Self-modify policy.** Never run `pickle install|upgrade|uninstall` against this repo from
+  a feature branch: the binary is the artifact under development, and running WIP code against
+  the repo's own `AGENTS.md`, `pickle.toml` and skill link is testing in production. Instead:
+  - Marker-block changes are made **by hand**, mirroring `install.go`'s `markerBlock()`, inside
+    the ticket's diff — so review catches them.
+  - **Test installs go to a throwaway dir with the binary copied in**
+    (`D=$(mktemp -d) && cp pickle "$D/pk" && cd "$D" && ./pk install …`) — never reference the
+    repo-built binary by its in-repo path from elsewhere.
+  - The one legitimate self-upgrade is a **human action**: after a merge, a clean-built
+    `pickle upgrade` from `main` may re-stamp `payload_version` and verify the marker block
+    round-trips, reviewing `git diff` before committing.
+  - `pickle doctor`'s standing `payload version … differs` warning is accepted self-host noise
+    until it is made self-host-aware.
 
 <!-- pickle:begin -->
 ## Ticket flow (start here)
 
-**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the live index of every ticket by
+**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the generated index of every ticket by
 status. No feature is built directly from a chat message or a raw idea — work enters only as a
 ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it
 earns a **disposition** (rules §5), and most are resolved without a new ticket.
@@ -50,7 +63,9 @@ earns a **disposition** (rules §5), and most are resolved without a new ticket.
 
 ### Board rule
 
-Every ticket move = move the file + one dated `## History` line + one `tickets/BOARD.md`
-edit, in the same change. A move that doesn't touch the board is a bug. Prefer
-`pickle ticket move` — it does all three atomically.
+`tickets/BOARD.md` is **generated** — regenerated wholesale from the ticket files by
+`pickle ticket new`, `pickle ticket move` and `pickle board sync`. **Never edit it by
+hand**; hand-written planning notes go in `tickets/NOTES.md`. Every ticket move = move
+the file + one dated `## History` line, and the board regenerates. Prefer
+`pickle ticket move` — it does all of it atomically.
 <!-- pickle:end -->

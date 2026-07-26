@@ -5,6 +5,7 @@ package audit
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -82,41 +83,15 @@ func Audit(root string, cfg *config.Config) Result {
 		}
 	}
 
-	// Board cross-check.
+	// Board staleness check (T-044 D6). The board is a generated artifact, so the
+	// only board invariant is "the file matches a fresh render" — one
+	// byte-comparison after normalising the `Last updated:` line on both sides.
 	boardPath := filepath.Join(root, "tickets", "BOARD.md")
-	rows, err := board.Parse(boardPath)
-	if err != nil {
+	if data, err := os.ReadFile(boardPath); err != nil {
 		r.errf("BOARD.md: %v", err)
-	} else {
-		seen := map[string]board.Row{}
-		for _, row := range rows {
-			if prev, ok := seen[row.ID]; ok {
-				r.errf("BOARD.md: %s listed twice (%s and %s)", row.ID, prev.Status, row.Status)
-			}
-			seen[row.ID] = row
-			t, ok := byID[row.ID]
-			if !ok {
-				r.errf("BOARD.md: %s listed under %s but no ticket file exists", row.ID, row.Status)
-				continue
-			}
-			st, _ := ticket.StatusByDir(t.Dir)
-			if row.Status != st.Name {
-				r.errf("BOARD.md: %s is in %s but listed under %s", row.ID, t.Dir, row.Status)
-			}
-			if p := t.Project(); p != "" && row.Child != "" && row.Child != p {
-				r.errf("BOARD.md: %s is under child %q but its project is %q", row.ID, row.Child, p)
-			}
-		}
-		for _, t := range tickets {
-			st, _ := ticket.StatusByDir(t.Dir)
-			row, listed := seen[t.ID]
-			switch {
-			case !listed && !st.Terminal:
-				r.errf("BOARD.md: %s (%s) missing from the board", t.ID, t.Dir)
-			case listed && row.Status != st.Name:
-				// already reported above
-			}
-		}
+	} else if board.NormalizeLastUpdated(string(data)) !=
+		board.NormalizeLastUpdated(board.Render(tickets, cfg, "")) {
+		r.errf("BOARD.md is stale or hand-edited — run pickle board sync")
 	}
 
 	// Per-child WIP limits.

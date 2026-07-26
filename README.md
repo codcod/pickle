@@ -5,8 +5,8 @@ the same flow prototyped by hand in an earlier workspace, now a single-binary CL
 
 Run `pickle install` in a project and a coding agent (Claude Code, opencode, Pi) understands
 requests like *"create a feature to review the Jira board"*: it authors a correctly-formatted
-ticket in `tickets/1-to-do/T-NNN-<slug>.md` and updates `BOARD.md`, because `install` laid down
-the flow skill, the board, and the agent-instruction markers.
+ticket in `tickets/1-to-do/T-NNN-<slug>.md` and regenerates `BOARD.md`, because `install` laid
+down the flow skill, the board, and the agent-instruction markers.
 
 ## Install
 
@@ -59,11 +59,11 @@ A single-child project is just the degenerate case.
 - **Judgment** (what a ticket says, grading, refining, reviewing) lives in the embedded
   ticket-flow **skill** + the project's `AGENTS.md`; `pickle` ships it as content and never
   automates it.
-- **Mechanics** (scaffold dirs, allocate the next `T-NNN`, move a ticket file + sync the board +
-  append History atomically, audit the invariants) are deterministic **CLI commands**.
+- **Mechanics** (scaffold dirs, allocate the next `T-NNN`, move a ticket file + append History +
+  regenerate the board atomically, audit the invariants) are deterministic **CLI commands**.
 
 The embedded payload lives in [`skill/`](skill/) — laid out exactly as the installed skill
-(`skill/SKILL.md` + `skill/resources/{tickets-README,TEMPLATE,review-protocol,BOARD}.md`) — and
+(`skill/SKILL.md` + `skill/resources/{tickets-README,TEMPLATE,review-protocol}.md`) — and
 is compiled into the binary via `//go:embed`. `pickle` **self-hosts** this flow: its own board
 lives in [`tickets/`](tickets/), the skill is discoverable via `.agents/skills/ticket-flow`
 (a symlink to `skill/`), and [`pickle.toml`](pickle.toml) registers the sole child-project
@@ -77,10 +77,10 @@ pickle project add|list|remove          manage connected child-projects         
 pickle upgrade                          refresh installed skill payload + markers                        [done: T-006]
 pickle doctor                           verify install integrity                                         [done: T-005]
 pickle uninstall [--dry-run]            remove skill/symlinks/markers (keep tickets/ + pickle.toml)      [done: T-006]
-pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, add board row                   [done: T-003]
-pickle ticket move T-NNN <status>       move file + History + board atomically                           [done: T-007]
-pickle board audit                      check every board/ticket invariant                               [done: T-002]
-pickle board sync                       repair board rows from ticket state                              [done: T-008]
+pickle ticket new "<title>" --project   allocate T-NNN, scaffold ticket, regenerate board                [done: T-003]
+pickle ticket move T-NNN <status>       move file + History + regenerate board atomically                [done: T-007]
+pickle board audit                      check every ticket invariant + board freshness                   [done: T-002]
+pickle board sync                       regenerate the board from ticket state                           [done: T-008]
 pickle version | help
 ```
 
@@ -139,8 +139,9 @@ non-zero (and prints `ERROR:`/`WARNING:` lines plus a summary) when any invarian
 - `project:` names a **registered child**, every `depends-on:` target exists, and every
   `spawned-by:` target exists without a ticket citing itself — lineage is checked for
   existence but **never gates** anything;
-- every ticket appears exactly once on `BOARD.md`, under the section **and** child sub-group
-  matching its directory (terminal tickets may age off the board); every board row has a file;
+- `BOARD.md` matches a fresh render of the ticket files — the board is a **generated
+  artifact** (T-044), so any hand-edit or staleness is exactly one error:
+  `BOARD.md is stale or hand-edited — run pickle board sync`;
 - **per-child** WIP limits (`wip_in_development`/`wip_in_review`) hold;
 - each ticket's last History transition matches its directory;
 - nothing is in `3-in-development/` with a dependency not yet in `6-done/` (warning if a done
@@ -160,28 +161,28 @@ dirs).
 pickle board sync [--dry-run]
 ```
 
-The escape hatch that repairs `BOARD.md` from ground truth (ticket files + frontmatter +
-`pickle.toml`) when hand-edits drift. **"In sync" is defined as `board audit` reporting zero
-errors**, so a successful sync always leaves the board audit-clean. It fully regenerates the
-seven status sections — correct section per directory, one `### <child>` sub-group per
-registered child, refreshed `(n/limit)` WIP counts, deterministic ordering (TO DO/READY by
-descending impact, everything else by id), and the `depends-on`/`branch` columns.
+**Regenerates `BOARD.md` wholesale from ground truth** (ticket files + frontmatter +
+`pickle.toml`). The board is a pure generated artifact (T-044): the whole file — banner,
+preamble, WIP-limit lines, and the seven status sections — is a render, and **nothing in it is
+preserved**; hand-written planning notes belong in `tickets/NOTES.md`, which sync never
+touches. **"In sync" is defined as `board audit` reporting zero errors**, so a successful sync
+always leaves the board audit-clean.
 
-What it **preserves**:
+Everything on the board is derived:
 
-- the **preamble** above the first status heading (only the `Last updated:` line is refreshed);
-- the **trailing appendix** (any `---` + free-form `## …` prose after the last status section);
-- **human bookkeeping cells that are not in frontmatter** — DONE `merged`, DROPPED `reason`,
-  REWORK `open findings` are carried over from the existing row; a row sync must *add* gets a
-  default (`merged` → `no — publish-gated (branch …)`, `reason`/`open findings` → empty).
+- section per status directory, one `### <child>` sub-group per registered child, `(n/limit)`
+  WIP counts computed at render time;
+- deterministic ordering — TO DO/READY by descending impact (ties by id), everything else by
+  id; every DONE/DROPPED ticket is always listed (nothing "ages off");
+- DONE `merged` from the ticket's merge History line (`yes — merged to …` / `no —
+  publish-gated`), DROPPED `reason` and REWORK `open findings` from the last transition's
+  `--reason`;
+- every cell passes one-way sanitisation (`|` → `¦`, newlines → space) — cells are never
+  parsed back, so a pipe in a title cannot corrupt the table.
 
-Terminal tickets (DONE/DROPPED) are only listed if they are already on the board — sync repairs
-and relocates them but never auto-adds every done ticket (matching audit's "terminal statuses
-may age off"). `--dry-run` reports the drift, writes nothing, and **exits non-zero if the board
-would change** (wire it into CI). After a write, sync runs `board audit` as a self-check.
-
-> Cell escaping (a `|` or newline inside a title/reason) is a known shared-renderer gap tracked
-> separately; sync renders cells raw, exactly as `ticket move` does today.
+A board differing from a fresh render only in the `Last updated:` date is in sync — no write.
+`--dry-run` reports the drift, writes nothing, and **exits non-zero if the board would change**
+(wire it into CI). After a write, sync runs `board audit` as a self-check.
 
 ## `pickle install`
 
@@ -194,9 +195,9 @@ Run once in a project to lay down the flow. It:
 
 - copies the embedded skill payload into `.agents/skills/ticket-flow/` (real files);
 - symlinks the Claude Code view `.claude/skills/ticket-flow -> ../../.agents/skills/ticket-flow`;
-- scaffolds `tickets/` (the seven ordered status dirs, each with a `.gitkeep`), seeds
-  `tickets/BOARD.md` from the skeleton (child name + date substituted) and a short
-  `tickets/README.md` pointer;
+- scaffolds `tickets/` (the seven ordered status dirs, each with a `.gitkeep`), renders a
+  fresh `tickets/BOARD.md` (a generated file — see `board sync`), scaffolds `tickets/NOTES.md`
+  for hand-written planning notes, and writes a short `tickets/README.md` pointer;
 - injects an idempotent `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block into
   `AGENTS.md` and `CLAUDE.md` (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md`;
   `--no-claude` skips all Claude artifacts);
@@ -204,8 +205,8 @@ Run once in a project to lay down the flow. It:
   name; `--path`, default `.`).
 
 **Per-project** (never writes to `~/` or outside the root), **idempotent, and safe to re-run**:
-the payload and marker block are refreshed in place while instance data (`BOARD.md`, tickets,
-`pickle.toml`) is preserved once present. After installing, a post-install `board audit`
+the payload and marker block are refreshed in place while instance data (`BOARD.md`,
+`NOTES.md`, tickets, `pickle.toml`) is preserved once present. After installing, a post-install `board audit`
 self-check must pass. An existing `.agents/skills/ticket-flow` **symlink** (a dev/self-host
 link) is left untouched.
 
@@ -276,11 +277,12 @@ pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V
 
 Allocates the next `T-NNN` (one global namespace = `max(existing) + 1`), writes a clean,
 audit-passing scaffold to `tickets/1-to-do/T-NNN-<slug>.md` (filled frontmatter + the standard
-section skeleton), and inserts the board row under the child's `### <child>` sub-group in the
-TO DO section, in impact order. `--project` must name a registered child; grades default to
-`medium`/`medium`/`M` and must be legal. The `<title>` may not be empty or contain newlines —
-it is written into the frontmatter, the heading and a board cell, so a newline would corrupt all
-three; a rejected invocation writes nothing at all. `--spawned-by` records **lineage** — the
+section skeleton), and regenerates `BOARD.md` (the row lands under the child's `### <child>`
+sub-group in the TO DO section, in impact order). `--project` must name a registered child;
+grades default to `medium`/`medium`/`M` and must be legal. The `<title>` may not be empty or
+contain newlines — it is written into the frontmatter and the heading, so a newline would
+corrupt both; a rejected invocation writes nothing at all. (A `|` in a title is fine: board
+cells are sanitised one-way at render time.) `--spawned-by` records **lineage** — the
 ticket(s) this one was born from (a review finding, an audit, a split) — comma-separated, brackets
 optional, defaulting to `[]`. It is provenance, not a dependency: it never gates pickup. Each id is
 checked for **shape** (`T-NNN`) at creation, while whether it **exists** is checked by
@@ -294,10 +296,10 @@ with the skill) is the authoring guide.
 pickle ticket move <T-NNN> <status> [--reason "<why>"]
 ```
 
-Moves a ticket through the flow as **one operation** — the three edits the board rule demands,
-together: relocate the file between `tickets/<status>/` dirs, append a dated `## History`
-transition line, and rewrite the board row into the target section (correct child sub-group
-*and* column shape). `<status>` accepts the dir name (`3-in-development`), the short form
+Moves a ticket through the flow as **one operation**: write the updated ticket (with its dated
+`## History` transition line) to the target `tickets/<status>/` dir, remove the old file, and
+regenerate `BOARD.md`. The new file is written **before** the old one is removed, so a crash
+can never leave a ticket whose History records a transition that did not happen. `<status>` accepts the dir name (`3-in-development`), the short form
 (`in-development`), or the display name (`"in review"`).
 
 **State machine** (anything else is rejected):

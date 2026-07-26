@@ -300,7 +300,87 @@ block + `tickets/NOTES.md`). No other doc surfaces.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**2026-07-26 — review on `feat/T-044-generated-board` (HEAD 589f7e5 + inline fixes). Verdict: pass, no blocking findings.**
+
+### Implementation audit (step 2)
+
+- `just build && just test && just lint` — **green** (go vet clean, all packages pass).
+- **Acceptance test re-run verbatim — all green.** Throwaway install (`mktemp -d`, binary
+  copied in per the self-modify policy): (1) `ticket new "evil | pipe title"` renders `¦`,
+  audit 0 errors; (2) `ticket move T-001 ready` regenerates board, WIP counts + placement
+  correct, audit clean; (3) hand-appended stray row ⇒ exactly one error (`stale or
+  hand-edited`), `board sync` repairs, second sync reports no change; (4) `tickets/NOTES.md`
+  scaffolded and byte-identical across sync; (5) `move --reason "why"` ⇒ DROPPED reason cell
+  `why`. This repo: double `board sync` no-op, `board audit` 0 errors (46 tickets),
+  NOTES.md holds the migrated prose.
+- **Tasks 1–8: all met**, in the named files. Renderer + `sanitizeCell` + `Regenerate`
+  (`internal/board/board.go`); `MergeLine`/`LastHistoryReason` (`internal/ticket/ticket.go`);
+  sync-as-regenerate (`internal/sync/sync.go`); writers rewired (`internal/cli/ticket.go:133`,
+  `internal/move/move.go:137`); write-new-then-remove-old atomicity (`move.go:129-132`);
+  staleness audit (`internal/audit/audit.go:86-95`); install renders board + scaffolds
+  NOTES.md, skeleton `skill/resources/BOARD.md` deleted; skill payload + README + AGENTS.md
+  marker block updated; instance data migrated. Deletions verified: no references to
+  `AddTODORow`/`MoveRow`/`insertIntoBoard`/`ParseCells`/`removeRowByID` remain; `board.Parse`
+  survives read-only, used only by sync's drift summary.
+- **Decisions D1–D10: all honoured.** D1 `sortRows` (impact desc, id asc tie; other sections
+  id asc); D2 no branch column in `SectionColumns`; D3 terminal cells via
+  `MergeLine`/`LastHistoryReason`; D4 every terminal ticket always rendered; D5 NOTES.md +
+  banner; D6 one staleness error after `NormalizeLastUpdated` on both sides; D7 verified by
+  `TestMoveIsWriteNewThenRemoveOld`; D9 single `sanitizeCell` choke point; D10 whole file
+  generated, no preserved regions. One **approved deviation** (recorded at implementation):
+  the shared regenerate helper lives in `internal/board` (`board.Regenerate`) rather than
+  `internal/sync` as the plan sketched (`sync.Regenerate`) — avoids an import cycle from
+  `internal/move`; same contract.
+- Task 8.4 deviation, also as planned-for: `./pickle upgrade` was blocked by the self-modify
+  guard, so the marker block was updated **by hand** ("or by hand if upgrade balks").
+
+### Quality / consistency / docs audits (steps 3, 4, 4a)
+
+- Tests assert behaviour (golden render, purity, sanitisation, WIP counts, derived cells,
+  ordering, atomicity, idempotence, NOTES.md preservation, dry-run). Coverage: board 96.7%,
+  sync 91.3%, audit 89.8%, move 86.7% (cli 34.0% is pre-existing, owned by T-043 — F5).
+- Whole-tree sweep clean: no `hand-maintained` / `age off` / deleted-symbol stragglers in
+  code or docs; `SKILL.md`, `tickets-README.md` §1/§3/§6, `review-protocol.md`, `README.md`,
+  CLI help, AGENTS.md marker block all consistent with the generated-board contract. No docs
+  build configured (`docs` unset in pickle.toml).
+- Unregistered-project edge: a ticket targeting an unknown child would be omitted from a
+  render, but `ticket new` rejects it at creation, audit errors on it, and sync's post-write
+  self-check surfaces it — not silent. OK by design (audit guards ticket-file invariants).
+
+### Findings
+
+| id | severity | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|
+| F1 | non-blocking | fixed inline | `validateTitle` comment claimed a newline "splits the ticket's BOARD.md row … none of which audit notices" — this branch made both claims false (cells sanitise one-way; audit flags any hand-edit/staleness) | `internal/cli/ticket.go:140-144` | rewritten: frontmatter injection is the load-bearing case; board is safe by construction |
+| F2 | non-blocking | fixed inline | this branch added `MergeLine` duplicating `HasMergeLine`'s History-scan loop; the comment promised they "can never disagree" while being separate implementations that could drift | `internal/ticket/ticket.go:281-299` (pre-fix) | `HasMergeLine` now delegates: `return MergeLine(text) != ""` |
+| F3 | non-blocking | noted | docs_readability pass on the changed .md files: two suggestions touch T-044-authored text (README `board sync` "in sync" sentence; SKILL.md audit-paragraph length) — style-only, no factual error; presented to the user, may be applied on approval before squash | docs_readability output, 2026-07-26 | apply if the user approves |
+| F4 | non-blocking | folded | remaining docs_readability suggestions target pre-existing README/skill prose outside this ticket's diff (Install, upgrade, ticket-new lineage, phased-plan sections) | docs_readability output, 2026-07-26 | folded into **T-019** (README accuracy/polish) |
+| F5 | non-blocking | folded | `internal/cli` statement coverage 34.0% — pre-existing gap, not moved by this ticket | `go test ./internal/... -cover` | already owned by **T-043** (cli coverage epic) |
+
+**Disposition summary:** 5 non-blocking, 0 blocking — 2 fixed inline (F1, F2), 2 folded
+(F4 → T-019, F5 → T-043), 1 noted (F3). No tickets spawned by this review.
+
+### Impact sweep (step 8)
+
+- **T-042 patched**: item 2 (status-heading duplication ×4 + D3 carry-over test gap) dropped
+  from scope — its targets (`ParseCells`, `sectionSpan`, `subgroupSpan`, `matchStatus`) were
+  deleted by this ticket; collision risk gone; remaining scope items 1 + 3. History line added.
+- **T-043 patched**: item-5 deferral settled — one-way `sanitizeCell` landed with renderer
+  tests; item 5 shrinks to a cli-level assertion or is scoped out at refinement. History line
+  added.
+- T-041, T-040, T-045, T-046, T-026, T-038, T-022: assumptions unaffected.
+
+### Checklist
+
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep; no docs build configured (step 4a)
+- [x] Findings recorded with severity **and** disposition per the rules §5; disposition summary present (step 5)
+- [x] Ticket moved to `tickets/6-done/`; `## History` appended (step 6)
+- [x] Other references updated (T-042/T-043 patches); board regenerated by the move (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented for approval; bookkeeping committed per policy; next ticket suggested (step 9)
 
 ## History
 
@@ -319,3 +399,6 @@ block + `tickets/NOTES.md`). No other doc surfaces.
   Also note for **Task 7**: T-036 rewrote §5 of `tickets-README.md` and `review-protocol.md` plus
   three spots in `SKILL.md`, so the "grep for board-edit steps" sweep now runs against new line
   numbers in all three files.
+- 2026-07-26 — READY → IN DEVELOPMENT: picked up
+- 2026-07-26 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-07-26 — IN REVIEW → DONE: review pass: 0 blocking, 5 non-blocking (2 fixed inline, 2 folded to T-019/T-043, 1 noted); no tickets spawned

@@ -10,7 +10,6 @@ import (
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
-	"github.com/codcod/pickle/internal/move"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -31,16 +30,15 @@ func newProject(t *testing.T) (string, *config.Config) {
 	return root, cfg
 }
 
-// addTODO writes a TO DO ticket + its board row (the path ticket-new uses).
-func addTODO(t *testing.T, root, id, title, impact string) {
+// addTODO writes a TO DO ticket and regenerates the board (the path ticket-new uses).
+func addTODO(t *testing.T, root string, cfg *config.Config, id, title, impact string) {
 	t.Helper()
 	body := ticket.Scaffold(id, title, "demo", impact, "medium", "M", nil)
 	dst := filepath.Join(root, "tickets", "1-to-do", id+"-"+ticket.Slugify(title)+".md")
 	if err := os.WriteFile(dst, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	bp := filepath.Join(root, "tickets", "BOARD.md")
-	if err := board.AddTODORow(bp, "demo", id, title, impact, "medium", "M"); err != nil {
+	if err := board.Regenerate(root, cfg); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -77,8 +75,8 @@ func assertClean(t *testing.T, root string, cfg *config.Config) {
 
 func TestSyncIsIdempotent(t *testing.T) {
 	root, cfg := newProject(t)
-	addTODO(t, root, "T-001", "Alpha", "high")
-	addTODO(t, root, "T-002", "Beta", "medium")
+	addTODO(t, root, cfg, "T-001", "Alpha", "high")
+	addTODO(t, root, cfg, "T-002", "Beta", "medium")
 
 	mustSync(t, root, cfg, false) // canonicalise
 	first := readBoard(t, root)
@@ -95,8 +93,8 @@ func TestSyncIsIdempotent(t *testing.T) {
 
 func TestSyncRepairsDrift(t *testing.T) {
 	root, cfg := newProject(t)
-	addTODO(t, root, "T-001", "Alpha", "high")
-	addTODO(t, root, "T-002", "Beta", "medium")
+	addTODO(t, root, cfg, "T-001", "Alpha", "high")
+	addTODO(t, root, cfg, "T-002", "Beta", "medium")
 	mustSync(t, root, cfg, false)
 
 	// Corrupt: drop T-002's row, mangle a WIP count, add an orphan row.
@@ -135,89 +133,63 @@ func TestSyncRepairsDrift(t *testing.T) {
 	}
 }
 
-func TestSyncPreservesHumanCells(t *testing.T) {
+// TestSyncReplacesHandProse is the T-037 reproduction, flipped: the board is a
+// generated artifact (T-044), so hand-written prose inside it is *replaced* by
+// regeneration — that is now the contract — while tickets/NOTES.md is never
+// touched.
+func TestSyncReplacesHandProse(t *testing.T) {
 	root, cfg := newProject(t)
-	addTODO(t, root, "T-001", "Alpha", "high")
-	addTODO(t, root, "T-002", "Beta", "medium")
-	// Walk T-001 to DONE (no deps).
-	for _, s := range []string{"ready", "in-development", "in-review", "done"} {
-		if _, err := move.Move(root, cfg, "T-001", s, ""); err != nil {
-			t.Fatalf("move T-001 -> %s: %v", s, err)
-		}
+	addTODO(t, root, cfg, "T-001", "Alpha", "high")
+
+	notesPath := filepath.Join(root, "tickets", "NOTES.md")
+	if err := os.WriteFile(notesPath, []byte("# Notes\n\nHAND-WRITTEN-NOTE\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	// Hand-author the merged cell, and separately corrupt a WIP count.
+
 	b := readBoard(t, root)
-	b = strings.ReplaceAll(b, "no — publish-gated", "yes — merged (deadbee)")
-	b = strings.ReplaceAll(b, "(0/1)", "(7/1)")
+	b = strings.Replace(b, "# Board", "# Board\n\nHAND-WRITTEN-PROSE", 1)
+	b += "\n## Dependency chain\n\n- hand-written appendix\n"
 	writeBoardFile(t, root, b)
 
 	mustSync(t, root, cfg, false)
 	assertClean(t, root, cfg)
 
 	got := readBoard(t, root)
-	if !strings.Contains(got, "yes — merged (deadbee)") {
-		t.Error("human-authored merged cell was clobbered (D1 violation)")
+	if strings.Contains(got, "HAND-WRITTEN-PROSE") || strings.Contains(got, "hand-written appendix") {
+		t.Error("hand-written prose survived regeneration — the board must be a pure render")
 	}
-	if strings.Contains(got, "(7/1)") {
-		t.Error("WIP count not refreshed alongside cell preservation")
+	notes, err := os.ReadFile(notesPath)
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestSyncPreservesPreambleAndAppendix(t *testing.T) {
-	root, cfg := newProject(t)
-	addTODO(t, root, "T-001", "Alpha", "high")
-
-	// Add an appendix section after the status region + a marker in the preamble.
-	b := readBoard(t, root)
-	b += "\n---\n\n## Dependency chain\n\n- hand-written note that must survive\n"
-	b = strings.Replace(b, "# Board", "# Board\n\nCUSTOM-PREAMBLE-MARKER", 1)
-	writeBoardFile(t, root, b)
-
-	mustSync(t, root, cfg, false)
-	assertClean(t, root, cfg)
-
-	got := readBoard(t, root)
-	if !strings.Contains(got, "CUSTOM-PREAMBLE-MARKER") {
-		t.Error("preamble marker lost")
-	}
-	if !strings.Contains(got, "## Dependency chain") || !strings.Contains(got, "hand-written note that must survive") {
-		t.Error("appendix lost")
-	}
-	if !strings.Contains(got, "Last updated: ") || !strings.Contains(got, "(board sync)") {
-		t.Error("Last updated line not refreshed")
+	if !strings.Contains(string(notes), "HAND-WRITTEN-NOTE") {
+		t.Error("sync touched tickets/NOTES.md")
 	}
 }
 
-func TestSyncTerminalMembership(t *testing.T) {
+// TestSyncDateOnlyDifferenceIsNotDrift: a board differing only in the
+// `Last updated:` date is in sync — no write, no Changed.
+func TestSyncDateOnlyDifferenceIsNotDrift(t *testing.T) {
 	root, cfg := newProject(t)
-	addTODO(t, root, "T-001", "Alpha", "high")
-	for _, s := range []string{"ready", "in-development", "in-review", "done"} {
-		if _, err := move.Move(root, cfg, "T-001", s, ""); err != nil {
-			t.Fatalf("move: %v", err)
-		}
-	}
-	// Simulate the DONE row ageing off the board (terminal rows may).
-	b := readBoard(t, root)
-	var kept []string
-	for _, ln := range strings.Split(b, "\n") {
-		if strings.Contains(ln, "| T-001 |") {
-			continue
-		}
-		kept = append(kept, ln)
-	}
-	writeBoardFile(t, root, strings.Join(kept, "\n"))
-	assertClean(t, root, cfg) // terminal-absent is allowed
-
+	addTODO(t, root, cfg, "T-001", "Alpha", "high")
 	mustSync(t, root, cfg, false)
-	assertClean(t, root, cfg)
-	if strings.Contains(readBoard(t, root), "| T-001 |") {
-		t.Error("D3: an aged-off DONE ticket must not be re-added by sync")
+
+	b := readBoard(t, root)
+	re := strings.SplitN(b, "Last updated: ", 2)
+	if len(re) != 2 {
+		t.Fatalf("no Last updated line:\n%s", b)
+	}
+	writeBoardFile(t, root, strings.Replace(b, "Last updated: ", "Last updated: 1999-01-01 was ", 1))
+
+	res := mustSync(t, root, cfg, false)
+	if res.Changed {
+		t.Errorf("date-only difference reported as drift; summary=%v", res.Summary)
 	}
 }
 
 func TestSyncDryRunReportsWithoutWriting(t *testing.T) {
 	root, cfg := newProject(t)
-	addTODO(t, root, "T-001", "Alpha", "high")
+	addTODO(t, root, cfg, "T-001", "Alpha", "high")
 	mustSync(t, root, cfg, false)
 
 	// Corrupt, then dry-run.

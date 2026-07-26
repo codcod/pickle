@@ -93,12 +93,12 @@ Setup commands:
 Flow commands:
   ticket new "<title>" --project <name> [--impact .. --complexity .. --cost ..]
                        [--spawned-by "T-NNN[,T-MMM]"]
-                          Allocate the next T-NNN, scaffold the ticket, add the board row.
+                          Allocate the next T-NNN, scaffold the ticket, regenerate the board.
                           --spawned-by records lineage (never gates pickup).
   ticket move T-NNN <status> --reason "<why>"
-                          Move a ticket (file + History + board) atomically.
-  board audit             Check the board/ticket invariants (exit non-zero on any error).
-  board sync              Repair board rows from ticket frontmatter + locations.
+                          Move a ticket (file + History + board regeneration) atomically.
+  board audit             Check the ticket invariants + board freshness (exit non-zero on any error).
+  board sync              Regenerate BOARD.md from ticket frontmatter + locations.
 
 Other:
   version                 Print the pickle version.

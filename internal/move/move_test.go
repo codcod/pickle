@@ -31,13 +31,13 @@ func newProject(t *testing.T) (string, *config.Config) {
 }
 
 // newTicketFull writes a TO DO ticket directly (bypassing the CLI) with the given
-// depends-on and spawned-by.
+// depends-on and spawned-by, then regenerates the board (the path ticket-new uses).
 //
 // Lineage goes in typed, because ticket.Scaffold takes a spawnedBy parameter;
 // only depends-on needs the string rewrite, since Scaffold hardcodes
 // `depends-on: []`. (internal/audit's fixtures rewrite both — but they are raw
 // string literals, not Scaffold output.)
-func newTicketFull(t *testing.T, root, id, title string, deps, spawnedBy []string) {
+func newTicketFull(t *testing.T, root string, cfg *config.Config, id, title string, deps, spawnedBy []string) {
 	t.Helper()
 	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M", spawnedBy)
 	if len(deps) > 0 {
@@ -47,17 +47,15 @@ func newTicketFull(t *testing.T, root, id, title string, deps, spawnedBy []strin
 	if err := os.WriteFile(dst, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Register on the board so audit stays clean (same path ticket-new uses).
-	bp := filepath.Join(root, "tickets", "BOARD.md")
-	if err := board.AddTODORow(bp, "demo", id, title, "medium", "medium", "M"); err != nil {
+	if err := board.Regenerate(root, cfg); err != nil {
 		t.Fatal(err)
 	}
 }
 
 // newTicket writes a TO DO ticket with the given depends-on and no lineage.
-func newTicket(t *testing.T, root, id, title string, deps ...string) {
+func newTicket(t *testing.T, root string, cfg *config.Config, id, title string, deps ...string) {
 	t.Helper()
-	newTicketFull(t, root, id, title, deps, nil)
+	newTicketFull(t, root, cfg, id, title, deps, nil)
 }
 
 func assertClean(t *testing.T, root string, cfg *config.Config) {
@@ -78,7 +76,7 @@ func mustMove(t *testing.T, root string, cfg *config.Config, id, status, reason 
 
 func TestForwardWalkStaysClean(t *testing.T) {
 	root, cfg := newProject(t)
-	newTicket(t, root, "T-001", "Alpha")
+	newTicket(t, root, cfg, "T-001", "Alpha")
 	assertClean(t, root, cfg)
 
 	for _, step := range []struct{ status, reason string }{
@@ -109,7 +107,7 @@ func TestForwardWalkStaysClean(t *testing.T) {
 
 func TestIllegalTransitionRejected(t *testing.T) {
 	root, cfg := newProject(t)
-	newTicket(t, root, "T-001", "Alpha")
+	newTicket(t, root, cfg, "T-001", "Alpha")
 	if _, err := Move(root, cfg, "T-001", "done", ""); err == nil {
 		t.Fatal("expected illegal transition to-do -> done to be rejected")
 	}
@@ -121,23 +119,24 @@ func TestIllegalTransitionRejected(t *testing.T) {
 
 func TestReasonRequired(t *testing.T) {
 	root, cfg := newProject(t)
-	newTicket(t, root, "T-001", "Alpha")
+	newTicket(t, root, cfg, "T-001", "Alpha")
 	if _, err := Move(root, cfg, "T-001", "dropped", ""); err == nil {
 		t.Fatal("expected drop without --reason to be rejected")
 	}
 	mustMove(t, root, cfg, "T-001", "dropped", "superseded")
 	assertClean(t, root, cfg)
-	// Reason recorded in the DROPPED row.
+	// Reason lands in the DROPPED row's reason cell, derived from the History
+	// line the move wrote (D3) — not carried over from any previous board.
 	board, _ := os.ReadFile(filepath.Join(root, "tickets", "BOARD.md"))
-	if !strings.Contains(string(board), "superseded") {
-		t.Error("DROPPED row missing reason")
+	if !strings.Contains(string(board), "| T-001 | Alpha | superseded |") {
+		t.Errorf("DROPPED row missing derived reason:\n%s", board)
 	}
 }
 
 func TestWIPGate(t *testing.T) {
 	root, cfg := newProject(t)
-	newTicket(t, root, "T-001", "Alpha")
-	newTicket(t, root, "T-002", "Beta")
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	newTicket(t, root, cfg, "T-002", "Beta")
 	mustMove(t, root, cfg, "T-001", "ready", "")
 	mustMove(t, root, cfg, "T-001", "in-development", "")
 	mustMove(t, root, cfg, "T-002", "ready", "")
@@ -149,8 +148,8 @@ func TestWIPGate(t *testing.T) {
 
 func TestDependencyGate(t *testing.T) {
 	root, cfg := newProject(t)
-	newTicket(t, root, "T-001", "Dep")
-	newTicket(t, root, "T-002", "Needs", "T-001")
+	newTicket(t, root, cfg, "T-001", "Dep")
+	newTicket(t, root, cfg, "T-002", "Needs", "T-001")
 	mustMove(t, root, cfg, "T-002", "ready", "")
 
 	// T-001 not done -> pickup rejected.
@@ -186,11 +185,57 @@ func TestDependencyGate(t *testing.T) {
 // only the audit half of the guarantee was guarded.
 func TestSpawnedByDoesNotGatePickup(t *testing.T) {
 	root, cfg := newProject(t)
-	newTicket(t, root, "T-001", "Parent") // stays in 1-to-do: neither done nor merged
-	newTicketFull(t, root, "T-002", "Child", nil, []string{"T-001"})
+	newTicket(t, root, cfg, "T-001", "Parent") // stays in 1-to-do: neither done nor merged
+	newTicketFull(t, root, cfg, "T-002", "Child", nil, []string{"T-001"})
 	mustMove(t, root, cfg, "T-002", "ready", "")
 	mustMove(t, root, cfg, "T-002", "in-development", "") // must NOT be gated
 	assertClean(t, root, cfg)
+}
+
+// TestMoveIsWriteNewThenRemoveOld pins D7 (T-014·4): the updated text lands at
+// the NEW path before the old file goes away, so a ticket can never be left
+// recording a transition that did not happen.
+func TestMoveIsWriteNewThenRemoveOld(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	mustMove(t, root, cfg, "T-001", "ready", "")
+
+	oldPath := filepath.Join(root, "tickets", "1-to-do", "T-001-alpha.md")
+	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+		t.Errorf("old path still exists after move: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "tickets", "2-ready", "T-001-alpha.md"))
+	if err != nil {
+		t.Fatalf("new path missing: %v", err)
+	}
+	if !strings.Contains(string(b), "TO DO → READY") {
+		t.Errorf("new path missing the History transition:\n%s", b)
+	}
+}
+
+// TestMoveRegeneratesWIPCounts is the T-014·1 regression: a move refreshes the
+// whole board, so the (n/limit) counts can never go stale.
+func TestMoveRegeneratesWIPCounts(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	mustMove(t, root, cfg, "T-001", "ready", "")
+	mustMove(t, root, cfg, "T-001", "in-development", "")
+
+	b, _ := os.ReadFile(filepath.Join(root, "tickets", "BOARD.md"))
+	if !strings.Contains(string(b), "### demo (1/1)") {
+		t.Errorf("IN DEVELOPMENT count not refreshed to (1/1):\n%s", b)
+	}
+
+	mustMove(t, root, cfg, "T-001", "in-review", "")
+	b, _ = os.ReadFile(filepath.Join(root, "tickets", "BOARD.md"))
+	s := string(b)
+	dev := s[strings.Index(s, "## IN DEVELOPMENT"):strings.Index(s, "## IN REVIEW")]
+	if !strings.Contains(dev, "### demo (0/1)") {
+		t.Errorf("IN DEVELOPMENT count not back to (0/1) after moving on:\n%s", dev)
+	}
+	if !strings.Contains(s[strings.Index(s, "## IN REVIEW"):], "### demo (1/1)") {
+		t.Errorf("IN REVIEW count not refreshed to (1/1):\n%s", s)
+	}
 }
 
 func TestSanitizeReason(t *testing.T) {

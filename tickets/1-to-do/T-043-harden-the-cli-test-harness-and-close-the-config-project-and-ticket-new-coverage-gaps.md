@@ -54,11 +54,12 @@ entirely by manual acceptance tests.
 ### Deferral: item 5 belongs to T-044 (was T-039, dropped as superseded 2026-07-26)
 
 T-012 item 5 ("`ticket new` writes the raw title into the board row") is the **same escape-versus-
-replace question** that **T-044** settles across the render path (one-way `sanitizeCell`; the
-parse-back machinery is deleted). This epic must **not** choose independently: take T-044's
-decision and test against it. If T-044 has not landed at refinement time, either sequence after
-it or scope item 5 out. (T-039, which previously owned this decision, was dropped as superseded
-by T-044, 2026-07-26.)
+replace question** that **T-044 settled** (2026-07-26, landed): one-way `sanitizeCell` (`|` → `¦`,
+newlines → space) at the render choke point; the parse-back machinery is deleted. T-044 already
+ships renderer-level tests (`TestRenderSanitizesCells` in `internal/board/board_test.go`) and an
+acceptance repro, so item 5 shrinks to at most a **cli-level** assertion that `ticket new` with a
+pipe title yields an audit-clean board — or is scoped out at refinement as already covered.
+(T-039, which previously owned this decision, was dropped as superseded by T-044, 2026-07-26.)
 
 ### Sequencing
 
@@ -87,3 +88,6 @@ defects) versus **items 1–6** (the coverage), not back into T-031 and T-012.
 
 - 2026-07-26 — created (TO DO). source: board triage — epic merged from T-031 and T-012, both
   moved to 7-dropped/ as absorbed
+- 2026-07-26 — patched by T-044's review impact sweep: the item-5 deferral is settled — T-044
+  landed one-way sanitisation with renderer tests; item 5 shrinks to a cli-level assertion or
+  is scoped out at refinement

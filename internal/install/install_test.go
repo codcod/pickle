@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/codcod/pickle/internal/audit"
+	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 )
 
@@ -36,6 +37,7 @@ func TestRunProducesInstall(t *testing.T) {
 	mustExist(t, filepath.Join(root, ".agents/skills/ticket-flow/SKILL.md"))
 	mustExist(t, filepath.Join(root, ".agents/skills/ticket-flow/resources/TEMPLATE.md"))
 	mustExist(t, filepath.Join(root, "tickets/BOARD.md"))
+	mustExist(t, filepath.Join(root, "tickets/NOTES.md"))
 	mustExist(t, filepath.Join(root, "tickets/README.md"))
 	mustExist(t, filepath.Join(root, "tickets/1-to-do/.gitkeep"))
 	mustExist(t, filepath.Join(root, "tickets/7-dropped/.gitkeep"))
@@ -47,19 +49,26 @@ func TestRunProducesInstall(t *testing.T) {
 		t.Errorf("claude symlink = %q, %v", target, err)
 	}
 
-	// Markers injected into both files; BOARD.md carries the child name + a date.
+	// Markers injected into both files.
 	for _, f := range []string{"AGENTS.md", "CLAUDE.md"} {
 		b, _ := os.ReadFile(filepath.Join(root, f))
 		if !strings.Contains(string(b), MarkerBegin) {
 			t.Errorf("%s missing marker", f)
 		}
 	}
-	board, _ := os.ReadFile(filepath.Join(root, "tickets/BOARD.md"))
-	if strings.Contains(string(board), "<child-project>") || strings.Contains(string(board), "<YYYY-MM-DD>") {
-		t.Error("BOARD.md placeholders not substituted")
+	// The board is a fresh zero-ticket render (T-044): byte-identical to
+	// board.Render on the empty tree, up to the Last-updated date.
+	boardBytes, _ := os.ReadFile(filepath.Join(root, "tickets/BOARD.md"))
+	cfgForRender, err := config.Load(filepath.Join(root, "pickle.toml"))
+	if err != nil {
+		t.Fatalf("load config: %v", err)
 	}
-	if !strings.Contains(string(board), "demo") {
-		t.Error("BOARD.md missing child name")
+	want := board.Render(nil, cfgForRender, "")
+	if board.NormalizeLastUpdated(string(boardBytes)) != board.NormalizeLastUpdated(want) {
+		t.Errorf("BOARD.md is not a zero-ticket render:\n%s", boardBytes)
+	}
+	if !strings.Contains(string(boardBytes), "### demo") {
+		t.Error("BOARD.md missing child sub-group")
 	}
 
 	// Config registers the child with the stamped payload version.
@@ -91,10 +100,15 @@ func TestRunIsIdempotent(t *testing.T) {
 	// Seed instance data that a re-run must preserve.
 	ticketPath := filepath.Join(root, "tickets/1-to-do/T-009-x.md")
 	os.WriteFile(ticketPath, []byte("keep me"), 0o644)
+	notesPath := filepath.Join(root, "tickets/NOTES.md")
+	os.WriteFile(notesPath, []byte("my notes"), 0o644)
 
 	res, err := Run(payload, root, "v2", opts)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(notesPath); string(b) != "my notes" {
+		t.Error("re-run clobbered tickets/NOTES.md")
 	}
 
 	agents, _ := os.ReadFile(filepath.Join(root, "AGENTS.md"))

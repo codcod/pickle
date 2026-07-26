@@ -130,7 +130,7 @@ func runTicketNew(args []string) int {
 	if err := os.WriteFile(path, []byte(ticket.Scaffold(id, title, *project, *impact, *complexity, *cost, lineage)), 0o644); err != nil {
 		return errf("%v", err)
 	}
-	if err := board.AddTODORow(filepath.Join(root, "tickets", "BOARD.md"), *project, id, title, *impact, *complexity, *cost); err != nil {
+	if err := board.Regenerate(root, cfg); err != nil {
 		return errf("%v", err)
 	}
 	fmt.Printf("created %s  (%s)\n", id, rel)
@@ -139,9 +139,9 @@ func runTicketNew(args []string) int {
 
 // validateTitle rejects titles that cannot be rendered safely. A newline is the
 // load-bearing case: ticket.Scaffold interpolates the title into the frontmatter
-// block, so a newline injects extra keys, leaks the remainder into the document
-// body below the H1, and splits the ticket's BOARD.md row across two physical
-// lines — none of which `pickle board audit` currently notices.
+// block, so a newline injects extra keys and leaks the remainder into the
+// document body below the H1. (The board is safe either way — cells are
+// sanitised one-way at render time, T-044 — but the ticket file itself is not.)
 //
 // Deliberately a rejection, not a sanitisation like move.sanitizeReason: a
 // --reason is free text, but a title becomes the filename, the H1 and a board
@@ -149,8 +149,8 @@ func runTicketNew(args []string) int {
 // decision 1).
 //
 // Not a character whitelist, and not a defence against markdown-breaking cells:
-// a '|' still reaches the board row, because escaping belongs at the render
-// boundary (T-014), not here.
+// a '|' is legal in a title — the board renderer sanitises every cell one-way
+// at the render boundary (T-044), so it can never split a table row.
 func validateTitle(title string) error {
 	if strings.TrimSpace(title) == "" {
 		// Otherwise ticket.Slugify's "untitled" fallback names the file after
