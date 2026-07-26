@@ -13,10 +13,11 @@ Last updated: 2026-07-26
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | [T-004] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-07-26
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | high | high | L | [T-004] |
 
 ## TO DO (impact order, per child)
 

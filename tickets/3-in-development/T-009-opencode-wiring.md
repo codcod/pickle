@@ -275,3 +275,4 @@ choices are not derivable from `pickle.toml`, so they don't belong between the m
 - 2026-07-26 — unparked (user decision): demand signal — the docs-readability reviewer is in active use and wanted from pi/zed/opencode sessions in installed projects
 - 2026-07-26 — refined: scope widened to the full `--agent claude,opencode,pi` contract; absorbed T-010 (pi scaffold + T-006 symmetry obligation) and T-016 (Step 4b + reviewer shipping); title updated (filename kept — id is the stable key); re-graded medium/medium/M → high/high/L
 - 2026-07-26 — TO DO → READY: plan complete (READY gate met); scope: --agent contract + opencode/pi wiring + shipped docs-readability reviewer
+- 2026-07-26 — READY → IN DEVELOPMENT: picked up; applicability gate clean (plan refined same day, no board delta)
