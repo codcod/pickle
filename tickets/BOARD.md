@@ -23,7 +23,7 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 > `MoveRow` re-rendered it from frontmatter. Left escaped for legibility; T-039 owns the real fix
 > and needs no fixture to write the failing test.
 
-Last updated: 2026-07-26 (triage merge: 14 tickets → 5 epics T-039–T-043; sources in 7-dropped/)
+Last updated: 2026-07-26 (T-036 refined → READY, retitled, valves 3–4 split out as T-045)
 
 ---
 
@@ -54,6 +54,7 @@ Last updated: 2026-07-26 (triage merge: 14 tickets → 5 epics T-039–T-043; so
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | high | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -80,6 +81,11 @@ reviewable unit. Do not re-file a source or implement from it.
 Deliberately **not** merged: T-013 (10 items, its own epic already), T-019 (docs-only), T-038
 (input contract, successor to T-030), T-022, T-026, T-036.
 
+**T-045 is measurement-gated, not just low priority.** It holds the two valves split out of
+T-036 (backlog cap, `user-visible:` axis). Both are backstops for the leak T-036 plugs, so it
+must not be refined until T-036 has landed and the spawn rate has been re-measured over at
+least three reviews. Dropping it is a legitimate outcome.
+
 **Known cross-epic decisions.** T-039 owns escape-vs-replace; **T-043 item 5 must defer to it**.
 **T-044 is a design alternative to T-039** (generated board vs hardened hand-maintained board) —
 refine one, not both; whichever is accepted absorbs or retires the other (T-014·4 move atomicity
@@ -89,7 +95,6 @@ sequence, do not run concurrently.
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-036 | review protocol spawns unbounded follow-up tickets; add inline-fix, note-and-close and backlog-cap valves | high | medium | M | [] |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
 | T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | high | high | L | [] |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | high | medium | M | [] |
@@ -98,6 +103,7 @@ sequence, do not run concurrently.
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
+| T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
 | T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
