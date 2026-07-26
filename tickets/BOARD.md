@@ -81,6 +81,9 @@ Deliberately **not** merged: T-013 (10 items, its own epic already), T-019 (docs
 (input contract, successor to T-030), T-022, T-026, T-036.
 
 **Known cross-epic decisions.** T-039 owns escape-vs-replace; **T-043 item 5 must defer to it**.
+**T-044 is a design alternative to T-039** (generated board vs hardened hand-maintained board) —
+refine one, not both; whichever is accepted absorbs or retires the other (T-014·4 move atomicity
+survives either way).
 T-042 collides with T-039 (`internal/board`, `internal/sync`) and with T-043 (`cli_test.go`) —
 sequence, do not run concurrently.
 
@@ -89,6 +92,7 @@ sequence, do not run concurrently.
 | T-036 | review protocol spawns unbounded follow-up tickets; add inline-fix, note-and-close and backlog-cap valves | high | medium | M | [] |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
 | T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | high | high | L | [] |
+| T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | high | medium | M | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
