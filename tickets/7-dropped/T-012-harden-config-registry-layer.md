@@ -13,6 +13,11 @@ cost: S-M
 
 ## Description
 
+> **ABSORBED into T-043 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-043's scope. Do not re-file it;
+> do not implement from here. T-043 is the refinable, reviewable unit.
+
 Non-blocking robustness follow-up surfaced by the T-001 review. T-001 shipped the
 `internal/config` package and the `pickle project add|list|remove` commands with strong config
 coverage (91.8%) but thinner command-layer coverage and a couple of edge gaps. This ticket
@@ -170,3 +175,4 @@ way, but check T-031's status before picking this up.
 - 2026-07-25 — broadened by the T-018 gate + review: added `Save` atomicity/mode-preservation and the in-place writer's hardening pass (item 7)
 - 2026-07-25 — broadened again by the T-018 re-review (R4/R5/R7): hardlinks, file metadata beyond perm bits, the unreachable whole-tree branch, wrong-line rewrites; struck item 7's CRLF-on-insert sub-item (fixed under T-018)
 - 2026-07-25 — re-anchored by the T-018 S1 re-review: item 7 line refs (:319-323 -> :419-423, :348-351 -> :465-468, :372-378 -> :486-502, :467-471 -> :473-477, config.go:428 -> :434, :357-360 -> :363-366)
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-043 (board triage merge); content preserved here as the record

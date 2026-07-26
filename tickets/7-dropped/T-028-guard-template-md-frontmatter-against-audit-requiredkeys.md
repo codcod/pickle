@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-040 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-040's scope. Do not re-file it;
+> do not implement from here. T-040 is the refinable, reviewable unit.
+
 Two artefacts must agree on the set of frontmatter keys a ticket carries: `audit.requiredKeys`
 (`internal/audit/audit.go:23`), which errors when a key is missing, and
 `skill/resources/TEMPLATE.md`, the authoring guide shipped into every installed project.
@@ -55,3 +60,4 @@ dependency: the guard can land before or after, though after T-024 it starts lif
 ## History
 
 - 2026-07-25 — created (TO DO). source: applicability audit of T-024 (finding N8, non-blocking)
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-040 (board triage merge); content preserved here as the record

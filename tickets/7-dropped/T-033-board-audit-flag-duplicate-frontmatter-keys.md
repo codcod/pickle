@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-040 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-040's scope. Do not re-file it;
+> do not implement from here. T-040 is the refinable, reviewable unit.
+
 `ticket.ParseFrontmatter` (`internal/ticket/ticket.go:105-123`) assigns into a `map[string]string`
 as it walks the frontmatter block, so a **duplicate key silently overwrites** — last occurrence
 wins — and nothing anywhere reports that the file had two of them. `pickle board audit` therefore
@@ -91,3 +96,4 @@ Soft couplings (no `depends-on`):
 ## History
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-040 (board triage merge); content preserved here as the record

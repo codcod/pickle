@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-040 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-040's scope. Do not re-file it;
+> do not implement from here. T-040 is the refinable, reviewable unit.
+
 `pickle board audit` validates that every `depends-on:` target **exists** (`internal/audit/audit.go`,
 the `t.DependsOn` loop) but never checks whether a ticket lists **itself**. `T-042` with
 `depends-on: [T-042]` therefore audits clean, and then silently self-blocks: the
@@ -105,3 +110,4 @@ alignment touches that message, two packages must be updated.
   for the shipped `depends-on` validator kept out of T-024)
 - 2026-07-25 — scope extended: id shape validation (`^T-\d+$`) for both id lists, from the
   T-024 review's non-blocking finding N3
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-040 (board triage merge); content preserved here as the record

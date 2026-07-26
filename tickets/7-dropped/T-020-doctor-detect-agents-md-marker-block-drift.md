@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-041 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-041's scope. Do not re-file it;
+> do not implement from here. T-041 is the refinable, reviewable unit.
+
 Split out of **T-018** during its refinement (user decision, 2026-07-25): T-018 stops
 `pickle upgrade` from destroying hand-written content, but the *detection* half is a distinct
 `doctor` feature with its own design questions, so it is tracked here.
@@ -71,3 +76,4 @@ add a fifth copy of the marker-scanning logic. **T-013** — touches the same `i
 ## History
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-041 (board triage merge); content preserved here as the record

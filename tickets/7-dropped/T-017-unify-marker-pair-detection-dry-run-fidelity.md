@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-042 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-042's scope. Do not re-file it;
+> do not implement from here. T-042 is the refinable, reviewable unit.
+
 Non-blocking follow-ups from the T-006 review. `pickle uninstall --dry-run` works on the golden
 path, but its preview is computed by a *second, divergent* copy of the marker-pair predicate, so
 it can disagree with the real run — the one property a dry-run must never violate.
@@ -65,3 +70,4 @@ same `Result` summary labels that item 2 here changes, while its item 7 would ad
 ## History
 
 - 2026-07-24 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-042 (board triage merge); content preserved here as the record

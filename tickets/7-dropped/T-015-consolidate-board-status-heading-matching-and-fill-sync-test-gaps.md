@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-042 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-042's scope. Do not re-file it;
+> do not implement from here. T-042 is the refinable, reviewable unit.
+
 Internal-quality polish surfaced by the T-008 (board sync) review — no user-facing behaviour
 change. Two items, both in the `internal/board` + `internal/sync` layer:
 
@@ -80,3 +85,4 @@ trivially skippable if T-024 has not landed, and the rest of the target code is 
   applicability audit's non-blocking finding N5
 - 2026-07-25 — scope extended: item 5 (Scaffold params struct), from the T-024 review's
   non-blocking finding N7
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-042 (board triage merge); content preserved here as the record

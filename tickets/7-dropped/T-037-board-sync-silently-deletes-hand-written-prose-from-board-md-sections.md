@@ -13,6 +13,11 @@ cost: M
 
 ## Description
 
+> **ABSORBED into T-039 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-039's scope. Do not re-file it;
+> do not implement from here. T-039 is the refinable, reviewable unit.
+
 `pickle board sync` rebuilds each status section from the ticket files and **discards any
 hand-written prose inside that section**, without warning, without a diff, and without a
 `--dry-run` signal that distinguishes "reformat" from "delete your paragraphs".
@@ -80,3 +85,4 @@ they sit *outside* any status section, which is an accident of layout rather tha
 
 - 2026-07-26 — created (TO DO). source: board triage — reproduced directly when `board sync`
   deleted two authored paragraphs from the TO DO section while reporting "reformat only"
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-039 (board triage merge); content preserved here as the record

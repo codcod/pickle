@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-039 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-039's scope. Do not re-file it;
+> do not implement from here. T-039 is the refinable, reviewable unit.
+
 Non-blocking follow-ups from the T-007 review. `pickle ticket move` (T-007) works and is
 board-audit-clean; these are cohesive quality/robustness items on the board-rendering + move
 surface, none of which change the happy path:
@@ -84,3 +89,4 @@ All items are rendering/robustness polish on a working command, hence non-blocki
 ## History
 
 - 2026-07-24 — created (TO DO). source: T-007 review (non-blocking findings); via pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-039 (board triage merge); content preserved here as the record

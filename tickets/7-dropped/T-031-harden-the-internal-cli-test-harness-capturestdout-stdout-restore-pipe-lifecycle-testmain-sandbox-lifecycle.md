@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-043 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-043's scope. Do not re-file it;
+> do not implement from here. T-043 is the refinable, reviewable unit.
+
 T-029 built the first real test harness in package `internal/cli`: a `TestMain` that sandboxes the
 process CWD, a `TestCWDIsSandboxed` guard, and a `captureStdout` helper. All of it works for
 T-029's own call sites, and T-029's review found nothing blocking. But T-029 explicitly bills the
@@ -112,3 +117,4 @@ Soft couplings (no `depends-on`, no ordering enforced):
 ## History
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-043 (board triage merge); content preserved here as the record

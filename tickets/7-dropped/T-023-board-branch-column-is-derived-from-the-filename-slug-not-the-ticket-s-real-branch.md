@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-039 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-039's scope. Do not re-file it;
+> do not implement from here. T-039 is the refinable, reviewable unit.
+
 Non-blocking finding 9 from the T-018 review.
 
 `tickets/BOARD.md` has a `branch` column whose value is derived mechanically from the ticket's
@@ -70,3 +75,4 @@ these may want to land together.
 ## History
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-039 (board triage merge); content preserved here as the record

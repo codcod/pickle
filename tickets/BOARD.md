@@ -10,14 +10,20 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-> ⚠️ **Do not run `pickle board sync` on this file until T-037 lands.** Three confirmed
-> data-loss behaviours, all reproduced 2026-07-26: it **deletes the prose notes** in the TO DO
-> section while reporting "reformat only" (T-037), it **un-escapes the `\|`** in T-021's title
-> back into a malformed 7-cell row (T-014·2), and it **overwrites a hand-corrected `branch`
-> cell** with the slug-derived guess (T-023). `pickle board audit` and `pickle ticket move` are
-> safe and were used for every move recorded here.
+> ⚠️ **Do not run `pickle board sync` on this file until T-039 lands.** Three confirmed
+> data-loss behaviours, all reproduced 2026-07-26: it **deletes the prose notes** below while
+> reporting "reformat only", it **un-escapes the pipe** in T-021's title back into a malformed
+> row, and it **overwrites a hand-corrected `branch` cell** with the slug-derived guess. All
+> three are now T-039's scope. `pickle board audit` is safe; `pickle ticket move` is safe except
+> that it re-renders the moved row unescaped — see below.
+>
+> **T-021's DROPPED row is a live reproduction.** Escaping it to `\|` fixes the rendered table
+> but not `insertIntoBoard`, whose `strings.Split(line, "|")` is not escape-aware, so the row
+> still splits into 4 fields in a 3-column section. It re-corrupted on the 2026-07-26 merge when
+> `MoveRow` re-rendered it from frontmatter. Left escaped for legibility; T-039 owns the real fix
+> and needs no fixture to write the failing test.
 
-Last updated: 2026-07-26 (T-030 merged to main: review SHIP → DONE; T-038 filed)
+Last updated: 2026-07-26 (triage merge: 14 tickets → 5 epics T-039–T-043; sources in 7-dropped/)
 
 ---
 
@@ -58,33 +64,39 @@ them and no user has asked. Do not pick one up without a demand signal. Parked s
 recorded in each ticket's Description and History (the board's grade cells are rewritten from
 frontmatter by `pickle board sync`, so it cannot be encoded there). Triage 2026-07-26.
 
-**Merge candidates** (proposed 2026-07-26, not yet executed): audit hardening + cell escaping
-(T-027, T-028, T-033, T-034, T-014·2) · marker-block freshness (T-020, T-021) · one-predicate
-refactors (T-015, T-017, T-032) · test harness + cli coverage (T-031, T-012) · surface polish
-(T-013, T-014·1, T-019, T-023).
+**Epic merge executed 2026-07-26 — 14 tickets → 5 epics.** The sources are in `7-dropped/` with
+reason `absorbed into T-0NN`; each opens with an ABSORBED banner and keeps its full analysis,
+measurements and line references. They are the authoritative detail; the epic is the refinable,
+reviewable unit. Do not re-file a source or implement from it.
+
+| epic | absorbs |
+|---|---|
+| T-039 — BOARD.md write/validate integrity | T-014, T-023, T-034, T-037 |
+| T-040 — ticket frontmatter validation | T-027, T-028, T-033 |
+| T-041 — marker-block freshness | T-020, T-021 |
+| T-042 — collapse duplicated internals | T-015, T-017, T-032 |
+| T-043 — test harness + cli coverage | T-031, T-012 |
+
+Deliberately **not** merged: T-013 (10 items, its own epic already), T-019 (docs-only), T-038
+(input contract, successor to T-030), T-022, T-026, T-036.
+
+**Known cross-epic decisions.** T-039 owns escape-vs-replace; **T-043 item 5 must defer to it**.
+T-042 collides with T-039 (`internal/board`, `internal/sync`) and with T-043 (`cli_test.go`) —
+sequence, do not run concurrently.
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
 | T-036 | review protocol spawns unbounded follow-up tickets; add inline-fix, note-and-close and backlog-cap valves | high | medium | M | [] |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
-| T-037 | board sync silently deletes hand-written prose from BOARD.md sections | high | medium | M | [] |
+| T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | high | high | L | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
-| T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
-| T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
-| T-020 | doctor: detect AGENTS.md marker-block drift | medium | low | S | [] |
+| T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
+| T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
+| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
-| T-021 | project add\|remove leave the AGENTS.md marker block stale | medium | low | S | [] |
-| T-031 | harden the internal/cli test harness (captureStdout stdout restore + pipe lifecycle, TestMain sandbox lifecycle) | medium | low | S | [] |
-| T-033 | board audit: flag duplicate frontmatter keys | medium | low | S | [] |
-| T-034 | board audit: flag table rows with the wrong cell count; harden AddTODORow insert point | medium | low | S | [] |
+| T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
-| T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | low | low | S | [T-007] |
-| T-015 | consolidate board status-heading matching and fill sync test gaps | low | low | S | [] |
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
-| T-023 | board branch column is derived from the filename slug, not the ticket's real branch | low | low | S | [] |
-| T-027 | audit: flag depends-on entries that reference the ticket itself | low | low | S | [] |
-| T-028 | guard TEMPLATE.md frontmatter against audit requiredKeys | low | low | S | [] |
-| T-032 | unify the test payload-root idiom into one CWD-independent helper | low | low | S | [] |
 | T-009 | opencode wiring | medium | medium | M | [T-004] |
 | T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
 | T-016 | ship docs-readability as an optional review step (Step 4b) | low | medium | M | [] |
@@ -117,6 +129,20 @@ refactors (T-015, T-017, T-032) · test harness + cli coverage (T-031, T-012) ·
 |---|---|---|
 | T-035 | repair the corrupted T-021 board row (unescaped pipe in title) | board row repaired inline during triage; ticket overhead exceeded the one-character fix |
 | T-025 | backfill true historical spawned-by lineage from existing source: lines | lineage archaeology with no consumer; source: History lines already carry provenance |
+| T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | absorbed into T-039 (board triage merge); content preserved here as the record |
+| T-023 | board branch column is derived from the filename slug, not the ticket's real branch | absorbed into T-039 (board triage merge); content preserved here as the record |
+| T-034 | board audit: flag table rows with the wrong cell count; harden AddTODORow insert point | absorbed into T-039 (board triage merge); content preserved here as the record |
+| T-037 | board sync silently deletes hand-written prose from BOARD.md sections | absorbed into T-039 (board triage merge); content preserved here as the record |
+| T-027 | audit: flag depends-on entries that reference the ticket itself | absorbed into T-040 (board triage merge); content preserved here as the record |
+| T-028 | guard TEMPLATE.md frontmatter against audit requiredKeys | absorbed into T-040 (board triage merge); content preserved here as the record |
+| T-033 | board audit: flag duplicate frontmatter keys | absorbed into T-040 (board triage merge); content preserved here as the record |
+| T-020 | doctor: detect AGENTS.md marker-block drift | absorbed into T-041 (board triage merge); content preserved here as the record |
+| T-021 | project add\|remove leave the AGENTS.md marker block stale | absorbed into T-041 (board triage merge); content preserved here as the record |
+| T-015 | consolidate board status-heading matching and fill sync test gaps | absorbed into T-042 (board triage merge); content preserved here as the record |
+| T-017 | unify marker-pair detection + dry-run fidelity | absorbed into T-042 (board triage merge); content preserved here as the record |
+| T-032 | unify the test payload-root idiom into one CWD-independent helper | absorbed into T-042 (board triage merge); content preserved here as the record |
+| T-031 | harden the internal/cli test harness (captureStdout stdout restore + pipe lifecycle, TestMain sandbox lifecycle) | absorbed into T-043 (board triage merge); content preserved here as the record |
+| T-012 | harden test coverage + TOML-safe render (config, project, board audit) | absorbed into T-043 (board triage merge); content preserved here as the record |
 
 ---
 

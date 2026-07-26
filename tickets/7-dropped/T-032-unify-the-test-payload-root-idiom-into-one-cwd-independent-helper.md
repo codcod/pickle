@@ -13,6 +13,11 @@ cost: S
 
 ## Description
 
+> **ABSORBED into T-042 (board triage, 2026-07-26) — this ticket is closed, its work is not.**
+> Everything below stands as the record: the analysis, measurements and line references
+> are still the authoritative detail for this part of T-042's scope. Do not re-file it;
+> do not implement from here. T-042 is the refinable, reviewable unit.
+
 Four test packages need the same thing — the directory whose `os.DirFS` exposes the install payload
 (`skill/SKILL.md` et al.) at the same paths the binary's embedded `payloadFS` uses, i.e. the repo
 root. They express it three different ways, and T-029 added the third:
@@ -85,3 +90,4 @@ Soft couplings (no `depends-on`, no ordering enforced):
 ## History
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-042 (board triage merge); content preserved here as the record
