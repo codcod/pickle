@@ -13,6 +13,11 @@ cost: M
 
 ## Description
 
+> **ABSORBED by T-009 (2026-07-26, user decision).** The `.pi/` scaffold — including the
+> T-006 symmetry obligation below — is now part of T-009's agent-enablement scope
+> (`pickle install --agent claude,opencode,pi`). Dropped, not lost: T-009's plan carries
+> every requirement stated here.
+
 > **PARKED (triage 2026-07-26).** Real, but explicitly unscheduled: nothing is blocked on
 > this and no user has asked for it. Do not pick it up without a demand signal. Unparking is a
 > user decision — note it in History.
@@ -46,3 +51,4 @@ burden sits here, not there.
 
 - 2026-07-23 — created (TO DO). source: step-3 board bootstrap (phased plan P4)
 - 2026-07-26 — parked (stays in TO DO, unscheduled). source: board triage — backlog growth analysis
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-009 (agent enablement owns the pi scaffold + symmetry obligation)

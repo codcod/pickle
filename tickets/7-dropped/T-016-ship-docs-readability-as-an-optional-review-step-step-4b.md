@@ -13,6 +13,11 @@ cost: M
 
 ## Description
 
+> **ABSORBED by T-009 (2026-07-26, user decision).** Both halves — the shipped review
+> protocol's optional Step 4b prose *and* the reviewer mechanics (option 2: scaffold on
+> install, translator-style opencode subagent + pi extension + shared prompt in
+> `skill/resources/`) — are now part of T-009's agent-enablement scope. Dropped, not lost.
+
 > **PARKED (triage 2026-07-26).** Real, but explicitly unscheduled: nothing is blocked on
 > this and no user has asked for it. Do not pick it up without a demand signal. Unparking is a
 > user decision — note it in History.
@@ -89,3 +94,4 @@ or make any review block on the reviewer's availability.
 
 - 2026-07-24 — created (TO DO). source: pickle ticket new
 - 2026-07-26 — parked (stays in TO DO, unscheduled). source: board triage — backlog growth analysis
+- 2026-07-26 — TO DO → DROPPED: absorbed into T-009 (Step 4b prose + reviewer shipping)

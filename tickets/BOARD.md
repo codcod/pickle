@@ -38,6 +38,7 @@ Last updated: 2026-07-26
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | high | high | L | [T-004] |
 
 ## TO DO (impact order, per child)
 
@@ -46,8 +47,6 @@ Last updated: 2026-07-26
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
-| T-009 | opencode wiring | medium | medium | M | [T-004] |
-| T-010 | Pi guardrail scaffold | medium | medium | M | [T-004] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
@@ -55,7 +54,6 @@ Last updated: 2026-07-26
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
 | T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
-| T-016 | ship docs-readability as an optional review step (Step 4b) | low | medium | M | [] |
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
 | T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |
@@ -88,9 +86,11 @@ Last updated: 2026-07-26
 
 | id | title | reason |
 |---|---|---|
+| T-010 | Pi guardrail scaffold | absorbed into T-009 (agent enablement owns the pi scaffold + symmetry obligation) |
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | absorbed into T-043 (board triage merge); content preserved here as the record |
 | T-014 | board-row and move polish (WIP counts, cell escaping, subgroup spacing, atomicity) | absorbed into T-039 (board triage merge); content preserved here as the record |
 | T-015 | consolidate board status-heading matching and fill sync test gaps | absorbed into T-042 (board triage merge); content preserved here as the record |
+| T-016 | ship docs-readability as an optional review step (Step 4b) | absorbed into T-009 (Step 4b prose + reviewer shipping) |
 | T-017 | unify marker-pair detection + dry-run fidelity | absorbed into T-042 (board triage merge); content preserved here as the record |
 | T-020 | doctor: detect AGENTS.md marker-block drift | absorbed into T-041 (board triage merge); content preserved here as the record |
 | T-021 | project add¦remove leave the AGENTS.md marker block stale | absorbed into T-041 (board triage merge); content preserved here as the record |
