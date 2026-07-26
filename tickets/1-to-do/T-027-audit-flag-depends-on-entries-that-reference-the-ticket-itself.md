@@ -50,6 +50,20 @@ list form, both sitting beside `ParseDepends`/`ValidGrade`. This ticket's audit-
 not-yet-filed ticket is legal input that the audit flags, not a creation-time error. If T-027 somehow
 lands before T-030, put the regex in `internal/ticket` anyway, in that exported form.
 
+**Shipped, with one correction to the above (T-030 review, 2026-07-26, finding N3).** `ValidID` and
+`ParseIDList` now exist (`internal/ticket/ticket.go:146-175`, `idRE` at `:96-99`), so this ticket
+should import them. But the refinement note implied `internal/audit` currently holds a duplicate
+regex to be unified — **it does not**. `internal/audit/audit.go` contains no regex and does not
+import `regexp` at all; its only shape-adjacent checks are `t.Front["id"] != t.ID` (`:52`) and the
+existence lookups (`:67`, `:80`). So this ticket **adds the first external caller** of `ValidID`
+rather than replacing a duplicate — a slightly larger job than "swap the regex for the helper", and
+worth knowing before estimating. `ValidID` has no consumer outside its own package today.
+
+While here: the `T-\d+` shape is still literally duplicated in `filenameRE`
+(`internal/ticket/ticket.go:95`) and `board.rowRE` (`internal/board/board.go:29`). Composing all
+three from one fragment is optional and squarely this ticket's call — T-030 deliberately did not
+touch them.
+
 ### Scope
 
 - `internal/audit/audit.go` — one condition in the `depends-on` existence loop.

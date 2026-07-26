@@ -43,6 +43,17 @@ are fixed in T-006's own rework pass, not here.)
    demands a `MERGED` History line), not because the audit merely warns. Reword to say what the
    extra strictness actually is.
 
+4. **`PLAN.md`'s `ticket new` synopsis is stale** (added by the T-030 review's whole-tree sweep,
+   finding N5 — folded in here rather than spawned as its own ticket, per the T-036 concern about
+   unbounded review spawn). `PLAN.md:227` reads
+   `pickle ticket new "<title>" --project <name> [--impact … --complexity … --cost …]` — no
+   `--spawned-by` (added by T-024) and no input contract (added by T-030). It does not *contradict*
+   the current behaviour, it is an incomplete flag list in a roadmap document, which is why it was
+   non-blocking; but it is now the **only** place in the tree whose `ticket new` synopsis disagrees
+   with `README.md:274`, `internal/cli/ticket.go:35` and `pickle help`. Either sync it or add a
+   "superseded by README" note at the head of that section. Note this widens the ticket beyond
+   `README.md` despite the title — decide at refinement whether to retitle or split.
+
 > **Line refs re-anchored again 2026-07-25** (T-018 re-review): T-018's rework added ~13 lines to
 > the Configuration and `## pickle upgrade` sections, shifting everything below. Items 1/2 cited
 > `:189-190`, `:307-318`, `:296-298` before this pass. Note T-018's own re-review left a **false**

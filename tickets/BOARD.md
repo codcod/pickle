@@ -73,6 +73,7 @@ refactors (T-015, T-017, T-032) · test harness + cli coverage (T-031, T-012) ·
 | T-012 | harden test coverage + TOML-safe render (config, project, board audit) | medium | low | S-M | [T-001, T-002, T-003] |
 | T-017 | unify marker-pair detection + dry-run fidelity | medium | low | S | [] |
 | T-020 | doctor: detect AGENTS.md marker-block drift | medium | low | S | [] |
+| T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
 | T-021 | project add\|remove leave the AGENTS.md marker block stale | medium | low | S | [] |
 | T-031 | harden the internal/cli test harness (captureStdout stdout restore + pipe lifecycle, TestMain sandbox lifecycle) | medium | low | S | [] |
 | T-033 | board audit: flag duplicate frontmatter keys | medium | low | S | [] |
