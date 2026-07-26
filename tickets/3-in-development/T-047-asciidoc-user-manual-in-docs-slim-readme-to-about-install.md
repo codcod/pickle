@@ -206,10 +206,11 @@ Nothing else survives (decision 3). Every deleted section must be traceable to a
 
 #### Task 7 — Shrink T-019 (overarching bookkeeping, not part of the child diff)
 
-Edit `tickets/1-to-do/T-019-….md`: add a dated note that items 1–3 are superseded by T-047's
-README rewrite (item 1–2 passages deleted/moved; item 3 fixed in `cli-reference.adoc`), leaving
-item 4 (`PLAN.md` synopsis) as the remaining scope. Append a History line. Commit with explicit
-pathspecs per the commit policy.
+Edit `tickets/1-to-do/T-019-….md`: add a dated note that items 1 and 3 are superseded by
+T-047's README rewrite (item 1's passages deleted/moved; item 3 fixed in `cli-reference.adoc`)
+and that item 2 was already mooted upstream by commit `f7b0a0a`, which deleted the
+`## Phased build plan` section outright — leaving item 4 (`PLAN.md` synopsis) as the remaining
+scope. Append a History line. Commit with explicit pathspecs per the commit policy.
 
 ### Acceptance test
 
@@ -283,3 +284,5 @@ This ticket *is* the docs. Registration of the new surface:
 - 2026-07-26 — created (TO DO). source: chat (user request: AsciiDoc manual in docs/, README reduced to about + install, patterned on ai-sdlc's docs tree)
 - 2026-07-26 — refined: user pinned the open decisions (content only, no PDF/EPUB; register `docs = "just docs-check"`; README keeps nothing beyond about + install; T-019 shrinks to its item 4; no revnumber plumbing); cost collapsed M-L → M (mostly relocation/summarisation of existing text)
 - 2026-07-26 — TO DO → READY: plan complete
+- 2026-07-26 — applicability gate: clean (delta since READY = f7b0a0a, already reflected in the plan's README inventory); one non-blocking finding amended inline (Task 7: T-019 item 2 was mooted by f7b0a0a's deletion of the phased-plan section, not by this ticket)
+- 2026-07-26 — READY → IN DEVELOPMENT: picked up

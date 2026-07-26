@@ -13,10 +13,11 @@ Last updated: 2026-07-26
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-047 | AsciiDoc user manual in docs/ + slim README to about & install | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-07-26
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
-| T-047 | AsciiDoc user manual in docs/ + slim README to about & install | medium | low | M | [] |
 
 ## TO DO (impact order, per child)
 
