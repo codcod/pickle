@@ -38,6 +38,7 @@ Last updated: 2026-07-26
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-047 | AsciiDoc user manual in docs/ + slim README to about & install | medium | low | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -50,7 +51,6 @@ Last updated: 2026-07-26
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |
-| T-047 | AsciiDoc user manual in docs/ + slim README to about & install | medium | low | M-L | [] |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
 | T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
