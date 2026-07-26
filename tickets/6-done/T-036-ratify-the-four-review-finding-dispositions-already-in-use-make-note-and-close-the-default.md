@@ -721,3 +721,4 @@ cannot be re-measured from a replay, only from the next three real reviews.
 - 2026-07-26 — READY → IN DEVELOPMENT: picked up, branch feat/T-036-review-disposition-valves
 - 2026-07-26 — IN DEVELOPMENT → IN REVIEW: acceptance green: A clean, B 30-row replay passes all 3 criteria
 - 2026-07-26 — IN REVIEW → DONE: review PASS: 0 blocking, 11 non-blocking all dispositioned (5 fixed inline, 2 folded into T-044, 4 noted, 0 new tickets); acceptance A re-run clean and the 30-row B replay independently re-verified; the widened inline bar (F3, decision-4 deviation) is accepted pending user ratification
+- 2026-07-26 — MERGED: feat/T-036-review-disposition-valves → main (5367843, squashed)

@@ -25,8 +25,8 @@ child, **`pickle`** (the repo root; see `../pickle.toml`).
 > `MoveRow` re-rendered it from frontmatter. Left escaped for legibility; T-044 deletes
 > `insertIntoBoard` outright and needs no fixture to write the failing test.
 
-Last updated: 2026-07-26 (T-036 reviewed → DONE: 0 blocking, 11 non-blocking all dispositioned,
-0 new tickets; awaiting the human's merge)
+Last updated: 2026-07-26 (T-036 reviewed → DONE and merged to main: 0 blocking, 11 non-blocking
+all dispositioned, 0 new tickets — T-044 is now unblocked and top of READY)
 
 ---
 
@@ -131,7 +131,7 @@ sequence, do not run concurrently.
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — main (3c4c131, squashed) |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — main (0b7cd91, squashed) |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — main (a29fde1, squashed) |
-| T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | no — publish-gated (branch feat/T-036-review-disposition-valves) |
+| T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | yes — main (5367843, squashed) |
 
 ## DROPPED
 
