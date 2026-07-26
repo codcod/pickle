@@ -1,12 +1,13 @@
 # pickle
 
-`pickle` installs and operates a **ticket-based, board-driven feature flow** in any project —
-the same flow prototyped by hand in an earlier workspace, now a single-binary CLI.
+`pickle` installs and operates a **ticket-based, board-driven feature flow** in
+any project.
 
-Run `pickle install` in a project and a coding agent (Claude Code, opencode, Pi) understands
-requests like *"create a feature to review the Jira board"*: it authors a correctly-formatted
-ticket in `tickets/1-to-do/T-NNN-<slug>.md` and regenerates `BOARD.md`, because `install` laid
-down the flow skill, the board, and the agent-instruction markers.
+Run `pickle install` in a project and a coding agent (Claude Code, opencode, Pi)
+understands requests like *"create a feature to review the Jira board"*: it
+authors a correctly-formatted ticket in `tickets/1-to-do/T-NNN-<slug>.md` and
+regenerates `BOARD.md`, because `install` laid down the flow skill, the board,
+and the agent-instruction markers.
 
 ## Install
 
@@ -375,37 +376,3 @@ just dist-snapshot # local cross-compiled build into ./dist (no publish)
 ```
 
 Cutting an actual release is tag-driven and documented in [`RELEASING.md`](RELEASING.md).
-
-## Phased build plan
-
-- **P1 — payload + audit engine.** Embed resources; `pickle board audit` (invariants incl. the
-  multi-project ones); `pickle ticket new --project` (id allocation + template + board row).
-- **P2 — install + project registry.** `install`, `pickle.toml` `[[project]]` registry,
-  `project add/list/remove`, marker injection, skill install (Claude Code + Zed/Pi), `doctor`,
-  `upgrade`, `uninstall`.
-- **P3 — moves + state machine.** `ticket move` (state machine, per-child WIP, cross-child merge
-  gate); `board sync`.
-- **P4 — multi-agent breadth.** `--agent claude,opencode,pi`: opencode wiring, Pi guardrail
-  scaffold, and the shipped docs-readability reviewer (review Step 4b). **[done: T-009]**
-- **P5 — distribution.** goreleaser cross-compiled release build, Homebrew tap, tag-driven
-  release CI, install docs. **[done: T-011]**
-
-## Layout
-
-```
-.
-├── main.go              entrypoint
-├── assets.go            //go:embed all:skill all:agents  (the payload + build version)
-├── internal/cli/        command surface (dispatch + one file per command)
-├── skill/               embedded skill payload (source of truth for the flow)
-│   ├── SKILL.md
-│   └── resources/       tickets-README.md, TEMPLATE.md, review-protocol.md, docs-readability.prompt.md
-├── agents/              embedded per-agent scaffolds (opencode/opencode.jsonc, pi/extensions/*.ts)
-├── tickets/             pickle's OWN board (self-hosted flow) + seeded backlog
-├── pickle.toml          overarching config + [[project]] registry (child: pickle)
-├── AGENTS.md            marker block: start at tickets/BOARD.md + project config
-└── .agents/skills/ticket-flow -> ../../skill   (skill discovery; .claude mirror)
-```
-
-> Note: the module path is `github.com/codcod/pickle`; releases are cut with goreleaser and the
-> Homebrew cask is published to the `codcod/homebrew-taps` tap (see [`RELEASING.md`](RELEASING.md)).
