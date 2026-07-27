@@ -116,15 +116,39 @@ func SectionColumns(statusName string) []string {
 
 var cellBreakRE = regexp.MustCompile(`[\r\n]+`)
 
+// maxCellRunes bounds a rendered cell for legibility: one over-long value in
+// one ticket must not make a whole status table unreadable (a migrated ticket
+// with a paragraph-long merge History line produced a ~1,900-rune DONE cell).
+// It is a render-time bound only — the ticket file keeps the full text, which
+// stays the single source of truth (T-044 decision 3) — and it is deliberately
+// a constant, not configuration. 120 was chosen against the real corpus: the
+// longest cell in this repo's board was 117 runes, so nothing legitimate is
+// clipped, while a full `yes — MERGED: feat/… → main (<sha>)` cell survives
+// intact (T-049).
+const maxCellRunes = 120
+
 // sanitizeCell is the single one-way choke point every rendered cell passes
 // through: pipes become a broken bar (so a title can never split a table row),
-// newline runs collapse to one space, and the result is trimmed. Nothing ever
-// parses a cell back, so there is no escape scheme to keep in sync (T-044
-// decision 9).
+// newline runs collapse to one space, the result is trimmed, and finally it is
+// capped at maxCellRunes with a trailing ellipsis. Nothing ever parses a cell
+// back, so there is no escape scheme to keep in sync (T-044 decision 9) — which
+// is also why truncating here is safe.
+//
+// The cap counts runes, never bytes: a byte-length slice would cut mid-rune on
+// any multi-byte content (including the ¦ substituted above) and emit U+FFFD
+// into the board. Because `|` → `¦` is a one-for-one *rune* substitution it
+// cannot change the rune count, so the cap's position relative to it is
+// immaterial; it runs last only so that trimming cannot re-widen a capped cell.
 func sanitizeCell(s string) string {
 	s = cellBreakRE.ReplaceAllString(s, " ")
 	s = strings.ReplaceAll(s, "|", "¦")
-	return strings.TrimSpace(s)
+	s = strings.TrimSpace(s)
+	if r := []rune(s); len(r) > maxCellRunes {
+		// Head-preserving: the ellipsis is inside the budget, so a rendered
+		// cell is never wider than maxCellRunes.
+		s = string(r[:maxCellRunes-1]) + "…"
+	}
+	return s
 }
 
 func headerRow(cols []string) string {

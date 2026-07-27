@@ -124,10 +124,19 @@ Commit locally as you go. **Never push or open an MR without explicit user appro
    the sanitised value exceeds 120 runes, keep the first **119** runes and append `…` (U+2026,
    one rune). A value of exactly 120 runes is emitted untouched.
 4. **Runes, not bytes, and last.** Order inside `sanitizeCell` is: collapse newline runs →
-   substitute `|` → `¦` → trim → **cap**. The substitution must precede the cap because `¦`
-   (U+00A6) is two bytes: capping by byte length can slice mid-rune and emit U+FFFD into the
-   board. Convert to `[]rune` (or use `utf8.RuneCountInString` + a rune-boundary slice); never
-   `s[:120]`.
+   substitute `|` → `¦` → trim → **cap**. Convert to `[]rune` (or use `utf8.RuneCountInString` +
+   a rune-boundary slice); never `s[:120]` — a byte slice cuts mid-rune on any multi-byte content
+   and emits U+FFFD into the board.
+
+   > **Amended inline during implementation (2026-07-27).** As written, this decision claimed the
+   > substitution *must* precede the cap "because `¦` (U+00A6) is two bytes". That rationale is
+   > wrong, and was disproved by mutation-testing the order: `|` → `¦` is a one-for-one **rune**
+   > substitution, so it cannot change the rune count, and swapping the two steps leaves the whole
+   > `internal/board` suite green. The multi-byte fact justifies **runes over bytes** (mutation
+   > tested: a byte slice produces `é…\xc3` and U+FFFD) but says nothing about ordering. The cap
+   > still runs last, for the one reason that does hold: trimming after it could re-widen a capped
+   > cell. Task 2 case 4 was renamed accordingly — it verifies substitution and cap *compose* and
+   > that row integrity holds, not an ordering it cannot detect.
 5. **Truncation is head-preserving** — keep the prefix, drop the tail. This is *why* 120 and not
    60: the `merged` cell's useful payload (`yes — MERGED: feat/… → main (<sha>)`) sits in the
    first ~100 runes, so the sha survives while trailing prose is dropped. Verified against the
@@ -179,8 +188,9 @@ would reject). Cover, as separate sub-cases:
    if cheap — off-by-one here is the whole risk surface.
 3. **No mid-rune cut.** A title of 200 multi-byte runes (e.g. repeated `é` or CJK) → assert the
    cell contains **no** U+FFFD and is valid UTF-8 (`utf8.ValidString`).
-4. **Substitution precedes the cap.** A title of 200 `|` → the cell is 119 `¦` plus `…`, with no
-   `|` anywhere in the rendered board. This is the test that fails if someone reorders the steps.
+4. **Substitution and cap compose.** A title of 200 `|` → the cell is 119 `¦` plus `…`, and the
+   row carries exactly 7 `|` (one per column boundary). Per the amendment to decision 4, this case
+   does **not** pin the two steps' order — no test can, since the substitution is rune-neutral.
 5. **`merged` keeps its prefix and ref.** A `6-done/` ticket with a 600-rune merge History line
    whose sha sits early → the cell still starts `yes — ` and still contains the sha (decision 5).
 6. **`HasMergeLine` still agrees with the cell.** Same ticket: `ticket.HasMergeLine` is true and
@@ -240,10 +250,25 @@ git init -q . && ./pk install --project demo --path . >/dev/null
 ./pk ticket new "short" --project demo >/dev/null
 # hand-write an over-long merge History line into the ticket, move it to 6-done/, then:
 ./pk board sync && ./pk board audit
-awk -F'|' '/^\|/ {for(i=2;i<NF;i++){gsub(/^ +| +$/,"",$i); if(length($i)>120) print length($i), $i}}' tickets/BOARD.md
+python3 -c "
+mx=0
+for ln in open('tickets/BOARD.md'):
+    ln=ln.strip()
+    if not ln.startswith('|'): continue
+    for c in [x.strip() for x in ln.strip('|').split('|')]:
+        mx=max(mx,len(c))
+print('widest cell:', mx, 'runes')
+"
 ```
 
-Expected: the `awk` prints **nothing** (no cell over 120 characters), the long cell ends in `…`,
+> **Amended inline during implementation (2026-07-27).** This check was originally an `awk`
+> one-liner using `length($i)>120`. **It reports false failures:** macOS `awk`'s `length()` counts
+> **bytes**, and a capped `merged` cell contains `—` and `…` (3 bytes each), so a correct 120-rune
+> cell measures 124 and the check "fails". Measured during this implementation — the very
+> byte-vs-rune confusion decision 4 exists to prevent, reproduced in the test that was supposed to
+> verify it. Replaced with a rune-counting `python3` check.
+
+Expected: the widest cell is **120 runes or fewer**, the long cell ends in `…`,
 and `board audit` is clean. Then confirm decision 7's ripple deliberately: re-render with the
 *old* binary to leave a long cell on disk, run the new binary's `board audit`, and observe the
 `BOARD.md is stale` error — that is the documented behaviour, not a bug.
@@ -285,3 +310,10 @@ widths — confirm that reading before deciding to leave it alone.
 - 2026-07-27 — refined: plan written; cap pinned to 120 runes inclusive of the ellipsis, measured
   against a 117-rune real maximum; audit-staleness ripple accepted and documented (decision 7)
 - 2026-07-27 — TO DO → READY: plan complete
+- 2026-07-27 — READY → IN DEVELOPMENT: picked up, branch feat/T-049-board-cell-width-cap
+- 2026-07-27 — plan amended inline: decision 4's claim that the `¦` substitution must precede the
+  cap is wrong (rune-neutral substitution; mutation-tested), so it no longer states an ordering
+  requirement and task 2 case 4 was renamed to what it actually verifies
+- 2026-07-27 — plan amended inline: the acceptance test's `awk length()>120` check counted bytes,
+  so it flagged a correct 120-rune cell as 124; replaced with a rune-counting python3 check
+- 2026-07-27 — READY → IN DEVELOPMENT: picked up

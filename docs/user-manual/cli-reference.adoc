@@ -372,8 +372,13 @@ Everything on the board is derived:
 * DONE `merged` from the ticket's merge History line (`yes — merged to …` /
   `no — publish-gated`), DROPPED `reason` and REWORK `open findings` from the
   last transition's `--reason`;
-* every cell passes one-way sanitisation (`|` → `¦`, newlines → space) —
-  cells are never parsed back, so a pipe in a title cannot corrupt the table.
+* every cell passes one-way sanitisation (`|` → `¦`, newlines → space, then a
+  120-rune cap with a trailing `…`) — cells are never parsed back, so a pipe in
+  a title cannot corrupt the table and an over-long value cannot make a whole
+  status table unreadable. The cap is a *rendering* bound: the ticket file keeps
+  the full text, and it stays the source of truth. If your board has a longer
+  cell from before the cap existed, `board audit` reports the board stale until
+  you run `pickle board sync` once.
 
 A board differing from a fresh render only in the `Last updated:` date is in
 sync — no write. `--dry-run` reports the drift, writes nothing, and *exits

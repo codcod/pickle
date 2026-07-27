@@ -8,6 +8,22 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Changed
+
+- **Board cells are capped at 120 runes** with a trailing `…` (T-049). One
+  over-long value — typically a paragraph-long `merged to …` History line on a
+  ticket imported from another flow — could previously render a single table cell
+  thousands of characters wide and make a whole status section unreadable. The cap
+  applies to every column at the renderer's single sanitisation choke point, counts
+  runes (never bytes, so multi-byte text is never cut mid-character), and preserves
+  the head of the value so a `merged` cell keeps its commit/MR ref.
+
+  It is a **rendering** bound only: the ticket file keeps the full text and remains
+  the single source of truth. **Migration:** if an existing board holds a cell longer
+  than 120 runes, `pickle board audit` will report `BOARD.md is stale or hand-edited`
+  until you run `pickle board sync` once — expected, since the board is a generated
+  artifact whose only invariant is that it matches a fresh render.
+
 ## [0.1.0] - 2026-07-27
 
 Initial feature set. A single Go binary that installs and operates a
