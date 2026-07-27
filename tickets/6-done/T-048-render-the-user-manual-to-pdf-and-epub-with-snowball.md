@@ -279,3 +279,4 @@ tickets.
 - 2026-07-27 — plan amendment (inline disposition): acceptance negative check corrected from broken xref to broken include — unresolved xrefs never tripped WARN failure-level in the old recipe either; also README.md's `bundle install` reference updated (caught by Task 4's grep)
 - 2026-07-27 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-07-27 — IN REVIEW → DONE: review clean: 0 blocking, 1 noted (F1 git-describe bare-hash cosmetics); acceptance re-run green
+- 2026-07-27 — merged to main (commit 6606b63, fast-forward after rebase; user-approved)
