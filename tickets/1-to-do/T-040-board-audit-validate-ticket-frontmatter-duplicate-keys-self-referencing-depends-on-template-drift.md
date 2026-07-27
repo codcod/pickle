@@ -72,8 +72,42 @@ Deliberately *not* urgent: `internal/move/move.go:124` runs `os.MkdirAll` before
 every move re-creates what it needs and the flow self-heals. This is a "fresh clone looks broken
 and the audit lies about it" defect, not a functional one.
 
+### Folded in from the 2026-07-27 field-finding triage — a fifth check
+
+**History lines have a documented shape that nothing enforces.**
+`skill/resources/TEMPLATE.md:116-124` requires *"One line per status transition, dated YYYY-MM-DD,
+in the form `OLD → NEW: one-clause reason`"*, with a merge recorded as `merged to <base> (<MR
+ref>)`. The audit never checks it, and the flow permits hand-authored tickets — so a migrated or
+hand-edited ticket can carry a merge note that is a whole paragraph on one physical line.
+
+Measured in the field (2026-07-27, migrating an 84-ticket hand-rolled flow into a fresh
+`pickle install` workspace): one `6-done/` ticket's merge line was **~1,900 characters** — pipeline
+ids, job names, fast-forward reasoning — and `board audit` reported it clean.
+
+Why it belongs in this epic and not in **T-049**:
+
+- Same file (`internal/audit/audit.go`), same table-driven test, same theme — *the audit is the
+  only component that sees every ticket however it was authored*.
+- T-049 caps the **rendered cell**, which makes the board legible while leaving the ticket
+  malformed forever. The two are complementary, and the split is deliberate: **truncation must not
+  become the way malformed history is hidden.**
+
+Shape notes for refinement:
+
+- The parse already exists and is per-line: `historyRE`
+  (`internal/ticket/ticket.go:104`) plus `mergedRE` (`:106`). A check needs no new scanner — it
+  needs a length/clause judgement over the bodies `historyRE` already yields.
+- It must be a **warning, not an error**: an over-long reason breaks no invariant, and every
+  existing ticket in a migrated workspace would fail on import. Compare this epic's other four,
+  which are genuine malformations.
+- Decide at refinement whether "one clause" is checkable at all, or whether the practical check is
+  length only. Do not ship a heuristic that flags this repo's own legitimate multi-clause
+  transitions (e.g. T-036's `review clean; 6 non-blocking, all dispositioned`).
+
 ### Cross-references
 
+- **T-049** — the render half of the same field finding (cap board cell width at `sanitizeCell`).
+  Different file (`internal/board/board.go`); no ordering enforced, neither blocks the other.
 - **T-044** (which superseded T-039, 2026-07-26) replaces the audit's board cross-check with a
   staleness check in the same file — the old plan's row-shape checks are gone. Still the same
   `internal/audit/audit.go` + test table: sequence to avoid edit collisions.
@@ -104,3 +138,6 @@ and the audit lies about it" defect, not a functional one.
   vanished-empty-dir `continue`, which the WIP pre-check depends on — so it needs this epic's
   judgement, not a standalone ticket. Also corrected a reference this epic inherited: the TO DO cap
   moved from T-036 to T-045 at T-036's refinement.
+- 2026-07-27 — a fifth check folded in from the field-finding triage: History lines have a
+  TEMPLATE-documented shape the audit never enforces (a ~1,900-character merge line audited clean).
+  Render half filed separately as T-049.
