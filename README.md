@@ -21,7 +21,7 @@ commands.
 **Homebrew** (via the tap):
 
 ```sh
-brew install codcod/taps/pickle
+brew install codcod/tap/pickle
 ```
 
 **`go install`** (Go 1.26+, any platform):

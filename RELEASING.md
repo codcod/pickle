@@ -2,7 +2,7 @@
 
 `pickle` is distributed as cross-compiled static binaries via
 [goreleaser](https://goreleaser.com), a GitHub release per tag, and a Homebrew formula published to
-a separate tap repo (`github.com/codcod/homebrew-taps` → `brew install codcod/taps/pickle`).
+a separate tap repo (`github.com/codcod/homebrew-tap` → `brew install codcod/tap/pickle`).
 
 ## Cutting a release
 
