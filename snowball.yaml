@@ -4,7 +4,8 @@ books:
   - src: docs/user-manual.adoc
     out: pickle-user-manual
 theme: docs/pdf-theme/pickle-theme.yml
-attributes: docs/attributes.adoc   # informational — the master includes it itself
+# Shared attributes live in docs/attributes.adoc, included by the book master itself
+# (snowball ≥0.2 rejects a file path under `attributes:`).
 formats: [pdf, epub]
 revision:
   from: git-describe
