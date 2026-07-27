@@ -342,6 +342,10 @@ summary) when any invariant fails:
 existed therefore report `frontmatter missing "spawned-by"` until you backfill
 them — add `spawned-by: []` under each ticket's `depends-on:` line (a one-line
 mechanical edit per file).
+
+The 120-rune cell cap (see <<cmd-board-sync>>) has the same shape: a board
+rendered before the cap existed that holds a longer cell reports `BOARD.md is
+stale or hand-edited` until you run `pickle board sync` once.
 ====
 
 Missing empty status directories are treated as empty, not errors (git does

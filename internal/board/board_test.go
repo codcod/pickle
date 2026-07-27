@@ -203,7 +203,9 @@ func titleCell(t *testing.T, title string) string {
 }
 
 // TestRenderCapsCellWidth: no rendered cell exceeds maxCellRunes, the cap counts
-// runes (never bytes), and it runs after the ¦ substitution (T-049).
+// runes (never bytes), and it composes with the ¦ substitution without breaking
+// row integrity — the two steps' order is deliberately *not* asserted, since the
+// substitution is rune-neutral (T-049, amended decision 4).
 func TestRenderCapsCellWidth(t *testing.T) {
 	// 1 — an over-long value is truncated to exactly the cap, ellipsis included.
 	t.Run("truncates to exactly the cap", func(t *testing.T) {
