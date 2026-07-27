@@ -230,3 +230,4 @@ manual documents the `pickle` binary, which is unchanged.
 
 - 2026-07-26 — created (TO DO). source: chat (user request: render the manual to PDF/EPUB with the installed `snowball` tool; supersedes T-047's content-only scoping decision by explicit user choice)
 - 2026-07-27 — TO DO → READY: plan complete (refined 2026-07-26: 1B replace docs-check body + drop Gemfile, git-describe revision, ai-sdlc theme, README-only docs)
+- 2026-07-27 — READY → IN DEVELOPMENT: picked up; applicability gate clean
