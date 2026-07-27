@@ -196,8 +196,11 @@ test ! -f Gemfile && test ! -f Gemfile.lock         # gem pinning removed
 just build && just test && just lint                # child commands stay green
 ```
 
-Negative check: introduce a temporary broken xref in any manual page, confirm
-`just docs-check` fails, revert.
+Negative check: introduce a temporary broken **include** in the book master, confirm
+`just docs-check` fails, revert. (Amended during implementation: a broken *xref* does not
+trip plain asciidoctor at `--failure-level=WARN` — unresolved xrefs log below WARN — and the
+old Gemfile-based `docs-check` had the identical blind spot, so this is behaviour-preserving,
+not a regression. Broken includes are ERROR-level and fail as expected.)
 
 ### Docs update (mandatory when user-facing)
 
@@ -230,4 +233,6 @@ manual documents the `pickle` binary, which is unchanged.
 
 - 2026-07-26 — created (TO DO). source: chat (user request: render the manual to PDF/EPUB with the installed `snowball` tool; supersedes T-047's content-only scoping decision by explicit user choice)
 - 2026-07-27 — TO DO → READY: plan complete (refined 2026-07-26: 1B replace docs-check body + drop Gemfile, git-describe revision, ai-sdlc theme, README-only docs)
-- 2026-07-27 — READY → IN DEVELOPMENT: picked up; applicability gate clean
+- 2026-07-27 — READY → IN DEVELOPMENT: picked up; applicability gate clean, branch feat/T-048-render-manual-pdf-epub-snowball
+- 2026-07-27 — plan amendment (inline disposition): acceptance negative check corrected from broken xref to broken include — unresolved xrefs never tripped WARN failure-level in the old recipe either; also README.md's `bundle install` reference updated (caught by Task 4's grep)
+- 2026-07-27 — IN DEVELOPMENT → IN REVIEW: acceptance green
