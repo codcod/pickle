@@ -55,7 +55,8 @@ entirely by manual acceptance tests.
 
 T-012 item 5 ("`ticket new` writes the raw title into the board row") is the **same escape-versus-
 replace question** that **T-044 settled** (2026-07-26, landed): one-way `sanitizeCell` (`|` → `¦`,
-newlines → space) at the render choke point; the parse-back machinery is deleted. T-044 already
+newlines → space, and — since T-049 landed, 2026-07-27 — a 120-rune cap with a trailing `…`) at
+the render choke point; the parse-back machinery is deleted. T-044 already
 ships renderer-level tests (`TestRenderSanitizesCells` in `internal/board/board_test.go`) and an
 acceptance repro, so item 5 shrinks to at most a **cli-level** assertion that `ticket new` with a
 pipe title yields an audit-clean board — or is scoped out at refinement as already covered.
@@ -91,3 +92,6 @@ defects) versus **items 1–6** (the coverage), not back into T-031 and T-012.
 - 2026-07-26 — patched by T-044's review impact sweep: the item-5 deferral is settled — T-044
   landed one-way sanitisation with renderer tests; item 5 shrinks to a cli-level assertion or
   is scoped out at refinement
+- 2026-07-27 — patched by T-049's review impact sweep: `sanitizeCell` now also caps a cell at 120
+  runes (`TestRenderCapsCellWidth` in `internal/board/board_test.go`), so the item-5 deferral's
+  enumeration of the sanitisation was completed; item 5's scope is unchanged

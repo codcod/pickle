@@ -342,6 +342,10 @@ summary) when any invariant fails:
 existed therefore report `frontmatter missing "spawned-by"` until you backfill
 them — add `spawned-by: []` under each ticket's `depends-on:` line (a one-line
 mechanical edit per file).
+
+The 120-rune cell cap (see <<cmd-board-sync>>) has the same shape: a board
+rendered before the cap existed that holds a longer cell reports `BOARD.md is
+stale or hand-edited` until you run `pickle board sync` once.
 ====
 
 Missing empty status directories are treated as empty, not errors (git does
@@ -372,8 +376,13 @@ Everything on the board is derived:
 * DONE `merged` from the ticket's merge History line (`yes — merged to …` /
   `no — publish-gated`), DROPPED `reason` and REWORK `open findings` from the
   last transition's `--reason`;
-* every cell passes one-way sanitisation (`|` → `¦`, newlines → space) —
-  cells are never parsed back, so a pipe in a title cannot corrupt the table.
+* every cell passes one-way sanitisation (`|` → `¦`, newlines → space, then a
+  120-rune cap with a trailing `…`) — cells are never parsed back, so a pipe in
+  a title cannot corrupt the table and an over-long value cannot make a whole
+  status table unreadable. The cap is a *rendering* bound: the ticket file keeps
+  the full text, and it stays the source of truth. If your board has a longer
+  cell from before the cap existed, `board audit` reports the board stale until
+  you run `pickle board sync` once.
 
 A board differing from a fresh render only in the `Last updated:` date is in
 sync — no write. `--dry-run` reports the drift, writes nothing, and *exits

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/ticket"
@@ -170,6 +171,148 @@ func TestRenderSanitizesCells(t *testing.T) {
 	if !strings.Contains(got, "| T-009 | a b | high |") {
 		t.Errorf("newline not collapsed:\n%s", got)
 	}
+}
+
+// cellsIn returns the trimmed cells of the board row for id. Splitting on `|` is
+// safe because sanitizeCell substitutes every `|` in a value for `¦`.
+func cellsIn(t *testing.T, rendered, id string) []string {
+	t.Helper()
+	for _, ln := range strings.Split(rendered, "\n") {
+		ln = strings.TrimSpace(ln)
+		if !strings.HasPrefix(ln, "| "+id+" |") {
+			continue
+		}
+		parts := strings.Split(strings.Trim(ln, "|"), "|")
+		out := make([]string, len(parts))
+		for i, p := range parts {
+			out[i] = strings.TrimSpace(p)
+		}
+		return out
+	}
+	t.Fatalf("no board row for %s in:\n%s", id, rendered)
+	return nil
+}
+
+// titleCell renders a single TO DO ticket carrying title and returns its rendered
+// title cell.
+func titleCell(t *testing.T, title string) string {
+	t.Helper()
+	root := t.TempDir()
+	mkTicket(t, root, "1-to-do", "T-001", "slug", ticketBody("T-001", title, "high", created))
+	return cellsIn(t, Render(loadTree(t, root), testCfg(), "2026-07-26"), "T-001")[1]
+}
+
+// TestRenderCapsCellWidth: no rendered cell exceeds maxCellRunes, the cap counts
+// runes (never bytes), and it composes with the ¦ substitution without breaking
+// row integrity — the two steps' order is deliberately *not* asserted, since the
+// substitution is rune-neutral (T-049, amended decision 4).
+func TestRenderCapsCellWidth(t *testing.T) {
+	// 1 — an over-long value is truncated to exactly the cap, ellipsis included.
+	t.Run("truncates to exactly the cap", func(t *testing.T) {
+		got := titleCell(t, strings.Repeat("a", 300))
+		// Rune count, not len(): a byte assertion would pass on a mid-rune cut.
+		if n := utf8.RuneCountInString(got); n != maxCellRunes {
+			t.Errorf("cell width = %d runes, want %d: %q", n, maxCellRunes, got)
+		}
+		if !strings.HasSuffix(got, "…") {
+			t.Errorf("truncated cell does not end in an ellipsis: %q", got)
+		}
+		if want := strings.Repeat("a", maxCellRunes-1) + "…"; got != want {
+			t.Errorf("cell = %q, want %q", got, want)
+		}
+	})
+
+	// 2 — the boundary: at or below the cap nothing is touched.
+	t.Run("boundary", func(t *testing.T) {
+		for _, n := range []int{maxCellRunes - 1, maxCellRunes, maxCellRunes + 1} {
+			in := strings.Repeat("b", n)
+			got := titleCell(t, in)
+			switch {
+			case n <= maxCellRunes:
+				if got != in {
+					t.Errorf("%d-rune cell was altered: %q", n, got)
+				}
+				if strings.Contains(got, "…") {
+					t.Errorf("%d-rune cell gained an ellipsis: %q", n, got)
+				}
+			default:
+				if utf8.RuneCountInString(got) != maxCellRunes || !strings.HasSuffix(got, "…") {
+					t.Errorf("%d-rune cell not capped: %q", n, got)
+				}
+			}
+		}
+	})
+
+	// 3 — multi-byte input must never be cut mid-rune.
+	t.Run("never cuts mid-rune", func(t *testing.T) {
+		for _, in := range []string{strings.Repeat("é", 200), strings.Repeat("世", 200)} {
+			got := titleCell(t, in)
+			if !utf8.ValidString(got) {
+				t.Errorf("cell is not valid UTF-8: %q", got)
+			}
+			if strings.ContainsRune(got, '\uFFFD') {
+				t.Errorf("cell contains U+FFFD (mid-rune cut): %q", got)
+			}
+			if n := utf8.RuneCountInString(got); n != maxCellRunes {
+				t.Errorf("cell width = %d runes, want %d", n, maxCellRunes)
+			}
+		}
+	})
+
+	// 4 — substitution and cap compose: an over-long run of pipes is both
+	// substituted and capped, and the row keeps exactly one `|` per column
+	// boundary (the integrity the substitution exists for). Note this does *not*
+	// pin the two steps' order: `|` → `¦` is a one-for-one rune substitution, so
+	// it cannot change the rune count either way — see the T-049 History note.
+	t.Run("substitution and cap compose", func(t *testing.T) {
+		root := t.TempDir()
+		mkTicket(t, root, "1-to-do", "T-001", "pipes",
+			ticketBody("T-001", strings.Repeat("|", 200), "high", created))
+		rendered := Render(loadTree(t, root), testCfg(), "2026-07-26")
+		got := cellsIn(t, rendered, "T-001")[1]
+		if want := strings.Repeat("¦", maxCellRunes-1) + "…"; got != want {
+			t.Errorf("cell = %q, want %d ¦ then an ellipsis", got, maxCellRunes-1)
+		}
+		// A stray `|` would split the row — the invariant the substitution exists for.
+		for _, ln := range strings.Split(rendered, "\n") {
+			if strings.HasPrefix(ln, "| T-001 |") && strings.Count(ln, "|") != 7 {
+				t.Errorf("row has %d pipes, want 7 (one per column boundary): %s",
+					strings.Count(ln, "|"), ln)
+			}
+		}
+	})
+
+	// 5/6 — a capped `merged` cell keeps its prefix and the ref (truncation is
+	// head-preserving), and still agrees with ticket.HasMergeLine.
+	t.Run("merged cell keeps prefix and ref", func(t *testing.T) {
+		root := t.TempDir()
+		// A migration-shaped merge note: the ref sits early, then paragraphs of prose.
+		mergeLine := "- 2026-07-22 — merged to main (abc1234) after " +
+			strings.Repeat("pipeline noise ", 40)
+		body := ticketBody("T-001", "Verbose", "high",
+			created+"\n- 2026-07-21 — IN REVIEW → DONE\n"+mergeLine)
+		mkTicket(t, root, "6-done", "T-001", "verbose", body)
+
+		tickets := loadTree(t, root)
+		got := cellsIn(t, Render(tickets, testCfg(), "2026-07-26"), "T-001")[2]
+
+		if n := utf8.RuneCountInString(got); n != maxCellRunes {
+			t.Errorf("merged cell width = %d runes, want %d: %q", n, maxCellRunes, got)
+		}
+		if !strings.HasPrefix(got, "yes — ") {
+			t.Errorf("merged cell lost its prefix: %q", got)
+		}
+		if !strings.Contains(got, "abc1234") {
+			t.Errorf("merged cell lost the ref (truncation must be head-preserving): %q", got)
+		}
+		// The gate check and the cell must never disagree (T-044 decision 3).
+		if !ticket.HasMergeLine(tickets[0].Text) {
+			t.Error("HasMergeLine = false for a ticket whose merge line was capped in the cell")
+		}
+		if strings.Contains(got, "no — publish-gated") {
+			t.Errorf("merged ticket rendered as unmerged: %q", got)
+		}
+	})
 }
 
 // TestRenderWIPCounts: the (n/limit) counts are computed at render time (T-014·1).

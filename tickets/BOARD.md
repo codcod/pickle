@@ -50,8 +50,11 @@ Last updated: 2026-07-27
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |
+| T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |
+| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
 | T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
+| T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
 | T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |
@@ -81,6 +84,7 @@ Last updated: 2026-07-27
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
 | T-047 | AsciiDoc user manual in docs/ + slim README to about & install | yes — merged to main (local squash merge 7a0995d) |
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |
+| T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | no — publish-gated |
 
 ## DROPPED
 
