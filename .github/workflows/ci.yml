@@ -33,4 +33,9 @@ jobs:
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: check
+          install-only: true
+      # Exit 2 = "valid, but deprecated properties": the `brews` (formula) pipe
+      # is deliberate (see the comment in .goreleaser.yaml), so tolerate it —
+      # mirrors `just dist-check`. Exit 1 (invalid config) still fails.
+      - name: goreleaser check
+        run: goreleaser check || [ $? -eq 2 ]
