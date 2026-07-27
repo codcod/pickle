@@ -435,3 +435,4 @@ change (decision 9). `just docs-check` green.
   `board.WIPCounts`, de-flaked acceptance smoke, measured size delta); F10-F15 noted and closed
   (goldmark pinned to v1.8.2, snowball checks at WARN, warning must say "no authentication")
 - 2026-07-27 — READY → IN DEVELOPMENT: picked up; plan amended from the applicability audit (F1-F9)
+- 2026-07-27 — IN DEVELOPMENT → IN REVIEW: acceptance test green; 8 tasks + 9 plan amendments done
