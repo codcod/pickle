@@ -56,16 +56,12 @@ changelog:
       - "^test:"
       - "^chore:"
 
-# Homebrew cask (goreleaser deprecated `brews`/formulae in favour of casks for
-# pre-built binaries). Published to the separate tap repo; users then run
-# `brew install codcod/taps/pickle`. Casks are macOS-only — Linux users install
-# via `go install` or the release archives.
 homebrew_casks:
   - name: pickle
     binaries: [pickle]
     repository:
       owner: codcod
-      name: homebrew-taps
+      name: homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/codcod/pickle"
