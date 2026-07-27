@@ -20,11 +20,10 @@ Last updated: 2026-07-27
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | [] |
 
 ## REWORK
 
@@ -85,6 +84,7 @@ Last updated: 2026-07-27
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
 | T-047 | AsciiDoc user manual in docs/ + slim README to about & install | yes — merged to main (local squash merge 7a0995d) |
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |
+| T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | no — publish-gated |
 
 ## DROPPED
 
