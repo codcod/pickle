@@ -56,9 +56,11 @@ changelog:
       - "^test:"
       - "^chore:"
 
-homebrew_casks:
+# Deliberately using the deprecated `brews` (formula) pipe instead of
+# `homebrew_casks`: formulas install into the brew prefix without Gatekeeper
+# quarantine, so no xattr post-install hook is needed for the unsigned binary.
+brews:
   - name: pickle
-    binaries: [pickle]
     repository:
       owner: codcod
       name: homebrew-tap
@@ -66,10 +68,3 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/codcod/pickle"
     description: "Ticket-based, board-driven feature flow as a CLI"
-    # Strip macOS quarantine so the unsigned binary runs without a Gatekeeper prompt.
-    hooks:
-      post:
-        install: |
-          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/pickle"]
-          end

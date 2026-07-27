@@ -1,7 +1,7 @@
 # Releasing pickle
 
 `pickle` is distributed as cross-compiled static binaries via
-[goreleaser](https://goreleaser.com), a GitHub release per tag, and a Homebrew cask published to
+[goreleaser](https://goreleaser.com), a GitHub release per tag, and a Homebrew formula published to
 a separate tap repo (`github.com/codcod/homebrew-taps` → `brew install codcod/taps/pickle`).
 
 ## Cutting a release
@@ -20,7 +20,7 @@ Run workflow* (`workflow_dispatch` with the tag name), e.g. after fixing a secre
 That produces, for `darwin`/`linux` × `amd64`/`arm64`:
 
 - a **GitHub release** with `.tar.gz` archives + `checksums.txt`;
-- an updated **Homebrew cask** committed to the tap.
+- an updated **Homebrew formula** committed to the tap.
 
 The version is stamped into the binary via `-ldflags -X main.version={{.Version}}`; a
 `go install github.com/codcod/pickle@vX.Y.Z` build (no ldflags) falls back to the module version
@@ -30,6 +30,6 @@ from `runtime/debug.ReadBuildInfo()`.
 
 ```sh
 just dist-check      # goreleaser check — is .goreleaser.yaml valid?
-just dist-snapshot   # cross-compile into ./dist, generate the cask, upload nothing
+just dist-snapshot   # cross-compile into ./dist, generate the formula, upload nothing
 ```
 

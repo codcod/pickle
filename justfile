@@ -34,8 +34,10 @@ show-version: build
 # Validate the goreleaser config (also run in CI).
 # GitLab tokens are unset so goreleaser detects the GitHub forge deterministically
 # (it prefers GitLab whenever GITLAB_TOKEN is present in the environment).
+# Exit code 2 ("valid but uses deprecated properties") is tolerated: the `brews`
+# pipe is used deliberately (see .goreleaser.yaml). Real errors exit 1 and fail.
 dist-check:
-    env -u GITLAB_TOKEN -u GITLAB_PERSONAL_ACCESS_TOKEN goreleaser check
+    env -u GITLAB_TOKEN -u GITLAB_PERSONAL_ACCESS_TOKEN goreleaser check || [ $? -eq 2 ]
 
 # Local, unpublished cross-compiled build into ./dist (no tokens, no upload).
 dist-snapshot:
