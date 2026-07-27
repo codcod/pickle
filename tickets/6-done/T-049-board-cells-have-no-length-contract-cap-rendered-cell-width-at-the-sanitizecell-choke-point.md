@@ -371,3 +371,4 @@ promotion test; the docs-readability pass produced no in-scope suggestions.
 - 2026-07-27 — READY → IN DEVELOPMENT: picked up
 - 2026-07-27 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-07-27 — IN REVIEW → DONE: review clean: 0 blocking, 10 non-blocking (3 fixed inline F1/F2/F8, 7 noted); no follow-up ticket
+- 2026-07-27 — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted
