@@ -44,9 +44,6 @@ pickle install        # lay down the ticket flow
 pickle version
 ```
 
-> `brew install` / `go install` work once the GitHub repo + tap exist and a release tag is cut
-> — see [`RELEASING.md`](RELEASING.md).
-
 ## Documentation
 
 The user manual (AsciiDoc) lives in [`docs/`](docs/README.adoc) — the book is
