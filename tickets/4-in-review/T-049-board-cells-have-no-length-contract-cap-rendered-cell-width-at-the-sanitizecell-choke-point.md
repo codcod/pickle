@@ -317,3 +317,4 @@ widths — confirm that reading before deciding to leave it alone.
 - 2026-07-27 — plan amended inline: the acceptance test's `awk length()>120` check counted bytes,
   so it flagged a correct 120-rune cell as 124; replaced with a rune-counting python3 check
 - 2026-07-27 — READY → IN DEVELOPMENT: picked up
+- 2026-07-27 — IN DEVELOPMENT → IN REVIEW: acceptance green

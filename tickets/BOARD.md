@@ -13,18 +13,18 @@ Last updated: 2026-07-27
 
 ## IN DEVELOPMENT
 
+### pickle (0/1)
+
+| id | title | depends-on |
+|---|---|---|
+
+## IN REVIEW
+
 ### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | [] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | depends-on |
-|---|---|---|
 
 ## REWORK
 
