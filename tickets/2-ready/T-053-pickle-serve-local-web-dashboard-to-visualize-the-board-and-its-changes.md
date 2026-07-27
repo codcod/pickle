@@ -110,12 +110,15 @@ approval** (publish-gated child): end with a summary and a suggested commit mess
 1. **Read-only, absolutely.** No handler writes, moves, renames or regenerates anything — not
    even `BOARD.md`, not even to "fix" a stale board. `serve` opens files for reading only. The
    CLI (`ticket new|move`, `board sync`) stays the single writer. A test asserts this (Task 7).
-2. **Ticket files are the source of truth — never parse `BOARD.md`.** Views are built from
-   `ticket.LoadAll(root)` + `pickle.toml`, honouring T-044. `board.Parse` exists only for the
-   sync drift summary; `serve` must not call it.
-3. **One ordering, shared.** The dashboard must never disagree with `BOARD.md`, so the status
-   order and the per-group sort come from `internal/board` (Task 2 exports them; do not
-   re-implement `impactRank`/`sortRows` in `internal/serve`).
+2. **Ticket files are the source of truth — `serve` must never call `board.Parse`.** Views are
+   built from `ticket.LoadAll(root)` + `pickle.toml`, honouring T-044. The one permitted board
+   read is the one *inside* `audit.Audit` (`internal/audit/audit.go:86-93` reads `BOARD.md` and
+   compares it to a fresh render — that freshness check is the audit's whole point, and the
+   health banner surfaces its verdict). `serve` itself never reads the file (amendment F2).
+3. **One ordering *and one WIP count*, shared.** The dashboard must never disagree with
+   `BOARD.md`, so the status order, the per-group sort **and the per-child WIP counts** come
+   from `internal/board` (Task 2 exports them; do not re-implement `impactRank`, `sortRows` or
+   the WIP tally in `internal/serve` — amendment F6).
 4. **No `sanitizeCell` in HTML.** The 120-rune cap and the `|` → `¦` substitution are
    markdown-table concerns (T-049). HTML shows full values; escaping is `html/template`'s job.
 5. **Command:** top-level `pickle serve [--addr host:port]`. Default addr `127.0.0.1:8745`.
@@ -152,9 +155,23 @@ func HistoryEntries(text string) []HistoryEntry // file order (oldest first)
 Reuse `historyRE` — do not add a second history regex. Return every dated line, including
 created and merge lines (the timeline wants them); classification is the view's job.
 Keep `Date` a string: the format is already anchored by the regex, and no view needs
-`time.Time`. Extend `internal/ticket/ticket_test.go` with a table test: multiple entries in
-order, em-dash *and* hyphen separators, merge and created lines kept, non-matching bullets and
-lines outside `## History` ignored, empty History → nil.
+`time.Time`.
+
+**Amendment F1 — the date is not captured today.** `historyRE`
+(`internal/ticket/ticket.go:104`) is `^-\s*\d{4}-\d{2}-\d{2}\s*[—-]+\s*(.+)$`: the date is
+matched but **not** in a group, and `m[1]` is the *body*, relied on by three callers
+(`ticket.go:192`, `:231`, `:272`). Do **not** add a leading group and shift the indices. Either:
+
+- add a **named** group (`(?P<date>\d{4}-\d{2}-\d{2}\)`) and read it via
+  `historyRE.SubexpIndex("date")`, leaving every existing `m[1]` untouched; or
+- keep the regex byte-identical and slice the date off the matched line separately.
+
+Either way the existing `m[1]` semantics must not move. Extend
+`internal/ticket/ticket_test.go` with a table test (multiple entries in order, em-dash *and*
+hyphen separators, merge and created lines kept, non-matching bullets and lines outside
+`## History` ignored, empty History → nil) **plus explicit regression assertions** that
+`LastHistoryStatus`, `LastHistoryReason` and `MergeLine` still return what they did before —
+those three are the index-shift blast radius.
 
 #### Task 2 — export the board's ordering from `internal/board`
 
@@ -162,8 +179,19 @@ In `internal/board/board.go`, expose what `Render` already uses so `serve` share
 
 - `func StatusOrder() []string` — a copy of `boardOrder` (return a copy; callers must not be
   able to mutate package state).
-- `func Sort(group []*ticket.Ticket, statusName string)` — rename `sortRows` to `Sort` and
-  update its two call sites, or keep `sortRows` as a thin wrapper. One implementation only.
+- `func Sort(group []*ticket.Ticket, statusName string)` — rename `sortRows` to `Sort`. It has
+  exactly **one** call site (`board.go:245`), not two (amendment F5); no wrapper — decision 3
+  wants one implementation, so leave no alias behind.
+- `func WIPCounts(tickets []*ticket.Ticket, cfg *config.Config) …` — one shared per-child tally
+  of `3-in-development/` and `4-in-review/` against the configured limits (amendment F6). The
+  count is currently inlined **twice** (`board.go:245-251` for the `(n/limit)` headings and
+  `audit.go:136+` in `auditWIP`); `serve` would have made a third. Land the helper, then make
+  `board.Render` use it, and — if it is a clean fit — `audit.auditWIP` too. If adapting the
+  audit turns out to be more than a mechanical substitution, leave `auditWIP` alone and say so
+  in the summary rather than growing this ticket.
+- Export `func SectionHeading(statusName string) string` (the `sectionHeading` map,
+  `board.go:33`) **only if** the UI actually renders those headings; do not export it "just in
+  case".
 
 Add a test in `internal/board/board_test.go` asserting the shared path really is shared: for a
 fixture set, the id order of a `Sort`ed TO DO group equals the row order `Render` emits in the
@@ -177,8 +205,8 @@ Create `internal/serve/` (package `serve`).
   - `BoardView`: per status (in `board.StatusOrder()`), per registered child (`cfg.Projects`
     order), the `board.Sort`ed tickets; each entry carries id, title, project, impact,
     complexity, cost, `depends-on`, `spawned-by`, the last History reason, and the merge line;
-    plus per-child WIP counts and limits for IN DEVELOPMENT/IN REVIEW (computed exactly as
-    `board.Render` does).
+    plus per-child WIP counts and limits for IN DEVELOPMENT/IN REVIEW **from
+    `board.WIPCounts`** (amendment F6 — never a local tally).
   - `TicketView`: the ticket, its frontmatter fields, rendered body HTML (Task 4), and its
     dependency/lineage ids as links; also the reverse edges ("blocks" / "spawned") computed by
     scanning all tickets once — information `BOARD.md` cannot show.
@@ -203,14 +231,28 @@ Create `internal/serve/` (package `serve`).
   | `GET /activity` | the timeline page |
   | `GET /fragments/board` | board fragment (htmx poll target) |
   | `GET /fragments/activity` | timeline fragment (htmx poll target) |
-  | `GET /static/...` | `http.FileServerFS` over the embedded `static` subtree |
+  | `GET /static/` | `http.StripPrefix("/static/", http.FileServerFS(sub))`, `sub, _ := fs.Sub(assets, "static")` |
   | `GET /healthz` | `200 OK`, plain text |
   Register with method-qualified patterns (`"GET /"`) so a POST gets 405 from the mux rather
   than being served — a cheap structural half of decision 1.
 
+  **Amendment F3 — the static route.** `GET /static/...` is *not* ServeMux pattern syntax (the
+  legal forms are the `GET /static/` prefix or `GET /static/{path...}`), and because the embed
+  is rooted at the package dir, serving `assets` directly would resolve `/static/styles.css` to
+  `static/static/styles.css`. Use `fs.Sub(assets, "static")` + `http.StripPrefix` exactly as in
+  the table above.
+
+  **Amendment F4 — `GET /` is a catch-all.** With the stdlib mux, `/favicon.ico` and
+  `/nonsense` both match `GET /` and would render the board with 200. The root handler must
+  start with `if r.URL.Path != "/" { http.NotFound(w, r); return }`, and Task 7 must cover
+  `GET /nope → 404`.
+
 #### Task 4 — markdown rendering (`goldmark`)
 
-`go get github.com/yuin/goldmark` (pin the version `go.mod` records; commit `go.mod`+`go.sum`).
+`go get github.com/yuin/goldmark@v1.8.2` — **pin that exact version** (amendment F10: it is
+already in the local module cache, so this task needs no network, and naming it lets review
+check the `go.mod`/`go.sum` diff against an intent rather than against "whatever `go get`
+picked"). Commit `go.mod` + `go.sum`; no vendoring (CI resolves from `go.mod`).
 In `internal/serve/markdown.go`: one package-level renderer
 `goldmark.New(goldmark.WithExtensions(extension.GFM))`; a `renderMarkdown(src string)
 (template.HTML, error)` that strips the frontmatter block before rendering (the header shows
@@ -231,7 +273,10 @@ compact ticket page, monospace ids), `htmx.min.js` (**htmx 2.0.4**, fetched once
 `https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js`, committed verbatim — record the version and
 URL in a comment in `serve.go`), and `htmx.LICENSE` (htmx is 0BSD; ship the license text
 alongside the vendored file). Add `//go:embed templates static` in `internal/serve/serve.go`.
-Note in the commit summary that the binary grows ~55 KB.
+
+**Amendment F9 — measure, don't guess, the size delta.** The earlier "~55 KB" figure counted
+only htmx; goldmark links a whole parser/renderer tree and is expected to dominate (order of
+~1 MB). Record `ls -l pickle` before and after in the Finish summary as a measured number.
 
 #### Task 6 — CLI wiring
 
@@ -260,7 +305,14 @@ New `internal/cli/serve.go`:
   - `GET /fragments/board` → 200, no `<html`, contains the same ids as the page.
   - `GET /static/styles.css`, `GET /static/htmx.min.js` → 200, non-empty; `/healthz` → 200.
   - **Health banner:** a fixture ticket with an illegal `impact` value surfaces an audit error
-    in `GET /`.
+    in `GET /` — and the assertion must match the **specific** substring
+    (`illegal impact value`), not merely "an error is shown" (amendment F2).
+  - **Fixture trees must contain a rendered `BOARD.md`** (write `board.Render(...)` output in
+    the helper). `audit.Audit` compares the board to a fresh render, so a fixture without one
+    reports a board error on every page — every banner test would pass for the wrong reason
+    (amendment F2). Add one negative test: a clean fixture (board rendered) shows **no** audit
+    errors, proving the banner discriminates.
+  - `GET /nope` → 404 (amendment F4: the root pattern is a catch-all).
   - **Read-only proof (decision 1):** snapshot every file under the fixture root (path →
     size+mtime+sha256) before and after hitting every route, assert byte-identical and that no
     file was created or removed.
@@ -283,7 +335,12 @@ New `internal/cli/serve.go`:
   `pickle board sync`), and the explicit "no authentication; do not expose it" note for
   non-loopback `--addr`.
 - `docs/user-manual/concepts/the-flow.adoc` (the generated-board paragraph, ~line 30): one
-  sentence pointing at `pickle serve` as the browser view of the same generated truth.
+  sentence pointing at `pickle serve` as the browser view of the same generated truth. Follow
+  the existing `[#cmd-…]` anchor convention, and **read `snowball check`'s output** rather than
+  trusting its exit code: its failure level is WARN (`snowball.yaml`), so a broken
+  `xref:cli-reference.adoc#cmd-serve` may not fail the build (amendment F14).
+- The stderr warning for a non-loopback `--addr` must contain the words "no authentication", so
+  the binary and the manual say the same thing (amendment F15).
 - `CHANGELOG.md` under `## [Unreleased]` → `### Added`: the command, its read-only contract, the
   default address, and the two new dependencies (goldmark; vendored htmx) — dependency-set
   changes are exactly what a changelog reader wants to know.
@@ -299,34 +356,38 @@ just build && just test && just lint && just docs-check
 # 2. The new package's own suite, verbose (read-only proof + e2e included)
 go test ./internal/serve/... ./internal/board/... ./internal/ticket/... ./internal/cli/... -v
 
-# 3. Read-only smoke against this repo's real board (allowed: serve never writes)
-./pickle serve --addr 127.0.0.1:8745 &
-SRV=$!; sleep 1
-curl -sf http://127.0.0.1:8745/healthz
-curl -sf http://127.0.0.1:8745/            | grep -q 'T-053'
-curl -sf http://127.0.0.1:8745/t/T-044     | grep -q 'single source of truth'
-curl -sf http://127.0.0.1:8745/activity    | grep -q '2026-'
-curl -sf http://127.0.0.1:8745/fragments/board >/dev/null
-curl -so /dev/null -w '%{http_code}\n' http://127.0.0.1:8745/t/T-999   # expect 404
-curl -so /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:8745/  # expect 405
-kill $SRV
-git status --porcelain tickets/ pickle.toml   # MUST be empty (nothing was written)
+# 3. Read-only smoke against this repo's real board (allowed: serve never writes).
+#    Amendments F7/F8: no fixed port, no `git status` purity check (the ticket move itself
+#    dirties tickets/), no pkill. Bind :0, discover the port, hash-snapshot the tree.
+before=$(find tickets -type f -exec shasum {} \; | sort)
+PORT=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')
+./pickle serve --addr "127.0.0.1:$PORT" & SRV=$!
+for i in $(seq 1 50); do curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null && break; sleep 0.1; done
+curl -sf "http://127.0.0.1:$PORT/healthz"
+curl -sf "http://127.0.0.1:$PORT/"          | grep -q 'T-053'
+curl -sf "http://127.0.0.1:$PORT/t/T-044"   | grep -q 'single source of truth'
+curl -sf "http://127.0.0.1:$PORT/activity"  | grep -q '2026-'
+curl -sf "http://127.0.0.1:$PORT/fragments/board" >/dev/null
+curl -so /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PORT/t/T-999"  # expect 404
+curl -so /dev/null -w '%{http_code}\n' "http://127.0.0.1:$PORT/nope"     # expect 404
+curl -so /dev/null -w '%{http_code}\n' -X POST "http://127.0.0.1:$PORT/" # expect 405
+kill "$SRV"; wait "$SRV" 2>/dev/null
+test "$before" = "$(find tickets -type f -exec shasum {} \; | sort)" && echo "read-only: OK"
 
-# 4. Usage contract
+# 4. Usage contract (and the default addr is only documented, never bound by a test)
 ./pickle serve --bogus; echo "exit=$? (expect 2)"
 ./pickle help | grep -q 'serve'
 
 # 5. Fresh-project smoke, per the self-modify policy: throwaway dir, copied binary
-D=$(mktemp -d) && cp pickle "$D/pk" && cd "$D" && git init -q .
-./pk install --project demo --path . --agent opencode
-./pk ticket new "first demo ticket" --project demo
-(./pk serve --addr 127.0.0.1:8746 &) ; sleep 1
-curl -sf http://127.0.0.1:8746/ | grep -q 'T-001'
-pkill -f 'pk serve'; cd - >/dev/null
+D=$(mktemp -d); cp pickle "$D/pk"; (cd "$D" && git init -q . \
+  && ./pk install --project demo --path . --agent opencode \
+  && ./pk ticket new "first demo ticket" --project demo \
+  && P2=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()') \
+  && ./pk serve --addr "127.0.0.1:$P2" & sleep 1; curl -sf "http://127.0.0.1:$P2/" | grep -q 'T-001'; kill %1)
 ```
 
-Expected: every command exits 0 (except the two deliberate 404/405/exit-2 checks), the `grep`s
-match, and step 3's `git status` prints nothing — the dashboard rendered this repo's live board
+Expected: every command exits 0 (except the deliberate 404/404/405/exit-2 checks), the `grep`s
+match, and step 3 prints `read-only: OK` — the dashboard rendered this repo's live board
 without touching a byte.
 
 ### Docs update (mandatory when user-facing)
@@ -341,8 +402,10 @@ change (decision 9). `just docs-check` green.
 1. Acceptance test green; `just build && just test && just lint && just docs-check` clean.
 2. Docs + CHANGELOG updated (Task 8); `pickle board audit` still 0 errors.
 3. Write a **summary**: files added/touched, the htmx version + goldmark version vendored/pinned,
-   the route table as shipped, binary-size delta, and anything deferred (e.g. `--open`, search,
-   filtering, git-history mining).
+   the route table as shipped, the **measured** binary-size delta (`ls -l pickle` before/after —
+   amendment F9), whether `audit.auditWIP` was moved onto `board.WIPCounts` or deliberately left
+   alone (amendment F6), and anything deferred (e.g. `--open`, search, filtering, git-history
+   mining).
 4. Suggest a Conventional Commit message, ticket id in brackets at the end of the subject:
 
    ```
@@ -366,3 +429,8 @@ change (decision 9). `just docs-check` green.
 - 2026-07-27 — created (TO DO). source: chat — request for a `serve` command rendering the
   board and its changes, with a minimal stack modelled on `rick/apps/standards`
 - 2026-07-27 — TO DO → READY: plan complete; decisions confirmed (goldmark, vendored htmx, 127.0.0.1:8745, read-only)
+- 2026-07-27 — applicability audit (fresh sub-agent) before pickup: 15 findings, none blocking.
+  F1-F9 amended into the plan inline (history-regex index hazard, audit reads BOARD.md so
+  fixtures need one, `/static/` route + root-path 404, one `sortRows` call site, shared
+  `board.WIPCounts`, de-flaked acceptance smoke, measured size delta); F10-F15 noted and closed
+  (goldmark pinned to v1.8.2, snowball checks at WARN, warning must say "no authentication")
