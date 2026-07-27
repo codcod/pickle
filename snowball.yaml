@@ -1,0 +1,10 @@
+# snowball config — renders the user manual to PDF/EPUB (T-048).
+# Failure levels default to pdf: WARN, epub: ERROR, check: WARN.
+books:
+  - src: docs/user-manual.adoc
+    out: pickle-user-manual
+theme: docs/pdf-theme/pickle-theme.yml
+attributes: docs/attributes.adoc   # informational — the master includes it itself
+formats: [pdf, epub]
+revision:
+  from: git-describe

@@ -32,6 +32,8 @@ and summarises them; where the two disagree, the skill wins.
 docs/
 ├── README.adoc            ← this index
 ├── attributes.adoc        ← shared attributes (product name, URLs)
+├── pdf-theme/
+│   └── pickle-theme.yml   ← asciidoctor-pdf theme (PDF build only)
 ├── user-manual.adoc       ← book master document
 └── user-manual/
     ├── quickstart.adoc
@@ -48,12 +50,35 @@ docs/
 
 == Validating
 
-There is no PDF/EPUB build — the sources are the deliverable. A validation pass
-renders the book to `/dev/null` and fails on any warning (broken includes,
-dangling cross-references):
+A validation pass renders the book and discards the output, failing on any
+warning (broken includes, dangling cross-references):
 
 [source,sh]
 ----
-bundle install     # installs Asciidoctor (Gemfile at the repo root)
-just docs-check    # bundle exec asciidoctor --failure-level=WARN -o /dev/null docs/user-manual.adoc
+just docs-check    # snowball check — render-and-discard, fails on warnings
 ----
+
+== Building
+
+The manual renders to PDF and EPUB with
+https://github.com/codcod/snowball[snowball] (configured by `snowball.yaml` at
+the repo root). One-time toolchain setup:
+
+[source,sh]
+----
+brew install codcod/taps/snowball   # the snowball binary
+snowball setup                      # installs its pinned asciidoctor gems
+snowball doctor                     # verify: "toolchain ok"
+----
+
+Then:
+
+[source,sh]
+----
+just docs-build    # snowball build -o dist/docs
+----
+
+renders `dist/docs/pickle-user-manual.pdf` and
+`dist/docs/pickle-user-manual.epub`, stamped with `git describe` as the
+revision. Artifacts are never committed — `dist/` is gitignored and
+`just clean` removes it.

@@ -19,9 +19,13 @@ lint:
     go vet ./...
     @test -z "$(gofmt -l .)" || (echo "gofmt needed:"; gofmt -l .; exit 1)
 
-# Validate the AsciiDoc manual (broken includes/xrefs fail the check)
+# Validate the AsciiDoc manual via snowball (broken includes/xrefs fail the check)
 docs-check:
-    bundle exec asciidoctor --failure-level=WARN -o /dev/null docs/user-manual.adoc
+    snowball check
+
+# Render the user manual to PDF + EPUB into dist/docs/ (never committed)
+docs-build:
+    snowball build -o dist/docs
 
 # Print the version the binary reports
 show-version: build

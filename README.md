@@ -56,4 +56,6 @@ The user manual (AsciiDoc) lives in [`docs/`](docs/README.adoc) — the book is
 - **Concepts** — how the flow works: tickets, lifecycle, the board, multi-project.
 - **CLI Reference** — every command, plus the `pickle.toml` reference.
 
-Validate the sources with `just docs-check` (after `bundle install`).
+Validate the sources with `just docs-check`; render PDF/EPUB with `just docs-build`
+(both use [snowball](https://github.com/codcod/snowball) — see
+[docs/README.adoc](docs/README.adoc) for the one-time toolchain setup).

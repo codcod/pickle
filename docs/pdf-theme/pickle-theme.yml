@@ -1,0 +1,14 @@
+# pickle PDF theme (asciidoctor-pdf). Origin: ai-sdlc's ai-sdlc-theme.yml (T-048).
+extends: default
+
+base:
+  font-size: 10.5
+
+heading:
+  font-style: bold
+
+code:
+  font-size: 9
+
+table:
+  font-size: 9.5
