@@ -51,6 +51,8 @@ Last updated: 2026-07-27
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |
+| T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |
+| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
 | T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |

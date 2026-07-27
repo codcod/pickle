@@ -105,3 +105,28 @@ shell-heredoc file authoring comfortable — that optimises a workflow the tools
 **Measured evidence kept for T-049's refinement.** Longest merge History line in `tickets/` today:
 171 characters. DONE `merged` cells for T-001, T-002, T-008, T-009, T-011 and T-044 already run
 90–125 characters. The defect is this repo's trend line, not migration exotica.
+
+## Field-finding triage (2026-07-27, second wave) — first second-child onboarding
+
+Findings from operating **pickle 0.1.0** while adding a second child-project (`snowball`
+alongside `rick`) to the external `unity` workspace. Filed as **T-051** (`project add` leaves
+five workspace-side consequences unstated) and **T-052** (the post-upgrade audit cannot tell a
+registry-changed board from a hand-edited one). Both carry symptom + repro + constraint and
+deliberately **no chosen implementation** — the lesson of the first wave, above.
+
+**Process note.** These two were first written into a scratch `tickets/IDEAS.md`, which has
+since been deleted: an idea file next to a ticket flow is a second backlog with no gate, and
+the flow's own rule is that work enters as a ticket. Rejected ideas still need a home, and
+that home is this file — hence the entry below. If a pre-ticket holding pen ever earns its
+keep, it should be argued for as a pickle feature, not improvised as a file.
+
+**Audited and NOT filed — "the shipped `pickle-guardrails.ts` has the same unanchored
+child-path bug."** The bug is real but **workspace-local**. In `unity`'s own
+`unity-guardrails.ts` the never-stage pattern was `(^|/)<child>(/|$)`, which also matched
+`development/<child>/…` — the per-child development record, ordinary bookkeeping — so no pi
+session rooted there could stage it; latent since `rick` was the only child, and fixed there by
+anchoring at the pathspec start plus `../` climbs. Pickle's shipped guard cannot have this bug:
+`agents/pi/extensions/pickle-guardrails.ts` has **no child-directory deny-list at all**, only
+the explicit-pathspec rule (`-A` / `.` / `commit -a`) and the publish gate. The deny-list is a
+`unity` invention. The anchoring lesson is carried in T-051's Description in case that ticket
+grows such a guard.
