@@ -6,7 +6,11 @@ a separate tap repo (`github.com/codcod/homebrew-tap` → `brew install codcod/t
 
 ## Cutting a release
 
-Everything is tag-driven — the [`release`](.github/workflows/release.yml) workflow runs
+First, update [`CHANGELOG.md`](CHANGELOG.md): retitle the `[Unreleased]` section to
+`[X.Y.Z] - YYYY-MM-DD`, add a fresh empty `[Unreleased]` above it, update the link
+references at the bottom, and commit — the tag should include the changelog.
+
+Then everything is tag-driven — the [`release`](.github/workflows/release.yml) workflow runs
 goreleaser on any `v*` tag:
 
 ```sh
