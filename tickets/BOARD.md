@@ -46,6 +46,7 @@ Last updated: 2026-07-27
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
+| T-053 | pickle serve — local web dashboard to visualize the board and its changes | medium-high | high | L | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
