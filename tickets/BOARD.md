@@ -38,6 +38,7 @@ Last updated: 2026-07-27
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | medium | low | S | [] |
 
 ## TO DO (impact order, per child)
 
@@ -50,7 +51,6 @@ Last updated: 2026-07-27
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |
-| T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | medium | low | S | [] |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
 | T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |
