@@ -1,0 +1,154 @@
+[#project-structure]
+= Project Structure
+
+What an instrumented project looks like on disk, and what belongs in git. The
+authoritative list of what `install` writes is <<cmd-install>>; this page is
+the map around it.
+
+== The workspace after install
+
+The *overarching project* is the directory holding `pickle.toml` — one board,
+one ticket-id namespace. Under it sit the *child-projects*, the actual build
+targets (see <<multi-project>>):
+
+----
+my-app/                           ← overarching project — pickle.toml lives here
+├── pickle.toml                   ← child registry + pinned payload version
+├── AGENTS.md                     ← agent instructions; holds the pickle marker block
+├── CLAUDE.md                     ← --agent claude: marker block, or symlink to AGENTS.md
+├── opencode.jsonc                ← --agent opencode: reviewer subagent + bash guardrails
+├── .agents/
+│   └── skills/
+│       └── ticket-flow/          ← the skill payload — SKILL.md + resources/
+├── .claude/
+│   └── skills/
+│       └── ticket-flow           ← --agent claude: symlink to the payload above
+├── .pi/
+│   └── extensions/               ← --agent pi: pickle-guardrails.ts, docs-readability.ts
+├── tickets/
+│   ├── README.md                 ← pointer to the skill
+│   ├── BOARD.md                  ← the generated index
+│   ├── NOTES.md                  ← hand-written planning prose
+│   ├── 1-to-do/                  ← the seven status dirs, flat, each with a .gitkeep
+│   ├── …
+│   └── 7-dropped/
+├── frontend/                     ← a registered child-project — its own git repo
+└── backend/                      ← another
+----
+
+Only `pickle.toml`, `AGENTS.md`, `.agents/skills/ticket-flow/` and `tickets/`
+are unconditional; the rest depend on `--agent` and on how many children you
+register.
+
+== Three kinds of file
+
+pickle-owned::
+  `.agents/skills/ticket-flow/`, the `.claude` symlink, the `.pi` scaffolds,
+  and the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region inside
+  `AGENTS.md`/`CLAUDE.md`. `pickle upgrade` replaces these wholesale — keep
+  hand-written notes *outside* them (above the markers, in `AGENTS.md`'s case).
+
+tool-managed, still yours::
+  `pickle.toml` — hand-edits survive every load, though `project add|remove`
+  re-render it and drop comments (see <<configuration>>). `opencode.jsonc` is
+  written once and is yours from then on.
+
+instance data::
+  everything under `tickets/`. No command ever rewrites a ticket body;
+  `BOARD.md` is the one generated file among them, and `NOTES.md` is never
+  touched.
+
+== What to commit
+
+*Everything `pickle install` writes is meant to be tracked.* It produces no
+build artifacts, so there is nothing to add to `.gitignore`.
+
+[cols="2,3"]
+|===
+| Path | Why it is tracked
+
+| `pickle.toml`
+| The child registry, the commit policy, and the payload version this project
+  is pinned to.
+
+| `AGENTS.md` (and `CLAUDE.md`)
+| The instructions every agent reads. The marker block is regenerated, but it
+  is regenerated *into a file you own* — commit it so a fresh clone briefs the
+  agent identically.
+
+| `.agents/skills/ticket-flow/`
+| Real files, not a fetched dependency. Committing them pins the exact rules
+  in force, and turns `pickle upgrade` into a reviewable diff.
+
+| `.claude/skills/ticket-flow`
+| Git tracks symlinks; without it the Claude wiring is missing on a clone.
+
+| `.pi/extensions/*.ts`, `opencode.jsonc`
+| The per-agent guardrails — the publish gate and explicit-pathspec staging
+  only bind if they are present.
+
+| `tickets/**`
+| The record of why every change was made: descriptions, plans, review
+  findings, History.
+
+| `tickets/*/.gitkeep`
+| Git does not track empty directories; these keep the seven statuses present
+  on a fresh clone.
+
+| `tickets/BOARD.md`
+| Generated — and committed anyway, see below.
+|===
+
+=== The board: generated, and still committed
+
+It is the first thing anyone opens, so it has to exist in a clone. And
+committing it is what makes `pickle board sync --dry-run` a useful CI check:
+it exits non-zero when the tracked board differs from a fresh render, catching
+a ticket move whose board regeneration never got staged.
+
+Never hand-resolve a `BOARD.md` merge conflict. Take either side and
+regenerate:
+
+[source,sh]
+----
+git checkout --ours tickets/BOARD.md && pickle board sync
+----
+
+== The root child — one repo in both roles
+
+`pickle install` registers the first child itself: `--project` defaults to the
+root directory's name, `--path` defaults to `.`. Naming both is explicit about
+it:
+
+[source,sh]
+----
+pickle install --project backend --path .
+----
+
+For a single-repo project this is the normal shape, and it is the *degenerate
+case of the multi-project model*, not a separate mode — nothing in the tool
+branches on `path = "."`. The child path simply resolves to the root, so the
+overarching project and its sole child are the same directory and the same git
+repository.
+
+What that changes in practice:
+
+* `pickle doctor` checks that every registered child is a git repo, so a child
+  at `.` requires a `.git` at the root — install into the repository itself,
+  not into a parent directory holding it.
+* One history carries both roles. `tickets/`, `BOARD.md` and `pickle.toml` sit
+  in the same repo as the `feat/T-NNN-<slug>` branches cut from it, so a
+  feature branch can hold the code change *and* the ticket's move to
+  `4-in-review/`.
+* Commit hygiene therefore matters more, not less: stage with explicit
+  pathspecs (`git add <paths>`, never `git add -A`) so a code commit does not
+  sweep up an unrelated board regeneration, and keep ticket/board bookkeeping
+  in its own commit.
+* The publish gate still applies. With `child_publish_gated` left at its
+  default, the agent commits locally but does not push without your
+  approval — and because there is only one repo, that gate covers the
+  bookkeeping commits too.
+
+Adding a second child later needs no rework: `pickle project add <name>
+<path>` registers it, the root child stays exactly as it is, and the board
+grows a sub-group.

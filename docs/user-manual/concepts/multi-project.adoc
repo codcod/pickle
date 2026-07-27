@@ -19,7 +19,8 @@ of the skill's rules.
   (recorded in `pickle.toml`).
 
 A single-child project is just the degenerate case — `pickle install` registers
-the project itself (at `.`) as the first child.
+the project itself (at `.`) as the first child; what that means on disk and for
+git is in <<project-structure>>.
 
 == What a child carries
 

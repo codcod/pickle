@@ -17,7 +17,8 @@ link:user-manual.adoc[User Manual]::
   link:user-manual/concepts/the-flow.adoc[the flow],
   link:user-manual/concepts/tickets.adoc[tickets],
   link:user-manual/concepts/lifecycle.adoc[lifecycle],
-  link:user-manual/concepts/multi-project.adoc[multi-project].
+  link:user-manual/concepts/multi-project.adoc[multi-project],
+  link:user-manual/concepts/project-structure.adoc[project structure].
 * *CLI Reference* — link:user-manual/cli-reference.adoc[every command] and the
   link:user-manual/configuration.adoc[`pickle.toml` reference].
 --
@@ -43,7 +44,8 @@ docs/
     │   ├── the-flow.adoc
     │   ├── tickets.adoc
     │   ├── lifecycle.adoc
-    │   └── multi-project.adoc
+    │   ├── multi-project.adoc
+    │   └── project-structure.adoc
     ├── cli-reference.adoc
     └── configuration.adoc
 ----
