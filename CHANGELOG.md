@@ -38,6 +38,24 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Changed
 
+- **The `pickle serve` dashboard follows the system light/dark preference**
+  (T-054). It honours `prefers-color-scheme` with a light palette authored for a
+  light ground — not an inversion — and every text colour is verified at WCAG AA
+  (≥ 4.5:1) in *both* palettes. **The dark palette is unchanged**, so a dark-mode
+  reader sees exactly what the entry above describes.
+
+  Note which way the default falls: `no-preference` was removed from
+  `prefers-color-scheme` in Media Queries L5, so a browser with no expressed
+  preference reports *light* and gets the light palette. Dark is the fallback only
+  where the query is unsupported.
+
+  There is deliberately **no toggle**: a read-only, stateless server has nowhere
+  to persist a choice, so the OS preference is the only input.
+
+  The page also declares `color-scheme`, so the browser paints *its own* surfaces
+  — scrollbars on wide code blocks and tables, the audit banner's disclosure
+  marker — in the matching scheme rather than always in light chrome.
+
 - **Board cells are capped at 120 runes** with a trailing `…` (T-049). One
   over-long value — typically a paragraph-long `merged to …` History line on a
   ticket imported from another flow — could previously render a single table cell

@@ -1,6 +1,7 @@
 /* pickle serve — hand-written, no build step. Small enough to read in one sitting. */
 
 :root {
+  color-scheme: dark;
   --bg: #14161a;
   --panel: #1b1e24;
   --panel-2: #21252c;
@@ -11,6 +12,31 @@
   --warn: #e0b166;
   --error: #e0736b;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* The same variables, re-authored for a light ground (T-054). Elevation inverts:
+   in dark, panels sit lighter than the page; in light, the page carries the tint
+   and panels go white. The three semantic colours are re-picked rather than
+   reused — the dark ones sit near 2:1 on white.
+
+   color-scheme is declared per block, not as `dark light` on :root, so the
+   browser paints its own chrome (scrollbars, the <details> marker) under exactly
+   the condition that selects the palette. Note that a UA with no expressed
+   preference reports `light`: `no-preference` was dropped from Media Queries L5,
+   so dark is what you get when the query is unsupported, not when it is silent. */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --panel-2: #eceef1;
+    --line: #d7dae0;
+    --fg: #1a1d23;
+    --muted: #5f6570;
+    --accent: #1f7a55;
+    --warn: #8a5700;
+    --error: #b3261e;
+  }
 }
 
 * { box-sizing: border-box; }
