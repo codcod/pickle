@@ -323,4 +323,6 @@ these two locations stating the old ID model.
 - 2026-07-28 — TO DO → READY: plan complete: per-child counters (D1), migration split to T-060 (D5)
 - 2026-07-28 — READY → IN DEVELOPMENT: picked up; applicability gate clean after inline amendments
 - 2026-07-28 — IN DEVELOPMENT → IN REVIEW: acceptance green: build/test/lint/docs-check pass, smoke confirms per-child ids + audit guard
+- 2026-07-28 — IN REVIEW → DONE: review PASS; no blocking findings; 2 non-blocking → fixed inline (stale ID-model docs: cli-reference.adoc, SKILL.md)
+- 2026-07-28 — merged to main (0f3049f)
 - 2026-07-28 — IN REVIEW → DONE: approved: acceptance green, 2 non-blocking findings fixed inline (stale ID-model docs)
