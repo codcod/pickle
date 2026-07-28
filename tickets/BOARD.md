@@ -38,6 +38,7 @@ Last updated: 2026-07-28
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-059 | family: group tickets under an umbrella ticket id for curated pickup order | medium | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
@@ -47,7 +48,6 @@ Last updated: 2026-07-28
 |---|---|---|---|---|---|
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | high | high | XL | [] |
-| T-059 | family: group tickets under an umbrella ticket id for curated pickup order | medium-high | medium | M | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
