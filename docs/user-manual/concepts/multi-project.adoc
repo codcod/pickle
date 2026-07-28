@@ -9,7 +9,10 @@ of the skill's rules.
 == The locked model
 
 * *one shared board*, sub-grouped by child-project;
-* *one global ticket-id namespace* (`T-NNN`, `max()+1` across all children);
+* *per-child ticket-id prefixes* — each child's `ticket_prefix` (default `T`)
+  namespaces and counts its ids independently (`RICK-137`, `SB-042`); children
+  that leave it unset share the one legacy global `T` counter. Numbers are unique
+  only within a prefix, so an id is always written in full across children;
 * each ticket names its target child in a *`project:` frontmatter field*;
 * each child is *its own git repo*; `feat/T-NNN-<slug>` branches are cut
   inside it;
@@ -26,9 +29,10 @@ git is in <<project-structure>>.
 
 Each `\[[project]]` entry in `pickle.toml` records the child's name and path,
 its build/test/lint (and optional docs) commands, its branch prefix (default
-`feat/`), its WIP limits, and an optional per-child review addendum — see
-<<configuration>>. The agent uses the child's own commands when implementing
-and reviewing a ticket that targets it.
+`feat/`), its ticket-id prefix (`ticket_prefix`, default `T`), its WIP limits,
+and an optional per-child review addendum — see <<configuration>>. The agent
+uses the child's own commands when implementing and reviewing a ticket that
+targets it.
 
 == Crossing children
 

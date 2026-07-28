@@ -215,6 +215,33 @@ func TestTicketNewSpawnedBy(t *testing.T) {
 	}
 }
 
+// TestTicketNewUsesChildPrefix pins T-058 end to end: a child registered with a
+// ticket_prefix gets ids under that prefix, numbered independently of the default
+// "T" child, and the resulting tree audits clean.
+func TestTicketNewUsesChildPrefix(t *testing.T) {
+	root := newProject(t) // installs child "demo" at "." with the default "T" prefix
+	if err := os.Mkdir(filepath.Join(root, "lib"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := Run(nil, "test", []string{"project", "add", "lib", "lib", "--ticket-prefix", "PK"}); got != exitOK {
+		t.Fatalf("project add = %d, want %d", got, exitOK)
+	}
+	// Seed a T- ticket on demo so the two prefixes are proven to count separately.
+	if got := Run(nil, "test", []string{"ticket", "new", "demo feature", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new (demo) = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "new", "first lib feature", "--project", "lib"}); got != exitOK {
+		t.Fatalf("ticket new (lib) = %d", got)
+	}
+	body := readTicket(t, root, "PK-001")
+	if !strings.Contains(body, "id: PK-001") || !strings.Contains(body, "project: lib") {
+		t.Errorf("expected PK-001 targeting lib:\n%s", body)
+	}
+	if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+		t.Fatalf("board audit = %d, want clean (%d)", got, exitOK)
+	}
+}
+
 // TestTicketNewSpawnedByUnknownID pins decision 5: ids are passed through at
 // creation (like depends-on) and it is board audit that rejects them.
 func TestTicketNewSpawnedByUnknownID(t *testing.T) {

@@ -22,10 +22,17 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 )
+
+// ticketPrefixRE is the legal shape for a per-child ticket_prefix: an uppercase
+// letter followed by up to seven more uppercase letters/digits (1–8 chars). It
+// deliberately excludes the '-' that separates prefix from number in an id, so
+// SplitID's last-'-' rule is unambiguous.
+var ticketPrefixRE = regexp.MustCompile(`^[A-Z][A-Z0-9]{0,7}$`)
 
 // FileName is the fixed config filename, located at the overarching project root.
 const FileName = "pickle.toml"
@@ -33,6 +40,7 @@ const FileName = "pickle.toml"
 // Per-child defaults applied when a field is omitted.
 const (
 	DefaultBranchPrefix     = "feat/"
+	DefaultTicketPrefix     = "T"
 	DefaultWIPInDevelopment = 1
 	DefaultWIPInReview      = 1
 )
@@ -70,10 +78,23 @@ type Project struct {
 	Test             string `toml:"test,omitempty"`
 	Lint             string `toml:"lint,omitempty"`
 	Docs             string `toml:"docs,omitempty"`
+	TicketPrefix     string `toml:"ticket_prefix"`
 	BranchPrefix     string `toml:"branch_prefix"`
 	WIPInDevelopment int    `toml:"wip_in_development"`
 	WIPInReview      int    `toml:"wip_in_review"`
 	ReviewAddendum   string `toml:"review_addendum,omitempty"`
+}
+
+// Prefix is the effective ticket-id prefix for this child: the configured
+// ticket_prefix, or DefaultTicketPrefix ("T") when unset. Callers use this
+// rather than reading TicketPrefix directly so the fallback lives in one place
+// (a config loaded through Load already has the default applied, but Prefix is
+// safe on a zero-valued Project too).
+func (p *Project) Prefix() string {
+	if p.TicketPrefix == "" {
+		return DefaultTicketPrefix
+	}
+	return p.TicketPrefix
 }
 
 // Find returns the path to the nearest pickle.toml at or above startDir.
@@ -139,6 +160,9 @@ func (c *Config) applyDefaults(md toml.MetaData) {
 		if p.BranchPrefix == "" {
 			p.BranchPrefix = DefaultBranchPrefix
 		}
+		if p.TicketPrefix == "" {
+			p.TicketPrefix = DefaultTicketPrefix
+		}
 		if p.WIPInDevelopment == 0 {
 			p.WIPInDevelopment = DefaultWIPInDevelopment
 		}
@@ -154,6 +178,11 @@ func (c *Config) Validate() error {
 		return errors.New("pickle.toml: at least one [[project]] (child-project) is required")
 	}
 	seen := make(map[string]bool, len(c.Projects))
+	// seenPrefix guards against two children sharing a non-default prefix (their
+	// ids would collide). The default "T" is exempt: children that omit
+	// ticket_prefix all share the one legacy global "T" namespace, which is legal
+	// and must stay legal so pre-prefix multi-child workspaces still load.
+	seenPrefix := make(map[string]bool, len(c.Projects))
 	root := c.Root()
 	for i := range c.Projects {
 		p := &c.Projects[i]
@@ -164,8 +193,16 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("pickle.toml: duplicate project name %q", p.Name)
 		case strings.TrimSpace(p.Path) == "":
 			return fmt.Errorf("pickle.toml: project %q has an empty path", p.Name)
+		case !ticketPrefixRE.MatchString(p.Prefix()):
+			return fmt.Errorf("pickle.toml: project %q ticket_prefix %q is illegal (want %s)", p.Name, p.Prefix(), ticketPrefixRE)
 		case p.WIPInDevelopment < 1 || p.WIPInReview < 1:
 			return fmt.Errorf("pickle.toml: project %q WIP limits must be >= 1", p.Name)
+		}
+		if pfx := p.Prefix(); pfx != DefaultTicketPrefix {
+			if seenPrefix[pfx] {
+				return fmt.Errorf("pickle.toml: duplicate ticket_prefix %q (each child needs a distinct prefix)", pfx)
+			}
+			seenPrefix[pfx] = true
 		}
 		seen[p.Name] = true
 		if root != "" {
@@ -198,6 +235,9 @@ func (c *Config) AddProject(p Project) error {
 	}
 	if p.BranchPrefix == "" {
 		p.BranchPrefix = DefaultBranchPrefix
+	}
+	if p.TicketPrefix == "" {
+		p.TicketPrefix = DefaultTicketPrefix
 	}
 	if p.WIPInDevelopment == 0 {
 		p.WIPInDevelopment = DefaultWIPInDevelopment
@@ -247,6 +287,7 @@ func (c *Config) Render() string {
 				fmt.Fprintf(&b, "%s = %q\n", kv.k, kv.v)
 			}
 		}
+		fmt.Fprintf(&b, "ticket_prefix = %q\n", p.Prefix())
 		fmt.Fprintf(&b, "branch_prefix = %q\n", p.BranchPrefix)
 		fmt.Fprintf(&b, "wip_in_development = %d\n", p.WIPInDevelopment)
 		fmt.Fprintf(&b, "wip_in_review = %d\n", p.WIPInReview)

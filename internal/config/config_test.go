@@ -48,6 +48,9 @@ func TestLoadValidAndDefaults(t *testing.T) {
 	if p.BranchPrefix != DefaultBranchPrefix {
 		t.Errorf("branch_prefix default = %q", p.BranchPrefix)
 	}
+	if p.TicketPrefix != DefaultTicketPrefix || p.Prefix() != DefaultTicketPrefix {
+		t.Errorf("ticket_prefix default = %q (Prefix()=%q), want %q", p.TicketPrefix, p.Prefix(), DefaultTicketPrefix)
+	}
 	if p.WIPInDevelopment != 1 || p.WIPInReview != 1 {
 		t.Errorf("WIP defaults = %d/%d", p.WIPInDevelopment, p.WIPInReview)
 	}
@@ -90,6 +93,34 @@ name = "a"
 path = "."
 wip_in_review = -1
 `,
+		"bad prefix shape (lowercase)": `payload_version = "1"
+[[project]]
+name = "a"
+path = "."
+ticket_prefix = "rick"
+`,
+		"bad prefix shape (too long)": `payload_version = "1"
+[[project]]
+name = "a"
+path = "."
+ticket_prefix = "TOOLONGXX"
+`,
+		"bad prefix shape (leading digit)": `payload_version = "1"
+[[project]]
+name = "a"
+path = "."
+ticket_prefix = "1X"
+`,
+		"duplicate explicit prefix": `payload_version = "1"
+[[project]]
+name = "a"
+path = "."
+ticket_prefix = "RICK"
+[[project]]
+name = "b"
+path = "."
+ticket_prefix = "RICK"
+`,
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -99,6 +130,39 @@ wip_in_review = -1
 				t.Fatalf("expected error for %q, got nil", name)
 			}
 		})
+	}
+}
+
+func TestTicketPrefixBackCompat(t *testing.T) {
+	// Two children that both omit ticket_prefix both fall back to "T" and share
+	// the one legacy global namespace — this must stay legal so pre-prefix
+	// multi-child workspaces still load (T-058 D2/D4).
+	body := `payload_version = "1"
+[[project]]
+name = "a"
+path = "."
+[[project]]
+name = "b"
+path = "."
+`
+	dir := t.TempDir()
+	path := writeCfg(t, dir, body)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("two default-T children must be legal, got: %v", err)
+	}
+	for _, p := range c.Projects {
+		if p.Prefix() != DefaultTicketPrefix {
+			t.Errorf("project %q Prefix() = %q, want %q", p.Name, p.Prefix(), DefaultTicketPrefix)
+		}
+	}
+	// A distinct explicit prefix is likewise fine and round-trips through Render.
+	c.Projects[1].TicketPrefix = "SB"
+	if err := c.Validate(); err != nil {
+		t.Fatalf("distinct prefixes must be legal: %v", err)
+	}
+	if !strings.Contains(c.Render(), `ticket_prefix = "SB"`) {
+		t.Errorf("Render did not emit the explicit prefix:\n%s", c.Render())
 	}
 }
 

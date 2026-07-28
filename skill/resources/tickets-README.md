@@ -105,14 +105,21 @@ All other transitions are forward-only, as diagrammed.
 
 ## 3. IDs, priority, dependencies, and lineage
 
-- **ID (one global namespace).** `T-NNN`, monotonically increasing, **never reused**,
-  **shared across all child-projects**. A new ticket's number is `max(existing across all
-  status dirs, including 6-done/ and 7-dropped/, regardless of child) + 1`. The id is stable
-  for the ticket's life; only the slug in the filename may be tidied. The child a ticket
-  belongs to is orthogonal to its id (a ticket may even be re-homed to another child without
-  renumbering). **Tickets are never deleted:** `6-done/` and `7-dropped/` are permanent
-  archives — pruning them would both lose the record and break the `max()+1` id rule.
-- **Filename.** `T-NNN-<slug>.md`. The slug is derived from the title, so a **title is a single
+- **ID (`<PREFIX>-NNN`, per-child counters).** An id is a child's **ticket_prefix** followed by
+  a zero-padded number, monotonically increasing **within that prefix** and **never reused**. A
+  new ticket's number is `max(existing ids sharing that prefix across all status dirs, including
+  6-done/ and 7-dropped/) + 1`. `ticket_prefix` is configured per child in `pickle.toml` and
+  defaults to **`T`**, so a single-child project (or any child that leaves it unset) just uses
+  `T-NNN`; a multi-child workspace can give each child a distinct prefix (`RICK-137`, `SB-042`).
+  Children that all leave the prefix unset share the one `T` counter — the legacy single global
+  namespace. **Numbers are only unique within a prefix**, so across children an id must always be
+  written in full (`RICK-137`, never "137"). `pickle board audit` checks a ticket's id prefix
+  matches its `project:`'s configured prefix. The id is stable for the ticket's life; only the
+  slug in the filename may be tidied. Because a child's prefix is part of its ids, **re-homing a
+  ticket to a differently-prefixed child is a renumber, not a free relabel** (`pickle ticket
+  renumber`). **Tickets are never deleted:** `6-done/` and `7-dropped/` are permanent archives —
+  pruning them would both lose the record and break the `max()+1` rule.
+- **Filename.** `<PREFIX>-NNN-<slug>.md`. The slug is derived from the title, so a **title is a single
   line of text**: `pickle ticket new` rejects an empty or multi-line title outright rather than
   rewriting it, because the title becomes the filename, the `# T-NNN — …` heading and a `BOARD.md`
   cell at once.

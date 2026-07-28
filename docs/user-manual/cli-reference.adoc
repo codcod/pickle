@@ -140,8 +140,16 @@ Manages the registry of connected child-projects in `pickle.toml` (see
 
 * `add` registers another child — its name becomes a legal `project:`
   frontmatter value, and per-child keys (commands, branch prefix, WIP limits)
-  can then be set in `pickle.toml`.
-* `list` prints the registered children.
+  can then be set in `pickle.toml`. Pass `--ticket-prefix <PREFIX>` to give the
+  child its own ticket-id prefix (an uppercase letter plus up to seven more
+  uppercase letters/digits, e.g. `RICK`); its tickets are then numbered
+  independently as `RICK-001`, `RICK-002`, …. The prefix defaults to `T`, and
+  any number of children may share that default (the one legacy global `T`
+  namespace); two children may not share the same _explicit_ prefix. `board
+  audit` checks that each ticket's id prefix matches its child's configured
+  prefix — so changing a populated child's prefix reports every not-yet-renamed
+  ticket until you renumber them.
+* `list` prints the registered children (including each child's `PREFIX`).
 * `remove` unregisters a child — *refused while the child has live tickets*,
   so a board can never reference an unknown target.
 
@@ -254,8 +262,10 @@ the tree it points at is never deleted.
 pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"]
 ----
 
-Allocates the next `T-NNN` (one global namespace = `max(existing) + 1`),
-writes a clean, audit-passing scaffold to `tickets/1-to-do/T-NNN-<slug>.md`
+Allocates the next id for the target child's prefix — `<PREFIX>-NNN`, where
+`<PREFIX>` is the child's `ticket_prefix` (default `T`) and `NNN` is
+`max(existing ids sharing that prefix) + 1` — writes a clean, audit-passing
+scaffold to `tickets/1-to-do/<PREFIX>-NNN-<slug>.md`
 (filled frontmatter + the standard section skeleton), and regenerates
 `BOARD.md` (the row lands under the child's `### <child>` sub-group in the
 TO DO section, in impact order). `--project` must name a registered child;

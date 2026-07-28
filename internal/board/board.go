@@ -48,7 +48,7 @@ type Row struct {
 	ID     string // "T-001"
 }
 
-var rowRE = regexp.MustCompile(`^\|\s*(T-\d+)\s*\|`)
+var rowRE = regexp.MustCompile(`^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|`)
 
 // Parse reads BOARD.md and returns every ticket row with its section + sub-group.
 // Rows are attributed to the current `## <status>` heading (longest status-name

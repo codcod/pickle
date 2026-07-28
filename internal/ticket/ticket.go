@@ -91,14 +91,17 @@ func (t *Ticket) Base() string { return strings.TrimSuffix(filepath.Base(t.Path)
 func (t *Ticket) Project() string { return t.Front["project"] }
 
 var (
-	filenameRE = regexp.MustCompile(`^(T-\d+)-[A-Za-z0-9._-]+\.md$`)
-	// idRE is the canonical ticket-id shape, the same `T-\d+` filenameRE anchors.
-	// Exported through ValidID so that creation time (internal/cli) and the audit
-	// will share one definition rather than growing a second: internal/audit does
-	// not validate id shape at all today, and T-027 is to add that using ValidID
-	// instead of its own regex. The shape is still spelled out separately in
-	// filenameRE above and in board.rowRE; unifying those is T-027's call.
-	idRE       = regexp.MustCompile(`^T-\d+$`)
+	filenameRE = regexp.MustCompile(`^([A-Z][A-Z0-9]*-\d+)-[A-Za-z0-9._-]+\.md$`)
+	// idRE is the canonical ticket-id shape. The prefix is a per-child
+	// ticket_prefix (T-058), so the shape is <PREFIX>-NNN where PREFIX is an
+	// uppercase letter followed by uppercase letters/digits; "T-" is just the
+	// default prefix, not baked into the shape. Exported through ValidID so
+	// creation time (internal/cli) and the audit share one definition rather than
+	// growing a second. The shape is still spelled out separately in filenameRE
+	// above and in board.rowRE; unifying those is T-027's call. ValidID stays a
+	// pure *shape* check — that a ticket's prefix matches its project's configured
+	// prefix is a config-aware invariant, checked in internal/audit, not here.
+	idRE       = regexp.MustCompile(`^[A-Z][A-Z0-9]*-\d+$`)
 	fmKeyRE    = regexp.MustCompile(`^([A-Za-z-]+):\s*(.*)$`)
 	inlineHash = regexp.MustCompile(`\s+#.*$`)
 	// historyRE matches one dated History bullet, capturing only the body as m[1].
@@ -236,7 +239,7 @@ func ParseIDList(raw string) ([]string, error) {
 	seen := map[string]bool{}
 	for _, tok := range ParseDepends(raw) {
 		if !ValidID(tok) {
-			return nil, fmt.Errorf("%q is not a ticket id (expected T-NNN)", tok)
+			return nil, fmt.Errorf("%q is not a ticket id (expected <PREFIX>-NNN, e.g. T-001)", tok)
 		}
 		if seen[tok] {
 			continue
@@ -386,10 +389,29 @@ func ValidGrade(kind, v string) bool {
 	return false
 }
 
-// NextNum returns the next free ticket number: max(numeric part of every T-NNN
-// filename across all status dirs) + 1 (one global namespace). Scans filenames
-// directly so it is robust to files that fail frontmatter parsing.
-func NextNum(root string) int {
+// SplitID splits a ticket id like "RICK-058" into its prefix ("RICK") and number
+// (58). It splits on the last '-', so a slug's hyphens never confuse it (ids are
+// only ever <PREFIX>-<NNN>, but callers pass the id, not the filename). ok is
+// false when there is no '-' or the tail is not an integer.
+func SplitID(id string) (prefix string, num int, ok bool) {
+	i := strings.LastIndex(id, "-")
+	if i < 0 {
+		return "", 0, false
+	}
+	n, err := strconv.Atoi(id[i+1:])
+	if err != nil {
+		return "", 0, false
+	}
+	return id[:i], n, true
+}
+
+// NextNum returns the next free ticket number for one prefix: max(number of
+// every <prefix>-NNN filename across all status dirs) + 1. IDs are per-child
+// counters (T-058), so the prefix scopes the sequence — two children with
+// distinct prefixes number independently, and children sharing the default "T"
+// share one counter (the legacy global namespace). Scans filenames directly so
+// it is robust to files that fail frontmatter parsing.
+func NextNum(root, prefix string) int {
 	max := 0
 	for _, s := range Statuses {
 		entries, err := os.ReadDir(filepath.Join(root, "tickets", s.Dir))
@@ -398,7 +420,7 @@ func NextNum(root string) int {
 		}
 		for _, e := range entries {
 			if m := filenameRE.FindStringSubmatch(e.Name()); m != nil {
-				if n, err := strconv.Atoi(strings.TrimPrefix(m[1], "T-")); err == nil && n > max {
+				if p, n, ok := SplitID(m[1]); ok && p == prefix && n > max {
 					max = n
 				}
 			}
@@ -508,7 +530,7 @@ func LoadAll(root string) ([]*Ticket, []string) {
 			ref := s.Dir + "/" + name
 			m := filenameRE.FindStringSubmatch(name)
 			if m == nil {
-				issues = append(issues, ref+": filename does not match T-NNN-<slug>.md")
+				issues = append(issues, ref+": filename does not match <PREFIX>-NNN-<slug>.md")
 				continue
 			}
 			path := filepath.Join(dir, name)
@@ -523,7 +545,7 @@ func LoadAll(root string) ([]*Ticket, []string) {
 				issues = append(issues, ref+": no frontmatter block")
 				continue
 			}
-			num, _ := strconv.Atoi(strings.TrimPrefix(m[1], "T-"))
+			_, num, _ := SplitID(m[1])
 			slug := strings.TrimSuffix(strings.TrimPrefix(name, m[1]+"-"), ".md")
 			tickets = append(tickets, &Ticket{
 				ID:        m[1],
