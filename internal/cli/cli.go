@@ -94,9 +94,11 @@ Setup commands:
 
 Flow commands:
   ticket new "<title>" --project <name> [--impact .. --complexity .. --cost ..]
-                       [--spawned-by "T-NNN[,T-MMM]"]
+                       [--spawned-by "T-NNN[,T-MMM]"] [--family T-NNN]
                           Allocate the next T-NNN, scaffold the ticket, regenerate the board.
                           --spawned-by records lineage (never gates pickup).
+                          --family groups the ticket under an umbrella id for board
+                          ordering (single id, same child; never gates pickup).
   ticket move T-NNN <status> --reason "<why>"
                           Move a ticket (file + History + board regeneration) atomically.
   board audit             Check the ticket invariants + board freshness (exit non-zero on any error).

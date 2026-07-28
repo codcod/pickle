@@ -13,6 +13,8 @@
     <dt>blocks</dt><dd>{{if .Blocks}}{{template "idlist" .Blocks}}{{else}}—{{end}}</dd>
     <dt>spawned by</dt><dd>{{if .SpawnedBy}}{{template "idlist" .SpawnedBy}}{{else}}—{{end}}</dd>
     <dt>spawned</dt><dd>{{if .Spawned}}{{template "idlist" .Spawned}}{{else}}—{{end}}</dd>
+    <dt>family</dt><dd>{{if .Family}}<a href="/t/{{.Family}}">{{.Family}}</a>{{else}}—{{end}}</dd>
+    <dt>members</dt><dd>{{if .Members}}{{template "idlist" .Members}}{{else}}—{{end}}</dd>
     <dt>file</dt><dd><code>{{.File}}</code></dd>
     {{if .Merged}}<dt>merged</dt><dd>{{.Merged}}</dd>{{end}}
   </dl>

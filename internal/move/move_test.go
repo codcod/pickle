@@ -39,7 +39,7 @@ func newProject(t *testing.T) (string, *config.Config) {
 // string literals, not Scaffold output.)
 func newTicketFull(t *testing.T, root string, cfg *config.Config, id, title string, deps, spawnedBy []string) {
 	t.Helper()
-	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M", spawnedBy)
+	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M", spawnedBy, "")
 	if len(deps) > 0 {
 		body = strings.Replace(body, "depends-on: []", "depends-on: ["+strings.Join(deps, ", ")+"]", 1)
 	}

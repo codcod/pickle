@@ -34,6 +34,7 @@ type Entry struct {
 	Cost       string
 	DependsOn  []string
 	SpawnedBy  []string
+	Family     string // umbrella ticket id this one groups under ("" when none)
 	Reason     string // last transition's reason (the board's DROPPED/REWORK cell)
 	Merged     string // merge History line, "" when unmerged
 	File       string // filename, for orientation
@@ -66,6 +67,13 @@ type BoardView struct {
 // board.WIPCounts. Nothing here re-implements those rules (decision 3).
 func buildBoard(tickets []*ticket.Ticket, cfg *config.Config) BoardView {
 	wip := board.WIPCounts(tickets)
+	// Whole-tree index for board.Sort's family-umbrella lookup (T-059); a member's
+	// umbrella may live in another status section, so the per-group slice is not
+	// enough. Same map the board's own Render builds.
+	byID := make(map[string]*ticket.Ticket, len(tickets))
+	for _, t := range tickets {
+		byID[t.ID] = t
+	}
 	view := BoardView{Total: len(tickets)}
 
 	for _, statusName := range board.StatusOrder() {
@@ -81,7 +89,7 @@ func buildBoard(tickets []*ticket.Ticket, cfg *config.Config) BoardView {
 					group = append(group, t)
 				}
 			}
-			board.Sort(group, statusName)
+			board.Sort(group, statusName, byID)
 
 			cg := ChildGroup{Child: p.Name, Count: len(group)}
 			switch statusName {
@@ -113,6 +121,7 @@ func newEntry(t *ticket.Ticket, statusName string) Entry {
 		Cost:       t.Front["cost"],
 		DependsOn:  t.DependsOn,
 		SpawnedBy:  t.SpawnedBy,
+		Family:     t.Front["family"],
 		Reason:     ticket.LastHistoryReason(t.Text),
 		Merged:     ticket.MergeLine(t.Text),
 		File:       filepath.Base(t.Path),
@@ -128,6 +137,7 @@ type TicketView struct {
 	Body    template.HTML
 	Blocks  []string // tickets whose depends-on names this one
 	Spawned []string // tickets whose spawned-by names this one
+	Members []string // tickets whose family names this one (this ticket is their umbrella)
 	History []ticket.HistoryEntry
 }
 
@@ -166,9 +176,13 @@ func buildTicket(all []*ticket.Ticket, id string) (TicketView, bool) {
 		if contains(t.SpawnedBy, id) {
 			view.Spawned = append(view.Spawned, t.ID)
 		}
+		if t.Family == id {
+			view.Members = append(view.Members, t.ID)
+		}
 	}
 	sort.Strings(view.Blocks)
 	sort.Strings(view.Spawned)
+	sort.Strings(view.Members)
 	return view, true
 }
 

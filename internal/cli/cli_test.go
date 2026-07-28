@@ -268,6 +268,32 @@ func TestTicketNewSpawnedByUnknownID(t *testing.T) {
 	}
 }
 
+// TestTicketNewFamily covers --family end to end (T-059): a valid same-child
+// umbrella writes a family: line and audits clean; a malformed id is rejected at
+// creation (shape check), while an unknown-but-well-shaped id is written and left
+// for the audit — the same creation/existence split as --spawned-by.
+func TestTicketNewFamily(t *testing.T) {
+	root := newProject(t)
+	// Umbrella must exist for a clean audit.
+	if got := Run(nil, "test", []string{"ticket", "new", "umbrella", "--project", "demo"}); got != exitOK {
+		t.Fatalf("seed umbrella: exit %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "new", "member", "--project", "demo", "--family", "T-001"}); got != exitOK {
+		t.Fatalf("ticket new --family = %d, want %d", got, exitOK)
+	}
+	if body := readTicket(t, root, "T-002"); !strings.Contains(body, "family: T-001") {
+		t.Errorf("scaffold missing family: T-001:\n%s", body)
+	}
+	if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+		t.Fatalf("board audit = %d, want clean (%d)", got, exitOK)
+	}
+
+	// Malformed id rejected at creation — nothing written.
+	if got := Run(nil, "test", []string{"ticket", "new", "bad", "--project", "demo", "--family", "nope"}); got == exitOK {
+		t.Errorf("--family nope should be rejected (bad id shape)")
+	}
+}
+
 // TestTicketNewRejectsInjectionInTitle pins T-030 decision 1: an unusable title
 // is rejected before anything is written.
 //

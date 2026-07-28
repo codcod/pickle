@@ -5,6 +5,7 @@ project: <child-project name>   # which registered child-project this ticket tar
                                 # (a name from `pickle project list` / pickle.toml)
 depends-on: []              # hard dependencies only (other T-NNN ids, any child-project); [] if none
 spawned-by: []              # lineage only — ticket(s) this was born from; [] if none; NEVER gates pickup
+# family: T-NNN             # optional single umbrella id (same child); groups pickup order on the board; NEVER gates; omit if none
 impact: critical|high|medium|low
 complexity: high|medium|low
 cost: S|M|L|XL               # implementation effort — see tickets/README.md §3

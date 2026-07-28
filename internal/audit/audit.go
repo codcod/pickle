@@ -88,6 +88,25 @@ func Audit(root string, cfg *config.Config) Result {
 				r.errf("%s: spawned-by %s does not exist", ref, src)
 			}
 		}
+		// family is lineage like spawned-by (never gates pickup) but with extra shape
+		// invariants because the board renders it as a single-parent grouping (T-059):
+		// the umbrella must exist, live in the SAME child (the board groups per child,
+		// so a cross-child family could not render as one group), the ticket may not be
+		// its own umbrella, and families are flat — the umbrella must not itself be a
+		// family member (no nesting). It is an optional field, so validated only when
+		// set; deliberately NOT in requiredKeys, so the existing backlog stays green.
+		if fam := t.Family; fam != "" {
+			switch parent, ok := byID[fam]; {
+			case fam == t.ID:
+				r.errf("%s: family lists itself", ref)
+			case !ok:
+				r.errf("%s: family %s does not exist", ref, fam)
+			case parent.Project() != t.Project():
+				r.errf("%s: family %s is in a different child-project", ref, fam)
+			case parent.Family != "":
+				r.errf("%s: family %s is itself a family member (families do not nest)", ref, fam)
+			}
+		}
 	}
 
 	// Board staleness check (T-044 D6). The board is a generated artifact, so the

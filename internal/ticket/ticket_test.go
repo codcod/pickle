@@ -232,7 +232,7 @@ func TestValidGrade(t *testing.T) {
 }
 
 func TestScaffoldIsAuditClean(t *testing.T) {
-	out := Scaffold("T-013", "Review the Jira board", "pickle", "high", "medium", "M", nil)
+	out := Scaffold("T-013", "Review the Jira board", "pickle", "high", "medium", "M", nil, "")
 	fm, ok := ParseFrontmatter(out)
 	if !ok {
 		t.Fatal("scaffold has no frontmatter")
@@ -262,7 +262,7 @@ func TestScaffoldRendersSpawnedBy(t *testing.T) {
 		{"two", []string{"T-001", "T-002"}, "[T-001, T-002]"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			out := Scaffold("T-013", "x", "pickle", "high", "medium", "M", c.in)
+			out := Scaffold("T-013", "x", "pickle", "high", "medium", "M", c.in, "")
 			fm, ok := ParseFrontmatter(out)
 			if !ok {
 				t.Fatal("scaffold has no frontmatter")
@@ -282,6 +282,38 @@ func TestScaffoldRendersSpawnedBy(t *testing.T) {
 	}
 }
 
+// TestScaffoldFamily: an empty family omits the line entirely (byte-identical to a
+// no-family scaffold), while a set family renders on its own line immediately after
+// spawned-by, and round-trips through LoadAll into Ticket.Family (T-059).
+func TestScaffoldFamily(t *testing.T) {
+	none := Scaffold("T-013", "x", "pickle", "high", "medium", "M", nil, "")
+	if strings.Contains(none, "family:") {
+		t.Errorf("empty family should emit no family line:\n%s", none)
+	}
+
+	withFam := Scaffold("T-013", "x", "pickle", "high", "medium", "M", nil, "T-001")
+	if !strings.Contains(withFam, "spawned-by: []\nfamily: T-001\nimpact:") {
+		t.Errorf("family line is not immediately after spawned-by:\n%s", withFam)
+	}
+
+	// round-trips into Ticket.Family via LoadAll
+	root := t.TempDir()
+	dir := filepath.Join(root, "tickets", "1-to-do")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "T-013-x.md"), []byte(withFam), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tickets, issues := LoadAll(root)
+	if len(issues) != 0 {
+		t.Fatalf("load issues: %v", issues)
+	}
+	if len(tickets) != 1 || tickets[0].Family != "T-001" {
+		t.Errorf("Ticket.Family = %q, want T-001", tickets[0].Family)
+	}
+}
+
 // TestScaffoldSectionsMatchTemplate is the drift guard (T-003 decision 4): the
 // scaffold's ## section set must equal the embedded TEMPLATE.md's.
 func TestScaffoldSectionsMatchTemplate(t *testing.T) {
@@ -291,7 +323,7 @@ func TestScaffoldSectionsMatchTemplate(t *testing.T) {
 		t.Skipf("TEMPLATE.md not found: %v", err)
 	}
 	want := SectionHeadings(string(data))
-	got := SectionHeadings(Scaffold("T-001", "x", "pickle", "high", "medium", "M", nil))
+	got := SectionHeadings(Scaffold("T-001", "x", "pickle", "high", "medium", "M", nil, ""))
 	if len(want) != len(got) {
 		t.Fatalf("section count differs: template %v vs scaffold %v", want, got)
 	}

@@ -168,6 +168,19 @@ All other transitions are forward-only, as diagrammed.
   parent's Review table is the itemised record of *which findings* it carries. Never split a
   follow-up per finding to make the lineage granular — that is the spawn rate §5 exists to hold
   down.
+- **Families (`family`).** An optional single umbrella `T-NNN` in `family:` frontmatter groups a
+  ticket under an **ordinary ticket** — no new entity, no second board, no lifecycle of its own.
+  Like `spawned-by:` it is lineage and **gates nothing**; unlike it, the board reads it, so it
+  carries extra shape invariants `pickle board audit` enforces (only when set): the umbrella must
+  **exist**, live in the **same child-project** (the board groups per child, so a cross-child
+  family could not render as one group), the ticket may not be its **own** umbrella, and families
+  are **flat** — an umbrella may not itself set `family:` (no nesting). On the board's TO DO/READY
+  tables a family's rows stay contiguous and the whole family sorts to where **its umbrella's
+  impact** ranks (umbrella row first, then members by their own impact); loose tickets interleave
+  by their own impact, so `family:` supplements impact ordering rather than replacing it — it
+  earns its keep once a backlog is large enough for impact to tie widely. `pickle ticket new
+  --family T-NNN` sets it (shape-checked at creation, existence left to the audit, exactly like
+  `--spawned-by`); it is otherwise set by hand-editing frontmatter, like `depends-on:`.
 - **Splitting at refinement.** A ticket may be split while being refined, and the parts carry
   `spawned-by:` the original. Split **only when the part is independently schedulable** — it
   could be picked up, built and reviewed on its own, and someone would choose to. Otherwise it
