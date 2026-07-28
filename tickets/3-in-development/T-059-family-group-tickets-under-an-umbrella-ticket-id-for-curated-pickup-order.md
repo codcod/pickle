@@ -166,8 +166,24 @@ grouping + ordering, not hand-curated order. Do not wait on T-056.
      and lineage): add a **Families** bullet after the Lineage bullet — umbrella-as-ordinary-ticket,
      single id, same child, flat (no nesting), never gates, and that TO DO/READY group + rank by
      the umbrella's impact.
-   - `README.md`: if it enumerates ticket frontmatter fields, add `family:` (grep first; skip if
-     absent).
+   - `README.md`: does NOT enumerate frontmatter fields (grep confirmed empty) — skip.
+
+### Applicability-gate amendments (2026-07-28, non-blocking)
+
+Fresh-agent audit confirmed the plan CLEAN in design; four mechanical additions the tasks
+missed:
+
+- **Task 1** — updating `Scaffold`'s signature breaks **5 call sites**, not 1. Besides
+  `internal/cli/ticket.go:132`, pass the new trailing family arg (`""` when none) at the test
+  helpers `internal/move/move_test.go:42`, `internal/sync/sync_test.go:36`, and the existing
+  `internal/ticket/ticket_test.go` calls (~235/265/294).
+- **Task 4/5** — changing `Sort`'s signature also breaks the in-package test caller
+  `internal/board/board_test.go:475` (`Sort(group, "TO DO")`) — give it the new `byID` arg.
+- **Task 4** — collapse the `FamilyRank` helper vs. `byID`-into-`Sort` overlap into **one**
+  lookup mechanism: pass `byID map[string]*ticket.Ticket` into `Sort` and resolve the family
+  key inline (drop the separate `FamilyRank` export).
+- **Task 6** — edit the **canonical `skill/resources/`** files (what the drift test reads via
+  `../../skill/resources/…`), not the `.claude/skills/ticket-flow/` symlink view.
 
 ### Acceptance test
 
@@ -221,4 +237,9 @@ the ticket branch; **no push / no MR without user approval** per the commit poli
 ## History
 
 - 2026-07-28 — created (TO DO). source: pickle ticket new
+- 2026-07-28 — refined → READY. plan written; impact re-graded medium-high→medium.
+- 2026-07-28 — applicability gate (fresh agent): CLEAN design, AMEND — 4 non-blocking
+  mechanical additions applied inline to the plan (extra Scaffold/Sort call sites, single
+  lookup mechanism, skill/resources docs path).
 - 2026-07-28 — TO DO → READY: plan complete; impact re-graded medium-high->medium (single value)
+- 2026-07-28 — READY → IN DEVELOPMENT: picked up; applicability gate clean
