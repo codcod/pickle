@@ -20,10 +20,11 @@ Last updated: 2026-07-28
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-07-28
 
 | id | title | open findings |
 |---|---|---|
-| T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | 8 blocking: Q2-Q8 the Task 3 regression guard (passes on the forbidden 'dark light', comment-blind, literal media match, names-only), Q15 the manual two-mode visual check is unrun; 6 fixed inline, 1 noted |
 
 ## READY (impact order, per child)
 

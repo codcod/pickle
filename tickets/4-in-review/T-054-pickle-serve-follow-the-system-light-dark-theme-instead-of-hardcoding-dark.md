@@ -510,6 +510,35 @@ The 8 blocking findings are two independent gates: Q2-Q8 are one scoped rework p
 test, and Q15 needs a human at a browser. Neither is a defect in the shipped CSS, which the
 audit found correct in every respect it checked.
 
+### Rework pass — 2026-07-28
+
+Scoped to the listed blocking findings only, on the same branch (`fc5e4d7`). **Every fix is
+backed by a probe that failed before it and passes after** — the same discipline the original
+Q2 finding showed was missing.
+
+| finding | fix | probe |
+|---|---|---|
+| Q2 | `color-scheme` compared to an **exact value** (captured up to `;`/`}`, so a missing final semicolon is still legal) instead of a `\b`-anchored prefix | `dark light` → `:root declares color-scheme: "dark light", want exactly "dark"`; `light dark` in the light block → symmetric failure. **Both previously passed** |
+| Q3, Q4 | comments stripped once, before any scanning | the header-comment edit that produced five false failures (incl. the nonsense `--mono` one) → **green**; `/* } */` inside the light block → **green** |
+| Q5 | query matched by regexp `@media[^{]*prefers-color-scheme\s*:\s*light` | `@media(prefers-color-scheme:light)` → **green**; previously a fatal "hardcoded to one palette" |
+| Q6 | new `rootBlocksAtDepth` collects **every top-level `:root`**, so the base is what decision 7 names rather than "the text before the query"; comment corrected to match the code | trailing `:root { --late: … }` → now **fails** naming `--late` (previously undetected); `@media print { :root { --paper } }` → **green**, correctly ignored as depth-1 |
+| Q7 | assert the light block targets `:root`, assert `--bg` actually differs between palettes, widen the name class to `[A-Za-z0-9_-]` | copy-of-dark → fails "the light block is a copy, not a light palette"; `body` instead of `:root` → fails; `--Brand` → now caught. **All three previously passed** |
+| Q8 | `{"/", 'name="color-scheme"'}` added to `TestStaticAssetsAndHealthz` | deleting `layout.html:7` → now fails. Previously left the suite fully green |
+
+Fixed-inline items applied in the same pass: **Q9** (changelog reworded to present tense — it
+no longer narrates a "previous" state no release ever had), **Q10** (both user-facing texts now
+state that a no-preference browser reports *light* and therefore does flip, and that dark is
+the fallback only where the query is unsupported), **Q16** (first commit's body reworded: the
+dark semantics measure 2.04/1.97/3.07 on white, not "near 2:1"), plus the two accepted
+readability suggestions.
+
+Re-validation: `just build && just test && just lint && just docs-check` green (10 packages
+ok); `internal/serve` coverage 92.4%, unchanged; served-asset check still 1/1; `go vet` and
+`gofmt` clean. Branch is two commits, `+217/−0` against `main`, no bookkeeping.
+
+**Still open: Q15.** The manual two-mode visual check is untouched by this pass — it needs a
+human at a browser. See the "Outstanding" section above for the exact steps.
+
 ### Docs-readability pass (step 4b)
 
 Run over the two changed prose files. Five suggestions returned; **two applied, three
@@ -554,3 +583,4 @@ No ticket patched.
 - 2026-07-28 — READY → IN DEVELOPMENT: picked up; plan amended from the applicability audit (F1-F6)
 - 2026-07-28 — IN DEVELOPMENT → IN REVIEW: acceptance green except step 5 (manual two-mode visual check, needs a human); 5 tasks done, palette AA-verified in both modes, diff purely additive
 - 2026-07-28 — IN REVIEW → REWORK: 8 blocking: Q2-Q8 the Task 3 regression guard (passes on the forbidden 'dark light', comment-blind, literal media match, names-only), Q15 the manual two-mode visual check is unrun; 6 fixed inline, 1 noted
+- 2026-07-28 — REWORK → IN REVIEW: Q2-Q8 fixed and each verified by a before/after probe; Q9/Q10/Q16 applied inline; Q15 (manual visual check) still needs a human
