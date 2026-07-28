@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -190,9 +191,53 @@ func renderRow(t *ticket.Ticket, cols []string) string {
 	return "| " + strings.Join(cells, " | ") + " |"
 }
 
-// sortRows orders a sub-group: TO DO/READY by descending impact (tie id asc);
+// StatusOrder returns the fixed order the board renders its status sections in
+// (active work first). It is a copy: the dashboard (internal/serve) walks the
+// same order so the two views can never disagree, and a caller must not be able
+// to reorder the board by mutating the slice it was handed.
+func StatusOrder() []string {
+	return slices.Clone(boardOrder)
+}
+
+// WIP is one child-project's live work-in-progress tally.
+type WIP struct {
+	InDevelopment int
+	InReview      int
+}
+
+// WIPCounts tallies in-development/in-review tickets per project name, as the
+// name is written in the ticket's frontmatter — unregistered names included, so
+// the audit can report them; tickets with no project are skipped.
+//
+// It is the single tally behind the board's `(n/limit)` sub-headings, the audit's
+// WIP-limit check, and the dashboard's WIP badges. Three independent counts of
+// the same thing is three chances to disagree about whether a limit is breached.
+func WIPCounts(tickets []*ticket.Ticket) map[string]WIP {
+	counts := map[string]WIP{}
+	for _, t := range tickets {
+		p := t.Project()
+		if p == "" {
+			continue
+		}
+		c := counts[p]
+		switch t.Dir {
+		case "3-in-development":
+			c.InDevelopment++
+		case "4-in-review":
+			c.InReview++
+		default:
+			continue // not WIP; do not create an empty entry for it
+		}
+		counts[p] = c
+	}
+	return counts
+}
+
+// Sort orders a sub-group: TO DO/READY by descending impact (tie id asc);
 // every other section by id ascending (D1 — deterministic, no hand-curated order).
-func sortRows(group []*ticket.Ticket, name string) {
+// Exported so the dashboard sorts with the board's ordering rather than a copy of
+// it (there is deliberately no second implementation of impactRank).
+func Sort(group []*ticket.Ticket, name string) {
 	byImpact := name == "TO DO" || name == "READY"
 	sort.SliceStable(group, func(i, j int) bool {
 		if byImpact {
@@ -230,6 +275,7 @@ func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
 	}
 	lines = append(lines, "", "Last updated: "+date)
 
+	wip := WIPCounts(tickets)
 	for _, name := range boardOrder {
 		st, _ := ticket.StatusByName(name)
 		lines = append(lines, "", "## "+sectionHeading[name])
@@ -242,13 +288,13 @@ func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
 					group = append(group, t)
 				}
 			}
-			sortRows(group, name)
+			Sort(group, name)
 
 			sub := "### " + p.Name
 			if name == "IN DEVELOPMENT" {
-				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, len(group), p.WIPInDevelopment)
+				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, wip[p.Name].InDevelopment, p.WIPInDevelopment)
 			} else if name == "IN REVIEW" {
-				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, len(group), p.WIPInReview)
+				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, wip[p.Name].InReview, p.WIPInReview)
 			}
 			lines = append(lines, "", sub, "", headerRow(cols), separatorRow(cols))
 			for _, t := range group {

@@ -13,10 +13,11 @@ Last updated: 2026-07-27
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-053 | pickle serve — local web dashboard to visualize the board and its changes | [] |
 
 ## IN REVIEW
 

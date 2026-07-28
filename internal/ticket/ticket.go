@@ -101,10 +101,81 @@ var (
 	idRE       = regexp.MustCompile(`^T-\d+$`)
 	fmKeyRE    = regexp.MustCompile(`^([A-Za-z-]+):\s*(.*)$`)
 	inlineHash = regexp.MustCompile(`\s+#.*$`)
-	historyRE  = regexp.MustCompile(`^-\s*\d{4}-\d{2}-\d{2}\s*[—-]+\s*(.+)$`)
-	createdRE  = regexp.MustCompile(`(?i)^created\s*\(([^)]+)\)`)
-	mergedRE   = regexp.MustCompile(`(?i)^merged\b`)
+	// historyRE matches one dated History bullet, capturing only the body as m[1].
+	// The date is deliberately *not* captured: LastHistoryStatus, LastHistoryReason
+	// and MergeLine all read m[1], and adding a group for the date — named or not,
+	// since naming a group in Go does not remove it from the numbering — would
+	// shift the body to m[2] and silently break all three. HistoryEntries reads the
+	// date with historyDate instead, so this pattern can stay untouched.
+	historyRE = regexp.MustCompile(`^-\s*\d{4}-\d{2}-\d{2}\s*[—-]+\s*(.+)$`)
+	createdRE = regexp.MustCompile(`(?i)^created\s*\(([^)]+)\)`)
+	mergedRE  = regexp.MustCompile(`(?i)^merged\b`)
 )
+
+// dateLen is the length of a YYYY-MM-DD date, the only date form historyRE admits.
+const dateLen = len("YYYY-MM-DD")
+
+// historyDate returns the date of a History line that historyRE has already
+// matched: the match guarantees the first digit in the line opens the date, so
+// the ten runes from there are it. Slicing beats adding a capture group, which
+// would renumber historyRE's body group out from under three other callers.
+// Bytes are safe here: every character up to and including the date is ASCII.
+func historyDate(line string) string {
+	i := strings.IndexAny(line, "0123456789")
+	if i < 0 || len(line) < i+dateLen {
+		return ""
+	}
+	return line[i : i+dateLen]
+}
+
+// HistoryEntry is one dated line from a ticket's `## History` section.
+type HistoryEntry struct {
+	Date string // raw YYYY-MM-DD, exactly as written (the regex anchors the shape)
+	Text string // the line's body: a transition, a created line, or a merge note
+}
+
+// HistoryEntries returns every dated entry of a ticket's `## History` section in
+// file order (oldest first). Created lines and merge notes are included
+// deliberately: this is the raw record, and deciding what an entry *means* is the
+// caller's job (contrast LastHistoryStatus/MergeLine, which filter). Content
+// outside `## History`, and bullets that carry no date, are skipped.
+//
+// An entry may be wrapped across several source lines — long reasons routinely are,
+// and this repo's own tickets wrap them — so continuation lines are folded back
+// into one logical entry. Reading only the first physical line would silently cut
+// a reason mid-sentence, which is exactly the sort of quiet truncation a history is
+// supposed to prevent.
+//
+// Date stays a string: the format is already anchored by historyRE, ordering is
+// lexicographic for YYYY-MM-DD, and no caller needs calendar arithmetic.
+func HistoryEntries(text string) []HistoryEntry {
+	var out []HistoryEntry
+	inHistory := false
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			inHistory = strings.TrimSpace(line) == "## History"
+			continue
+		}
+		if !inHistory {
+			continue
+		}
+		trimmed := strings.TrimSpace(line)
+		if m := historyRE.FindStringSubmatch(trimmed); m != nil {
+			out = append(out, HistoryEntry{Date: historyDate(trimmed), Text: strings.TrimSpace(m[1])})
+			continue
+		}
+		// Continuation of the entry above: indented text that opens no new bullet.
+		// A bullet without a date is not a continuation — it is a different
+		// (undated, and therefore ignored) list item.
+		if len(out) == 0 || trimmed == "" || strings.HasPrefix(trimmed, "-") ||
+			strings.HasPrefix(trimmed, "<!--") || line == trimmed {
+			continue
+		}
+		last := &out[len(out)-1]
+		last.Text += " " + trimmed
+	}
+	return out
+}
 
 // ParseFrontmatter parses the YAML-ish frontmatter block into a flat map. ok is
 // false when there is no leading `---` block.

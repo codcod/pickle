@@ -1,0 +1,65 @@
+{{define "head"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Title}} — {{.Project}} board</title>
+<link rel="stylesheet" href="/static/styles.css">
+<script src="/static/htmx.min.js"></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <a class="brand-name" href="/">{{.Project}}</a>
+    <span class="brand-sub">pickle board · read-only</span>
+  </div>
+  <nav class="site-nav">
+    <a href="/">Board</a>
+    <a href="/activity">Activity</a>
+  </nav>
+</header>
+{{template "health" .Health}}
+{{end}}
+
+{{define "foot"}}
+<footer class="site-footer">
+  <span>Rendered from the ticket files — this server never writes. Use
+    <code>pickle ticket move</code> / <code>pickle board sync</code> to change anything.</span>
+</footer>
+</body>
+</html>
+{{end}}
+
+{{define "health"}}
+<section class="health {{if .OK}}health-ok{{else if .Errors}}health-error{{else}}health-warn{{end}}">
+  <div class="health-line">
+    <strong>{{.Tickets}}</strong> tickets ·
+    {{if .OK}}board audit clean{{else}}{{len .Errors}} audit error(s), {{len .Warnings}} warning(s){{end}}
+    {{range .Children}}
+    <span class="wip">
+      {{.Child}}: dev <span class="{{if .AtDevLimit}}wip-full{{end}}">{{.InDevelopment}}/{{.DevCap}}</span>,
+      review <span class="{{if .AtReviewLimit}}wip-full{{end}}">{{.InReview}}/{{.RevCap}}</span>
+    </span>
+    {{end}}
+  </div>
+  {{if not .OK}}
+  <details open>
+    <summary>audit findings</summary>
+    <ul class="findings">
+      {{range .Errors}}<li class="finding-error">{{.}}</li>{{end}}
+      {{range .Warnings}}<li class="finding-warn">{{.}}</li>{{end}}
+    </ul>
+    <p class="hint">Reported, not repaired: run <code>pickle board sync</code> or fix the ticket.</p>
+  </details>
+  {{end}}
+</section>
+{{end}}
+
+{{define "grades"}}<span class="grades"
+  ><span class="grade impact-{{.Impact | slug}}">{{.Impact}}</span
+  ><span class="grade">{{.Complexity}}</span
+  ><span class="grade">{{.Cost}}</span
+></span>{{end}}
+
+{{define "idlist"}}{{range $i, $id := .}}{{if $i}}, {{end}}<a class="tid" href="/t/{{$id}}">{{$id}}</a>{{end}}{{end}}

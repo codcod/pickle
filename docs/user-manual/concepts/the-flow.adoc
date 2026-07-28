@@ -31,6 +31,10 @@ rendered wholesale from the ticket files by `pickle ticket new`,
 tickets and the board follows (§6). Hand-written planning prose lives in
 `tickets/NOTES.md`, which the tooling never touches.
 
+For a browser view of that same truth — the board, each ticket's prose, and a
+merged timeline of every ticket's History — run `pickle serve` (<<cmd-serve>>).
+It renders from the ticket files, exactly as the board does, and writes nothing.
+
 == Judgment vs mechanics
 
 The tool's design principle is to split the two:

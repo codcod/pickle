@@ -86,6 +86,12 @@ func TestRunExitCodes(t *testing.T) {
 		{"project no subcommand", []string{"project"}, exitUsage},
 		{"project unknown subcommand", []string{"project", "xyz"}, exitUsage},
 		{"project add missing args", []string{"project", "add"}, exitUsage},
+		// serve is long-running, so only its *rejections* are exercised here: each
+		// of these must fail during argument parsing, before a listener is opened.
+		{"serve bad flag", []string{"serve", "--bogus"}, exitUsage},
+		{"serve stray arg", []string{"serve", "extra"}, exitUsage},
+		{"serve missing addr value", []string{"serve", "--addr"}, exitUsage},
+		{"serve empty addr", []string{"serve", "--addr="}, exitUsage},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -390,4 +396,68 @@ func readTicket(t *testing.T, root, id string) string {
 	}
 	t.Fatalf("%s not found in %s", id, dir)
 	return ""
+}
+
+// TestParseServeArgs covers the serve flag contract without binding a port — no
+// test may occupy the documented default 127.0.0.1:8745.
+func TestParseServeArgs(t *testing.T) {
+	cases := []struct {
+		name     string
+		args     []string
+		wantAddr string
+		wantCode int
+	}{
+		{"default", nil, defaultAddr, exitOK},
+		{"addr separate value", []string{"--addr", "127.0.0.1:9999"}, "127.0.0.1:9999", exitOK},
+		{"addr equals form", []string{"--addr=0.0.0.0:1234"}, "0.0.0.0:1234", exitOK},
+		{"short flag", []string{"-a", "127.0.0.1:1"}, "127.0.0.1:1", exitOK},
+		{"unknown flag", []string{"--bogus"}, "", exitUsage},
+		{"stray positional", []string{"8080"}, "", exitUsage},
+		{"missing value", []string{"--addr"}, "", exitUsage},
+		{"empty value", []string{"--addr="}, "", exitUsage},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			addr, code := parseServeArgs(tc.args)
+			if code != tc.wantCode || addr != tc.wantAddr {
+				t.Fatalf("parseServeArgs(%v) = (%q, %d), want (%q, %d)",
+					tc.args, addr, code, tc.wantAddr, tc.wantCode)
+			}
+		})
+	}
+	if defaultAddr != "127.0.0.1:8745" {
+		t.Errorf("defaultAddr = %q; the documented default is 127.0.0.1:8745", defaultAddr)
+	}
+}
+
+// TestIsLoopback pins which addresses trigger the "no authentication" warning.
+func TestIsLoopback(t *testing.T) {
+	cases := []struct {
+		addr string
+		want bool
+	}{
+		{"127.0.0.1:8745", true},
+		{"[::1]:8745", true},
+		{"localhost:8745", true},
+		{"0.0.0.0:8745", false}, // all interfaces
+		{":8745", false},        // empty host is all interfaces
+		{"192.168.1.10:8745", false},
+		{"example.invalid:8745", false}, // unresolvable → warn rather than stay quiet
+	}
+	for _, tc := range cases {
+		if got := isLoopback(tc.addr); got != tc.want {
+			t.Errorf("isLoopback(%q) = %v, want %v", tc.addr, got, tc.want)
+		}
+	}
+}
+
+// TestServeHelpIsAdvertised keeps the dispatch table and the usage text in step:
+// a command that exists but is undocumented is invisible.
+func TestServeHelpIsAdvertised(t *testing.T) {
+	out := captureStdout(t, func() { Run(nil, "test", []string{"help"}) })
+	for _, want := range []string{"serve", "127.0.0.1:8745", "read-only"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("pickle help does not mention %q", want)
+		}
+	}
 }
