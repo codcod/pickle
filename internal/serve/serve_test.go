@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -267,6 +268,101 @@ func TestStaticAssetsAndHealthz(t *testing.T) {
 		}
 		if !strings.Contains(rec.Body.String(), tc.wantSubstr) {
 			t.Errorf("GET %s does not contain %q", tc.path, tc.wantSubstr)
+		}
+	}
+}
+
+// cssVarDecl matches a custom-property declaration: the name only, since the
+// values are what differ between the two palettes.
+var cssVarDecl = regexp.MustCompile(`--[a-z0-9-]+\s*:`)
+
+// lightMediaOpen is the start of the light palette's block.
+const lightMediaOpen = "@media (prefers-color-scheme: light)"
+
+// cssVars returns the set of custom properties declared in a region of CSS.
+func cssVars(region string) map[string]bool {
+	out := map[string]bool{}
+	for _, m := range cssVarDecl.FindAllString(region, -1) {
+		out[strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(m), ":"))] = true
+	}
+	return out
+}
+
+// braceBlock returns the text between the first "{" at or after start and its
+// matching "}", counting nesting. The light palette wraps a :root block, so a
+// scan to the first "}" would stop one level too early.
+func braceBlock(s string, start int) string {
+	open := strings.Index(s[start:], "{")
+	if open < 0 {
+		return ""
+	}
+	open += start
+	depth := 0
+	for i := open; i < len(s); i++ {
+		switch s[i] {
+		case '{':
+			depth++
+		case '}':
+			if depth--; depth == 0 {
+				return s[open+1 : i]
+			}
+		}
+	}
+	return ""
+}
+
+// TestStylesheetServesBothPalettes is T-054's regression guard. There is no
+// browser here, so it asserts the two things that can be checked mechanically
+// and that a later edit would plausibly break: that the served sheet carries a
+// light palette behind prefers-color-scheme with color-scheme declared in step
+// with it, and that neither palette has drifted a variable the other lacks.
+func TestStylesheetServesBothPalettes(t *testing.T) {
+	rec := get(t, newHandler(t, standardTree(t)), "/static/styles.css")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /static/styles.css = %d, want 200", rec.Code)
+	}
+	css := rec.Body.String()
+
+	// The base region is everything before the first @media: taking every ":root"
+	// in the file would swallow the light block too and make the parity check
+	// below trivially true.
+	mediaAt := strings.Index(css, lightMediaOpen)
+	if mediaAt < 0 {
+		t.Fatalf("stylesheet has no %q block: the dashboard is hardcoded to one palette", lightMediaOpen)
+	}
+	base, light := css[:mediaAt], braceBlock(css, mediaAt)
+	if light == "" {
+		t.Fatal("the light palette's @media block is unterminated")
+	}
+
+	// color-scheme must track the palette, so the browser paints scrollbars and
+	// the <details> marker for the same scheme the CSS is painting.
+	for _, tc := range []struct{ region, want, where string }{
+		{base, "dark", ":root"},
+		{light, "light", lightMediaOpen},
+	} {
+		if !regexp.MustCompile(`color-scheme\s*:\s*` + tc.want + `\b`).MatchString(tc.region) {
+			t.Errorf("%s does not declare color-scheme: %s — browser-painted chrome will not match the palette",
+				tc.where, tc.want)
+		}
+	}
+
+	// Parity: --mono is a font stack, not a colour, and is deliberately declared
+	// once. Every other variable must exist in both palettes.
+	baseVars, lightVars := cssVars(base), cssVars(light)
+	delete(baseVars, "--mono")
+	for name := range baseVars {
+		if !lightVars[name] {
+			t.Errorf("%s is declared in :root but not in the light palette — light mode will inherit a dark value", name)
+		}
+	}
+	for name := range lightVars {
+		if name == "--mono" {
+			t.Errorf("--mono is a font stack, not a colour; it should not be overridden per palette")
+			continue
+		}
+		if !baseVars[name] {
+			t.Errorf("%s is declared only in the light palette — it has no dark-mode value at all", name)
 		}
 	}
 }
