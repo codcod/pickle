@@ -60,8 +60,15 @@ func Audit(root string, cfg *config.Config) Result {
 		}
 		if p := t.Project(); p == "" {
 			// missing-key already reported above
-		} else if _, ok := cfg.Project(p); !ok {
+		} else if cp, ok := cfg.Project(p); !ok {
 			r.errf("%s: project %q is not a registered child", ref, p)
+		} else if got, _, ok := ticket.SplitID(t.ID); ok && got != cp.Prefix() {
+			// The id's prefix must match its child's configured ticket_prefix
+			// (T-058). This catches a ticket filed under the wrong project, and
+			// it is the guard that keeps a child from being half-migrated to a new
+			// prefix: change ticket_prefix on a populated child and every unrenamed
+			// ticket goes red here until `pickle ticket renumber` (T-060) runs.
+			r.errf("%s: id prefix %q does not match project %q ticket_prefix %q", ref, got, p, cp.Prefix())
 		}
 		for _, dep := range t.DependsOn {
 			if _, ok := byID[dep]; !ok {

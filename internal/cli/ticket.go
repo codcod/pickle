@@ -112,12 +112,14 @@ func runTicketNew(args []string) int {
 	if code != exitOK {
 		return code
 	}
-	if _, ok := cfg.Project(*project); !ok {
+	cp, ok := cfg.Project(*project)
+	if !ok {
 		return errf("project %q is not a registered child", *project)
 	}
 
 	root := cfg.Root()
-	id := fmt.Sprintf("T-%03d", ticket.NextNum(root))
+	prefix := cp.Prefix()
+	id := fmt.Sprintf("%s-%03d", prefix, ticket.NextNum(root, prefix))
 	slug := ticket.Slugify(title)
 	rel := filepath.Join("tickets", "1-to-do", id+"-"+slug+".md")
 	path := filepath.Join(root, rel)

@@ -111,6 +111,16 @@ func TestAudit(t *testing.T) {
 		{"unregistered project", func(t *testing.T, root string) {
 			mk(t, root, "tickets/1-to-do/T-001-foo.md", ticketFile("T-001", "nope", "[]", "high", "TO DO"))
 		}, true, `project "nope" is not a registered child`},
+		// The child "pickle" has no ticket_prefix, so its effective prefix is "T";
+		// a RICK-prefixed id filed against it is the half-migrated / mis-filed case
+		// the new invariant (T-058) catches.
+		{"prefix mismatch", func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			mk(t, root, "tickets/1-to-do/RICK-001-foo.md", ticketFile("RICK-001", "pickle", "[]", "high", "TO DO"))
+			renderBoard(t, root)
+		}, true, `id prefix "RICK" does not match project "pickle"`},
 		// The board is a generated artifact: the one board invariant is that it
 		// matches a fresh render (D6). Any hand-edit — a stray row, a moved row, a
 		// deleted section — collapses into the same single staleness error.
@@ -192,6 +202,32 @@ func TestAudit(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestAuditPrefixMatch confirms the positive side of the T-058 invariant: a
+// child with an explicit ticket_prefix and a matching id audits clean. (The
+// mismatch and legacy-default cases are covered in the TestAudit table.)
+func TestAuditPrefixMatch(t *testing.T) {
+	const cfgRick = `payload_version = "1"
+[commit]
+overarching_auto = true
+child_publish_gated = true
+[[project]]
+name = "rick"
+path = "."
+ticket_prefix = "RICK"
+wip_in_development = 1
+wip_in_review = 1
+`
+	root := t.TempDir()
+	mk(t, root, "pickle.toml", cfgRick)
+	mk(t, root, "tickets/1-to-do/RICK-001-foo.md", ticketFile("RICK-001", "rick", "[]", "high", "TO DO"))
+	renderBoard(t, root)
+
+	res := Audit(root, loadCfg(t, root))
+	if len(res.Errors) != 0 {
+		t.Fatalf("RICK-001 under a RICK-prefixed child must audit clean, got: %v", res.Errors)
 	}
 }
 

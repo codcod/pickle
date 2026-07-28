@@ -66,6 +66,7 @@ func runProjectAdd(args []string) int {
 	lint := fs.String("lint", "", "lint command")
 	docs := fs.String("docs", "", "docs command")
 	branch := fs.String("branch-prefix", config.DefaultBranchPrefix, "feature branch prefix")
+	ticketPrefix := fs.String("ticket-prefix", config.DefaultTicketPrefix, "per-child ticket id prefix (e.g. RICK → RICK-001)")
 	wipDev := fs.Int("wip-dev", config.DefaultWIPInDevelopment, "WIP limit for in-development")
 	wipRev := fs.Int("wip-review", config.DefaultWIPInReview, "WIP limit for in-review")
 	if err := fs.Parse(args[2:]); err != nil {
@@ -87,7 +88,8 @@ func runProjectAdd(args []string) int {
 	p := config.Project{
 		Name: name, Path: path,
 		Build: *build, Test: *test, Lint: *lint, Docs: *docs,
-		BranchPrefix: *branch, WIPInDevelopment: *wipDev, WIPInReview: *wipRev,
+		TicketPrefix: *ticketPrefix, BranchPrefix: *branch,
+		WIPInDevelopment: *wipDev, WIPInReview: *wipRev,
 	}
 	if err := cfg.AddProject(p); err != nil {
 		return errf("%v", err)
@@ -105,10 +107,10 @@ func runProjectList(_ []string) int {
 		return code
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tPATH\tBUILD\tTEST\tLINT\tWIP(dev/review)")
+	fmt.Fprintln(w, "NAME\tPATH\tPREFIX\tBUILD\tTEST\tLINT\tWIP(dev/review)")
 	for _, p := range cfg.Projects {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d/%d\n",
-			p.Name, p.Path, dash(p.Build), dash(p.Test), dash(p.Lint), p.WIPInDevelopment, p.WIPInReview)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%d/%d\n",
+			p.Name, p.Path, p.Prefix(), dash(p.Build), dash(p.Test), dash(p.Lint), p.WIPInDevelopment, p.WIPInReview)
 	}
 	w.Flush()
 	return exitOK
