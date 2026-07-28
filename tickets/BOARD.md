@@ -9,15 +9,14 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 ## IN DEVELOPMENT
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-053 | pickle serve — local web dashboard to visualize the board and its changes | [] |
 
 ## IN REVIEW
 
@@ -86,6 +85,7 @@ Last updated: 2026-07-27
 | T-047 | AsciiDoc user manual in docs/ + slim README to about & install | yes — merged to main (local squash merge 7a0995d) |
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | yes — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted |
+| T-053 | pickle serve — local web dashboard to visualize the board and its changes | yes — merged to main (PR #2, 8c33f5c), user-approved as an exception; squashed to one commit; branch deleted |
 
 ## DROPPED
 

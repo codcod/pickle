@@ -34,12 +34,15 @@ harness without a consumer means shipping an unexercised abstraction. They are o
 4. A comment nit that overstates what is shared.
 
 These are cheap to close **before** a second consumer arrives and inherits them; that was T-031's
-entire argument, and this epic is that second consumer arriving.
+entire argument, and this epic is that second consumer arriving. **A third consumer has since
+landed:** T-053's `TestServeHelpIsAdvertised` (`internal/cli/cli_test.go`) calls `captureStdout`,
+so item 1's defect is now inherited at three call sites.
 
 ### Part 2 — close the coverage gaps (T-012, seven items)
 
-`internal/cli` sits at ~29.5%; `internal/config` at 91.8%. The command layer is exercised almost
-entirely by manual acceptance tests.
+`internal/cli` sits at **46.7%** (~29.5% when this epic was filed; T-053's `serve` tests raised
+it); `internal/config` at 91.8%. The command layer is exercised almost entirely by manual
+acceptance tests.
 
 | # | item |
 |---|---|
@@ -95,3 +98,6 @@ defects) versus **items 1–6** (the coverage), not back into T-031 and T-012.
 - 2026-07-27 — patched by T-049's review impact sweep: `sanitizeCell` now also caps a cell at 120
   runes (`TestRenderCapsCellWidth` in `internal/board/board_test.go`), so the item-5 deferral's
   enumeration of the sanitisation was completed; item 5's scope is unchanged
+- 2026-07-27 — patched by T-053's review impact sweep: `internal/cli` coverage is now 46.7% (was
+  ~29.5% at filing), and `TestServeHelpIsAdvertised` is a third consumer of the defective
+  `captureStdout` helper (Part 1, item 1)
