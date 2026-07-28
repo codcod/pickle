@@ -1,0 +1,24 @@
+{{define "ticket.html"}}
+{{template "head" .}}
+{{with .Ticket}}
+<main class="page ticket-page">
+  <nav class="crumbs"><a href="/">Board</a> / <span>{{.ID}}</span></nav>
+  <h1 class="page-title">{{.ID}} — {{.Title}}</h1>
+
+  <dl class="meta">
+    <dt>status</dt><dd>{{.Status}}</dd>
+    <dt>project</dt><dd>{{.Project}}</dd>
+    <dt>grades</dt><dd>{{template "grades" .}}</dd>
+    <dt>depends on</dt><dd>{{if .DependsOn}}{{template "idlist" .DependsOn}}{{else}}—{{end}}</dd>
+    <dt>blocks</dt><dd>{{if .Blocks}}{{template "idlist" .Blocks}}{{else}}—{{end}}</dd>
+    <dt>spawned by</dt><dd>{{if .SpawnedBy}}{{template "idlist" .SpawnedBy}}{{else}}—{{end}}</dd>
+    <dt>spawned</dt><dd>{{if .Spawned}}{{template "idlist" .Spawned}}{{else}}—{{end}}</dd>
+    <dt>file</dt><dd><code>{{.File}}</code></dd>
+    {{if .Merged}}<dt>merged</dt><dd>{{.Merged}}</dd>{{end}}
+  </dl>
+
+  <article class="body">{{.Body}}</article>
+</main>
+{{end}}
+{{template "foot" .}}
+{{end}}

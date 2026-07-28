@@ -39,6 +39,9 @@ ever written to `~/` or outside the project root.
 | `pickle board sync`
 | Regenerate the board from ticket state.
 
+| `pickle serve [--addr …]`
+| Serve a read-only browser view of the board, the tickets, and their history.
+
 | `pickle version` · `pickle help`
 | Print the version / the usage summary.
 |===
@@ -388,6 +391,63 @@ A board differing from a fresh render only in the `Last updated:` date is in
 sync — no write. `--dry-run` reports the drift, writes nothing, and *exits
 non-zero if the board would change* (wire it into CI). After a write, sync
 runs `board audit` as a self-check.
+
+[#cmd-serve]
+== `pickle serve`
+
+----
+pickle serve [--addr|-a host:port]
+----
+
+Starts a *local, read-only* web view of the ticket flow and runs until you stop
+it with kbd:[Ctrl+C]. Default address `127.0.0.1:8745`; `--addr` (`-a`)
+overrides it.
+
+*It never writes.* No route creates, moves, rewrites or regenerates anything —
+not even a stale `BOARD.md`. `pickle ticket new`, `pickle ticket move` and
+`pickle board sync` remain the only writers, so it is safe to leave the server
+running while you or an agent work on tickets.
+
+What it serves:
+
+[cols="2,3"]
+|===
+| Path | Page
+
+| `/`
+| The board: every status section, sub-grouped per child-project, in exactly the
+  order `BOARD.md` uses (impact descending, ties by id) — both views call the
+  same ordering code, so they cannot disagree.
+
+| `/t/T-NNN`
+| One ticket: frontmatter as fields, the body rendered as Markdown, and *both*
+  directions of its edges — `depends-on`/`spawned-by` as written, plus the
+  reverse `blocks`/`spawned` edges, which no single ticket file records.
+
+| `/activity`
+| Every dated `## History` line in the project, merged and newest-first — what
+  moved, when, and why. The board shows current state; this shows movement.
+
+| `/healthz`
+| `ok`, for scripts.
+|===
+
+Every request re-reads the ticket files, so a reload always shows the tree as it
+is now; the board and activity views additionally refresh themselves every five
+seconds, which makes the dashboard usable as an ambient window while tickets move.
+
+A banner on every page reports what `pickle board audit` would say right now —
+including a stale board — plus each child's WIP counts against its limits. It
+*reports*; it never repairs. Fix findings with `pickle board sync` or by editing
+the ticket.
+
+[WARNING]
+====
+The dashboard has *no authentication*. The default address is loopback-only for
+that reason. `--addr` accepts any address, and a non-loopback one prints a
+warning: anyone who can reach the port can read every ticket in the project. Do
+not expose it.
+====
 
 [#cmd-version]
 == `pickle version` and `pickle help`

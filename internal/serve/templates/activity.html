@@ -1,0 +1,33 @@
+{{define "activity.html"}}
+{{template "head" .}}
+<main class="page">
+  <h1 class="page-title">Activity</h1>
+  <p class="lede">Every dated <code>## History</code> line in the flow, newest first — what
+    <code>BOARD.md</code> cannot show, because the board holds current state, not movement.</p>
+  <div id="activity" hx-get="/fragments/activity" hx-trigger="every 5s" hx-swap="outerHTML">
+    {{template "activity-body" .Activity}}
+  </div>
+</main>
+{{template "foot" .}}
+{{end}}
+
+{{define "activity-fragment"}}
+<div id="activity" hx-get="/fragments/activity" hx-trigger="every 5s" hx-swap="outerHTML">
+  {{template "activity-body" .Activity}}
+</div>
+{{end}}
+
+{{define "activity-body"}}
+{{if .Truncated}}<p class="hint">Showing the {{len .Events}} most recent of {{.Total}} entries.</p>{{end}}
+<ol class="timeline">
+  {{range .Events}}
+  <li class="event">
+    <time>{{.Date}}</time>
+    <a class="tid" href="/t/{{.ID}}">{{.ID}}</a>
+    <span class="event-text">{{.Text}}</span>
+    <span class="event-meta">{{.Title}} · {{.Project}}</span>
+  </li>
+  {{end}}
+</ol>
+{{if not .Events}}<p class="empty">No history yet.</p>{{end}}
+{{end}}

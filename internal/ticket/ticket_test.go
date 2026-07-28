@@ -310,3 +310,119 @@ func TestStatusByToken(t *testing.T) {
 		}
 	}
 }
+
+// TestHistoryEntries covers the timeline's data source: every dated line, in file
+// order, with created lines and merge notes kept (the view classifies, the parser
+// does not filter).
+func TestHistoryEntries(t *testing.T) {
+	const doc = `# T-007 — x
+
+## Description
+
+- 2026-01-01 — this bullet is outside ## History and must be ignored
+
+## History
+
+- 2026-07-23 — created (TO DO). source: test
+- 2026-07-24 - TO DO → READY: plain-hyphen separator
+-   2026-07-25   —   READY → IN DEVELOPMENT: extra spaces
+- not a dated bullet at all
+- 2026-07-26 — merged to main (abc1234)
+- 2026-07-27 — IN REVIEW → DONE: a reason so long that it wraps
+  onto a second line
+  and even a third
+- 2026-07-28 — TO DO → READY: not a continuation of the above
+
+## Review
+
+- 2026-12-31 — a dated bullet after ## History ends must be ignored
+`
+	got := HistoryEntries(doc)
+	want := []HistoryEntry{
+		{"2026-07-23", "created (TO DO). source: test"},
+		{"2026-07-24", "TO DO → READY: plain-hyphen separator"},
+		{"2026-07-25", "READY → IN DEVELOPMENT: extra spaces"},
+		{"2026-07-26", "merged to main (abc1234)"},
+		// Wrapped entries fold back into one logical entry: truncating at the
+		// first physical line would cut this reason mid-sentence.
+		{"2026-07-27", "IN REVIEW → DONE: a reason so long that it wraps onto a second line and even a third"},
+		{"2026-07-28", "TO DO → READY: not a continuation of the above"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("HistoryEntries returned %d entries, want %d: %+v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("entry %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+}
+
+func TestHistoryEntriesEmpty(t *testing.T) {
+	for _, doc := range []string{"", "# T-001 — x\n", "## History\n\n<!-- nothing yet -->\n"} {
+		if got := HistoryEntries(doc); got != nil {
+			t.Errorf("HistoryEntries(%q) = %+v, want nil", doc, got)
+		}
+	}
+}
+
+// TestHistoryEntriesDoesNotShiftPositionalCallers is the regression guard for the
+// hazard HistoryEntries was written around: LastHistoryStatus, LastHistoryReason
+// and MergeLine all read historyRE's body as m[1], so capturing the date would
+// silently renumber it. Read the date and the body from the same lines and assert
+// the three keep working.
+func TestHistoryEntriesDoesNotShiftPositionalCallers(t *testing.T) {
+	if got := LastHistoryStatus(sample); got != "DONE" {
+		t.Errorf("LastHistoryStatus = %q, want DONE", got)
+	}
+	if got := LastHistoryReason(sample); got != "review PASS" {
+		t.Errorf("LastHistoryReason = %q, want %q", got, "review PASS")
+	}
+	if got := MergeLine(sample); got != "MERGED: feat/T-001 → main (abc1234)" {
+		t.Errorf("MergeLine = %q, want the merge note verbatim", got)
+	}
+	// The bodies HistoryEntries reports must be exactly what those helpers see.
+	entries := HistoryEntries(sample)
+	if len(entries) != 6 {
+		t.Fatalf("HistoryEntries(sample) = %d entries, want 6", len(entries))
+	}
+	if entries[len(entries)-1].Text != MergeLine(sample) {
+		t.Errorf("last entry text %q != MergeLine %q — body group moved",
+			entries[len(entries)-1].Text, MergeLine(sample))
+	}
+	for _, e := range entries {
+		if e.Date != "2026-07-23" {
+			t.Errorf("entry date = %q, want 2026-07-23 (date slice misaligned)", e.Date)
+		}
+	}
+}
+
+// TestHistoryEntriesFoldingBoundaries pins what does *not* get folded into the
+// preceding entry: a fresh bullet, a blank line, an HTML comment, and any
+// unindented prose that follows the list.
+func TestHistoryEntriesFoldingBoundaries(t *testing.T) {
+	const doc = `## History
+
+<!-- append-only; newest last -->
+
+- 2026-07-23 — created (TO DO). source: test
+  wrapped tail
+- undated bullet must not fold
+unindented prose must not fold
+
+- 2026-07-24 — TO DO → READY: second entry
+`
+	got := HistoryEntries(doc)
+	want := []HistoryEntry{
+		{"2026-07-23", "created (TO DO). source: test wrapped tail"},
+		{"2026-07-24", "TO DO → READY: second entry"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d entries, want %d: %+v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("entry %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+}

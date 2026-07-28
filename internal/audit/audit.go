@@ -135,42 +135,28 @@ func Audit(root string, cfg *config.Config) Result {
 	return r
 }
 
+// auditWIP checks each child's per-status WIP limits. The tally itself comes from
+// board.WIPCounts — the same counter behind the board's `(n/limit)` sub-headings
+// and the dashboard's badges — so a limit cannot look breached in one view and
+// satisfied in another.
 func auditWIP(r *Result, tickets []*ticket.Ticket, cfg *config.Config) {
-	type counts struct{ dev, rev int }
-	byChild := map[string]*counts{}
-	for _, t := range tickets {
-		p := t.Project()
-		if p == "" {
-			continue
-		}
-		c := byChild[p]
-		if c == nil {
-			c = &counts{}
-			byChild[p] = c
-		}
-		switch t.Dir {
-		case "3-in-development":
-			c.dev++
-		case "4-in-review":
-			c.rev++
-		}
-	}
-	children := make([]string, 0, len(byChild))
-	for p := range byChild {
+	counts := board.WIPCounts(tickets)
+	children := make([]string, 0, len(counts))
+	for p := range counts {
 		children = append(children, p)
 	}
 	sort.Strings(children)
 	for _, p := range children {
-		c := byChild[p]
+		c := counts[p]
 		cp, ok := cfg.Project(p)
 		if !ok {
 			continue // unregistered project already reported per-ticket
 		}
-		if c.dev > cp.WIPInDevelopment {
-			r.errf("WIP: child %q has %d tickets in 3-in-development (limit %d)", p, c.dev, cp.WIPInDevelopment)
+		if c.InDevelopment > cp.WIPInDevelopment {
+			r.errf("WIP: child %q has %d tickets in 3-in-development (limit %d)", p, c.InDevelopment, cp.WIPInDevelopment)
 		}
-		if c.rev > cp.WIPInReview {
-			r.errf("WIP: child %q has %d tickets in 4-in-review (limit %d)", p, c.rev, cp.WIPInReview)
+		if c.InReview > cp.WIPInReview {
+			r.errf("WIP: child %q has %d tickets in 4-in-review (limit %d)", p, c.InReview, cp.WIPInReview)
 		}
 	}
 }

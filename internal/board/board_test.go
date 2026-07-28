@@ -449,3 +449,106 @@ func TestParse(t *testing.T) {
 		}
 	}
 }
+
+// TestSortIsTheOrderRenderUses is the mechanical guard behind the promise that the
+// generated board and any other view built on Sort (the `pickle serve` dashboard)
+// can never disagree: the ids Sort produces for a group must be exactly the row
+// order Render emits for that group's section.
+func TestSortIsTheOrderRenderUses(t *testing.T) {
+	root := t.TempDir()
+	// Deliberately unsorted input, mixed impacts, and an impact tie (T-002/T-005
+	// are both medium) so ties-by-id is exercised too.
+	for _, tc := range []struct{ id, impact string }{
+		{"T-004", "low"},
+		{"T-002", "medium"},
+		{"T-009", "critical"},
+		{"T-005", "medium"},
+		{"T-001", "high"},
+	} {
+		mkTicket(t, root, "1-to-do", tc.id, "x",
+			ticketBody(tc.id, "t "+tc.id, tc.impact, "- 2026-07-23 — created (TO DO). source: test"))
+	}
+	tickets := loadTree(t, root)
+
+	group := make([]*ticket.Ticket, len(tickets))
+	copy(group, tickets)
+	Sort(group, "TO DO")
+	var sorted []string
+	for _, tk := range group {
+		sorted = append(sorted, tk.ID)
+	}
+
+	rendered := renderedIDs(t, Render(tickets, testCfg(), "2026-07-23"), "## TO DO")
+	if strings.Join(sorted, ",") != strings.Join(rendered, ",") {
+		t.Errorf("Sort order %v != Render row order %v — the dashboard and BOARD.md could disagree",
+			sorted, rendered)
+	}
+	// Sanity-check the ordering rule itself, so a bug that broke *both* paths
+	// identically still fails this test.
+	if want := []string{"T-009", "T-001", "T-002", "T-005", "T-004"}; strings.Join(sorted, ",") != strings.Join(want, ",") {
+		t.Errorf("Sort = %v, want %v (impact desc, ties by id asc)", sorted, want)
+	}
+}
+
+// renderedIDs extracts the ticket ids of the table rows under a `## <section>`
+// heading, in render order.
+func renderedIDs(t *testing.T, boardText, heading string) []string {
+	t.Helper()
+	var ids []string
+	in := false
+	for _, line := range strings.Split(boardText, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			in = strings.HasPrefix(line, heading)
+			continue
+		}
+		if !in {
+			continue
+		}
+		if m := rowRE.FindStringSubmatch(strings.TrimSpace(line)); m != nil {
+			ids = append(ids, m[1])
+		}
+	}
+	if len(ids) == 0 {
+		t.Fatalf("no rows found under %q", heading)
+	}
+	return ids
+}
+
+// TestWIPCountsIsTheBoardsCount pins the shared tally: what WIPCounts reports must
+// be what Render prints in the `(n/limit)` sub-headings, since the audit's
+// limit check reads the same function.
+func TestWIPCountsIsTheBoardsCount(t *testing.T) {
+	root := t.TempDir()
+	hist := "- 2026-07-23 — created (TO DO). source: test"
+	mkTicket(t, root, "3-in-development", "T-001", "a", ticketBody("T-001", "a", "high", hist))
+	mkTicket(t, root, "4-in-review", "T-002", "b", ticketBody("T-002", "b", "high", hist))
+	mkTicket(t, root, "4-in-review", "T-003", "c", ticketBody("T-003", "c", "high", hist))
+	mkTicket(t, root, "6-done", "T-004", "d", ticketBody("T-004", "d", "high", hist))
+	tickets := loadTree(t, root)
+
+	got := WIPCounts(tickets)
+	if want := (WIP{InDevelopment: 1, InReview: 2}); got["demo"] != want {
+		t.Errorf("WIPCounts[demo] = %+v, want %+v", got["demo"], want)
+	}
+	if _, ok := got["nobody"]; ok {
+		t.Error("WIPCounts invented an entry for an absent project")
+	}
+
+	text := Render(tickets, testCfg(), "2026-07-23")
+	for _, want := range []string{"### demo (1/1)", "### demo (2/1)"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("board is missing sub-heading %q\n%s", want, text)
+		}
+	}
+}
+
+func TestStatusOrderIsACopy(t *testing.T) {
+	got := StatusOrder()
+	if len(got) != len(boardOrder) {
+		t.Fatalf("StatusOrder() has %d entries, want %d", len(got), len(boardOrder))
+	}
+	got[0] = "MANGLED"
+	if boardOrder[0] == "MANGLED" {
+		t.Error("StatusOrder() exposed the package's own slice — a caller can reorder the board")
+	}
+}

@@ -8,6 +8,34 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle serve` — a local, read-only web view of the board** (T-053). Renders the
+  board (`/`), one page per ticket (`/t/T-NNN`) with its Markdown body and *both*
+  directions of its dependency/lineage edges, and an activity timeline (`/activity`)
+  merging every ticket's `## History` newest-first. That timeline is something
+  `BOARD.md` cannot give you: the board shows current state, while the timeline shows
+  movement over time. A banner reports what `pickle board audit` would say, plus
+  per-child WIP counts.
+
+  Default address is `127.0.0.1:8745`; `--addr host:port` overrides it, and a
+  non-loopback address prints a warning — **there is no authentication**.
+
+  **It writes nothing**: no route creates, moves or regenerates anything, not even a
+  stale board, so it is safe to leave running while tickets move. Pages re-read the
+  ticket files per request (and refresh themselves every five seconds), so they are
+  never stale.
+
+  Two new dependencies come with it: `github.com/yuin/goldmark` v1.8.2 (ticket-body
+  Markdown; raw HTML stays escaped) and a vendored, embedded copy of htmx 2.0.4
+  (0BSD, licence included) for the refresh. There is no CDN reference, no npm and no
+  build step — templates and assets are compiled into the binary.
+
+  **Size note:** serving HTTP pulls `net/http` and `html/template` into what was a
+  pure file-manipulating CLI. Consequently, the released binary grows from ~2.8 MB to
+  ~9.5 MB. goldmark accounts for a small fraction (~0.1 MB); the stdlib server and
+  template engine are the bulk.
+
 ### Changed
 
 - **Board cells are capped at 120 runes** with a trailing `…` (T-049). One

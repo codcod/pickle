@@ -59,6 +59,8 @@ func Run(payload fs.FS, version string, args []string) int {
 		return runTicket(args[1:])
 	case "board":
 		return runBoard(args[1:])
+	case "serve":
+		return runServe(args[1:])
 	case "version", "--version", "-v":
 		return runVersion(args[1:])
 	case "help", "--help", "-h":
@@ -99,6 +101,12 @@ Flow commands:
                           Move a ticket (file + History + board regeneration) atomically.
   board audit             Check the ticket invariants + board freshness (exit non-zero on any error).
   board sync              Regenerate BOARD.md from ticket frontmatter + locations.
+
+Visualize:
+  serve [--addr host:port]
+                          Serve a read-only web view of the board, each ticket, and a
+                          merged History timeline. --addr (-a) sets the listen address
+                          (default 127.0.0.1:8745). Writes nothing.
 
 Other:
   version                 Print the pickle version.
