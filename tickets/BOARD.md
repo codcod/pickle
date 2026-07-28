@@ -47,6 +47,7 @@ Last updated: 2026-07-28
 |---|---|---|---|---|---|
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | high | high | XL | [] |
+| T-059 | family: group tickets under an umbrella ticket id for curated pickup order | medium-high | medium | M | [] |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
@@ -58,6 +59,7 @@ Last updated: 2026-07-28
 | T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low-medium | low | S | [] |
+| T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | low-medium | high | L | [] |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
 | T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
 | T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |
@@ -90,6 +92,7 @@ Last updated: 2026-07-28
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | yes — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted |
 | T-053 | pickle serve — local web dashboard to visualize the board and its changes | yes — merged to main (PR #2, 8c33f5c), user-approved as an exception; squashed to one commit; branch deleted |
 | T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | yes — merged to main (PR #3, b70e238), user-approved as an exception; kept both |
+| T-058 | per-child ticket_prefix: optional id prefix per child-project, default T | no — publish-gated |
 
 ## DROPPED
 
