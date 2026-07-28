@@ -20,11 +20,10 @@ Last updated: 2026-07-28
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-059 | family: group tickets under an umbrella ticket id for curated pickup order | [] |
 
 ## REWORK
 
@@ -37,33 +36,33 @@ Last updated: 2026-07-28
 
 ### pickle
 
-| id | title | impact | complexity | cost | depends-on |
-|---|---|---|---|---|---|
+| id | title | impact | complexity | cost | depends-on | family |
+|---|---|---|---|---|---|---|
 
 ## TO DO (impact order, per child)
 
 ### pickle
 
-| id | title | impact | complexity | cost | depends-on |
-|---|---|---|---|---|---|
-| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |
-| T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | high | high | XL | [] |
-| T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |
-| T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |
-| T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |
-| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |
-| T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |
-| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |
-| T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | medium | medium | M | [] |
-| T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |
-| T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |
-| T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |
-| T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low-medium | low | S | [] |
-| T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | low-medium | high | L | [] |
-| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |
-| T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |
-| T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |
-| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |
+| id | title | impact | complexity | cost | depends-on | family |
+|---|---|---|---|---|---|---|
+| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |  |
+| T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | high | high | XL | [] |  |
+| T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |  |
+| T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |  |
+| T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |  |
+| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |  |
+| T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
+| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
+| T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | medium | medium | M | [] |  |
+| T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |  |
+| T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |  |
+| T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
+| T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low-medium | low | S | [] |  |
+| T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | low-medium | high | L | [] |  |
+| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |  |
+| T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |  |
+| T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |  |
+| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |  |
 
 ## DONE
 
@@ -93,6 +92,7 @@ Last updated: 2026-07-28
 | T-053 | pickle serve — local web dashboard to visualize the board and its changes | yes — merged to main (PR #2, 8c33f5c), user-approved as an exception; squashed to one commit; branch deleted |
 | T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | yes — merged to main (PR #3, b70e238), user-approved as an exception; kept both |
 | T-058 | per-child ticket_prefix: optional id prefix per child-project, default T | yes — merged to main (0f3049f) |
+| T-059 | family: group tickets under an umbrella ticket id for curated pickup order | no — publish-gated |
 
 ## DROPPED
 
