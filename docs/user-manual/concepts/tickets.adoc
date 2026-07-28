@@ -7,12 +7,16 @@ The single artifact everything flows through. Authored from the skill's
 
 == Identity
 
-* *ID* — `T-NNN`, monotonically increasing, *never reused*, one global
-  namespace shared across all child-projects: a new ticket's number is
-  `max(existing across all status dirs, including done and dropped) + 1`.
-  Tickets are never deleted — `6-done/` and `7-dropped/` are permanent
-  archives; pruning them would lose the record *and* break the `max()+1` rule.
-* *Filename* — `T-NNN-<slug>.md`; the slug derives from the title, so a title
+* *ID* — `<PREFIX>-NNN`, monotonically increasing *within its prefix*, *never
+  reused*: a new ticket's number is `max(existing ids sharing that prefix across
+  all status dirs, including done and dropped) + 1`. Each child's prefix is its
+  configured `ticket_prefix` (default `T`), so a single-child project just uses
+  `T-NNN`, while a multi-child workspace can number each child independently
+  (`RICK-137`, `SB-042`). *Numbers are unique only within a prefix*, so across
+  children always write an id in full (`RICK-137`, never "137"). Tickets are
+  never deleted — `6-done/` and `7-dropped/` are permanent archives; pruning them
+  would lose the record *and* break the `max()+1` rule.
+* *Filename* — `<PREFIX>-NNN-<slug>.md`; the slug derives from the title, so a title
   is a single line of text (enforced by `pickle ticket new`).
 
 == Frontmatter

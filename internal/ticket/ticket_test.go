@@ -178,16 +178,47 @@ func TestSlugify(t *testing.T) {
 
 func TestNextNum(t *testing.T) {
 	root := t.TempDir()
-	for _, name := range []string{"1-to-do/T-001-a.md", "6-done/T-012-b.md", "3-in-development/T-007-c.md"} {
+	// Two prefixes interleaved across status dirs, to prove NextNum counts each
+	// prefix independently (per-child counters, T-058) rather than one global max.
+	for _, name := range []string{
+		"1-to-do/T-001-a.md", "6-done/T-012-b.md", "3-in-development/T-007-c.md",
+		"1-to-do/RICK-001-d.md", "6-done/RICK-004-e.md", "2-ready/SB-002-f.md",
+	} {
 		p := filepath.Join(root, "tickets", filepath.Dir(name))
 		os.MkdirAll(p, 0o755)
 		os.WriteFile(filepath.Join(root, "tickets", name), []byte(sample), 0o644)
 	}
-	if got := NextNum(root); got != 13 {
-		t.Errorf("NextNum = %d, want 13", got)
+	cases := map[string]int{"T": 13, "RICK": 5, "SB": 3, "PK": 1}
+	for prefix, want := range cases {
+		if got := NextNum(root, prefix); got != want {
+			t.Errorf("NextNum(%q) = %d, want %d", prefix, got, want)
+		}
 	}
-	if got := NextNum(t.TempDir()); got != 1 {
+	if got := NextNum(t.TempDir(), "T"); got != 1 {
 		t.Errorf("NextNum(empty) = %d, want 1", got)
+	}
+}
+
+func TestSplitID(t *testing.T) {
+	cases := []struct {
+		id     string
+		prefix string
+		num    int
+		ok     bool
+	}{
+		{"T-001", "T", 1, true},
+		{"RICK-137", "RICK", 137, true},
+		{"T-1", "T", 1, true},
+		{"foo", "", 0, false},   // no '-'
+		{"T-", "", 0, false},    // empty number
+		{"T-0x1", "", 0, false}, // non-integer tail
+	}
+	for _, c := range cases {
+		prefix, num, ok := SplitID(c.id)
+		if prefix != c.prefix || num != c.num || ok != c.ok {
+			t.Errorf("SplitID(%q) = (%q, %d, %v), want (%q, %d, %v)",
+				c.id, prefix, num, ok, c.prefix, c.num, c.ok)
+		}
 	}
 }
 

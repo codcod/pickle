@@ -79,8 +79,11 @@ WIP limits, and an optional per-child review addendum. Defaults:
   field**; record every transition as a dated line in the ticket's `## History`.
 - **Child-project target.** Every ticket has a `project:` frontmatter naming one registered
   child; its `feat/` branch is cut in that child's repo.
-- **IDs (one global namespace).** `T-NNN`, monotonically increasing, **never reused**, shared
-  across all children (`max(existing across all status dirs) + 1`). Filename `T-NNN-<slug>.md`.
+- **IDs (`<PREFIX>-NNN`, per-child counters).** A child's `ticket_prefix` (default `T`) followed
+  by a number, monotonically increasing **within that prefix**, **never reused**
+  (`max(existing ids sharing that prefix across all status dirs) + 1`). Children that leave the
+  prefix unset share the one legacy global `T` counter; numbers are unique only within a prefix,
+  so an id is always qualified across children. Filename `<PREFIX>-NNN-<slug>.md`.
 - **Priority.** `impact` / `complexity` / `cost` frontmatter; the board orders each child's
   TO DO/READY group deterministically from it (impact descending, ties by id).
 - **Dependencies (may cross children).** `depends-on:` frontmatter. A ticket may not enter
