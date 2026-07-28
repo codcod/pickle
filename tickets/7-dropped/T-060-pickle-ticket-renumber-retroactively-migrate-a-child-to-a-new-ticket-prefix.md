@@ -200,3 +200,4 @@ policy). Then `pickle ticket move T-060 in-review --reason "acceptance green"`.
 
 - 2026-07-28 — created (TO DO). source: pickle ticket new
 - 2026-07-28 — TO DO → READY: plan complete: read-only planner + manual procedure; preserve-numbers; T-058 satisfied
+- 2026-07-28 — READY → DROPPED: automation not needed; unity is the only real case and is a one-time guided manual migration, not a pickle command

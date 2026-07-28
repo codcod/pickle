@@ -38,7 +38,6 @@ Last updated: 2026-07-28
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | low | medium | M | [T-058] |  |
 
 ## TO DO (impact order, per child)
 
@@ -119,3 +118,4 @@ Last updated: 2026-07-28
 | T-035 | repair the corrupted T-021 board row (unescaped pipe in title) | board row repaired inline during triage; ticket overhead exceeded the one-character fix |
 | T-037 | board sync silently deletes hand-written prose from BOARD.md sections | absorbed into T-039 (board triage merge); content preserved here as the record |
 | T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | superseded by T-044 (generated board); move-atomicity residue folded into T-044 |
+| T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | automation not needed; unity is the only real case and is a one-time guided manual migration, not a pickle command |
