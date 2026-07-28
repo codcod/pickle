@@ -48,6 +48,13 @@ func withSpawnedBy(body, ids string) string {
 	return strings.Replace(body, "spawned-by: []", "spawned-by: "+ids, 1)
 }
 
+// withFamily inserts a `family:` line after the fixture's `spawned-by: []`, the
+// same string-rewrite trick as withSpawnedBy (family is an optional field, so the
+// clean fixture has no such line).
+func withFamily(body, id string) string {
+	return strings.Replace(body, "spawned-by: []", "spawned-by: []\nfamily: "+id, 1)
+}
+
 // writeGood lays down a clean, audit-passing tree at root.
 func mk(t *testing.T, root, rel, content string) {
 	t.Helper()
@@ -176,6 +183,29 @@ func TestAudit(t *testing.T) {
 				withSpawnedBy(ticketFile("T-002", "pickle", "[]", "high", "IN DEVELOPMENT"), "[T-001]"))
 			renderBoard(t, root)
 		}, false, ""},
+
+		// --- family: same-child umbrella grouping, validated but never a gate (T-059) ---
+		{"valid family", func(t *testing.T, root string) {
+			mk(t, root, "tickets/2-ready/T-002-bar.md",
+				withFamily(ticketFile("T-002", "pickle", "[]", "high", "READY"), "T-001"))
+			renderBoard(t, root)
+		}, false, ""},
+		{"dangling family", func(t *testing.T, root string) {
+			mk(t, root, "tickets/1-to-do/T-001-foo.md",
+				withFamily(ticketFile("T-001", "pickle", "[]", "high", "TO DO"), "T-404"))
+		}, true, "family T-404 does not exist"},
+		{"self-referencing family", func(t *testing.T, root string) {
+			mk(t, root, "tickets/1-to-do/T-001-foo.md",
+				withFamily(ticketFile("T-001", "pickle", "[]", "high", "TO DO"), "T-001"))
+		}, true, "family lists itself"},
+		{"nested family", func(t *testing.T, root string) {
+			// T-002 is a member of T-001; T-003 pointing at T-002 is the no-nesting case.
+			mk(t, root, "tickets/2-ready/T-002-bar.md",
+				withFamily(ticketFile("T-002", "pickle", "[]", "high", "READY"), "T-001"))
+			mk(t, root, "tickets/2-ready/T-003-baz.md",
+				withFamily(ticketFile("T-003", "pickle", "[]", "high", "READY"), "T-002"))
+			renderBoard(t, root)
+		}, true, "families do not nest"},
 	}
 
 	for _, tc := range cases {
@@ -228,6 +258,42 @@ wip_in_review = 1
 	res := Audit(root, loadCfg(t, root))
 	if len(res.Errors) != 0 {
 		t.Fatalf("RICK-001 under a RICK-prefixed child must audit clean, got: %v", res.Errors)
+	}
+}
+
+// TestAuditFamilyCrossChild: a family must stay within one child. Two registered
+// children, an umbrella in one and a member in the other, must fail (the board
+// groups per child, so a cross-child family could not render as one group).
+func TestAuditFamilyCrossChild(t *testing.T) {
+	const cfgTwo = `payload_version = "1"
+[commit]
+overarching_auto = true
+child_publish_gated = true
+[[project]]
+name = "pickle"
+path = "."
+wip_in_development = 1
+wip_in_review = 1
+[[project]]
+name = "rick"
+path = "rick"
+ticket_prefix = "RICK"
+wip_in_development = 1
+wip_in_review = 1
+`
+	root := t.TempDir()
+	mk(t, root, "pickle.toml", cfgTwo)
+	if err := os.Mkdir(filepath.Join(root, "rick"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mk(t, root, "tickets/1-to-do/T-001-umbrella.md", ticketFile("T-001", "pickle", "[]", "high", "TO DO"))
+	mk(t, root, "tickets/1-to-do/RICK-001-member.md",
+		withFamily(ticketFile("RICK-001", "rick", "[]", "high", "TO DO"), "T-001"))
+	renderBoard(t, root)
+
+	res := Audit(root, loadCfg(t, root))
+	if !containsAny(res.Errors, "family T-001 is in a different child-project") {
+		t.Fatalf("expected a cross-child family error; errors: %v", res.Errors)
 	}
 }
 

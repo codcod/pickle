@@ -111,17 +111,17 @@ Last updated: 2026-07-26
 
 ### demo
 
-| id | title | impact | complexity | cost | depends-on |
-|---|---|---|---|---|---|
+| id | title | impact | complexity | cost | depends-on | family |
+|---|---|---|---|---|---|---|
 
 ## TO DO (impact order, per child)
 
 ### demo
 
-| id | title | impact | complexity | cost | depends-on |
-|---|---|---|---|---|---|
-| T-001 | Alpha | high | medium | M | [] |
-| T-002 | Beta | medium | medium | M | [] |
+| id | title | impact | complexity | cost | depends-on | family |
+|---|---|---|---|---|---|---|
+| T-001 | Alpha | high | medium | M | [] |  |
+| T-002 | Beta | medium | medium | M | [] |  |
 
 ## DONE
 
@@ -275,8 +275,8 @@ func TestRenderCapsCellWidth(t *testing.T) {
 		}
 		// A stray `|` would split the row — the invariant the substitution exists for.
 		for _, ln := range strings.Split(rendered, "\n") {
-			if strings.HasPrefix(ln, "| T-001 |") && strings.Count(ln, "|") != 7 {
-				t.Errorf("row has %d pipes, want 7 (one per column boundary): %s",
+			if strings.HasPrefix(ln, "| T-001 |") && strings.Count(ln, "|") != 8 {
+				t.Errorf("row has %d pipes, want 8 (one per column boundary): %s",
 					strings.Count(ln, "|"), ln)
 			}
 		}
@@ -472,7 +472,7 @@ func TestSortIsTheOrderRenderUses(t *testing.T) {
 
 	group := make([]*ticket.Ticket, len(tickets))
 	copy(group, tickets)
-	Sort(group, "TO DO")
+	Sort(group, "TO DO", ticketsByID(tickets))
 	var sorted []string
 	for _, tk := range group {
 		sorted = append(sorted, tk.ID)
@@ -539,6 +539,68 @@ func TestWIPCountsIsTheBoardsCount(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Errorf("board is missing sub-heading %q\n%s", want, text)
 		}
+	}
+}
+
+// familyBody is ticketBody with a `family:` line, for the T-059 grouping tests.
+func familyBody(id, title, impact, family string) string {
+	return fmt.Sprintf(`---
+id: %s
+title: %s
+project: demo
+depends-on: []
+spawned-by: []
+family: %s
+impact: %s
+complexity: medium
+cost: M
+---
+
+# %s — %s
+
+## History
+
+- 2026-07-28 — created (TO DO). source: test
+`, id, title, family, impact, id, title)
+}
+
+// TestRenderFamilyGrouping: members sit contiguously under their umbrella (umbrella
+// row first, members by impact), and a `family` column carries the umbrella id.
+func TestRenderFamilyGrouping(t *testing.T) {
+	root := t.TempDir()
+	created := "- 2026-07-28 — created (TO DO). source: test"
+	mkTicket(t, root, "1-to-do", "T-001", "umbrella", ticketBody("T-001", "umbrella", "high", created))
+	mkTicket(t, root, "1-to-do", "T-002", "m1", familyBody("T-002", "member one", "medium", "T-001"))
+	mkTicket(t, root, "1-to-do", "T-003", "m2", familyBody("T-003", "member two", "medium", "T-001"))
+	mkTicket(t, root, "1-to-do", "T-004", "loose", ticketBody("T-004", "loose", "medium", created))
+
+	got := Render(loadTree(t, root), testCfg(), "2026-07-28")
+	if !strings.Contains(got, "| family |") {
+		t.Errorf("TO DO table is missing the family column:\n%s", got)
+	}
+	ids := renderedIDs(t, got, "## TO DO")
+	if want := []string{"T-001", "T-002", "T-003", "T-004"}; strings.Join(ids, ",") != strings.Join(want, ",") {
+		t.Errorf("order = %v, want %v (family contiguous, umbrella first, loose after)", ids, want)
+	}
+	// The member rows must actually carry the umbrella id in their family cell.
+	if !strings.Contains(got, "| T-002 | member one | medium | medium | M | [] | T-001 |") {
+		t.Errorf("member row missing family cell T-001:\n%s", got)
+	}
+}
+
+// TestRenderFamilySinksToUmbrellaImpact: a family ranks by its umbrella's impact,
+// not its members' — a high-impact member does not float above a higher-ranked
+// loose ticket when its umbrella is low-impact.
+func TestRenderFamilySinksToUmbrellaImpact(t *testing.T) {
+	root := t.TempDir()
+	created := "- 2026-07-28 — created (TO DO). source: test"
+	mkTicket(t, root, "1-to-do", "T-005", "umbrella", ticketBody("T-005", "low umbrella", "low", created))
+	mkTicket(t, root, "1-to-do", "T-006", "member", familyBody("T-006", "high member", "high", "T-005"))
+	mkTicket(t, root, "1-to-do", "T-007", "loose", ticketBody("T-007", "medium loose", "medium", created))
+
+	ids := renderedIDs(t, Render(loadTree(t, root), testCfg(), "2026-07-28"), "## TO DO")
+	if want := []string{"T-007", "T-005", "T-006"}; strings.Join(ids, ",") != strings.Join(want, ",") {
+		t.Errorf("order = %v, want %v (loose medium outranks a low-umbrella family)", ids, want)
 	}
 }
 

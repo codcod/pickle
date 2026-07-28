@@ -33,7 +33,7 @@ func runTicket(args []string) int {
 }
 
 const (
-	ticketNewUsage  = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"]`
+	ticketNewUsage  = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"] [--family T-NNN]`
 	ticketMoveUsage = `usage: pickle ticket move <T-NNN> <status> [--reason "<why>"]`
 )
 
@@ -82,6 +82,7 @@ func runTicketNew(args []string) int {
 	complexity := fs.String("complexity", "medium", "complexity grade")
 	cost := fs.String("cost", "M", "cost grade")
 	spawnedBy := fs.String("spawned-by", "", "lineage: ticket id(s) this one was born from, comma-separated (non-gating)")
+	family := fs.String("family", "", "umbrella ticket id this one groups under for board ordering (single id, same child; non-gating)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return exitUsage
 	}
@@ -107,6 +108,14 @@ func runTicketNew(args []string) int {
 	if err != nil {
 		return errf("--spawned-by: %v", err)
 	}
+	// family is a single umbrella id; same shape-check-now, existence-later split as
+	// --spawned-by. It groups this ticket on the board and never gates pickup, so the
+	// same-child / existence / no-nesting invariants are the audit's job, not this
+	// write path's.
+	fam := strings.TrimSpace(*family)
+	if fam != "" && !ticket.ValidID(fam) {
+		return errf("--family: %q is not a ticket id (expected <PREFIX>-NNN, e.g. T-001)", fam)
+	}
 
 	cfg, code := loadConfig()
 	if code != exitOK {
@@ -129,7 +138,7 @@ func runTicketNew(args []string) int {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return errf("%v", err)
 	}
-	if err := os.WriteFile(path, []byte(ticket.Scaffold(id, title, *project, *impact, *complexity, *cost, lineage)), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(ticket.Scaffold(id, title, *project, *impact, *complexity, *cost, lineage, fam)), 0o644); err != nil {
 		return errf("%v", err)
 	}
 	if err := board.Regenerate(root, cfg); err != nil {

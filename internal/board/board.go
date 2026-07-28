@@ -102,7 +102,7 @@ func Parse(path string) ([]Row, error) {
 func SectionColumns(statusName string) []string {
 	switch statusName {
 	case "TO DO", "READY":
-		return []string{"id", "title", "impact", "complexity", "cost", "depends-on"}
+		return []string{"id", "title", "impact", "complexity", "cost", "depends-on", "family"}
 	case "IN DEVELOPMENT", "IN REVIEW":
 		return []string{"id", "title", "depends-on"}
 	case "REWORK":
@@ -172,6 +172,8 @@ func cellFor(t *ticket.Ticket, col string) string {
 		return t.Front[col]
 	case "depends-on":
 		return "[" + strings.Join(t.DependsOn, ", ") + "]"
+	case "family":
+		return t.Front["family"] // empty for an umbrella or a loose ticket
 	case "merged":
 		if m := ticket.MergeLine(t.Text); m != "" {
 			return "yes — " + m
@@ -233,21 +235,76 @@ func WIPCounts(tickets []*ticket.Ticket) map[string]WIP {
 	return counts
 }
 
-// Sort orders a sub-group: TO DO/READY by descending impact (tie id asc);
-// every other section by id ascending (D1 — deterministic, no hand-curated order).
-// Exported so the dashboard sorts with the board's ordering rather than a copy of
-// it (there is deliberately no second implementation of impactRank).
-func Sort(group []*ticket.Ticket, name string) {
+// Sort orders a sub-group: TO DO/READY by descending impact (tie id asc), with
+// families kept contiguous (T-059); every other section by id ascending (D1 —
+// deterministic, no hand-curated order). Exported so the dashboard sorts with the
+// board's ordering rather than a copy of it (there is deliberately no second
+// implementation of impactRank).
+//
+// byID is the whole-tree id→ticket map, needed only by the TO DO/READY branch to
+// resolve a member's umbrella (which may live in another status section, so it is
+// not necessarily in `group`). Other sections ignore it, and callers may pass nil
+// for them.
+func Sort(group []*ticket.Ticket, name string, byID map[string]*ticket.Ticket) {
 	byImpact := name == "TO DO" || name == "READY"
 	sort.SliceStable(group, func(i, j int) bool {
+		a, b := group[i], group[j]
 		if byImpact {
-			ri, rj := impactRank[group[i].Front["impact"]], impactRank[group[j].Front["impact"]]
-			if ri != rj {
+			// A ticket sorts under its family: the umbrella when it has one, else
+			// itself (a loose ticket is its own singleton family). famRank is the
+			// umbrella's impact, so a whole family floats to where its umbrella
+			// ranks; loose tickets interleave by their own impact.
+			fa, fb := familyKey(a), familyKey(b)
+			ra, rb := famRank(a, byID), famRank(b, byID)
+			if ra != rb {
+				return ra > rb
+			}
+			if fa != fb {
+				return fa < fb // group families/loose deterministically by umbrella id
+			}
+			// Same family: umbrella first (its `family` is empty), then members by
+			// their own impact descending.
+			if ua, ub := a.Family == "", b.Family == ""; ua != ub {
+				return ua
+			}
+			if ri, rj := impactRank[a.Front["impact"]], impactRank[b.Front["impact"]]; ri != rj {
 				return ri > rj
 			}
 		}
-		return group[i].Num < group[j].Num
+		return a.Num < b.Num
 	})
+}
+
+// ticketsByID indexes the whole tree by id for umbrella lookups during sorting.
+// Later duplicate ids (the audit's job to reject) are overwritten last-wins; the
+// board still renders rather than crashing on a malformed tree.
+func ticketsByID(tickets []*ticket.Ticket) map[string]*ticket.Ticket {
+	byID := make(map[string]*ticket.Ticket, len(tickets))
+	for _, t := range tickets {
+		byID[t.ID] = t
+	}
+	return byID
+}
+
+// familyKey is the id a ticket sorts under: its umbrella when set, else its own id
+// (loose ticket = singleton family). Used only to keep a family's rows contiguous.
+func familyKey(t *ticket.Ticket) string {
+	if t.Family != "" {
+		return t.Family
+	}
+	return t.ID
+}
+
+// famRank is the impact rank a ticket sorts by: its umbrella's impact when it has a
+// family, else its own. An unresolved umbrella (audit-dirty tree, or byID nil)
+// falls back to the ticket's own impact so the board still renders.
+func famRank(t *ticket.Ticket, byID map[string]*ticket.Ticket) int {
+	if t.Family != "" {
+		if u, ok := byID[t.Family]; ok {
+			return impactRank[u.Front["impact"]]
+		}
+	}
+	return impactRank[t.Front["impact"]]
 }
 
 // Render produces the entire BOARD.md text from the ticket files and config —
@@ -276,6 +333,7 @@ func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
 	lines = append(lines, "", "Last updated: "+date)
 
 	wip := WIPCounts(tickets)
+	byID := ticketsByID(tickets)
 	for _, name := range boardOrder {
 		st, _ := ticket.StatusByName(name)
 		lines = append(lines, "", "## "+sectionHeading[name])
@@ -288,7 +346,7 @@ func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
 					group = append(group, t)
 				}
 			}
-			Sort(group, name)
+			Sort(group, name, byID)
 
 			sub := "### " + p.Name
 			if name == "IN DEVELOPMENT" {

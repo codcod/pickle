@@ -81,6 +81,7 @@ type Ticket struct {
 	Front     map[string]string // raw frontmatter values (title kept verbatim)
 	DependsOn []string          // parsed depends-on ids — hard dependencies; gate pickup
 	SpawnedBy []string          // parsed spawned-by ids — lineage only, never a gate
+	Family    string            // umbrella ticket id (single, same child) — lineage only, never a gate; "" when none
 	Text      string            // full file text
 }
 
@@ -472,16 +473,24 @@ func renderIDList(ids []string) string {
 // starting point `pickle ticket new` writes.
 //
 // spawnedBy is the ticket's lineage (nil for none) — provenance only; it never
-// gates anything.
-func Scaffold(id, title, project, impact, complexity, cost string, spawnedBy []string) string {
+// gates anything. family is the umbrella ticket id (a single id, same child, "" for
+// none) — also lineage-only; unlike spawned-by (always rendered as `[]`) the
+// family line is omitted entirely when empty, so a no-family scaffold is
+// byte-identical to a ticket that never had the key (it is an optional frontmatter
+// field, deliberately absent from the audit's requiredKeys).
+func Scaffold(id, title, project, impact, complexity, cost string, spawnedBy []string, family string) string {
 	date := time.Now().Format("2006-01-02")
+	familyLine := ""
+	if family != "" {
+		familyLine = "family: " + family + "\n"
+	}
 	return fmt.Sprintf(`---
 id: %s
 title: %s
 project: %s
 depends-on: []
 spawned-by: %s
-impact: %s
+%simpact: %s
 complexity: %s
 cost: %s
 ---
@@ -504,7 +513,7 @@ tickets by id; hard dependencies go in depends-on: frontmatter (human-approved).
 ## History
 
 - %s — created (TO DO). source: pickle ticket new
-`, id, title, project, renderIDList(spawnedBy), impact, complexity, cost, id, title, date)
+`, id, title, project, renderIDList(spawnedBy), familyLine, impact, complexity, cost, id, title, date)
 }
 
 // LoadAll reads every ticket under root/tickets/<status>/. Missing status dirs are
@@ -556,6 +565,7 @@ func LoadAll(root string) ([]*Ticket, []string) {
 				Front:     fm,
 				DependsOn: ParseDepends(fm["depends-on"]),
 				SpawnedBy: ParseDepends(fm["spawned-by"]),
+				Family:    strings.TrimSpace(fm["family"]),
 				Text:      text,
 			})
 		}

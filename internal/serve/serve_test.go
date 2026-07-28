@@ -32,6 +32,7 @@ func testCfg() *config.Config {
 type fixture struct {
 	dir, id, title, impact string
 	depends, spawned       string
+	family                 string // umbrella id, "" for none (T-059)
 	history                []string
 	body                   string
 }
@@ -44,6 +45,10 @@ func (f fixture) text() string {
 	if spawn == "" {
 		spawn = "[]"
 	}
+	familyLine := ""
+	if f.family != "" {
+		familyLine = "family: " + f.family + "\n"
+	}
 	hist := strings.Join(f.history, "\n")
 	return fmt.Sprintf(`---
 id: %s
@@ -51,7 +56,7 @@ title: %s
 project: demo
 depends-on: %s
 spawned-by: %s
-impact: %s
+%simpact: %s
 complexity: medium
 cost: M
 ---
@@ -65,7 +70,7 @@ cost: M
 ## History
 
 %s
-`, f.id, f.title, dep, spawn, f.impact, f.id, f.title, f.body, hist)
+`, f.id, f.title, dep, spawn, familyLine, f.impact, f.id, f.title, f.body, hist)
 }
 
 // newTree writes a fixture tickets/ tree plus a *rendered* BOARD.md.
@@ -203,6 +208,27 @@ func TestTicketPageReverseBlocksEdge(t *testing.T) {
 	// T-002 depends on T-004, so T-004 "blocks" T-002 — a fact no ticket file states.
 	if !strings.Contains(body, "blocks") || !strings.Contains(body, `href="/t/T-002"`) {
 		t.Error("T-004 page does not show that it blocks T-002")
+	}
+}
+
+// TestTicketPageFamilyEdges: the umbrella's page lists its members (reverse edge,
+// a fact no file states), and a member's page links its umbrella (T-059).
+func TestTicketPageFamilyEdges(t *testing.T) {
+	root := newTree(t,
+		fixture{dir: "1-to-do", id: "T-001", title: "umbrella", impact: "high",
+			history: []string{"- 2026-07-28 — created (TO DO). source: test"}},
+		fixture{dir: "1-to-do", id: "T-002", title: "member", impact: "medium", family: "T-001",
+			history: []string{"- 2026-07-28 — created (TO DO). source: test"}},
+	)
+	h := newHandler(t, root)
+
+	umbrella := get(t, h, "/t/T-001").Body.String()
+	if !strings.Contains(umbrella, "members") || !strings.Contains(umbrella, `href="/t/T-002"`) {
+		t.Errorf("umbrella page does not list member T-002:\n%s", umbrella)
+	}
+	member := get(t, h, "/t/T-002").Body.String()
+	if !strings.Contains(member, "family") || !strings.Contains(member, `href="/t/T-001"`) {
+		t.Errorf("member page does not link umbrella T-001:\n%s", member)
 	}
 }
 
