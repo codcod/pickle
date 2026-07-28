@@ -306,3 +306,4 @@ follow-up ticket (neither passes the promotion test). Verdict: **DONE**.
 - 2026-07-28 — READY → IN DEVELOPMENT: picked up; applicability gate clean
 - 2026-07-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-07-28 — IN REVIEW → DONE: review clean; 2 non-blocking (1 fixed inline, 1 noted)
+- 2026-07-28 — merged to main (#7)
