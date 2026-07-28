@@ -362,6 +362,87 @@ Task 5 above — `docs/user-manual/cli-reference.adoc` `[#cmd-serve]` and `CHANG
    approval.** Present the commit message; after approval, finalize (squash or keep history —
    the user chooses), push, open the MR. Merging is the human's.
 
+## Implementation summary
+
+Built on `feat/T-054-serve-system-theme`, one commit (`5b9edea`). **144 insertions, 0
+deletions** across five files — the diff is purely additive, which is the mechanical proof
+of decision 1: no authored dark colour could have regressed, because no existing line
+changed.
+
+| file | change |
+|---|---|
+| `internal/serve/static/styles.css` | `color-scheme: dark` added to `:root`; light `@media` block appended (+26) |
+| `internal/serve/templates/layout.html` | `<meta name="color-scheme" content="dark light">` (+1) |
+| `internal/serve/serve_test.go` | `TestStylesheetServesBothPalettes` + `cssVars`/`braceBlock`/`cssVarDecl` helpers (+96) |
+| `docs/user-manual/cli-reference.adoc` | one paragraph in `[#cmd-serve]` (+5) |
+| `CHANGELOG.md` | `[Unreleased] → Changed` entry (+16) |
+
+Palette shipped (the F2-corrected one): `--bg #f4f5f7`, `--panel #ffffff`,
+`--panel-2 #eceef1`, `--line #d7dae0`, `--fg #1a1d23`, `--muted #5f6570`,
+`--accent #1f7a55`, `--warn #8a5700`, `--error #b3261e`.
+
+### Measured contrast (Task 4) — WCAG 2.1, computed, not estimated
+
+| pair | dark | light | rendered at |
+|---|---|---|---|
+| `--fg` on `--bg` | 14.76 | 15.48 | `styles.css:21` body |
+| `--fg` on `--panel` | 13.61 | 16.88 | `:82,105` ticket title, body card |
+| `--fg` on `--panel-2` | 12.53 | 14.52 | `:113` inline code |
+| `--muted` on `--bg` | 6.49 | 5.37 | `:63,64,71,134` lede, crumbs, headings, footer |
+| `--muted` on `--panel` | 5.99 | 5.86 | `:38,86,102` brand-sub, grade chip, meta dt |
+| `--muted` on `--panel-2` | 5.51 | 5.04 | `:52` `.health .wip` |
+| `--accent` on `--bg` | 8.87 | 4.85 | `:25` links |
+| `--accent` on `--panel` | 8.18 | 5.29 | `:25,91,108` links, `.merged`, h3/h4 |
+| `--accent` on `--panel-2` | 7.53 | 4.55 | `:25`+`:113` link wrapping inline code (F5) |
+| `--warn` on `--bg` | 9.19 | 5.59 | `board.html:25` WIP badge (F5) |
+| `--warn` on `--panel` | 8.47 | 6.10 | `:89` impact-high chip, text + border |
+| `--warn` on `--panel-2` | 7.80 | 5.25 | `:53,56` `.wip-full`, `.finding-warn` (F2) |
+| `--error` on `--panel` | 5.43 | 6.54 | `:88` impact-critical chip, text + border |
+| `--error` on `--panel-2` | 5.00 | 5.62 | `:55` `.finding-error` |
+
+**Every text pair ≥ 4.5:1 in both palettes.** The figures reproduce the applicability
+audit's independently, including F2's 4.42 → 5.25 correction for `--warn`. Measured with a
+throwaway script (`/tmp`, not committed, per decision 8).
+
+For the next editor (F11): light `--accent` has the thinnest margins in the sheet — 4.85 on
+`--bg`, 4.55 on `--panel-2`. Any future tweak to `--bg` or `--panel-2` can drop it below AA
+silently; re-measure if you touch them. `--line` borders sit at 1.28–1.40 against their
+grounds in **both** palettes, under WCAG 1.4.11's 3:1 — pre-existing, decorative, untouched
+(F9).
+
+### Acceptance test results
+
+| step | result |
+|---|---|
+| 1. `just build && just test && just lint && just docs-check` | all green; `snowball check` **output** read, not just its exit code (T-053 amendment F14) — no warnings |
+| 2. New test discriminates | passes; `--probe` in `:root` only → fails naming `--probe`; `--probe-light` in the light block only → fails naming it. **Both directions** verified, so the parity check is not the tautology F4 warned about |
+| 3. Served-asset check | `prefers-color-scheme: light` ×1, `color-scheme: dark;` ×1, `color-scheme: light;` ×1 in the served sheet; the meta present on `/`, `/t/T-054` **and** `/activity` |
+| 4. `TestServeNeverWrites` | green — the read-only guarantee is undisturbed |
+| 5. Manual, both OS modes | **NOT DONE — requires a human at a browser.** See below |
+| 6. `pickle board audit` | 55 tickets, 0 errors, 0 warnings |
+
+`internal/serve` coverage holds at 92.4%.
+
+### Outstanding: acceptance step 5 is unverified
+
+Step 5 is the only check that proves the dashboard actually *looks* right, and it cannot be
+automated — it needs a human switching macOS between Dark and Light with the pages open. It
+is **not** ticked. The reviewer must run it before this ticket can be called done:
+
+1. `./pickle serve`, then view `/`, `/t/T-054` and `/activity` in **Light** mode. Confirm
+   body and muted text read comfortably; links, the `merged` marker and `.body h3/h4` are
+   legible; the health banner is a distinct band from the header; code blocks and inline
+   code are distinguishable from the white card; the `impact-critical`/`impact-high` grade
+   chips are legible.
+2. Switch to **Dark**. Confirm every authored colour is unchanged from `main` (the additive
+   diff says it must be) *and* that the browser-painted chrome has flipped as intended
+   (F3): the scrollbars on a wide `<pre>`/`<table>` and the audit banner's `<details>`
+   marker should now be dark-painted where `main` paints them light.
+
+Two eyeball checks from Task 1 fold into step 1: that light-mode `.body pre` (`--bg` on a
+white card) reads as recessed rather than as an artifact, and that `.health`
+(`--panel-2`, grey on white) still reads as a distinct band.
+
 ## Review
 
 <!-- empty until IN REVIEW -->
@@ -384,3 +465,4 @@ Task 5 above — `docs/user-manual/cli-reference.adoc` `[#cmd-serve]` and `CHANG
   badge never highlights). F8-F12 noted and closed
 - 2026-07-28 — TO DO → READY: plan complete; decisions confirmed (@media override, dark as no-preference fallback, authored light palette, AA contrast, no toggle); collapsed impact low-medium -> low (cosmetic)
 - 2026-07-28 — READY → IN DEVELOPMENT: picked up; plan amended from the applicability audit (F1-F6)
+- 2026-07-28 — IN DEVELOPMENT → IN REVIEW: acceptance green except step 5 (manual two-mode visual check, needs a human); 5 tasks done, palette AA-verified in both modes, diff purely additive
