@@ -602,3 +602,6 @@ No ticket patched.
 - 2026-07-28 — IN REVIEW → REWORK: 8 blocking: Q2-Q8 the Task 3 regression guard (passes on the forbidden 'dark light', comment-blind, literal media match, names-only), Q15 the manual two-mode visual check is unrun; 6 fixed inline, 1 noted
 - 2026-07-28 — REWORK → IN REVIEW: Q2-Q8 fixed and each verified by a before/after probe; Q9/Q10/Q16 applied inline; Q15 (manual visual check) still needs a human
 - 2026-07-28 — IN REVIEW → DONE: review clean after one rework round: 15 findings, 8 blocking all resolved (Q2-Q8 the test guard, each fix probe-verified; Q15 manual two-mode check passed by the human), 6 fixed inline, 1 noted (Q14 -> T-055)
+- 2026-07-28 — merged to main (PR #3, b70e238), user-approved as an exception; kept both
+  commits unsquashed (0ab98f0 the change, fc5e4d7 the review's test hardening) so the audit
+  trail survives; branch deleted
