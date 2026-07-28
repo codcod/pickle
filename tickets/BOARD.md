@@ -39,6 +39,7 @@ Last updated: 2026-07-28
 
 | id | title | impact | complexity | cost | depends-on |
 |---|---|---|---|---|---|
+| T-059 | family: group tickets under an umbrella ticket id for curated pickup order | medium | medium | M | [] |
 
 ## TO DO (impact order, per child)
 
