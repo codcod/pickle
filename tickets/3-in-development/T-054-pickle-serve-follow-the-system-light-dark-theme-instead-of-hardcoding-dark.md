@@ -383,3 +383,4 @@ Task 5 above — `docs/user-manual/cli-reference.adoc` `[#cmd-serve]` and `CHANG
   (pre-existing T-053 defect: `.count` overrides `.wip-full`, so the board's at-limit WIP
   badge never highlights). F8-F12 noted and closed
 - 2026-07-28 — TO DO → READY: plan complete; decisions confirmed (@media override, dark as no-preference fallback, authored light palette, AA contrast, no toggle); collapsed impact low-medium -> low (cosmetic)
+- 2026-07-28 — READY → IN DEVELOPMENT: picked up; plan amended from the applicability audit (F1-F6)
