@@ -230,6 +230,34 @@ implementation summary. Prepare the child commit message
 the ticket branch; **no push / no MR without user approval** per the commit policy). Then
 `pickle ticket move T-059 in-review --reason "acceptance green"`.
 
+## Implementation summary
+
+Delivered on `feat/T-059-family-umbrella-grouping` (commit `68627d1`). `family:` is an optional
+single umbrella id, same-child, lineage-only (gates nothing) — grouping + deterministic
+ordering only; curated intra-family order stays with T-056.
+
+- **Model** (`internal/ticket/ticket.go`): `Ticket.Family` parsed from frontmatter; `Scaffold`
+  gained a `family` param and emits the line **only when set** (a no-family scaffold is
+  byte-identical to before, so the existing backlog needs no migration — `family` stays out of
+  the audit's `requiredKeys`).
+- **Authoring** (`internal/cli/ticket.go`, `cli.go`): `ticket new --family T-NNN`, shape-checked
+  at creation via `ticket.ValidID`, existence deferred to the audit (same split as
+  `--spawned-by`).
+- **Audit** (`internal/audit/audit.go`): validates `family` only when set — must exist, be
+  same-child, not self, and not nest (umbrella must not itself be a member).
+- **Board** (`internal/board/board.go`): new `family` column on TO DO/READY; `Sort` now takes a
+  whole-tree `byID` map and orders by famRank (umbrella's impact) → famID → umbrella-first →
+  own impact → id, keeping families contiguous. Falls back to own impact if the umbrella is
+  missing so an audit-dirty tree still renders.
+- **Serve** (`internal/serve/view.go`, templates): inherits ordering via the shared `board.Sort`;
+  `Entry.Family` + `TicketView.Members` reverse edge; board card + ticket page show the edges.
+- **Docs**: `skill/resources/TEMPLATE.md` frontmatter line, `tickets-README.md` §3 Families
+  bullet. README does not enumerate frontmatter fields (skipped).
+
+Acceptance: `just test/build/lint/docs-check` all green (new tests in ticket/cli/audit/board/serve);
+throwaway-dir smoke confirmed the column, umbrella-first ordering, clean audit, and the
+`family … does not exist` error on a dangling id.
+
 ## Review
 
 <!-- empty until IN REVIEW -->
@@ -243,3 +271,4 @@ the ticket branch; **no push / no MR without user approval** per the commit poli
   lookup mechanism, skill/resources docs path).
 - 2026-07-28 — TO DO → READY: plan complete; impact re-graded medium-high->medium (single value)
 - 2026-07-28 — READY → IN DEVELOPMENT: picked up; applicability gate clean
+- 2026-07-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
