@@ -258,9 +258,10 @@ every pair passes. A failure means the palette was mistyped.
 Two known-thin margins to report rather than "fix" (F11, noted): light `--accent` lands at
 4.85 on `--bg` and 4.55 on `--panel-2` — passing, with little headroom, so any later tweak
 to `--bg`/`--panel-2` can break AA silently. Say so in the summary for the next editor.
-`--line` borders sit at 1.28–1.40 against their grounds in **both** palettes, below WCAG
+`--line` borders sit at 1.18–1.40 against their grounds in **both** palettes, below WCAG
 1.4.11's 3:1 for non-text contrast; that is pre-existing, purely decorative chrome, and out
-of scope here (F9).
+of scope here (F9). *(Range corrected during review — this plan and the applicability audit
+both quoted 1.28–1.40, understating it; see review finding Q13.)*
 
 #### Task 5 — docs
 
@@ -385,20 +386,20 @@ Palette shipped (the F2-corrected one): `--bg #f4f5f7`, `--panel #ffffff`,
 
 | pair | dark | light | rendered at |
 |---|---|---|---|
-| `--fg` on `--bg` | 14.76 | 15.48 | `styles.css:21` body |
-| `--fg` on `--panel` | 13.61 | 16.88 | `:82,105` ticket title, body card |
-| `--fg` on `--panel-2` | 12.53 | 14.52 | `:113` inline code |
-| `--muted` on `--bg` | 6.49 | 5.37 | `:63,64,71,134` lede, crumbs, headings, footer |
-| `--muted` on `--panel` | 5.99 | 5.86 | `:38,86,102` brand-sub, grade chip, meta dt |
-| `--muted` on `--panel-2` | 5.51 | 5.04 | `:52` `.health .wip` |
-| `--accent` on `--bg` | 8.87 | 4.85 | `:25` links |
-| `--accent` on `--panel` | 8.18 | 5.29 | `:25,91,108` links, `.merged`, h3/h4 |
-| `--accent` on `--panel-2` | 7.53 | 4.55 | `:25`+`:113` link wrapping inline code (F5) |
-| `--warn` on `--bg` | 9.19 | 5.59 | `board.html:25` WIP badge (F5) |
-| `--warn` on `--panel` | 8.47 | 6.10 | `:89` impact-high chip, text + border |
-| `--warn` on `--panel-2` | 7.80 | 5.25 | `:53,56` `.wip-full`, `.finding-warn` (F2) |
-| `--error` on `--panel` | 5.43 | 6.54 | `:88` impact-critical chip, text + border |
-| `--error` on `--panel-2` | 5.00 | 5.62 | `:55` `.finding-error` |
+| `--fg` on `--bg` | 14.76 | 15.48 | `body` |
+| `--fg` on `--panel` | 13.61 | 16.88 | `.ticket-title`, `.body` card |
+| `--fg` on `--panel-2` | 12.53 | 14.52 | `.body code` (inline) |
+| `--muted` on `--bg` | 6.49 | 5.37 | `.lede`, `.crumbs`, `.status-heading`, `.site-footer` |
+| `--muted` on `--panel` | 5.99 | 5.86 | `.brand-sub`, `.grade`, `.meta dt` |
+| `--muted` on `--panel-2` | 5.51 | 5.04 | `.health .wip` |
+| `--accent` on `--bg` | 8.87 | 4.85 | `a` (links) |
+| `--accent` on `--panel` | 8.18 | 5.29 | `a`, `.merged`, `.body h3/h4` |
+| `--accent` on `--panel-2` | 7.53 | 4.55 | `a` wrapping `.body code` (F5) |
+| `--warn` on `--bg` | 9.19 | 5.59 | `.child-heading .wip-full` (F5; hypothetical until T-055 — see Q14) |
+| `--warn` on `--panel` | 8.47 | 6.10 | `.impact-high` chip, text + border |
+| `--warn` on `--panel-2` | 7.80 | 5.25 | `.wip-full`, `.finding-warn` (F2) |
+| `--error` on `--panel` | 5.43 | 6.54 | `.impact-critical` chip, text + border |
+| `--error` on `--panel-2` | 5.00 | 5.62 | `.finding-error` |
 
 **Every text pair ≥ 4.5:1 in both palettes.** The figures reproduce the applicability
 audit's independently, including F2's 4.42 → 5.25 correction for `--warn`. Measured with a
@@ -406,7 +407,7 @@ throwaway script (`/tmp`, not committed, per decision 8).
 
 For the next editor (F11): light `--accent` has the thinnest margins in the sheet — 4.85 on
 `--bg`, 4.55 on `--panel-2`. Any future tweak to `--bg` or `--panel-2` can drop it below AA
-silently; re-measure if you touch them. `--line` borders sit at 1.28–1.40 against their
+silently; re-measure if you touch them. `--line` borders sit at 1.18–1.40 against their
 grounds in **both** palettes, under WCAG 1.4.11's 3:1 — pre-existing, decorative, untouched
 (F9).
 
