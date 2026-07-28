@@ -437,9 +437,11 @@ is now; the board and activity views additionally refresh themselves every five
 seconds, which makes the dashboard usable as an ambient window while tickets move.
 
 The dashboard follows your operating system's light/dark preference
-automatically, and there is deliberately no toggle: a read-only server that
-stores nothing has nowhere to remember a choice. A browser that does not ask for
-light gets the dark palette.
+automatically. There is deliberately no toggle: a read-only server that stores
+nothing has nowhere to remember your choice. Note that a browser with no
+expressed preference reports _light_ — `no-preference` was dropped from Media
+Queries L5 — so the dark palette is the fallback only where
+`prefers-color-scheme` is unsupported.
 
 A banner on every page reports what `pickle board audit` would say right now —
 including a stale board — plus each child's WIP counts against its limits. It
