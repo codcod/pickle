@@ -8,7 +8,34 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-28
+
 ### Added
+
+- **Per-child `ticket_prefix` with per-child id counters** (T-058). A `[[project]]`
+  may set `ticket_prefix` (shape `^[A-Z][A-Z0-9]{0,7}$`) so its tickets are
+  numbered in their own namespace — `RICK-001`, `SB-001` — instead of one global
+  `T-NNN` sequence. Absent ⇒ defaults to `T`, so existing installs are unchanged;
+  the default `T` is exempt from the cross-child uniqueness check, and a non-`T`
+  prefix must be unique across children. `pickle project add --ticket-prefix` sets
+  it and `pickle project list` shows a `PREFIX` column.
+
+  Ids are now unique only **within** a prefix — always qualify. A new audit
+  invariant enforces that a ticket's id prefix matches its `project:`'s configured
+  prefix, catching a mis-filed ticket. Id shape validation widened from `^T-\d+$`
+  to `^[A-Z][A-Z0-9]*-\d+$`, and the board renders mixed prefixes in one table
+  (sort is prefix-then-number).
+
+- **`family:` — group tickets under an umbrella ticket for board ordering**
+  (T-059). A ticket may set `family: T-NNN` pointing at an umbrella ticket (an
+  ordinary same-child ticket — no new entity, board, or lifecycle). `TO DO`/`READY`
+  rows then order by umbrella rank with the umbrella first and its members adjacent,
+  breaking the wide `impact`-only ties that appear at scale. `pickle ticket new
+  --family T-NNN` authors it (shape-checked at creation; existence deferred to the
+  audit, same split as `--spawned-by`), and the board gains a `family` column. The
+  audit validates a set `family` — must exist, be same-child, not self, and not nest
+  — and gates nothing (lineage only). A ticket with no family scaffolds
+  byte-identically to before, so the existing backlog needs no migration.
 
 - **`pickle serve` — a local, read-only web view of the board** (T-053). Renders the
   board (`/`), one page per ticket (`/t/T-NNN`) with its Markdown body and *both*
@@ -123,5 +150,6 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/codcod/pickle/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/codcod/pickle/releases/tag/v0.1.0
