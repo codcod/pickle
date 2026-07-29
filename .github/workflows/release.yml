@@ -34,7 +34,7 @@ jobs:
       - name: Build user manual (PDF + EPUB)
         continue-on-error: true
         run: |
-          brew install codcod/taps/snowball
+          brew install codcod/tap/snowball
           snowball setup
           snowball build -o dist/docs
       - uses: goreleaser/goreleaser-action@v7
