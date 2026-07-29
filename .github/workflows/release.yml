@@ -27,13 +27,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      # Build the PDF/EPUB user manual into dist/docs/ so the goreleaser
-      # `release.extra_files` pipe can attach it. Soft-fail: a broken manual
-      # must not block publishing the binaries — goreleaser then just finds no
-      # files to attach. Uses the runner's preinstalled Linuxbrew + Ruby.
+      # Build the PDF/EPUB user manual into dist/docs/ so the post-release
+      # upload step can attach it. Soft-fail: a broken manual must not block
+      # publishing the binaries. Homebrew ships preinstalled on the ubuntu
+      # runner but is no longer on PATH by default, so load its shellenv first.
       - name: Build user manual (PDF + EPUB)
         continue-on-error: true
         run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           brew install codcod/tap/snowball
           snowball setup
           snowball build -o dist/docs

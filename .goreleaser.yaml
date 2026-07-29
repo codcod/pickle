@@ -41,6 +41,9 @@ release:
     name: pickle
   draft: false
   prerelease: auto
+  # Overwrite existing artifacts on re-run instead of erroring with
+  # "already_exists" (422). Lets a re-pushed tag re-publish a release cleanly.
+  mode: replace
   # The PDF/EPUB user manual is NOT attached here. goreleaser's extra_files
   # hard-errors when a glob matches nothing ("globbing failed for pattern ...:
   # file does not exist"), which would let a soft-failed docs build sink the
