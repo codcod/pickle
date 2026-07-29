@@ -8,6 +8,23 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-29
+
+### Added
+
+- **Board child-project filter buttons in `pickle serve`** (T-061). The dashboard's
+  board page (`/`) gains a flat filter bar above the first status section: an **All**
+  default plus one pill button per registered child-project, each with a count chip
+  (per-child total; `All` shows the board total). Selecting a child collapses the board
+  to just that child's blocks across every status section — the status headings and
+  counts stay put. The bar lives outside the polled `#board`, so the active selection
+  **survives the five-second htmx refresh** (a small script re-applies it on
+  `htmx:afterSwap`); filtering is pure client-side show/hide, so the fragment routes and
+  `buildBoard` output are byte-identical to a reload. Active-state styling derives from
+  the existing `--accent` token via `color-mix`, so it tracks the light and dark palettes
+  (T-054) rather than hardcoding colours. The chip counts refresh on a full reload, not on
+  the five-second poll.
+
 ## [0.2.1] - 2026-07-29
 
 ### Added
@@ -163,7 +180,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/codcod/pickle/compare/v0.2.0...v0.3.0
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/codcod/pickle/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/codcod/pickle/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/codcod/pickle/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/codcod/pickle/releases/tag/v0.1.0
