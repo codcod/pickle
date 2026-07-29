@@ -56,9 +56,18 @@ type Section struct {
 	Total    int
 }
 
+// ChildFilter is one entry in the board's child-project filter bar: a child's
+// name and its total ticket count across all statuses. The bar lets the viewer
+// collapse the board to a single child (T-061).
+type ChildFilter struct {
+	Name  string
+	Count int
+}
+
 // BoardView is the dashboard's board page.
 type BoardView struct {
 	Sections []Section
+	Children []ChildFilter // filter-bar entries, in cfg.Projects order
 	Total    int
 }
 
@@ -105,6 +114,19 @@ func buildBoard(tickets []*ticket.Ticket, cfg *config.Config) BoardView {
 			section.Children = append(section.Children, cg)
 		}
 		view.Sections = append(view.Sections, section)
+	}
+
+	// Filter-bar entries: one per registered child, in cfg order, with its
+	// whole-tree ticket total. Computed here (not in the template) so the chip
+	// counts are testable without rendering.
+	for _, p := range cfg.Projects {
+		count := 0
+		for _, t := range tickets {
+			if t.Project() == p.Name {
+				count++
+			}
+		}
+		view.Children = append(view.Children, ChildFilter{Name: p.Name, Count: count})
 	}
 	return view
 }

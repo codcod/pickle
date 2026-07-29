@@ -1,10 +1,21 @@
 {{define "board.html"}}
 {{template "head" .}}
-<main class="page">
+{{/* data-filter lives on the persistent <main>, not inside #board: the 5s poll
+     swaps #board's innerHTML but never touches the bar, so the active selection
+     survives every refresh. board-filter.js re-applies it to the fresh rows. */}}
+<main class="page" data-filter="all">
+  <div class="filter-bar" role="group" aria-label="Filter board by child project">
+    <span class="filter-label">Show</span>
+    <button type="button" class="filter-btn is-active" data-child="all">All <span class="filter-count">{{.Board.Total}}</span></button>
+    {{range .Board.Children}}
+    <button type="button" class="filter-btn" data-child="{{.Name}}">{{.Name}} <span class="filter-count">{{.Count}}</span></button>
+    {{end}}
+  </div>
   <div id="board" hx-get="/fragments/board" hx-trigger="every 5s" hx-swap="outerHTML">
     {{template "board-body" .Board}}
   </div>
 </main>
+<script src="/static/board-filter.js" defer></script>
 {{template "foot" .}}
 {{end}}
 
@@ -21,7 +32,7 @@
 <section class="status">
   <h2 class="status-heading">{{.Status}} <span class="count">{{.Total}}</span></h2>
   {{range .Children}}
-  <div class="child">
+  <div class="child" data-child="{{.Child}}">
     <h3 class="child-heading">{{.Child}}{{if .Limit}} <span class="count {{if ge .Count .Limit}}wip-full{{end}}">{{.Count}}/{{.Limit}}</span>{{end}}</h3>
     {{if .Entries}}
     <ul class="tickets">

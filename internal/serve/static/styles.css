@@ -89,6 +89,39 @@ code { font-family: var(--mono); font-size: 0.9em; }
 .lede { margin: 0 0 1rem; color: var(--muted); }
 .crumbs { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
 
+/* ---- board child filter (T-061) ---- */
+
+.filter-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+.filter-label {
+  color: var(--muted); font-size: 0.72rem; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-right: 0.25rem;
+}
+.filter-btn {
+  font: inherit; font-family: var(--mono); font-size: 0.85rem;
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.4rem 0.9rem; border-radius: 7px;
+  color: var(--muted); background: transparent; border: 1px solid transparent;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.filter-btn:hover { color: var(--fg); background: var(--panel-2); }
+/* Active state is derived from --accent via color-mix so it tracks the light and
+   dark palettes (T-054) instead of hardcoding the mock's dark-only greens. */
+.filter-btn.is-active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.filter-count {
+  font-size: 0.72rem; color: var(--muted);
+  padding: 0 0.4rem; border-radius: 5px;
+  background: var(--panel-2); border: 1px solid var(--line);
+}
+.filter-btn.is-active .filter-count { color: var(--accent); }
+
 /* ---- board ---- */
 
 .status { margin-bottom: 1.4rem; }
