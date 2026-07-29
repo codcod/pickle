@@ -27,6 +27,16 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # Build the PDF/EPUB user manual into dist/docs/ so the goreleaser
+      # `release.extra_files` pipe can attach it. Soft-fail: a broken manual
+      # must not block publishing the binaries — goreleaser then just finds no
+      # files to attach. Uses the runner's preinstalled Linuxbrew + Ruby.
+      - name: Build user manual (PDF + EPUB)
+        continue-on-error: true
+        run: |
+          brew install codcod/taps/snowball
+          snowball setup
+          snowball build -o dist/docs
       - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser

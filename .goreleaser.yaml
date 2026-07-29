@@ -41,6 +41,13 @@ release:
     name: pickle
   draft: false
   prerelease: auto
+  # PDF/EPUB user manual, built by the release workflow into dist/docs/ before
+  # this pipe runs (see .github/workflows/release.yml). The docs build is
+  # allowed to fail without blocking the release, so these globs may match
+  # nothing — goreleaser skips missing extra_files rather than erroring.
+  extra_files:
+    - glob: dist/docs/pickle-user-manual.pdf
+    - glob: dist/docs/pickle-user-manual.epub
 
 checksum:
   name_template: "checksums.txt"

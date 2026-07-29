@@ -8,6 +8,19 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-29
+
+### Added
+
+- **PDF and EPUB user manual attached to every GitHub release.** The release
+  workflow now builds the AsciiDoc user manual with
+  [snowball](https://github.com/codcod/snowball) into `dist/docs/` before
+  goreleaser runs, and a new `release.extra_files` entry in `.goreleaser.yaml`
+  uploads `pickle-user-manual.pdf` and `pickle-user-manual.epub` as release
+  assets. The docs build is soft-failing (`continue-on-error`): a broken manual
+  does not block publishing the binaries — goreleaser simply finds no files to
+  attach.
+
 ## [0.2.0] - 2026-07-28
 
 ### Added
@@ -150,6 +163,7 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/codcod/pickle/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/codcod/pickle/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/codcod/pickle/releases/tag/v0.1.0
