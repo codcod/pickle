@@ -48,3 +48,22 @@ jobs:
           # PAT with `repo` scope on the tap repo, so goreleaser can push the
           # updated cask to github.com/codcod/homebrew-taps (see RELEASING.md).
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      # Attach the user manual after goreleaser has published the release.
+      # Kept out of goreleaser's extra_files because that pipe hard-errors on a
+      # missing file; here a soft-failed docs build just means nothing to upload
+      # and the release still stands. Only uploads manuals that actually exist.
+      - name: Attach user manual to release
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          shopt -s nullglob
+          manuals=(dist/docs/pickle-user-manual.pdf dist/docs/pickle-user-manual.epub)
+          existing=()
+          for f in "${manuals[@]}"; do [ -f "$f" ] && existing+=("$f"); done
+          if [ ${#existing[@]} -eq 0 ]; then
+            echo "No user manual built; skipping attach."
+            exit 0
+          fi
+          gh release upload "$TAG" "${existing[@]}" --clobber
