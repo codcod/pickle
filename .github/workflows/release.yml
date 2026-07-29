@@ -27,13 +27,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      # Build the PDF/EPUB user manual into manual/ (NOT dist/) so the
-      # post-release upload step can attach it. It must live outside dist/
-      # because goreleaser runs `release --clean`, which wipes dist/ before
-      # building — a manual under dist/docs would be deleted before it could
-      # be attached. Soft-fail: a broken manual must not block publishing the
-      # binaries. Homebrew ships preinstalled on the ubuntu runner but is no
-      # longer on PATH by default, so load its shellenv first.
+      # Build the PDF/EPUB user manual into $RUNNER_TEMP (outside the repo)
+      # so the post-release upload step can attach it. It must live outside
+      # the working tree for two reasons: goreleaser runs `release --clean`
+      # (wiping dist/), and it also refuses to run against a dirty tree — an
+      # untracked manual/ dir in the repo root would trip its dirty check.
+      # Soft-fail: a broken manual must not block publishing the binaries.
+      # Homebrew ships preinstalled on the ubuntu runner but is no longer on
+      # PATH by default, so load its shellenv first.
       - name: Build user manual (PDF + EPUB)
         continue-on-error: true
         env:
@@ -58,7 +59,7 @@ jobs:
             sleep 5
           done
           snowball setup
-          snowball build -o manual
+          snowball build -o "$RUNNER_TEMP/manual"
       - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
@@ -81,7 +82,7 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           shopt -s nullglob
-          manuals=(manual/pickle-user-manual.pdf manual/pickle-user-manual.epub)
+          manuals=("$RUNNER_TEMP/manual/pickle-user-manual.pdf" "$RUNNER_TEMP/manual/pickle-user-manual.epub")
           existing=()
           for f in "${manuals[@]}"; do [ -f "$f" ] && existing+=("$f"); done
           if [ ${#existing[@]} -eq 0 ]; then
