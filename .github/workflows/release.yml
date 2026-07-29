@@ -33,11 +33,13 @@ jobs:
       # runner but is no longer on PATH by default, so load its shellenv first.
       - name: Build user manual (PDF + EPUB)
         continue-on-error: true
+        env:
+          # codcod/tap is our own tap. Homebrew's Tap-Trust gate otherwise
+          # refuses to install from it in CI ("the following taps are not
+          # trusted"), leaving snowball uninstalled (command not found).
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          # Add the tap locally first. Installing straight from codcod/tap/snowball
-          # auto-taps from the API, which Homebrew refuses as untrusted
-          # ("Skipping codcod/tap because it is not trusted").
           brew tap codcod/tap
           brew install snowball
           snowball setup
