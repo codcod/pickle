@@ -82,9 +82,17 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           shopt -s nullglob
-          manuals=("$RUNNER_TEMP/manual/pickle-user-manual.pdf" "$RUNNER_TEMP/manual/pickle-user-manual.epub")
+          # Version without the leading 'v' (v0.2.1 -> 0.2.1), matching the
+          # binary archive names, so assets read pickle-user-manual-0.2.1.pdf.
+          version="${TAG#v}"
           existing=()
-          for f in "${manuals[@]}"; do [ -f "$f" ] && existing+=("$f"); done
+          for ext in pdf epub; do
+            src="$RUNNER_TEMP/manual/pickle-user-manual.$ext"
+            [ -f "$src" ] || continue
+            dst="$RUNNER_TEMP/manual/pickle-user-manual-$version.$ext"
+            mv "$src" "$dst"
+            existing+=("$dst")
+          done
           if [ ${#existing[@]} -eq 0 ]; then
             echo "No user manual built; skipping attach."
             exit 0
