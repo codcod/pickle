@@ -41,11 +41,22 @@ jobs:
           # refuses to install from it in CI ("the following taps are not
           # trusted"), leaving snowball uninstalled (command not found).
           HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+          # Quiet brew's progress/hint chatter. Its terminal-width probing is
+          # what triggers the intermittent "Broken pipe" failures on CI.
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_ENV_HINTS: 1
+          HOMEBREW_NO_COLOR: 1
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           # Fully qualify the formula: a bare `snowball` resolves to
           # homebrew/core's stemmer of the same name, not our tap's tool.
-          brew install codcod/tap/snowball
+          # Retry the install: it occasionally dies with a transient broken
+          # pipe mid-download.
+          for attempt in 1 2 3; do
+            brew install codcod/tap/snowball && break
+            echo "brew install failed (attempt $attempt); retrying..."
+            sleep 5
+          done
           snowball setup
           snowball build -o manual
       - uses: goreleaser/goreleaser-action@v7
