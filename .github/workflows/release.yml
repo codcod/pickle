@@ -40,8 +40,9 @@ jobs:
           HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew tap codcod/tap
-          brew install snowball
+          # Fully qualify the formula: a bare `snowball` resolves to
+          # homebrew/core's stemmer of the same name, not our tap's tool.
+          brew install codcod/tap/snowball
           snowball setup
           snowball build -o dist/docs
       - uses: goreleaser/goreleaser-action@v7
