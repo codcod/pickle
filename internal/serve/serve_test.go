@@ -175,6 +175,37 @@ func TestBoardPage(t *testing.T) {
 	}
 }
 
+// TestBoardFilterBar: the child-project filter bar renders one button per child
+// plus an All default, each child block is tagged with data-child, and the bar
+// lives on the page but NOT in the polled fragment (so the selection survives the
+// 5s swap — T-061).
+func TestBoardFilterBar(t *testing.T) {
+	h := newHandler(t, standardTree(t))
+	body := get(t, h, "/").Body.String()
+
+	for _, want := range []string{
+		`class="filter-bar"`,
+		`class="filter-btn is-active" data-child="all"`, // All, active by default
+		`data-child="demo"`,                             // one button per registered child
+		`class="child" data-child="demo"`,               // child blocks are tagged for filtering
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("board page is missing %q", want)
+		}
+	}
+
+	// The bar must be outside #board: the fragment is what the 5s poll swaps in,
+	// and if it carried the bar the swap would reset the active button.
+	frag := get(t, h, "/fragments/board").Body.String()
+	if strings.Contains(frag, "filter-bar") {
+		t.Error("filter bar leaked into the polled fragment; it must live outside #board")
+	}
+	// But the fragment still carries the child blocks it filters.
+	if !strings.Contains(frag, `data-child="demo"`) {
+		t.Error("fragment dropped the data-child tag the filter needs")
+	}
+}
+
 func TestTicketPage(t *testing.T) {
 	h := newHandler(t, standardTree(t))
 	rec := get(t, h, "/t/T-002")
@@ -285,6 +316,7 @@ func TestStaticAssetsAndHealthz(t *testing.T) {
 	}{
 		{"/static/styles.css", "--accent"},
 		{"/static/htmx.min.js", "htmx"},
+		{"/static/board-filter.js", "htmx:afterSwap"},
 		{"/healthz", "ok"},
 		// The color-scheme meta is what paints browser chrome correctly before
 		// the stylesheet loads, and what survives it failing to load — so it

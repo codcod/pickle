@@ -427,7 +427,9 @@ What it serves:
 | `/`
 | The board: every status section, sub-grouped per child-project, in exactly the
   order `BOARD.md` uses (impact descending, ties by id) — both views call the
-  same ordering code, so they cannot disagree.
+  same ordering code, so they cannot disagree. A filter bar above the board
+  narrows it to a single child-project (or `All`); the selection survives the
+  five-second refresh.
 
 | `/t/T-NNN`
 | One ticket: frontmatter as fields, the body rendered as Markdown, and *both*
