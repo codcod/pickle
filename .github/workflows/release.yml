@@ -35,7 +35,11 @@ jobs:
         continue-on-error: true
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install codcod/tap/snowball
+          # Add the tap locally first. Installing straight from codcod/tap/snowball
+          # auto-taps from the API, which Homebrew refuses as untrusted
+          # ("Skipping codcod/tap because it is not trusted").
+          brew tap codcod/tap
+          brew install snowball
           snowball setup
           snowball build -o dist/docs
       - uses: goreleaser/goreleaser-action@v7
