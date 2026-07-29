@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 ## IN DEVELOPMENT
 
@@ -20,10 +20,11 @@ Last updated: 2026-07-28
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-061 | Board child-project filter buttons in the serve dashboard | [] |
 
 ## REWORK
 
