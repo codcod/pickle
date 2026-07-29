@@ -202,3 +202,4 @@ No follow-up ticket minted.
 - 2026-07-29 — READY → IN DEVELOPMENT: picked up
 - 2026-07-29 — IN DEVELOPMENT → IN REVIEW: acceptance green: filter bar renders, survives poll, fragment clean
 - 2026-07-29 — IN REVIEW → DONE: validated: 2 non-blocking findings (1 fixed inline, 1 noted); acceptance green
+- 2026-07-29 — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed
