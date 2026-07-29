@@ -20,11 +20,10 @@ Last updated: 2026-07-29
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-061 | Board child-project filter buttons in the serve dashboard | [] |
 
 ## REWORK
 
@@ -93,6 +92,7 @@ Last updated: 2026-07-29
 | T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | yes — merged to main (PR #3, b70e238), user-approved as an exception; kept both |
 | T-058 | per-child ticket_prefix: optional id prefix per child-project, default T | yes — merged to main (0f3049f) |
 | T-059 | family: group tickets under an umbrella ticket id for curated pickup order | yes — merged to main (#7) |
+| T-061 | Board child-project filter buttons in the serve dashboard | no — publish-gated |
 
 ## DROPPED
 
