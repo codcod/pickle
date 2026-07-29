@@ -27,10 +27,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      # Build the PDF/EPUB user manual into dist/docs/ so the post-release
-      # upload step can attach it. Soft-fail: a broken manual must not block
-      # publishing the binaries. Homebrew ships preinstalled on the ubuntu
-      # runner but is no longer on PATH by default, so load its shellenv first.
+      # Build the PDF/EPUB user manual into manual/ (NOT dist/) so the
+      # post-release upload step can attach it. It must live outside dist/
+      # because goreleaser runs `release --clean`, which wipes dist/ before
+      # building — a manual under dist/docs would be deleted before it could
+      # be attached. Soft-fail: a broken manual must not block publishing the
+      # binaries. Homebrew ships preinstalled on the ubuntu runner but is no
+      # longer on PATH by default, so load its shellenv first.
       - name: Build user manual (PDF + EPUB)
         continue-on-error: true
         env:
@@ -44,7 +47,7 @@ jobs:
           # homebrew/core's stemmer of the same name, not our tap's tool.
           brew install codcod/tap/snowball
           snowball setup
-          snowball build -o dist/docs
+          snowball build -o manual
       - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
@@ -67,7 +70,7 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           shopt -s nullglob
-          manuals=(dist/docs/pickle-user-manual.pdf dist/docs/pickle-user-manual.epub)
+          manuals=(manual/pickle-user-manual.pdf manual/pickle-user-manual.epub)
           existing=()
           for f in "${manuals[@]}"; do [ -f "$f" ] && existing+=("$f"); done
           if [ ${#existing[@]} -eq 0 ]; then
