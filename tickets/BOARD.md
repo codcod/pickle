@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-29
+Last updated: 2026-07-31
 
 ## IN DEVELOPMENT
 
@@ -120,3 +120,4 @@ Last updated: 2026-07-29
 | T-037 | board sync silently deletes hand-written prose from BOARD.md sections | absorbed into T-039 (board triage merge); content preserved here as the record |
 | T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | superseded by T-044 (generated board); move-atomicity residue folded into T-044 |
 | T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | automation not needed; unity is the only real case and is a one-time guided manual migration, not a pickle command |
+| T-062 | Theme serve dashboard board page to match the mock's framed-card shapes | reverted per user: both rounds looked worse than the pre-T-062 baseline; no code merged to main; feat branch discarded |
