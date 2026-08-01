@@ -4,7 +4,7 @@ title: keep the AGENTS.md marker block fresh and detect drift
 project: pickle
 depends-on: []
 spawned-by: [T-020, T-021]
-impact: medium
+impact: high
 complexity: medium
 cost: M
 ---

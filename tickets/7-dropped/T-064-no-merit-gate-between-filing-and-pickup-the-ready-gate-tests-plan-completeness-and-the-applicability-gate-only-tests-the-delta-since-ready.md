@@ -13,6 +13,55 @@ cost: M-L
 
 ## Description
 
+> **DROPPED 2026-08-01 — do not implement, do not re-file from this text.** Filed at 12:06 and
+> dropped the same day, killed by the same adversarial pass it proposed to institutionalise.
+> Kept as the record per `NOTES.md:20-23`, **including its errors**, marked below.
+>
+> **The verdict in one line: T-063 was a compliance failure, not a design gap.** This ticket
+> proposed a new gate to enforce an instruction that already exists and was simply not executed.
+>
+> 1. **The rule already exists.** `tickets-README.md:139-140` mandates assessing every new
+>    ticket against the existing backlog **"and re-grade the board."** The commit that filed
+>    T-063 (`829a819`) and the commit that filed this ticket (`a3f749f`) each touched exactly
+>    **two files** — the new ticket and `BOARD.md`. **Zero neighbours re-graded, twice.** The
+>    filer diagnosed a missing gate while breaking the existing one in the same commit.
+> 2. **The premise misreads the text it quotes.** §8's mandate is *"the ticket's own assumptions
+>    **plus** the board delta since it went READY"*, tested for *"still **true**, **required**,
+>    and **worth it**"* (`tickets-README.md:326-327`, `SKILL.md:177`). **"Worth it" is already
+>    in the mandate**, and "the ticket's own assumptions" is not time-bounded. The claim that the
+>    gate "tests what changed" is an overstatement of the source.
+> 3. **The mechanism it proposed reusing has never returned a negative verdict.** ~15 recorded
+>    applicability-gate runs across the tree: `clean`, `proceed`, `proceed-with-corrections`,
+>    `0 blocking`. **Zero DROPs, zero route-backs.** This ticket's own "must not be a rubber
+>    stamp" section (below) therefore condemns its own proposal.
+> 4. **Its one concrete trigger is anti-correlated with the harm.** It nominates *filed-from-chat*
+>    as the high-yield population. All three cases of real waste in the project's history —
+>    **T-060** (a refinement session paid, then dropped), **T-062** (built, reworked, reviewed,
+>    then reverted), **T-059** (shipped, 0 adopters) — carry `source: pickle ticket new`. The
+>    trigger fires on **none** of them, and would have fired on T-063, which cost 2h46m and was
+>    caught for free.
+> 5. **It fails the §5 promotion test it cites.** T-045 already owns backlog-pressure valves, sits
+>    at `low-medium`, and has been refinable for days with its measurement gate satisfied. A
+>    `high`-graded sibling on the same theme will not be scheduled either.
+> 6. **Refinement demonstrably does re-test day-one premises**, contra bullet 2 of the gap
+>    argument: T-036's refinement produced a section titled *"Correction to the measurement this
+>    ticket was filed on"* and found **both halves of its founding claim wrong**.
+>
+> **The one surviving item — recorded in `NOTES.md`, deliberately not re-filed as a ticket:**
+> §8 is *headed* "a **freshness** check" with a rationale purely about aging, which has collapsed
+> the merit clause in practice (0 negative verdicts in 15 runs; T-062's History records the gate
+> as "confirmed **against the current tree**"). Two sentences would fix it: state that the scope
+> includes assumptions **that were wrong at filing**, and that **DROP is a legal verdict**
+> (`1-to-do`/`2-ready` → `7-dropped` is already legal per `move.go:31-38`, so no new mechanism).
+> Sweep it in whenever §8 is next edited — T-022 is in those files.
+>
+> **What actually works, and needs no ticket:** a human asking for an adversarial pass when they
+> smell one. 2 for 2 on this backlog, costs nothing when unused, needs no schema and no payload
+> bump. Automating it was the error.
+>
+> **Error in the text below:** the claim that the applicability gate tests only "what changed"
+> is wrong, per point 2 above — the gate's stated scope already includes merit.
+
 Nothing in the flow systematically asks **"should this exist at all?"** between the moment a
 ticket is filed and the moment it is picked up. Each gate that looks like it should is
 scoped elsewhere:
@@ -144,3 +193,4 @@ someone challenged it. Challenge works when it happens. It just does not happen 
 - 2026-08-01 — created (TO DO). source: chat — observed while asking whether refinement would
   challenge T-063 at all; an adversarial pass then killed T-063 on evidence available at filing
   time, which no gate in the flow would have asked for
+- 2026-08-01 — TO DO → DROPPED: compliance failure, not a design gap: tickets-README.md:139-140 already mandates the assessment; the gate it would reuse has 0 rejections in 15 runs; its trigger hits 0 of 3 real waste cases

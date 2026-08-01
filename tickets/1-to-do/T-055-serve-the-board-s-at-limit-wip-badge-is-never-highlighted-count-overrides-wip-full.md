@@ -4,7 +4,7 @@ title: serve: the board's at-limit WIP badge is never highlighted (.count overri
 project: pickle
 depends-on: []
 spawned-by: [T-054]
-impact: low-medium
+impact: low
 complexity: low
 cost: S
 ---

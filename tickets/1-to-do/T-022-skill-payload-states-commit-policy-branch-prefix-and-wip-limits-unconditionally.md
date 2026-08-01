@@ -45,6 +45,24 @@ the binary ships.
 Soft coupling: **T-018** (made the marker block render real values, creating the contradiction) and
 **T-016** (docs-readability review step — same prose surface).
 
+### Adjacent payload-text item to sweep while in these files (not this ticket's theme)
+
+A separate §8 wording defect was measured on 2026-08-01 (T-064, dropped; full evidence in
+`NOTES.md`). It is **not** an instance of this ticket's "unconditional statement that should
+defer to config" problem, so it does not belong in the title — but it edits the same two files
+and would cost minutes alongside the work above:
+
+- `tickets-README.md:324-333` heads the pickup applicability gate **"a freshness check"** and
+  justifies it purely by aging, while its actual mandate is *"the ticket's own assumptions plus
+  the board delta"* tested for *"true, **required**, and **worth it**"* (`SKILL.md:177`).
+  Practice has followed the heading, not the mandate: **0 negative verdicts in ~15 recorded
+  runs**. Two sentences fix it — say the scope includes assumptions **that were wrong at
+  filing**, and that **DROP is a legal verdict** (already legal per `move.go:31-38`; verify, add
+  no mechanism).
+
+If this is picked up first, widen the title accordingly; if it is judged out of scope, leave it
+in `NOTES.md` rather than filing it — the standing lesson is that this theme attracts machinery.
+
 ## Implementation Plan
 
 <!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->

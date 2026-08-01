@@ -4,7 +4,7 @@ title: tighten ticket new's title contract: Unicode line terminators and length 
 project: pickle
 depends-on: []
 spawned-by: [T-030]
-impact: low-medium
+impact: low
 complexity: low
 cost: S
 ---

@@ -63,11 +63,81 @@ as the recommended starting position. `critical` and `high-critical` have **neve
 63 tickets — two levels of headroom above a 7-way `medium` tie. Every ordering ticket so far has
 proposed new machinery instead of spending that headroom.
 
-**Process note.** The challenge was requested ad hoc, not produced by any gate: the READY gate
-tests plan completeness, refinement is judged by producing a READY ticket, and the pickup
-applicability gate is scoped to the delta since READY. T-063 would have refined cleanly. T-064
-is that gap; until it lands, the substitute is to ask for a first-principles adversarial pass by
-hand on anything filed straight from chat.
+**Process note — superseded the same day, see below.** The challenge was requested ad hoc, not
+produced by any gate. That was filed as T-064; a second adversarial pass dropped it.
+
+## The T-064 correction (2026-08-01) — it was compliance, not a missing gate
+
+**T-064** proposed a merit gate between filing and pickup. It was dropped hours later by the same
+kind of adversarial pass it wanted to institutionalise. The findings matter more than the ticket:
+
+- **The rule already exists and is not being followed.** `tickets-README.md:139-140` mandates
+  assessing every new ticket against the backlog **"and re-grade the board."** The commits filing
+  T-063 (`829a819`) and T-064 (`a3f749f`) each touched exactly **two files** — the new ticket and
+  `BOARD.md`. **Zero neighbours re-graded, twice.** Diagnosing a missing gate while breaking the
+  existing one in the same commit is the whole episode in one sentence.
+- **§8 already contains a merit test; its heading hides it.** The mandate is *"the ticket's own
+  assumptions plus the board delta"* tested for *"true, **required**, and **worth it**"*
+  (`tickets-README.md:326-327`, `SKILL.md:177`) — but the section is headed *"a **freshness**
+  check"* and justified purely by aging. Practice followed the heading: **0 negative verdicts in
+  ~15 recorded applicability-gate runs**; T-062's History calls it "confirmed against the current
+  tree". Two sentences would fix it (scope includes assumptions wrong *at filing*; DROP is a legal
+  verdict, already legal per `move.go:31-38`). Pointer left in **T-022**, which edits those files.
+  **Deliberately not filed as a ticket** — see the pattern below.
+- **"Filed from chat" is the wrong trigger.** All three cases of real waste in the project's
+  history — **T-060** (refinement session paid, then dropped), **T-062** (built → reworked →
+  reviewed → reverted), **T-059** (shipped, 0 adopters) — carry `source: pickle ticket new`. Any
+  future proposal to target a filing population must measure against these three first.
+- **What actually works:** a human asking for an adversarial pass when they smell one. **2 for 2**
+  on this backlog (T-063, T-064), costs nothing when unused, needs no schema and no payload bump.
+  Automating it was the error, and the automation would have been a rubber stamp — the gate it
+  proposed reusing has never once said no.
+
+**The pattern, recorded against the next proposal — including the next one from whoever writes
+here.** Three ordering/gating tickets in a row (T-063, T-064, and T-045 before them) proposed new
+machinery while two standing, free, mandated actions sat unexecuted: **recalibrate `impact`**, and
+**spend T-045's now-available measurement data**. Both were finally done on 2026-08-01 (below).
+Before filing anything in this theme again: measure the thing, check whether an existing
+instruction already covers it, and check whether it was executed.
+
+## Spawn rate measured, T-045 dropped (2026-08-01)
+
+The measurement T-045 was gated on, finally taken. **8 reviews since T-036 landed** (gate required
+3): T-047, T-048, T-049, T-059 spawned 0 each; T-053, T-058, T-061 spawned 1 each; T-054 spawned 2.
+**R = 5/8 = 0.625**, against ≈1.0 re-derived at T-036's refinement. The pre-registered condition —
+*"if R has fallen well below 1, the honest outcome is to drop this ticket"* — is met, so T-045 is
+dropped on evidence committed to in advance rather than on argument after the fact. The table is
+in its DROPPED banner and is the baseline for any re-open; re-open only on R above ~1.5 sustained
+over ≥5 reviews, or `1-to-do/` growing while completions stall.
+
+**This is the first decision in the project made by a pre-registered criterion.** It cost one
+`for` loop. Worth copying: when a ticket's real question is "is this needed?", write the
+measurement and the threshold into the ticket at filing, then execute it.
+
+## `impact` recalibration (2026-08-01) — the standing mandate, finally executed
+
+`tickets-README.md:139-140` has mandated re-grading the board on every filing since the flow was
+installed; it had never been done as a pass. Executed across all 16 TO DO tickets against the
+rules' own definitions (`:129-134`). Seven changed:
+
+| ticket | was | now | why |
+|---|---|---|---|
+| T-041 | medium | **high** | a stale marker block makes every agent act on wrong project config, silently — it breaks the agent-facing contract, which is the product |
+| T-040 | medium | **medium-high** | duplicate frontmatter keys silently last-win, a latent data-loss path and a prerequisite for any field writer |
+| T-056 | high | **medium-high** | one of its six work areas (ranking) collapsed on 2026-08-01, and demand for a *writable* dashboard is unevidenced; the concurrency foundation retains its value independently |
+| T-013 | low | **low-medium** | install is the first-run experience and this bundles 10 items |
+| T-019 | low | **low-medium** | the README is the adoption front door for a distributed tool |
+| T-038 | low-medium | **low** | narrow input hardening on a path that already rejects the dangerous cases |
+| T-055 | low-medium | **low** | cosmetic CSS specificity bug |
+
+Distribution went from **7-way `medium` + 4-way `low-medium` + 4-way `low`** to
+**high 2 · medium-high 2 · medium 5 · low-medium 3 · low 4**. Largest tie 7 → 5.
+
+**`critical` and `high-critical` remain unused, deliberately.** The bar is "reshapes the product",
+and nothing in this backlog does — pickle is shipped and working, and every open item improves or
+corrects it. Recalibration means grading honestly, **not** spending headroom for its own sake; a
+manufactured `critical` would be the same calibration dishonesty in the other direction. The
+headroom exists for the ticket that genuinely earns it.
 
 ## Cross-epic decisions
 

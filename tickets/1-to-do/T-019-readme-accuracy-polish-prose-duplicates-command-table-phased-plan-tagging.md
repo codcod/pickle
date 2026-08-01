@@ -4,7 +4,7 @@ title: README accuracy polish (prose duplicates command table, phased-plan taggi
 project: pickle
 depends-on: []
 spawned-by: []
-impact: low
+impact: low-medium
 complexity: low
 cost: S
 ---

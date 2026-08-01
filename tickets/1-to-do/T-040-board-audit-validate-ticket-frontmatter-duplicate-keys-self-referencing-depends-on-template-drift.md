@@ -4,7 +4,7 @@ title: board audit: validate ticket frontmatter (duplicate keys, self-referencin
 project: pickle
 depends-on: []
 spawned-by: [T-027, T-028, T-033]
-impact: medium
+impact: medium-high
 complexity: low
 cost: M
 ---

@@ -13,6 +13,37 @@ cost: M
 
 ## Description
 
+> **DROPPED 2026-08-01 — this is the ticket working as designed, not a failure.** It was filed
+> as a measurement-gated decision and the measurement was taken. The gate below (and
+> `NOTES.md:36-39`) pre-registered the criterion: *"Do not refine this ticket until T-036 has
+> landed and a spawn rate has been re-measured over at least three reviews. If R has fallen well
+> below 1, the honest outcome is to drop this ticket."*
+>
+> **Measured 2026-08-01 — 8 reviews since T-036 landed** (T-047, T-048, T-049, T-053, T-054,
+> T-058, T-059, T-061), well past the 3 required. Follow-up tickets spawned:
+>
+> | reviewed | spawned |
+> |---|---|
+> | T-047, T-048, T-049, T-059 | 0 each |
+> | T-053, T-058, T-061 | 1 each |
+> | T-054 | 2 |
+>
+> **R = 5 / 8 = 0.625**, against ≈1.0 as re-derived at T-036's refinement. Well below 1, and
+> falling. **The pre-registered condition for dropping is met, so it is dropped** — on evidence
+> committed to in advance, not on argument after the fact.
+>
+> Both valves are therefore unbuilt, deliberately:
+> - **Valve 3 (per-child TO DO backlog cap)** — the leak it backstopped is closed. It would also
+>   have shipped already-breached (17 tickets in `1-to-do/` today), and its severity problem
+>   below was never solved.
+> - **Valve 4 (`user-visible:` axis)** — superseded by the cheaper option this ticket itself
+>   named at "recalibrate instead of adding": the `impact` recalibration was finally executed on
+>   2026-08-01 (see `NOTES.md`), spending existing headroom rather than adding an axis.
+>
+> **Re-open only on new measurement**, not on intuition: R back above ~1.5 sustained over
+> ≥5 reviews, or `1-to-do/` growing while completions stall. The disposition columns T-036 made
+> mandatory remain the data source, and this table is the baseline to compare against.
+
 Split out of **T-036** at refinement (2026-07-26). T-036 was filed with four valves against an
 unbounded spawn rate; two are payload text and ship there. These two are CLI + schema, and both
 are **backstops for a leak T-036 plugs** — so this ticket exists to decide whether they are
@@ -132,3 +163,4 @@ before planning any board change here).
   T-036's own "honest reading": a retroactive replay cannot measure a spawn rate, only real
   reviews can, and one review is not a rate either. The disposition columns are now the data.
 - 2026-07-26 — patched by the T-047 review (impact sweep): README passage it cited moved to docs/user-manual/cli-reference.adoc
+- 2026-08-01 — TO DO → DROPPED: measurement gate satisfied and the pre-registered condition met: spawn rate R=0.625 over 8 reviews since T-036 (gate required 3, and drop if R well below 1)

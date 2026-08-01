@@ -4,7 +4,7 @@ title: install polish (marker spacing, summary labels, cli tests, --agent)
 project: pickle
 depends-on: [T-004]
 spawned-by: []
-impact: low
+impact: low-medium
 complexity: low
 cost: S
 ---

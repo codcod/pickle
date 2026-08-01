@@ -46,23 +46,21 @@ Last updated: 2026-08-01
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |  |
-| T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | high | high | XL | [] |  |
-| T-064 | no merit gate between filing and pickup: the READY gate tests plan completeness and the applicability gate only tests t… | high | high | M-L | [] |  |
+| T-041 | keep the AGENTS.md marker block fresh and detect drift | high | medium | M | [] |  |
+| T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium-high | low | M | [] |  |
+| T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium-high | high | XL | [] |  |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |  |
-| T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |  |
-| T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |  |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |  |
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | medium | medium | M | [] |  |
-| T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low-medium | low | S | [] |  |
-| T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | low-medium | medium | M | [] |  |
+| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
+| T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
-| T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low-medium | low | S | [] |  |
-| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low | low | S | [T-004] |  |
-| T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |  |
+| T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root) | low | low | M | [] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |  |
+| T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
 
 ## DONE
 
@@ -120,6 +118,8 @@ Last updated: 2026-08-01
 | T-035 | repair the corrupted T-021 board row (unescaped pipe in title) | board row repaired inline during triage; ticket overhead exceeded the one-character fix |
 | T-037 | board sync silently deletes hand-written prose from BOARD.md sections | absorbed into T-039 (board triage merge); content preserved here as the record |
 | T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | superseded by T-044 (generated board); move-atomicity residue folded into T-044 |
+| T-045 | backlog cap and user-visible axis: decide after measuring whether the T-036 disposition valves lowered the spawn rate | measurement gate satisfied and the pre-registered condition met: spawn rate R=0.625 over 8 reviews since T-036 (gate re… |
 | T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | automation not needed; unity is the only real case and is a one-time guided manual migration, not a pickle command |
 | T-062 | Theme serve dashboard board page to match the mock's framed-card shapes | reverted per user: both rounds looked worse than the pre-T-062 baseline; no code merged to main; feat branch discarded |
 | T-063 | order TO DO/READY by value per cost, not impact alone: use the cost axis, de-rank blocked tickets, behind a configurabl… | pickup queue is READY not TO DO (never >2 rows in 114 board revisions); blocked de-rank hits 0 tickets; recalibrate imp… |
+| T-064 | no merit gate between filing and pickup: the READY gate tests plan completeness and the applicability gate only tests t… | compliance failure, not a design gap: tickets-README.md:139-140 already mandates the assessment; the gate it would reus… |
