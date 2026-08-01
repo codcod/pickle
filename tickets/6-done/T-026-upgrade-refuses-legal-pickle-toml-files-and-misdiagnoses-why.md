@@ -237,7 +237,77 @@ that bookkeeping on `main`.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**2026-08-01 — verdict: pass, no blocking findings.** Branch
+`feat/T-026-upgrade-refuses-legal-pickle-toml` (`e7d494f` + the review's `4a5d4a5`), reviewed
+against `main`.
+
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass — **skipped**: the `docs-readability` subagent is misconfigured in
+      this session (`Model not found: github-copilot/gemini-2.5-pro`). Sanctioned conscious skip
+      (step 4b); the branch's `.adoc` prose was read by hand instead.
+- [x] Findings recorded with severity **and** disposition; summary line present (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6)
+- [x] Other references updated (step 7) — T-046 patched, T-043 gained one item
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented for approval (step 9)
+
+### Implementation audit (step 2)
+
+| plan item | verdict | evidence |
+|---|---|---|
+| T1 state-aware scanner replaces the `[`-prefix heuristic | **met** | `scanState`/`advance`/`matchKey` in `internal/config/config.go`; all three key spellings; `payload_version_note` guard intact (`TestSetPayloadVersionInPlaceKeyPrefixIsNotAMatch` still green) |
+| T2 NaN-tolerant gate | **met** | `treeEqual` replaces `reflect.DeepEqual`; fixture `nan elsewhere in the file` accepted; `a = [nan, 1.0]` and a `nan` nested in `[commit]` both accepted in an ad-hoc probe |
+| T3 every refusal names cause + line | **partially met** | the scanner's two refusals do (`line 8: payload_version's value is a multi-line string; set it by hand`, verified end-to-end). `verifyOnlyPayloadVersion`'s two non-wrapping refusals still name no line → finding **R3** |
+| T4 `doctor` stops recommending a doomed command | **met** | `PayloadVersionStampable` probe in `checkVersion`; end-to-end the wedged file warns *"…cannot fix it automatically (…line 8…) — edit payload_version by hand"* and never prints ``run `pickle upgrade` ``; `TestCheckVersionDriftUnstampableSuggestsHandEdit` asserts the absence |
+| T5 three raw-errno paths wrapped | **met** | `writePreservingMode` wraps CreateTemp/Write/Close/Chmod/Rename against the real path; `TestSetPayloadVersionInPlaceUnwritableParentNamesTheRealFile` pins the lead-with-real-path shape |
+| T6 tests | **met** | 3 fixtures flipped to `ok: true`, 5 added; invariant checker and `FuzzSetPayloadVersion` unmodified as intended |
+| T7 docs | **met, with corrections** | `configuration.adoc` contract rewritten; `Config.Render()`'s header re-checked and still true. Two prose defects found and fixed inline → **R1**, **R2** |
+
+**Acceptance test, re-run verbatim.** `just build` / `just test` / `just lint` / `just docs-check`
+all green. `go test ./internal/config/... -run 'PayloadVersion'` and `go test ./internal/doctor/...`
+green. `FuzzSetPayloadVersion -fuzztime 90s` — 9,958,835 execs, no failure. End-to-end in a
+throwaway dir with the binary copied out (self-modify policy honoured): all four Description
+shapes are legal `tomllib` input, all four now exit `upgrade` rc 0, `doctor` prints no
+payload-version warning, and `diff -u` against the fixture shows **exactly one changed line** in
+each. The multi-line-array case was additionally re-run on the true *insert* path (key deleted):
+the key lands at top level, `matrix` decodes unchanged. The two D3 shapes still refuse, untouched,
+naming their line. **Pass condition met.**
+
+**Independent measurement.** Replaying the 1,406-entry fuzz corpus through `setPayloadVersion`:
+of 716 parseable inputs, **13 (1.8%) still refuse** — 6 are the D3 array-value shape (by design),
+6 are R5, 1 is a dotted `payload_version.0` key. Against the Description's *"32% of parseable fuzz
+inputs land in this state"*, the wedge class is closed in substance.
+
+### Findings
+
+| id | severity | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|
+| R1 | non-blocking | fixed inline | `configuration.adoc`'s new contract overstated the fix twice: table-/key-looking lines inside a multi-line string are read correctly *"regardless of where they sit"*, and refusals come *"with an error naming the line"*. R4 is a counter-example to the first; `verifyOnlyPayloadVersion`'s refusals are to the second. | `docs/user-manual/configuration.adoc:14-24` on `e7d494f` | Reworded to promise what the code delivers — bounded scanner, exotic shapes can still defeat it, line named *when known*. Fixed in `4a5d4a5`. |
+| R2 | non-blocking | fixed inline | `cli-reference.adoc`'s `doctor` bullet still said a `payload_version` mismatch is *"a warning pointing at `pickle upgrade`"* — prose D4 made false. Task 7 re-checked `cli-reference.adoc:183-186` but not the `doctor` section. | `docs/user-manual/cli-reference.adoc:226-227` on `e7d494f` | Documented the stampability probe and the hand-edit branch. Fixed in `4a5d4a5`. |
+| R3 | non-blocking | noted | Task 3 said *"every refusal names the cause and the line — `verifyOnlyPayloadVersion` **and** the new scanner"*. Only the scanner's did. Two gate refusals still name no line: `could not set payload_version (it would end up …)` and `setting payload_version would change other values in the file`. The other two wrap the decoder's error, which carries a line. | `internal/config/config.go:413-419`; reproduced live by the R4 shape | The scanner knows which line it rewrote or inserted; it could hand that number to the gate. Near-unreachable today (1/716 parseable corpus inputs, a dotted `payload_version.0` key) — recorded, not scheduled. |
+| R4 | non-blocking | folded → T-043 | Residual wedge: `advance` honours `\` escapes inside a *single-line* basic string but not inside a *multi-line* one, so a `"""…"""` value containing an escaped `\"""` closes the string early. The scanner then reads a later `[table]` line as top level and wedges a legal file — exactly the class T-026 set out to close. Pre-existing (this shape refused on `main` too), so not inline-fixable per rules §5. | Probe: `note = """\na \""" b\n[x]\n"""\npayload_version = "v1"` → `could not set payload_version (it would end up "v1", not "9.9.9")` | ~4 lines: in `advance`'s multi-line branch, skip `\`-escaped bytes when the delimiter is `"""` (not `'''`, which has no escapes). Add a fixture. |
+| R5 | non-blocking | folded → T-043 | Residual wedge on the **insert** path: `usesCRLF` inspects `lines[:len-1]`, so a consistently-CRLF file whose last line is unterminated is judged CRLF, and the appended entry gets a trailing lone `\r` with no `\n` — unparseable, so the gate refuses a legal file. 6 of 716 corpus inputs (e.g. `"\r\n#"`). Pre-existing (`insertPayloadVersion`/`usesCRLF` unchanged by this branch). | corpus replay, above | Only append `\r` when the insert point is followed by another line, or normalise the file's final terminator. |
+| R6 | non-blocking | noted | `insertPayloadVersion` returns `(string, error)` but can never fail; the `error` is dead in every caller. Cosmetic, and a plausible future refusal point. | `internal/config/config.go:645-655` | Leave as-is unless the signature stops earning its keep. |
+
+**Disposition summary — 6 findings, 0 blocking:** 2 *fixed inline* (R1, R2 — both docs, in
+`4a5d4a5`), 2 *folded* into **T-043** (R4, R5 — one added item, "residual `payload_version`
+line-editor wedges"), 2 *noted* (R3, R6). **No new ticket minted.**
+
+### Quality / consistency notes (no finding)
+
+- The scanner was probed with 29 hand-built shapes beyond the fixtures — `'''` literal
+  multi-line strings, `[[project]]` inside a multi-line string, nested multi-line arrays,
+  brackets and apostrophes inside single-line strings, escaped quotes, inline tables, datetime
+  and `inf` values, CRLF files, indented and both quoted key spellings, a `"""x""""` close. All
+  28 legal ones round-trip correctly; only R4 fails.
+- The parse-back gate is unchanged in role and remains the backstop for exactly this class —
+  every residual defect above surfaces as a *safe refusal*, never as a corrupted file. That is
+  T-018's property held intact.
+- Branch discipline (T-057) held: the feature branch carries code and docs only; all `tickets/`
+  bookkeeping is on `main`.
 
 ## History
 
@@ -247,3 +317,4 @@ that bookkeeping on `main`.
 - 2026-08-01 — TO DO → READY: plan complete; D1-D5 confirmed with user; all four shapes re-reproduced at refinement
 - 2026-08-01 — READY → IN DEVELOPMENT: picked up
 - 2026-08-01 — IN DEVELOPMENT → IN REVIEW: acceptance green: all four wedge shapes upgrade cleanly end-to-end; go test ./... and 3M+ fuzz execs pass; just build/test/lint/docs-check green
+- 2026-08-01 — IN REVIEW → DONE: review passed: 6 findings, 0 blocking — 2 fixed inline (docs, 4a5d4a5), 2 folded into T-043 (item 8), 2 noted; no new ticket
