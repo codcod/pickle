@@ -19,6 +19,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -354,6 +355,22 @@ func SetPayloadVersionInPlace(path, version string) error {
 	return writePreservingMode(path, []byte(updated))
 }
 
+// PayloadVersionStampable reports whether SetPayloadVersionInPlace(path,
+// version) would succeed, without writing anything. `pickle doctor` uses it
+// to decide what to tell the user: a plain "run `pickle upgrade`" is only
+// useful advice when upgrade could actually succeed. err, when non-nil, is
+// the same refusal SetPayloadVersionInPlace would return.
+func PayloadVersionStampable(path, version string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if _, err := setPayloadVersion(string(data), version); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	return nil
+}
+
 // setPayloadVersion is the pure text transformation behind
 // SetPayloadVersionInPlace, including the parse-back check that guards it.
 func setPayloadVersion(text, version string) (string, error) {
@@ -401,11 +418,56 @@ func verifyOnlyPayloadVersion(before, after, version string) error {
 	}
 	delete(b, payloadVersionKey)
 	delete(a, payloadVersionKey)
-	if !reflect.DeepEqual(b, a) {
+	if !treeEqual(b, a) {
 		return fmt.Errorf("setting %s would change other values in the file; set it by hand",
 			payloadVersionKey)
 	}
 	return nil
+}
+
+// treeEqual compares two decoded TOML trees, treating two NaN float64s as
+// equal. reflect.DeepEqual does not — IEEE 754 defines NaN != NaN — which
+// would make the safety gate above unpassable by construction for any file
+// that legally contains `= nan` somewhere, no matter how harmless the edit
+// actually is. Every other value keeps reflect.DeepEqual's semantics.
+func treeEqual(a, b any) bool {
+	if af, ok := a.(float64); ok {
+		bf, ok := b.(float64)
+		if !ok {
+			return false
+		}
+		if math.IsNaN(af) || math.IsNaN(bf) {
+			return math.IsNaN(af) && math.IsNaN(bf)
+		}
+		return af == bf
+	}
+	switch av := a.(type) {
+	case map[string]any:
+		bv, ok := b.(map[string]any)
+		if !ok || len(av) != len(bv) {
+			return false
+		}
+		for k, v := range av {
+			bvv, ok := bv[k]
+			if !ok || !treeEqual(v, bvv) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		bv, ok := b.([]any)
+		if !ok || len(av) != len(bv) {
+			return false
+		}
+		for i := range av {
+			if !treeEqual(av[i], bv[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return reflect.DeepEqual(a, b)
+	}
 }
 
 func decodeTree(text string) (map[string]any, error) {
@@ -414,51 +476,173 @@ func decodeTree(text string) (map[string]any, error) {
 	return m, err
 }
 
-// replacePayloadVersionLine performs the line edit. It is deliberately naive —
-// verifyOnlyPayloadVersion is what makes it safe.
+// scanState is the lexical context carried from one line to the next while
+// scanning for the top-level payload_version key: whether a triple-quoted
+// string opened on an earlier line is still open, and how many '['..']'
+// pairs (array literals) are currently unclosed. Inline tables are out of
+// scope — TOML requires them on a single line, so a bare payload_version
+// inside one would never reach the line-start prefix check below.
+type scanState struct {
+	multilineDelim string // "", `"""`, or `'''`
+	bracketDepth   int
+}
+
+// atTopLevel reports whether a key definition or table header found at the
+// start of a line, given this state, is really one — as opposed to text that
+// merely looks like one inside a string or an array.
+func (st scanState) atTopLevel() bool {
+	return st.multilineDelim == "" && st.bracketDepth == 0
+}
+
+// advance scans one raw line's non-string, non-comment content and updates
+// st for the line that follows: it tracks bracket depth, skips over
+// single-line quoted strings (so a '[' or '#' inside one is never mistaken
+// for syntax), and opens or closes a multi-line string. Every line is passed
+// through it exactly once, regardless of how that line was classified.
+func advance(line string, st *scanState) {
+	i, n := 0, len(line)
+	for i < n {
+		if st.multilineDelim != "" {
+			idx := strings.Index(line[i:], st.multilineDelim)
+			if idx < 0 {
+				return // the rest of the line is string content
+			}
+			i += idx + len(st.multilineDelim)
+			st.multilineDelim = ""
+			continue
+		}
+		switch {
+		case line[i] == '#':
+			return // the rest of the line is a comment
+		case strings.HasPrefix(line[i:], `"""`):
+			st.multilineDelim = `"""`
+			i += 3
+		case strings.HasPrefix(line[i:], "'''"):
+			st.multilineDelim = "'''"
+			i += 3
+		case line[i] == '"':
+			j := i + 1
+			for j < n && line[j] != '"' {
+				if line[j] == '\\' {
+					j++
+				}
+				j++
+			}
+			i = j + 1
+		case line[i] == '\'':
+			if idx := strings.IndexByte(line[i+1:], '\''); idx >= 0 {
+				i += idx + 2
+			} else {
+				i = n
+			}
+		case line[i] == '[':
+			st.bracketDepth++
+			i++
+		case line[i] == ']':
+			if st.bracketDepth > 0 {
+				st.bracketDepth--
+			}
+			i++
+		default:
+			i++
+		}
+	}
+}
+
+// payloadVersionKeySpellings are the token forms TOML allows for the key.
+// pickle always writes the bare form; a hand-edited file may use either
+// quoted spelling.
+var payloadVersionKeySpellings = [...]string{
+	payloadVersionKey,
+	`"` + payloadVersionKey + `"`,
+	`'` + payloadVersionKey + `'`,
+}
+
+// matchKey reports whether body — a line already stripped of its leading
+// indentation — opens with one of the key's legal spellings followed by
+// optional whitespace and '=', and if so the byte offset of that '=' within
+// body. It deliberately does not match a longer identifier that merely
+// starts with the key, such as payload_version_note.
+func matchKey(body string) (eqOffset int, ok bool) {
+	for _, spelling := range payloadVersionKeySpellings {
+		rest, cut := strings.CutPrefix(body, spelling)
+		if !cut {
+			continue
+		}
+		ws := len(rest) - len(strings.TrimLeft(rest, " \t"))
+		if !strings.HasPrefix(rest[ws:], "=") {
+			continue
+		}
+		return len(spelling) + ws, true
+	}
+	return 0, false
+}
+
+// replacePayloadVersionLine performs the line edit. It is deliberately naive
+// about anything past bracket depth and multi-line-string state —
+// verifyOnlyPayloadVersion is what makes the result safe regardless.
 func replacePayloadVersionLine(text, version string) (string, error) {
 	lines := strings.Split(text, "\n")
 	insertAt := len(lines)
+	var st scanState
+
 	for i, raw := range lines {
 		line := strings.TrimSuffix(raw, "\r")
+		topLevel := st.atTopLevel()
 		indent := len(line) - len(strings.TrimLeft(line, " \t"))
 		body := line[indent:]
-		if body == "" || strings.HasPrefix(body, "#") {
-			continue
+
+		if topLevel {
+			switch {
+			case body == "" || strings.HasPrefix(body, "#"):
+				// nothing to classify
+			case strings.HasPrefix(body, "["):
+				// A table header ends the top-level scope: a payload_version
+				// below this point belongs to [commit] or a [[project]].
+				insertAt = i
+				return insertPayloadVersion(lines, insertAt, version)
+			default:
+				if eqOffset, ok := matchKey(body); ok {
+					return rewriteFoundKey(lines, i, raw, line, indent, eqOffset, version)
+				}
+			}
 		}
-		if strings.HasPrefix(body, "[") {
-			// A table header ends the top-level scope: a payload_version
-			// below this point belongs to [commit] or a [[project]].
-			insertAt = i
-			break
-		}
-		rest, ok := strings.CutPrefix(body, payloadVersionKey)
-		if !ok {
-			continue
-		}
-		value := strings.TrimLeft(rest, " \t")
-		if !strings.HasPrefix(value, "=") {
-			continue // a different key that merely starts with payload_version
-		}
-		start := indent + len(body) - len(value) + 1
-		for start < len(line) && (line[start] == ' ' || line[start] == '\t') {
-			start++
-		}
-		if strings.HasPrefix(line[start:], `"""`) || strings.HasPrefix(line[start:], "'''") {
-			// A multi-line string may continue past this line; rewriting it
-			// blind could corrupt the file. Refuse loudly instead.
-			return "", errors.New("payload_version uses a multi-line string; set it by hand")
-		}
-		end := valueEnd(line, start)
-		lines[i] = line[:indent] + payloadVersionKey + " = " + fmt.Sprintf("%q", version) + line[end:]
-		if raw != line {
-			lines[i] += "\r"
-		}
-		return strings.Join(lines, "\n"), nil
+		advance(line, &st)
 	}
 
-	// Not present: insert it, keeping any blank lines attached to whatever
-	// follows rather than orphaning them above the new key.
+	return insertPayloadVersion(lines, insertAt, version)
+}
+
+// rewriteFoundKey builds the edited text once the key's line and the byte
+// offset of its '=' within that line have been found.
+func rewriteFoundKey(lines []string, i int, raw, line string, indent, eqOffset int, version string) (string, error) {
+	start := indent + eqOffset + 1
+	for start < len(line) && (line[start] == ' ' || line[start] == '\t') {
+		start++
+	}
+	switch {
+	case strings.HasPrefix(line[start:], `"""`) || strings.HasPrefix(line[start:], "'''"):
+		// A multi-line string may continue past this line; rewriting it
+		// blind could corrupt the file. Refuse loudly instead.
+		return "", fmt.Errorf("line %d: payload_version's value is a multi-line string; set it by hand", i+1)
+	case strings.HasPrefix(line[start:], "["):
+		// payload_version's own value is an array. pickle never writes this
+		// shape; rewriting it as a single `= "value"` line would silently
+		// discard it rather than merely fail to touch it, so refuse instead.
+		return "", fmt.Errorf("line %d: payload_version's value is an array; rewriting it as a single line could leave the file unparseable — set it by hand", i+1)
+	}
+	end := valueEnd(line, start)
+	lines[i] = line[:indent] + payloadVersionKey + " = " + fmt.Sprintf("%q", version) + line[end:]
+	if raw != line {
+		lines[i] += "\r"
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+// insertPayloadVersion is the not-present path: insert the key at insertAt,
+// keeping any blank lines attached to whatever follows rather than orphaning
+// them above the new key.
+func insertPayloadVersion(lines []string, insertAt int, version string) (string, error) {
 	for insertAt > 0 && strings.TrimSpace(lines[insertAt-1]) == "" {
 		insertAt--
 	}
@@ -516,6 +700,12 @@ func valueEnd(line string, i int) int {
 // A symlinked config is followed rather than replaced: renaming onto the link
 // would turn it into a regular file and leave the real target stale, which is
 // the opposite of preserving the user's file.
+//
+// T-026 (D5): every failure below is reported against path — the file the
+// user actually owns — with an actionable cause, never a bare errno naming
+// the throwaway temp file. The three shapes measured in practice: an
+// unwritable parent directory (CreateTemp), and a file the rename cannot
+// replace under either an ACL deny-delete or `chflags uchg` (Rename).
 func writePreservingMode(path string, data []byte) error {
 	if resolved, err := filepath.EvalSymlinks(path); err == nil {
 		path = resolved
@@ -524,21 +714,27 @@ func writePreservingMode(path string, data []byte) error {
 	if fi, err := os.Stat(path); err == nil {
 		mode = fi.Mode().Perm()
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".*")
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: could not create a temporary file in %s to write the update safely (is the directory writable?): %w",
+			path, dir, err)
 	}
 	name := tmp.Name()
 	defer func() { _ = os.Remove(name) }() // no-op once the rename succeeds
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
-		return err
+		return fmt.Errorf("%s: writing the update: %w", path, err)
 	}
 	if err := tmp.Close(); err != nil {
-		return err
+		return fmt.Errorf("%s: writing the update: %w", path, err)
 	}
 	if err := os.Chmod(name, mode); err != nil {
-		return err
+		return fmt.Errorf("%s: could not preserve the file's permissions on the update: %w", path, err)
 	}
-	return os.Rename(name, path)
+	if err := os.Rename(name, path); err != nil {
+		return fmt.Errorf("%s: could not replace the file with the update — it may be read-only, immutable (e.g. chflags uchg), or under a permission that denies deletion: %w",
+			path, err)
+	}
+	return nil
 }

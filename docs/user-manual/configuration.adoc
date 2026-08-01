@@ -11,18 +11,21 @@ only one command rewrites a file you already own:
   key order and every other line's spacing survive; that one line comes back
   normalised to `payload_version = "value"`, with any inline comment after the
   value kept — so that one line's alignment and quoting style are not
-  preserved. Because the edit is line-based, some shapes are beyond it: a
-  quoted `"payload_version"` key, a `payload_version` whose own value is a
-  multi-line string, or a multi-line string holding a line that looks like a
-  `[table]` header or like the key itself, sitting *above* the key (above the
-  first `[table]` header, in a file that has no `payload_version` yet). The
-  result is parsed and compared against the original before anything is
-  written, so those shapes make `upgrade` *refuse and change nothing*, with an
-  error telling you to set the version by hand. Position is what decides it,
-  not the mere presence of a multi-line string: the scan stops at the key, so
-  a multi-line string _below_ the key is never read and cannot trigger a
-  refusal, and one above it is read correctly as long as it holds neither of
-  those two lines.
+  preserved. The line editor tracks multi-line strings and array nesting
+  as it scans, so a quoted `"payload_version"` key and a table-looking or
+  key-looking line inside an unrelated multi-line string are read correctly
+  wherever they sit in the file — position is not what decides it. Two
+  shapes are beyond a line-based edit by design: `payload_version`'s own
+  value being a multi-line string or an array — pickle never writes either,
+  so it only happens to a hand-edited file — and a file that does not parse
+  to begin with (for example, a duplicated key). And because the editor is a
+  bounded scanner rather than a full TOML parser, a sufficiently exotic file
+  can still defeat it (a multi-line string that escapes its own closing
+  delimiter, say). None of that can cost you content: the result is always
+  parsed and compared against the original before anything is written, so
+  whenever the editor cannot do the job `upgrade` *refuses and changes
+  nothing* and tells you to set the version by hand, naming the offending
+  line whenever it knows which one it is.
 * *`install`* writes `pickle.toml` only when it does not yet exist; on an
   existing file it reports `= pickle.toml (exists)` and leaves it alone.
 
