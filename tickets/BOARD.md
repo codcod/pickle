@@ -13,10 +13,11 @@ Last updated: 2026-08-01
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-041 | keep the AGENTS.md marker block fresh and detect drift | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-01
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-041 | keep the AGENTS.md marker block fresh and detect drift | high | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 

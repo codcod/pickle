@@ -219,10 +219,13 @@ squash-or-keep before the branch is pushed. Merging is the human's.
   - `MarkerBlock` renders `p.Prefix()` in the branch bullet (direct assertion, independent of the
     golden).
   - **`TestSelfHostMarkerBlockIsCurrent`** — load `../../pickle.toml`, render `MarkerBlock`, compare
-    to `../../AGENTS.md`'s `InstalledMarkerBody`, fail with a line-by-line report. This makes the
-    hand-mirroring rule in `AGENTS.md` machine-checked instead of a promise, and it passes today
-    (re-verification finding 3). Use the existing `payloadRoot()`-style CWD-independent idiom
-    (`internal/install/install_test.go`) rather than raw `../..`.
+    to `../../AGENTS.md`'s `InstalledMarkerBody`, fail with a line-by-line report that also names
+    the hand-mirror obligation ("hand-mirror `AGENTS.md` per the self-modify policy"). This makes
+    the hand-mirroring rule in `AGENTS.md` machine-checked instead of a promise, and it passes today
+    (re-verification finding 3). Reuse the package's existing `payloadRoot()` helper
+    (`internal/install/install_test.go:16`) rather than raw `../..` — it is CWD-*relative*, not
+    independent (T-042 item 3 owns replacing it with an absolute root later); it is still correct
+    for this test today, so no new helper is warranted here.
 - `internal/doctor/doctor_test.go`: extend the fixture-based cases — byte-identical block ⇒ no
   warning + a passed entry; one line edited **inside** the markers ⇒ one warning naming the file,
   0 errors; text appended **outside** the markers ⇒ no warning (the false-positive guard);
@@ -276,9 +279,10 @@ printf '# X\n\n<!-- pickle:end -->\n<!-- pickle:begin -->\n' > AGENTS.md
     a block that differs from what `pickle.toml` renders is a **warning** pointing at
     `pickle upgrade`, and hand-written content belongs outside the markers. Mirror the phrasing of
     the agent-scaffold bullet (`:222-224`) so the two drift warnings read alike.
-- `docs/user-manual/configuration.adoc`: one sentence where the marker block is described — the
-  block is regenerated from `pickle.toml` by `install`, `upgrade` **and** `project add|remove`; put
-  your own prose outside the markers.
+- `docs/user-manual/cli-reference.adoc:188-196` (the marker-block ownership prose, not
+  `configuration.adoc` — that file says nothing about the marker block today): extend "regenerated
+  from `pickle.toml`" to name `install`, `upgrade` **and** `project add|remove` as the commands that
+  do it; the existing "keep notes outside the markers" sentence already covers ownership.
 - No change to `skill/` — the payload's unconditional statement of commit policy/branch prefix/WIP
   limits is **T-022**'s scope, not this ticket's.
 - Re-run `just docs-check`.
@@ -289,9 +293,13 @@ printf '# X\n\n<!-- pickle:end -->\n<!-- pickle:begin -->\n' > AGENTS.md
 2. Docs updated; `internal/install/testdata/markerblock.golden` regenerated and its diff reviewed
    by hand (one line).
 3. **Bookkeeping in the overarching repo** (explicit pathspecs, may be committed automatically):
-   edit `tickets/1-to-do/T-042-*.md` to mark item 1 resolved by T-041 — the same treatment T-044's
-   review sweep gave item 2 — re-grade and re-title it to the remaining item 3 (test payload root),
-   then `pickle board sync`. Do **not** silently delete the item; record it as the T-044 patch did.
+   edit `tickets/1-to-do/T-042-*.md` to mark **only the marker-span half** of item 1 resolved by
+   T-041 — item 1 also carries T-017's second sub-item (skill-dir dry-run labels not matching the
+   real run's labels, `install.go:352,354,361`), which this ticket does not touch, so T-042 is left
+   with **two** remaining items (item 1's skill-dir-label sub-item + item 3, test payload root), not
+   one. Re-grade/re-title accordingly (the same treatment T-044's review sweep gave item 2) and
+   refresh item 1's now-stale line references while in there, then `pickle board sync`. Do **not**
+   silently delete the resolved sub-item; record it as the T-044 patch did.
 4. Confirm the self-host block needs no hand-mirroring: `TestSelfHostMarkerBlockIsCurrent` passing
    *is* that confirmation. If it fails, the block content changed — stop and re-read decision 7
    before touching `AGENTS.md`.
@@ -320,3 +328,11 @@ printf '# X\n\n<!-- pickle:end -->\n<!-- pickle:begin -->\n' > AGENTS.md
 - 2026-07-26 — created (TO DO). source: board triage — epic merged from T-020 and T-021, both
   moved to 7-dropped/ as absorbed
 - 2026-08-01 — TO DO → READY: plan complete
+- 2026-08-01 — applicability gate (pickup): fresh sub-agent audit verdict AMEND — every
+  load-bearing claim reproduced (incl. independently re-verifying the byte-identical marker
+  block), tree unchanged since READY; 3 findings fixed inline (Docs task retargeted to
+  cli-reference.adoc; Finish step 3 corrected — T-041 closes only T-042 item 1's marker-span
+  half, two items remain; Task 6's payloadRoot() mischaracterisation struck), 4 note-and-closed
+  (orphaned strings import — compiler catches it; T-051 premise now false — no action; call-site
+  line-ref undercount — mechanical; self-host test coupling — accepted by design)
+- 2026-08-01 — READY → IN DEVELOPMENT: picked up
