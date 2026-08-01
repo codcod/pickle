@@ -38,6 +38,7 @@ Last updated: 2026-08-01
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M-L | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -45,7 +46,6 @@ Last updated: 2026-08-01
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |  |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | high | medium | M | [] |  |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium-high | low | M | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium-high | high | XL | [] |  |
