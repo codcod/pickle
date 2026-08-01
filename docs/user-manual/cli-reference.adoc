@@ -154,7 +154,10 @@ Manages the registry of connected child-projects in `pickle.toml` (see
   so a board can never reference an unknown target.
 
 `add` and `remove` re-render `pickle.toml` to a canonical layout; hand-written
-comments in the file do not survive that re-render (see <<configuration>>).
+comments in the file do not survive that re-render (see <<configuration>>). Both
+also re-inject the `AGENTS.md`/`CLAUDE.md` marker block immediately, the same
+way `install` and `upgrade` do (see below) — so the agent instructions never
+describe a registry state that no longer matches `pickle.toml`.
 
 [#cmd-upgrade]
 == `pickle upgrade`
@@ -186,14 +189,16 @@ line alone, and refuses outright if it cannot do so safely (see
 <<configuration>>). Two things it _does_ replace wholesale, by design:
 
 * the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region of
-  `AGENTS.md`/`CLAUDE.md`. It is regenerated from `pickle.toml`, so everything
+  `AGENTS.md`/`CLAUDE.md`. It is regenerated from `pickle.toml` by `install`,
+  `upgrade` **and** `project add`/`remove` (<<cmd-project>>), so everything
   it states about your project comes back — the registered child names, each
   child's `build`/`test`/`lint`/`docs` commands, each child's
-  `branch_prefix`, each child's WIP limits, and the `[commit]` policy
-  wording — but anything you wrote in there yourself does not. Keep notes
-  *outside* the markers, where pickle never looks. Because that block is what
-  an agent reads first, the `[commit]` keys decide whether it is told to hold
-  a child-project back pending your approval or to push as the work needs.
+  `branch_prefix`, each child's `ticket_prefix`, each child's WIP limits, and
+  the `[commit]` policy wording — but anything you wrote in there yourself
+  does not. Keep notes *outside* the markers, where pickle never looks.
+  Because that block is what an agent reads first, the `[commit]` keys decide
+  whether it is told to hold a child-project back pending your approval or to
+  push as the work needs.
 * the skill directory `.agents/skills/ticket-flow/`, which is pickle-owned and
   re-copied in full. Do not keep hand-written files there (a self-host
   _symlink_ is left untouched).
@@ -218,7 +223,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   and holds every payload file;
 * the `.claude/skills/ticket-flow` symlink (when present) is a symlink and not
   broken;
-* `AGENTS.md` (and a regular-file `CLAUDE.md`) carry the pickle marker block;
+* `AGENTS.md` (and a regular-file `CLAUDE.md`) carry the pickle marker block,
+  and its content matches what `pickle.toml` renders today — a block that
+  differs (e.g. hand-edited, or left behind by an install that predates a
+  config change) is a *warning* pointing at `pickle upgrade` (customizations
+  belong outside the markers, the same rule the agent-scaffold check below
+  follows);
 * pickle-owned agent scaffolds (`.pi/extensions/*.ts`) match the shipped
   version — a drifted file is a *warning* pointing at `pickle upgrade`
   (customizations belong in sibling files);

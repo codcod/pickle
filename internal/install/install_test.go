@@ -457,7 +457,7 @@ func TestMarkerBlockRendersChildrenFromConfig(t *testing.T) {
 			BranchPrefix: "ticket/", WIPInDevelopment: 3, WIPInReview: 2,
 		}},
 	}
-	block := markerBlock(cfg)
+	block := MarkerBlock(cfg)
 
 	for _, want := range []string{
 		"- `alpha`: build `just build` · test `just test` · lint `just lint`",
@@ -492,7 +492,7 @@ func TestMarkerBlockRendersCommitPolicyAndOmitsEmptyCommands(t *testing.T) {
 			WIPInDevelopment: 1, WIPInReview: 1,
 		}},
 	}
-	block := markerBlock(cfg)
+	block := MarkerBlock(cfg)
 
 	if !strings.Contains(block, "**not publish-gated**") {
 		t.Errorf("ungated policy not rendered:\n%s", block)
@@ -530,7 +530,7 @@ path = "."
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	block := markerBlock(cfg)
+	block := MarkerBlock(cfg)
 
 	if !strings.Contains(block, "Child-projects are **publish-gated**") {
 		t.Errorf("an omitted [commit] table rendered a non-gated policy:\n%s", block)
@@ -552,8 +552,8 @@ path = "."
 	if err != nil {
 		t.Fatalf("load explicit: %v", err)
 	}
-	if !strings.Contains(markerBlock(cfg), "**not publish-gated**") {
-		t.Errorf("an explicit child_publish_gated = false was overridden by the default:\n%s", markerBlock(cfg))
+	if !strings.Contains(MarkerBlock(cfg), "**not publish-gated**") {
+		t.Errorf("an explicit child_publish_gated = false was overridden by the default:\n%s", MarkerBlock(cfg))
 	}
 
 	// A [commit] table carrying only one of the two keys is the shape the
@@ -587,7 +587,7 @@ path = "."
 			if err != nil {
 				t.Fatalf("load: %v", err)
 			}
-			block := markerBlock(cfg)
+			block := MarkerBlock(cfg)
 			if !strings.Contains(block, p.want) {
 				t.Errorf("a partial [commit] table did not default the absent key (want %q):\n%s", p.want, block)
 			}
@@ -611,10 +611,10 @@ func TestMarkerBlockGolden(t *testing.T) {
 			BranchPrefix: "feat/", WIPInDevelopment: 1, WIPInReview: 1,
 		}, {
 			Name: "beta", Path: "sub", Build: "make",
-			BranchPrefix: "ticket/", WIPInDevelopment: 3, WIPInReview: 2,
+			BranchPrefix: "ticket/", TicketPrefix: "BETA", WIPInDevelopment: 3, WIPInReview: 2,
 		}},
 	}
-	got := markerBlock(cfg)
+	got := MarkerBlock(cfg)
 
 	golden := filepath.Join("testdata", "markerblock.golden")
 	if os.Getenv("UPDATE_GOLDEN") != "" {
@@ -726,5 +726,191 @@ func TestVerifyStampedVersion(t *testing.T) {
 	}
 	if err := verifyStampedVersion(path, "v2"); err == nil {
 		t.Error("a missing config was accepted as stamped")
+	}
+}
+
+// TestMarkerBlockRendersTicketPrefixInBranchBullet is the regression test for
+// T-041's re-verification finding 4: the branch bullet must render each
+// child's own ticket_prefix (via config.Project.Prefix), not the literal
+// letter T.
+func TestMarkerBlockRendersTicketPrefixInBranchBullet(t *testing.T) {
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
+		Projects: []config.Project{
+			{Name: "solo", Path: ".", BranchPrefix: "feat/", TicketPrefix: "RICK", WIPInDevelopment: 1, WIPInReview: 1},
+			{Name: "legacy", Path: "legacy", BranchPrefix: "feat/", WIPInDevelopment: 1, WIPInReview: 1},
+		},
+	}
+	block := MarkerBlock(cfg)
+
+	if !strings.Contains(block, "- `solo`: `feat/RICK-NNN-<slug>`") {
+		t.Errorf("branch bullet did not honour ticket_prefix %q:\n%s", "RICK", block)
+	}
+	// A child that leaves ticket_prefix unset still defaults to the legacy T.
+	if !strings.Contains(block, "- `legacy`: `feat/T-NNN-<slug>`") {
+		t.Errorf("branch bullet did not default an unset ticket_prefix to T:\n%s", block)
+	}
+}
+
+// TestMarkerSpan pins the single predicate every marker-scanning site now
+// shares (T-042 item 1's marker-span half): ordering is part of the
+// predicate, not just presence.
+func TestMarkerSpan(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+		ok   bool
+	}{
+		{"ordered pair", MarkerBegin + "\nbody\n" + MarkerEnd, true},
+		{"reversed pair", MarkerEnd + "\n" + MarkerBegin, false},
+		{"begin only", MarkerBegin, false},
+		{"end only", MarkerEnd, false},
+		{"neither", "nothing here", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, ok := markerSpan(tc.text)
+			if ok != tc.ok {
+				t.Errorf("markerSpan(%q) ok = %v, want %v", tc.text, ok, tc.ok)
+			}
+		})
+	}
+}
+
+// TestUninstallDryRunAgreesOnReversedMarkers is the T-042 item 1 regression:
+// uninstall --dry-run and the real uninstall must never disagree about
+// whether a file has a marker block, including on a file whose
+// <!-- pickle:end --> precedes its <!-- pickle:begin -->.
+func TestUninstallDryRunAgreesOnReversedMarkers(t *testing.T) {
+	reversed := "# X\n\n" + MarkerEnd + "\n" + MarkerBegin + "\n"
+
+	dryRunRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dryRunRoot, "AGENTS.md"), []byte(reversed), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dryRes, err := Uninstall(os.DirFS(payloadRoot()), dryRunRoot, UninstallOptions{DryRun: true})
+	if err != nil {
+		t.Fatalf("dry-run Uninstall: %v", err)
+	}
+
+	realRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(realRoot, "AGENTS.md"), []byte(reversed), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	realRes, err := Uninstall(os.DirFS(payloadRoot()), realRoot, UninstallOptions{})
+	if err != nil {
+		t.Fatalf("real Uninstall: %v", err)
+	}
+
+	dryHasNoMarker := len(dryRes.Skipped) > 0 && strings.Contains(dryRes.Skipped[0], "no marker")
+	realHasNoMarker := len(realRes.Skipped) > 0 && strings.Contains(realRes.Skipped[0], "no marker")
+	if !dryHasNoMarker || !realHasNoMarker {
+		t.Errorf("dry-run and real uninstall must agree a reversed marker pair is no marker at all; dry-run: created=%v removed=%v skipped=%v; real: created=%v removed=%v skipped=%v",
+			dryRes.Created, dryRes.Removed, dryRes.Skipped, realRes.Created, realRes.Removed, realRes.Skipped)
+	}
+}
+
+func TestRefreshMarkers(t *testing.T) {
+	root := t.TempDir()
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
+		Projects: []config.Project{{
+			Name: "solo", Path: ".", BranchPrefix: "feat/", WIPInDevelopment: 1, WIPInReview: 1,
+		}},
+	}
+
+	// AGENTS.md is created from nothing.
+	res, err := RefreshMarkers(root, cfg)
+	if err != nil {
+		t.Fatalf("RefreshMarkers (create): %v", err)
+	}
+	if len(res.Created) == 0 {
+		t.Fatalf("expected AGENTS.md to be created, got: %+v", res)
+	}
+	body, ok := InstalledMarkerBody(filepath.Join(root, "AGENTS.md"))
+	if !ok || !strings.Contains(body, "`solo`") {
+		t.Fatalf("AGENTS.md marker body missing solo after create: ok=%v body=%s", ok, body)
+	}
+
+	// A second call against an unchanged config is a no-op.
+	res, err = RefreshMarkers(root, cfg)
+	if err != nil {
+		t.Fatalf("RefreshMarkers (no-op): %v", err)
+	}
+	if len(res.Created) != 0 {
+		t.Errorf("an unchanged config re-wrote AGENTS.md: %+v", res)
+	}
+	if len(res.Skipped) == 0 || !strings.Contains(res.Skipped[0], "marker current") {
+		t.Errorf("expected a marker-current skip, got: %+v", res)
+	}
+
+	// A regular-file CLAUDE.md is refreshed too.
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("# CLAUDE.md\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RefreshMarkers(root, cfg); err != nil {
+		t.Fatalf("RefreshMarkers (CLAUDE.md regular file): %v", err)
+	}
+	if _, ok := InstalledMarkerBody(filepath.Join(root, "CLAUDE.md")); !ok {
+		t.Error("CLAUDE.md regular file was not injected")
+	}
+
+	// A CLAUDE.md -> AGENTS.md symlink is left alone.
+	symlinkRoot := t.TempDir()
+	if _, err := RefreshMarkers(symlinkRoot, cfg); err != nil {
+		t.Fatalf("RefreshMarkers (symlink root, create): %v", err)
+	}
+	if err := os.Symlink("AGENTS.md", filepath.Join(symlinkRoot, "CLAUDE.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RefreshMarkers(symlinkRoot, cfg); err != nil {
+		t.Fatalf("RefreshMarkers (symlink root, second call): %v", err)
+	}
+	fi, err := os.Lstat(filepath.Join(symlinkRoot, "CLAUDE.md"))
+	if err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Error("RefreshMarkers replaced a CLAUDE.md -> AGENTS.md symlink with a regular file")
+	}
+}
+
+// TestSelfHostMarkerBlockIsCurrent pins this repo's own hand-mirroring
+// obligation (AGENTS.md's self-modify policy: "Marker-block changes are made
+// by hand … mirroring install.go's markerBlock()"). If this fails, MarkerBlock
+// rendered something new and AGENTS.md was not updated to match in the same
+// commit — see T-041 decision 7 before touching AGENTS.md by hand.
+func TestSelfHostMarkerBlockIsCurrent(t *testing.T) {
+	cfgPath := filepath.Join(payloadRoot(), config.FileName)
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("load %s: %v", cfgPath, err)
+	}
+	want := strings.Trim(MarkerBlock(cfg), "\n")
+
+	agentsPath := filepath.Join(payloadRoot(), "AGENTS.md")
+	got, ok := InstalledMarkerBody(agentsPath)
+	if !ok {
+		t.Fatalf("%s has no readable marker block", agentsPath)
+	}
+	if got == want {
+		return
+	}
+	gotLines := strings.Split(got, "\n")
+	wantLines := strings.Split(want, "\n")
+	n := len(gotLines)
+	if len(wantLines) > n {
+		n = len(wantLines)
+	}
+	t.Errorf("AGENTS.md's marker block is out of date with pickle.toml + MarkerBlock — " +
+		"hand-mirror AGENTS.md per the self-modify policy (AGENTS.md, \"Consequences of self-hosting\")")
+	for i := 0; i < n; i++ {
+		var g, w string
+		if i < len(gotLines) {
+			g = gotLines[i]
+		}
+		if i < len(wantLines) {
+			w = wantLines[i]
+		}
+		if g != w {
+			t.Logf("line %d:\n  installed: %q\n  rendered : %q", i+1, g, w)
+		}
 	}
 }
