@@ -402,3 +402,4 @@ passes). **T-051/T-052** unchanged in premise (see F6). No ticket patch required
 - 2026-08-01 — READY → IN DEVELOPMENT: picked up
 - 2026-08-01 — IN DEVELOPMENT → IN REVIEW: acceptance test green
 - 2026-08-01 — IN REVIEW → DONE: review: 0 blocking; 3 fixed inline (F1-F3), 1 folded into T-052 (F6), 5 noted (F4,F5,F7-F9)
+- 2026-08-01 — merged to main (PR #10, 25d2152), user-approved as an exception; squashed to one commit; branch deleted
