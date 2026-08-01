@@ -106,6 +106,32 @@ the moment a browser can POST:
    D1, and deserves a real hearing before drag-and-drop is built — the board is ordered by
    impact for a reason.
 
+   **Hearing held 2026-08-01 — the answer is "don't rank at all". This work area is now
+   mostly closed; see T-063 (dropped) for the full evidence.** T-063 proposed derived
+   value-per-cost ordering, was adversarially reviewed before refinement, and was dropped on
+   findings that apply to *any* ranking work here, manual or derived:
+   - **The queue this work area would let a user reorder is READY, and READY has never held
+     more than 2 rows** in 114 revisions of `tickets/BOARD.md` (`review-protocol.md:192` names
+     READY as the pickup queue). Drag-and-drop over a ≤2-row list is not a feature. **Before
+     building any ranking UI, re-measure READY occupancy** — if it is still ≤2, cut this work
+     area entirely rather than refining it.
+   - **The nearest shipped precedent has zero adopters.** T-059's `family:` — curated pickup
+     grouping, the same class of mechanism — is set on **0 of 63 tickets** four days after
+     merging, through exactly the tie it was built to break. That is the strongest available
+     evidence about demand for hand-curated order in this flow, and it is negative.
+   - **Ordinal grades do not support arithmetic.** Any score combining `impact` and `cost` is
+     a function of an arbitrary linear numbering; renumbering `cost` on an equally defensible
+     scale moves 11 of 18 rows. Lexicographic comparison is scale-invariant and strictly
+     better behaved.
+
+   **What survives, and is not this ticket's job:** replace the *id* tiebreak in `board.Sort`
+   with `cost`, lexicographically beneath impact — ~4 lines plus a `costRank` map, no config,
+   no new state, D1 intact. It cuts tied pairs 34 → 10. **Do the free thing first**, though:
+   recalibrate `impact`, which `tickets-README.md:139-140` already mandates and T-045:76
+   already names as the recommended starting position — `critical` and `high-critical` are
+   unused across all 63 tickets. If a recalibration pass leaves the `medium` group ≥5 deep,
+   file the cost tiebreak as its own small ticket.
+
 6. **Writes in `serve`, and replacing its safety proof.** Two structural guarantees die on day
    one: the method-qualified mux (`internal/serve/serve.go:62` — anything but GET/HEAD is 405
    before a handler is reached) and `TestServeNeverWrites` (`internal/serve/serve_test.go:416`,
@@ -154,6 +180,9 @@ own merits regardless of the dashboard) → 1 → 3 → 4 → 5 → 6.
 - **T-042** — internal helper consolidation, touching `internal/board`/`internal/sync`;
   `tickets/NOTES.md` already warns it must not run concurrently with other board work.
 - **T-045** — its `user-visible:` axis is an alternative to manual ranking (work area 5).
+- **T-063** (dropped) — the "don't rank at all" hearing work area 5 asked for, held and
+  answered on 2026-08-01. Its Description carries the measurements; the DROPPED banner carries
+  the verdict and marks its own errors.
 - **T-054**, **T-055** — `serve` UI work in flight; both touch the same templates/CSS.
 
 ## Implementation Plan
@@ -168,3 +197,6 @@ own merits regardless of the dashboard) → 1 → 3 → 4 → 5 → 6.
 
 - 2026-07-28 — created (TO DO). source: chat — write-path audit prompted by the plan to grow
   `pickle serve` beyond read-only (edit, ranking); supersedes T-053's read-only non-goals
+- 2026-08-01 — work area 5 (ranking) answered "don't rank at all" and mostly closed; evidence
+  and the surviving cost-tiebreak idea recorded from T-063 (dropped). Re-measure READY
+  occupancy before refining any ranking UI.

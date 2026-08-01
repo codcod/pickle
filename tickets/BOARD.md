@@ -48,7 +48,6 @@ Last updated: 2026-08-01
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | high | high | XL | [] |  |
 | T-064 | no merit gate between filing and pickup: the READY gate tests plan completeness and the applicability gate only tests t… | high | high | M-L | [] |  |
-| T-063 | order TO DO/READY by value per cost, not impact alone: use the cost axis, de-rank blocked tickets, behind a configurabl… | medium-high | medium | M | [] |  |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |  |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |  |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |  |
@@ -123,3 +122,4 @@ Last updated: 2026-08-01
 | T-039 | BOARD.md write and validate integrity (escaping, sync preservation, row shape, branch cell) | superseded by T-044 (generated board); move-atomicity residue folded into T-044 |
 | T-060 | pickle ticket renumber: retroactively migrate a child to a new ticket_prefix | automation not needed; unity is the only real case and is a one-time guided manual migration, not a pickle command |
 | T-062 | Theme serve dashboard board page to match the mock's framed-card shapes | reverted per user: both rounds looked worse than the pre-T-062 baseline; no code merged to main; feat branch discarded |
+| T-063 | order TO DO/READY by value per cost, not impact alone: use the cost axis, de-rank blocked tickets, behind a configurabl… | pickup queue is READY not TO DO (never >2 rows in 114 board revisions); blocked de-rank hits 0 tickets; recalibrate imp… |

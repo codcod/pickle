@@ -38,6 +38,37 @@ T-036 (backlog cap, `user-visible:` axis). Both are backstops for the leak T-036
 must not be refined until T-036 has landed and the spawn rate has been re-measured over at
 least three reviews. Dropping it is a legitimate outcome.
 
+## Merit challenge (2026-08-01) — T-063 filed and dropped the same day
+
+**T-063** (derived value-per-cost board ordering) was filed from a chat exploration and dropped
+hours later after an adversarial merit review run *before* refinement. The full evidence is in
+`7-dropped/T-063-…` (DROPPED banner) and the verdict is folded into **T-056 work area 5**, which
+had asked for exactly that hearing. **T-064** was filed for the gap the episode exposed.
+
+**The finding worth remembering is about the board, not the ticket.** The pickup queue is
+**READY** (`review-protocol.md:192`), and across all 114 revisions of `BOARD.md` READY has
+**never held more than 2 rows**. TO DO's ordering — 18 rows, argued over repeatedly (T-045,
+T-056·5, T-059, T-063) — is therefore mostly cosmetic: nobody picks from it. Any future ticket
+proposing to reorder, cap, rank or re-axis the backlog should **re-measure READY occupancy
+first**, and expect that measurement to sink it.
+
+**Second: `family:` (T-059) has 0 adopters across 63 tickets**, four days after merging, through
+exactly the 7-way `medium` tie it was built to break. That is a negative demand signal for
+curated ordering generally, and it should be cited *against* the next such proposal — including
+by whoever wrote the last one.
+
+**Standing, still-unexecuted alternative: recalibrate `impact`.** `tickets-README.md:139-140`
+already mandates re-grading the board on every filing, and T-045:76 already names recalibration
+as the recommended starting position. `critical` and `high-critical` have **never been used** in
+63 tickets — two levels of headroom above a 7-way `medium` tie. Every ordering ticket so far has
+proposed new machinery instead of spending that headroom.
+
+**Process note.** The challenge was requested ad hoc, not produced by any gate: the READY gate
+tests plan completeness, refinement is judged by producing a READY ticket, and the pickup
+applicability gate is scoped to the delta since READY. T-063 would have refined cleanly. T-064
+is that gap; until it lands, the substitute is to ask for a first-principles adversarial pass by
+hand on anything filed straight from chat.
+
 ## Cross-epic decisions
 
 **T-044 won the T-039-vs-T-044 design decision** (2026-07-26): the board becomes a generated
