@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
 )
 
@@ -124,6 +125,44 @@ func TestCheckVersionDriftWarns(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(res.Warnings, "\n"), "pickle upgrade") {
 		t.Errorf("warning should suggest upgrade, got: %v", res.Warnings)
+	}
+}
+
+// T-026: doctor must not send the user to a command that is going to fail.
+// When the installed pickle.toml has a shape the in-place writer refuses (a
+// quoted key here; the same holds for a multi-line-string or array value on
+// payload_version itself), the warning must name the real remedy — editing
+// the file by hand — and must not say "run `pickle upgrade`".
+func TestCheckVersionDriftUnstampableSuggestsHandEdit(t *testing.T) {
+	root := installFixture(t) // installed at payload_version "test-ver"
+	cfgPath := filepath.Join(root, config.FileName)
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A multi-line-string value on payload_version's own key: it decodes into
+	// the string field fine (so config.Load succeeds and the version really
+	// does "differ"), but the in-place writer still refuses to rewrite it —
+	// D3, confirmed at refinement — so this exercises the branch where a
+	// legitimately-loadable file cannot be stamped.
+	wedged := strings.Replace(string(data), `payload_version = "test-ver"`, "payload_version = \"\"\"\ntest-ver\n\"\"\"", 1)
+	if wedged == string(data) {
+		t.Fatal("fixture setup: payload_version line not found to wedge")
+	}
+	if err := os.WriteFile(cfgPath, []byte(wedged), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Check(root, "v9.9.9", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("an unstampable file must still be a warning, not an error: %v", res.Errors)
+	}
+	joined := strings.Join(res.Warnings, "\n")
+	if !strings.Contains(joined, "payload_version by hand") {
+		t.Errorf("warning should say to edit payload_version by hand, got: %v", res.Warnings)
+	}
+	if strings.Contains(joined, "run `pickle upgrade`") {
+		t.Errorf("warning must not recommend running `pickle upgrade` when it cannot succeed, got: %v", res.Warnings)
 	}
 }
 

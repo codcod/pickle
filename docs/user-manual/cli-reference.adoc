@@ -224,7 +224,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   (customizations belong in sibling files);
 * each registered child's `path` is a git repository;
 * the installed `payload_version` matches the binary — a mismatch is a
-  *warning* pointing at `pickle upgrade`.
+  *warning*, and `doctor` first checks whether `upgrade` could actually
+  stamp the new version (a check that writes nothing). If it could, the
+  warning points at `pickle upgrade`; if `upgrade` would refuse (see
+  <<configuration>>), the warning gives that reason and tells you to edit
+  `payload_version` by hand instead — it never sends you to a command that
+  cannot succeed.
 
 `--verbose` (`-v`) also lists the checks that passed.
 

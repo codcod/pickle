@@ -45,7 +45,6 @@ Last updated: 2026-08-01
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |  |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | high | medium | M | [] |  |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium-high | low | M | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium-high | high | XL | [] |  |
@@ -80,6 +79,7 @@ Last updated: 2026-08-01
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — MERGED: feat/T-024-spawned-by-lineage-frontmatter → main (3c4c131, squashed) |
+| T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | yes — merged to main (PR #9, b45cb93), user-approved as an exception; squashed to one commit; branch deleted |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — MERGED: feat/T-030-validate-ticket-new-input → main (a29fde1, squashed) |
 | T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | yes — MERGED: feat/T-036-review-disposition-valves → main (5367843, squashed) |

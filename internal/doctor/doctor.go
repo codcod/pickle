@@ -195,13 +195,24 @@ func checkChildren(root string, cfg *config.Config, r *Result) {
 	}
 }
 
-// checkVersion warns when the installed payload version differs from the running
-// binary (a `pickle upgrade` is available). Advisory only — never an error.
+// checkVersion warns when the installed payload version differs from the
+// running binary. Advisory only — never an error. T-026: `pickle upgrade`
+// can legitimately refuse to stamp a new version (a handful of pickle.toml
+// shapes defeat the line-based writer), so recommending it unconditionally
+// would send the user to a command that is going to fail. Probe first — with
+// PayloadVersionStampable, which changes nothing — and give whichever advice
+// actually applies.
 func checkVersion(cfg *config.Config, version string, r *Result) {
 	if version == "" || version == "dev" {
 		return
 	}
-	if cfg.PayloadVersion != version {
-		r.warnf("payload version %q differs from binary %q — run `pickle upgrade`", cfg.PayloadVersion, version)
+	if cfg.PayloadVersion == version {
+		return
 	}
+	if err := config.PayloadVersionStampable(cfg.Path(), version); err != nil {
+		r.warnf("payload version %q differs from binary %q, and `pickle upgrade` cannot fix it automatically (%s) — edit payload_version by hand",
+			cfg.PayloadVersion, version, err)
+		return
+	}
+	r.warnf("payload version %q differs from binary %q — run `pickle upgrade`", cfg.PayloadVersion, version)
 }

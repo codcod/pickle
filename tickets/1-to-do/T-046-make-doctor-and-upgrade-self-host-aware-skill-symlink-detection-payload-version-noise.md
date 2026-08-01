@@ -55,3 +55,10 @@ T-026 (upgrade refuses legal pickle.toml) — sequence, don't run concurrently.
 ## History
 
 - 2026-07-26 — created (TO DO). source: pickle ticket new
+- 2026-08-01 — patched by T-026's review impact sweep: T-026 landed on the very code this ticket
+  targets. `internal/doctor.checkVersion` now probes `config.PayloadVersionStampable` first and
+  has **two** warning branches — ``run `pickle upgrade` `` when the stamp would succeed, and
+  "edit `payload_version` by hand (line N)" when it would refuse. The Description's quoted
+  warning text is therefore only one of two shapes, and the self-host skip must sit **ahead of
+  both** branches, not just the one. No plan to invalidate (this ticket is unrefined); the
+  `sequence, don't run concurrently` coupling is now discharged — T-026 landed first

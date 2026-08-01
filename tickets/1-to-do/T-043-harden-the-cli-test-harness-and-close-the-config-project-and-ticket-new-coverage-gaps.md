@@ -53,6 +53,7 @@ acceptance tests.
 | 5 | **board-row title sanitization** — see the deferral below. |
 | 6 | `LastHistoryStatus` transition parsing. |
 | 7 | **`Save` is neither atomic nor mode-preserving** (added 2026-07-25 by a T-018 gate finding) — a crash mid-write truncates `pickle.toml`, and the file's mode is not preserved. This is the only item here that is a correctness bug rather than coverage; consider hoisting it if the epic is split. |
+| 8 | **Residual `payload_version` line-editor wedges** (added 2026-08-01 by the T-026 review, findings R4 + R5 — this ticket already owns "the in-place writer's other hardening" per T-026's soft couplings). Two legal `pickle.toml` shapes still refuse to upgrade, both correctness bugs like item 7, both small. **(a)** `advance` (`internal/config/config.go`) honours `\` escapes inside a *single-line* basic string but not inside a *multi-line* one, so a `"""…"""` value containing an escaped `\"""` closes early and a later `[table]` line is misread as top level — repro: `note = """\na \""" b\n[x]\n"""\npayload_version = "v1"`. Fix: skip `\`-escaped bytes in the multi-line branch when the delimiter is `"""` (not `'''`, which has no escapes). **(b)** `usesCRLF` inspects `lines[:len-1]`, so a consistently-CRLF file whose last line is unterminated is judged CRLF and the inserted key gets a trailing lone `\r` with no `\n`, leaving the file unparseable — repro: `"\r\n#"`; 6 of 716 parseable fuzz-corpus inputs. Fix: only append `\r` when another line follows the insert point. Both are caught by the parse-back gate, so neither corrupts a file — each is a *safe refusal* on a file that should have been editable. Add a fixture per shape. |
 
 ### Deferral: item 5 belongs to T-044 (was T-039, dropped as superseded 2026-07-26)
 
@@ -101,3 +102,7 @@ defects) versus **items 1–6** (the coverage), not back into T-031 and T-012.
 - 2026-07-27 — patched by T-053's review impact sweep: `internal/cli` coverage is now 46.7% (was
   ~29.5% at filing), and `TestServeHelpIsAdvertised` is a third consumer of the defective
   `captureStdout` helper (Part 1, item 1)
+- 2026-08-01 — patched by T-026's review: Part 2 gains **item 8**, two residual `payload_version`
+  line-editor wedges (review findings R4 + R5, folded here — this ticket already owned the
+  in-place writer's other hardening). Both are correctness bugs like item 7, both small, both
+  safe-refusals rather than corruption

@@ -466,7 +466,10 @@ func checkPayloadVersionInvariant(t *testing.T, in, version string) bool {
 	}
 	delete(inTree, payloadVersionKey)
 	delete(outTree, payloadVersionKey)
-	if !reflect.DeepEqual(inTree, outTree) {
+	// treeEqual, not reflect.DeepEqual: a legal `nan` value must not make this
+	// independent check fail the same way it would make the writer's own
+	// safety gate fail — NaN != NaN is not "something changed".
+	if !treeEqual(inTree, outTree) {
 		t.Errorf("values other than payload_version changed:\n%#v\n%#v", inTree, outTree)
 	}
 	if strings.HasPrefix(in, bom) != strings.HasPrefix(out, bom) {
@@ -562,10 +565,28 @@ var payloadVersionFixtures = []struct {
 	{"table-looking multi-line string below the key", "payload_version = \"v1\"\nnote = \"\"\"\n[warning]\nkeep\n\"\"\"\n", true, ""},
 	{"multi-line string containing the key, below the key", "payload_version = \"v1\"\nnote = \"\"\"\npayload_version = \"DO NOT TOUCH\"\n\"\"\"\n", true, ""},
 
+	// T-026: the scanner now tracks multi-line-string state and array bracket
+	// depth, so these three shapes are read correctly regardless of position —
+	// position (a scan that stops at the key) is no longer what decides it.
+	{"quoted key", "\"payload_version\" = \"v1\"\n", true, ""},
+	{"multi-line string with a table-looking line", "note = \"\"\"\n[warning]\nkeep\n\"\"\"\npayload_version = \"v1\"\n", true, ""},
+	{"multi-line string containing the key", "note = \"\"\"\npayload_version = \"DO NOT TOUCH\"\n\"\"\"\npayload_version = \"v1\"\n", true, ""},
+	// A quoted key elsewhere in the file that is *not* the real key must not
+	// be mistaken for it, mirroring the bare-key "prefixed key" case above.
+	{"quoted prefixed key", "\"payload_version_note\" = \"x\"\npayload_version = \"v1\"\n", true, ""},
+	// A legal `nan` anywhere in the file used to make the safety gate
+	// unpassable by construction (NaN != NaN under reflect.DeepEqual), even
+	// though nothing about payload_version changed. treeEqual fixes this.
+	{"nan elsewhere in the file", "threshold = nan\npayload_version = \"v1\"\n", true, ""},
+	// The insert path inside a multi-line array used to be misread as a table
+	// header on the array's continuation line, wedging the file. The key
+	// must land after the array, at the top level, not inside it.
+	{"multi-line array, key absent", "matrix = [\n[1, 2],\n]\n", true, ""},
+	// A '[' inside a single-line string must not be counted as a bracket or
+	// mistaken for a table header.
+	{"table-looking text inside a single-line string", "note = \"[not a header]\"\npayload_version = \"v1\"\n", true, ""},
+
 	// Shapes the line scanner cannot read correctly. It must refuse, not guess.
-	{"quoted key", "\"payload_version\" = \"v1\"\n", false, "unparseable"},
-	{"multi-line string with a table-looking line", "note = \"\"\"\n[warning]\nkeep\n\"\"\"\npayload_version = \"v1\"\n", false, "could not set payload_version"},
-	{"multi-line string containing the key", "note = \"\"\"\npayload_version = \"DO NOT TOUCH\"\n\"\"\"\npayload_version = \"v1\"\n", false, "could not set payload_version"},
 	{"multi-line value on the key itself", "payload_version = \"\"\"\nv1\n\"\"\"\n", false, "multi-line string; set it by hand"},
 	{"array value with a space", "payload_version = [\"a\", \"b\"]\n", false, "unparseable"},
 	{"already duplicated key", "payload_version = \"a\"\npayload_version = \"b\"\n", false, "does not parse"},
@@ -671,6 +692,45 @@ func TestSetPayloadVersionInPlaceFollowsSymlink(t *testing.T) {
 	}
 	if !strings.Contains(string(got), `payload_version = "7.7.7"`) {
 		t.Errorf("the symlink target kept the old version:\n%s", got)
+	}
+}
+
+// TestSetPayloadVersionInPlaceUnwritableParentNamesTheRealFile pins T-026's
+// D5: a failure inside writePreservingMode must be reported against the
+// file the user owns, with an actionable cause — never a bare errno naming
+// the throwaway temp file it tried to create beside it.
+func TestSetPayloadVersionInPlaceUnwritableParentNamesTheRealFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: directory permissions are not enforced")
+	}
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) // let t.TempDir clean up
+
+	err := SetPayloadVersionInPlace(path, "9.9.9")
+	if err == nil {
+		t.Fatal("expected a failure writing into a read-only directory")
+	}
+	msg := err.Error()
+	// writePreservingMode resolves symlinks in its own path before reporting
+	// (e.g. macOS's /var -> /private/var), so compare against that same
+	// resolution rather than the literal t.TempDir() path.
+	wantPath := path
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		wantPath = resolved
+	}
+	// The real path the user owns must be named, and named first — not
+	// merely present somewhere inside the wrapped syscall detail, which is
+	// exactly the "raw errno naming a file the user never created" failure
+	// mode this task fixes.
+	if !strings.HasPrefix(msg, wantPath+":") {
+		t.Errorf("error does not lead with the real file %q: %v", wantPath, err)
+	}
+	if !strings.Contains(msg, "writable") {
+		t.Errorf("error gives no actionable cause: %v", err)
 	}
 }
 
