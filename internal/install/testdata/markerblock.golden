@@ -24,7 +24,7 @@ earns a **disposition** (rules §5), and most are resolved without a new ticket.
 - **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of
   the subject** (e.g. `feat(cli): add board audit (T-2)`). Branch per child:
   - `alpha`: `feat/T-NNN-<slug>`
-  - `beta`: `ticket/T-NNN-<slug>`
+  - `beta`: `ticket/BETA-NNN-<slug>`
 - **WIP limits** (per child):
   - `alpha`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
   - `beta`: `3-in-development/` ≤ 3 · `4-in-review/` ≤ 2

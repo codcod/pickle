@@ -10,6 +10,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -98,7 +99,30 @@ func runProjectAdd(args []string) int {
 		return errf("%v", err)
 	}
 	fmt.Printf("registered child-project %q at %s\n", name, path)
+	if err := refreshMarkers(cfg); err != nil {
+		return errf("%v", err)
+	}
 	return exitOK
+}
+
+// refreshMarkers re-injects the AGENTS.md/CLAUDE.md marker block from cfg and
+// prints what changed with the same +/= idiom runInstall and runUpgrade use, so
+// the registry stays the block's single source of truth across every mutator.
+// Callers report its error as-is: it already says that pickle.toml is saved and
+// that `pickle upgrade` finishes the job, because a failed refresh is never
+// rolled back into the registry.
+func refreshMarkers(cfg *config.Config) error {
+	res, err := install.RefreshMarkers(cfg.Root(), cfg)
+	if err != nil {
+		return fmt.Errorf("%w (pickle.toml is already saved — run `pickle upgrade` to finish refreshing the marker block)", err)
+	}
+	for _, c := range res.Created {
+		fmt.Printf("  + %s\n", c)
+	}
+	for _, s := range res.Skipped {
+		fmt.Printf("  = %s\n", s)
+	}
+	return nil
 }
 
 func runProjectList(_ []string) int {
@@ -140,6 +164,9 @@ func runProjectRemove(args []string) int {
 		return errf("%v", err)
 	}
 	fmt.Printf("removed child-project %q\n", name)
+	if err := refreshMarkers(cfg); err != nil {
+		return errf("%v", err)
+	}
 	return exitOK
 }
 

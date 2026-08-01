@@ -181,6 +181,71 @@ func captureStdout(t *testing.T, fn func()) string {
 	return out
 }
 
+// TestProjectAddRefreshesMarkerBlock is T-041's write-half regression: a new
+// child, its own WIP limits and its own branch/ticket prefixes must appear in
+// AGENTS.md immediately, not only after a later `pickle upgrade`.
+func TestProjectAddRefreshesMarkerBlock(t *testing.T) {
+	root := newProject(t) // installs child "demo" at "."
+	// demo's repo root and web's sub-repo both need a .git entry for `doctor`'s
+	// checkChildren to pass — not something project add itself cares about.
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "sub", ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{
+			"project", "add", "web", "sub",
+			"--ticket-prefix", "WEB", "--branch-prefix", "ticket/",
+			"--wip-dev", "5", "--wip-review", "5",
+		}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "registered child-project \"web\"") {
+		t.Errorf("missing the registration confirmation line, got:\n%s", out)
+	}
+
+	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	block := string(agents)
+	for _, want := range []string{
+		"`web`",
+		"- `web`: `ticket/WEB-NNN-<slug>`",
+		"- `web`: `3-in-development/` ≤ 5 · `4-in-review/` ≤ 5",
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("AGENTS.md missing %q after project add, got:\n%s", want, block)
+		}
+	}
+
+	// doctor must see the refreshed block as current, not as drift.
+	doctorOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
+			t.Fatalf("doctor = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(doctorOut, "markers:") {
+		t.Errorf("doctor reported marker drift right after project add refreshed the block:\n%s", doctorOut)
+	}
+
+	// project remove drops web from the block again.
+	if got := Run(nil, "test", []string{"project", "remove", "web"}); got != exitOK {
+		t.Fatalf("project remove = %d, want %d", got, exitOK)
+	}
+	agents, err = os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(agents), "`web`") {
+		t.Errorf("AGENTS.md still names web after project remove:\n%s", agents)
+	}
+}
+
 // TestTicketNewSpawnedBy covers the --spawned-by flag end to end: the scaffold
 // it writes and the audit's verdict on it.
 func TestTicketNewSpawnedBy(t *testing.T) {

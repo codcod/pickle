@@ -172,3 +172,86 @@ func rmAll(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 }
+
+// TestCheckMarkersCurrentIsSilent is the false-positive guard: a freshly
+// installed, unmodified block must never earn a drift warning, and doctor -v
+// should show the check ran (a passed entry naming the block current).
+func TestCheckMarkersCurrentIsSilent(t *testing.T) {
+	root := installFixture(t)
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if hasErrContaining(res.Warnings, "markers:") {
+		t.Errorf("a freshly installed, unmodified block must not warn: %v", res.Warnings)
+	}
+	if !hasErrContaining(res.Passed, "AGENTS.md marker block current") {
+		t.Errorf("expected a passed entry naming the block current, got: %v", res.Passed)
+	}
+}
+
+// TestCheckMarkersDriftInsideBlockWarns is the detect-half regression: a line
+// changed inside the markers must be reported as a warning (never an error),
+// naming the file.
+func TestCheckMarkersDriftInsideBlockWarns(t *testing.T) {
+	root := installFixture(t)
+	path := filepath.Join(root, "AGENTS.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited := strings.Replace(string(data), "<!-- pickle:begin -->\n", "<!-- pickle:begin -->\nEDITED BY HAND\n", 1)
+	if edited == string(data) {
+		t.Fatal("fixture setup: marker begin not found to edit")
+	}
+	if err := os.WriteFile(path, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("marker drift must not be an error: %v", res.Errors)
+	}
+	if !hasErrContaining(res.Warnings, "AGENTS.md block differs from what pickle.toml renders") {
+		t.Errorf("expected a drift warning naming AGENTS.md, got: %v", res.Warnings)
+	}
+}
+
+// TestCheckMarkersDriftOutsideBlockIsSilent is the other half of the
+// false-positive guard: content appended after the closing marker (the
+// project's own house rules, say) must never be mistaken for drift.
+func TestCheckMarkersDriftOutsideBlockIsSilent(t *testing.T) {
+	root := installFixture(t)
+	path := filepath.Join(root, "AGENTS.md")
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("\n## House rules\n\nThis project also requires X.\n"); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if hasErrContaining(res.Warnings, "markers:") {
+		t.Errorf("content outside the markers must never warn as drift: %v", res.Warnings)
+	}
+}
+
+// TestCheckMarkersUnparseableConfigSkipsDrift: when pickle.toml itself fails to
+// parse, checkMarkers has no canonical block to compare against — it must
+// fall back to presence-only, not claim a difference that cannot be computed.
+func TestCheckMarkersUnparseableConfigSkipsDrift(t *testing.T) {
+	root := installFixture(t)
+	if err := os.WriteFile(filepath.Join(root, "pickle.toml"), []byte("this = = not toml\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Errors, "pickle.toml:") {
+		t.Fatalf("expected the existing pickle.toml parse error, got: %v", res.Errors)
+	}
+	if hasErrContaining(res.Warnings, "markers:") {
+		t.Errorf("an unparseable pickle.toml must not produce a marker drift warning: %v", res.Warnings)
+	}
+	if !hasErrContaining(res.Passed, "AGENTS.md marker block present") {
+		t.Errorf("presence check must still hold with no config: %v", res.Passed)
+	}
+}

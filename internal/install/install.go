@@ -149,7 +149,7 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 	if err := writeTicketsReadme(root, &res); err != nil {
 		return res, err
 	}
-	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", markerBlock(cfg), &res); err != nil {
+	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", MarkerBlock(cfg), &res); err != nil {
 		return res, err
 	}
 	if opts.Agents.Claude {
@@ -162,7 +162,7 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 			if err := ensureSymlink(filepath.Join(root, "CLAUDE.md"), "AGENTS.md", &res); err != nil {
 				return res, err
 			}
-		} else if err := injectMarker(filepath.Join(root, "CLAUDE.md"), "Ticket flow", markerBlock(cfg), &res); err != nil {
+		} else if err := injectMarker(filepath.Join(root, "CLAUDE.md"), "Ticket flow", MarkerBlock(cfg), &res); err != nil {
 			return res, err
 		}
 	}
@@ -229,6 +229,31 @@ func installPi(payload fs.FS, root string, res *Result) error {
 	return nil
 }
 
+// RefreshMarkers regenerates the pickle-managed marker block in AGENTS.md (and,
+// when it is a regular file rather than a CLAUDE.md -> AGENTS.md symlink,
+// CLAUDE.md too) from cfg. It is the single entry point every mutator of
+// pickle.toml's [[project]] registry re-injects through — pickle upgrade and
+// pickle project add|remove — so the block can never describe a config state
+// other than the one on disk. (pickle install injects the same block from Run
+// instead: only there does --agent decide whether CLAUDE.md becomes a regular
+// file or a symlink, which is the one thing this probe-what-exists policy
+// cannot infer.) The block interior is
+// pickle-owned; hand-written content belongs outside the markers (MarkerBlock's
+// doc comment).
+func RefreshMarkers(root string, cfg *config.Config) (Result, error) {
+	var res Result
+	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", MarkerBlock(cfg), &res); err != nil {
+		return res, err
+	}
+	claude := filepath.Join(root, "CLAUDE.md")
+	if fi, err := os.Lstat(claude); err == nil && fi.Mode()&os.ModeSymlink == 0 {
+		if err := injectMarker(claude, "Ticket flow", MarkerBlock(cfg), &res); err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
+
 // Upgrade refreshes the installed skill payload and the AGENTS.md/CLAUDE.md
 // marker block(s) to payloadVersion, and stamps payloadVersion into pickle.toml
 // by rewriting that single line, leaving the rest of the file (comments
@@ -258,15 +283,13 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		return res, err
 	}
 
-	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", markerBlock(cfg), &res); err != nil {
+	refreshed, err := RefreshMarkers(root, cfg)
+	if err != nil {
 		return res, err
 	}
-	claude := filepath.Join(root, "CLAUDE.md")
-	if fi, err := os.Lstat(claude); err == nil && fi.Mode()&os.ModeSymlink == 0 {
-		if err := injectMarker(claude, "Ticket flow", markerBlock(cfg), &res); err != nil {
-			return res, err
-		}
-	}
+	res.Created = append(res.Created, refreshed.Created...)
+	res.Skipped = append(res.Skipped, refreshed.Skipped...)
+
 	claudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
 	if _, err := os.Lstat(claudeLink); err == nil {
 		if err := ensureSymlink(claudeLink, ClaudeSkillTarget, &res); err != nil {
@@ -454,8 +477,7 @@ func uninstallMarkerFile(path string, opts UninstallOptions, res *Result) error 
 		if err != nil {
 			return err
 		}
-		text := string(existing)
-		if strings.Contains(text, MarkerBegin) && strings.Contains(text, MarkerEnd) {
+		if _, _, ok := markerSpan(string(existing)); ok {
 			res.removed(rel + " (marker, dry-run)")
 		} else {
 			res.skipped(rel + " (no marker)")
@@ -637,6 +659,37 @@ func ensureSymlink(link, target string, res *Result) error {
 	return nil
 }
 
+// markerSpan locates the pickle-managed block within text, returning the byte
+// offsets of MarkerBegin and MarkerEnd. ok is false when either delimiter is
+// absent, or when they are present but out of order (MarkerEnd before
+// MarkerBegin) — a malformed file has no marker block, not a backwards one.
+// This is the single predicate every marker-scanning site routes through, so a
+// dry-run and its real run can never disagree about whether a block exists.
+func markerSpan(text string) (bi, ei int, ok bool) {
+	bi = strings.Index(text, MarkerBegin)
+	ei = strings.Index(text, MarkerEnd)
+	return bi, ei, bi >= 0 && ei > bi
+}
+
+// InstalledMarkerBody reads path and returns the trimmed content of its
+// pickle-managed block (between MarkerBegin and MarkerEnd, exclusive, with
+// leading/trailing newlines trimmed) — exactly what MarkerBlock would need to
+// equal for the file to be current. ok is false when the file is unreadable or
+// carries no valid marker pair (see markerSpan); doctor uses this for both the
+// presence check and the drift comparison.
+func InstalledMarkerBody(path string) (body string, ok bool) {
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	text := string(existing)
+	bi, ei, spanOK := markerSpan(text)
+	if !spanOK {
+		return "", false
+	}
+	return strings.Trim(text[bi+len(MarkerBegin):ei], "\n"), true
+}
+
 // injectMarker replaces the pickle-managed block in path (between markerBegin and
 // markerEnd) with block, or appends it if the markers are absent. When the file
 // does not exist it is created with a minimal title header.
@@ -658,9 +711,7 @@ func injectMarker(path, title, block string, res *Result) error {
 	}
 
 	text := string(existing)
-	bi := strings.Index(text, MarkerBegin)
-	ei := strings.Index(text, MarkerEnd)
-	if bi >= 0 && ei > bi {
+	if bi, ei, ok := markerSpan(text); ok {
 		out := text[:bi] + wrapped + text[ei+len(MarkerEnd):]
 		if out == text {
 			res.skipped(rel + " (marker current)")
@@ -704,9 +755,8 @@ func stripMarker(path string, res *Result) error {
 	}
 
 	text := string(existing)
-	bi := strings.Index(text, MarkerBegin)
-	ei := strings.Index(text, MarkerEnd)
-	if bi < 0 || ei < bi {
+	bi, ei, ok := markerSpan(text)
+	if !ok {
 		res.skipped(rel + " (no marker)")
 		return nil
 	}
@@ -734,14 +784,16 @@ func stripMarker(path string, res *Result) error {
 	return nil
 }
 
-// markerBlock builds the pickle-managed AGENTS.md/CLAUDE.md content from cfg.
+// MarkerBlock builds the pickle-managed AGENTS.md/CLAUDE.md content from cfg. It
+// is exported so internal/doctor can render the canonical form to compare
+// against what is actually installed (drift detection).
 //
 // Everything the block states about the children — their commands, branch
 // prefixes, WIP limits — is rendered from pickle.toml rather than hardcoded, so
 // regenerating the block cannot silently drop project-specific facts. Content
 // that is *not* derivable from the config does not belong between the markers;
 // it belongs in the surrounding file, which pickle never touches.
-func markerBlock(cfg *config.Config) string {
+func MarkerBlock(cfg *config.Config) string {
 	var names []string
 	for _, p := range cfg.Projects {
 		names = append(names, "`"+p.Name+"`")
@@ -766,7 +818,7 @@ func markerBlock(cfg *config.Config) string {
 		if len(cmds) > 0 {
 			fmt.Fprintf(&commands, "\n  - `%s`: %s", p.Name, strings.Join(cmds, " · "))
 		}
-		fmt.Fprintf(&branches, "\n  - `%s`: `%sT-NNN-<slug>`", p.Name, p.BranchPrefix)
+		fmt.Fprintf(&branches, "\n  - `%s`: `%s%s-NNN-<slug>`", p.Name, p.BranchPrefix, p.Prefix())
 		fmt.Fprintf(&wip, "\n  - `%s`: `3-in-development/` ≤ %d · `4-in-review/` ≤ %d",
 			p.Name, p.WIPInDevelopment, p.WIPInReview)
 	}
