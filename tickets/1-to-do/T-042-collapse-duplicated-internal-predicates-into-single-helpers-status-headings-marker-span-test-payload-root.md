@@ -1,15 +1,15 @@
 ---
 id: T-042
-title: collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root)
+title: collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root)
 project: pickle
 depends-on: []
-spawned-by: [T-015, T-017, T-032]
+spawned-by: [T-015, T-017, T-032, T-041]
 impact: low
 complexity: low
-cost: M
+cost: S
 ---
 
-# T-042 — collapse duplicated internal predicates into single helpers (status headings, marker span, test payload root)
+# T-042 — collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root)
 
 ## Description
 
@@ -24,24 +24,24 @@ means making the same "is this the right choke point?" judgement three times.
 They are ordered below by severity, because only the first has a **measured behavioural
 divergence**; the other two are latent.
 
-### 1. Marker-pair detection — four copies, and the newest one diverges (T-017)
+### 1. Marker-pair detection — ~~four copies, and the newest one diverges~~ **marker-span half resolved by T-041; the skill-dir dry-run-label sub-item remains** (T-017)
 
-| site | predicate |
-|---|---|
-| `internal/install/install.go:244` (T-006 dry-run) | `Contains(MarkerBegin) && Contains(MarkerEnd)` — **no ordering check** |
-| `internal/install/install.go:475-480` (`stripMarker`) | `bi < 0 \|\| ei < bi` → skip |
-| `internal/install/install.go:429-431` (`injectMarker`) | `bi >= 0 && ei > bi` |
-| `internal/doctor/doctor.go:139-149` (`hasMarkerBlock`) | `bi >= 0 && ei > bi` |
+**Resolved by T-041 (2026-08-01).** T-041 needed to *read* the marker block's body (not just
+detect its presence) for its drift check, which required exactly the extraction this item asked
+for. It added `markerSpan(text) (bi, ei int, ok bool)` in `internal/install/install.go` — ordering
+is part of the predicate, so a dry-run and the real run can no longer disagree about whether a
+reversed `<!-- pickle:end -->`…`<!-- pickle:begin -->` pair is a marker block at all (T-041 pins
+this with `TestUninstallDryRunAgreesOnReversedMarkers`) — and routed every in-package copy
+(`injectMarker`, `stripMarker`, the `uninstall --dry-run` check) through it, plus an exported
+`install.InstalledMarkerBody(path)` that `internal/doctor` now calls instead of its own
+`hasMarkerBlock`. The **measured divergence this item was filed for is gone.**
 
-**Reproduced during the T-006 review** on an `AGENTS.md` containing `<!-- pickle:end -->` *before*
-`<!-- pickle:begin -->`: `uninstall --dry-run` reports `- AGENTS.md (marker, dry-run)` while the
-real `uninstall` reports `= AGENTS.md (no marker)`. A dry-run that disagrees with the real run is
-the one property a dry-run must never violate. Extract `markerSpan(text) (start, end int, ok bool)`
-in `internal/install`, route all three callers through it, and export a thin
-`install.HasMarkerBlock(path)` for `internal/doctor` (which already imports `install`).
-
-T-017 also carried a second item: **dry-run labels don't match the real run's labels** for the
-skill dir. Same theme — the preview and the act must agree.
+T-017's *second* item is **not** touched by T-041 and remains this epic's scope: **dry-run labels
+don't match the real run's labels** for the skill dir. `internal/install/install.go`: the dry-run
+branch reports `res.removed(SkillDir + " (dry-run)")` (`:372`) while the real run reports
+`(symlink)` (`:379`) or a bare `SkillDir + "/"` (`:384`) depending on which branch actually ran —
+so a dry-run preview can name a different outcome than the real run produces. Same theme as the
+marker-pair fix: the preview and the act must agree, this time on the *label*, not the *predicate*.
 
 ### 2. Board status-heading matching — ~~four copies~~ **resolved by T-044** (T-015)
 
@@ -53,7 +53,8 @@ machinery; the heading-match loop now exists exactly once, in the read-only `boa
 T-015's second item (the `TestSyncTerminalMembership` / D3 carry-over test gap) is likewise
 obsolete: sync no longer carries cells over at all — terminal cells are derived from ticket
 History at render time and every DONE/DROPPED ticket is always rendered (T-044 D3/D4). The
-epic's remaining scope is items 1 (marker span) and 3 (test payload root).
+epic's remaining scope is item 1's skill-dir dry-run-label sub-item (its marker-span half was
+resolved by T-041, 2026-08-01 — see above) and item 3 (test payload root).
 
 ### 3. Test payload root — five copies, four of them CWD-relative (T-032)
 
@@ -99,3 +100,8 @@ does deliberately. Unify on the absolute, CWD-independent form.
 - 2026-07-26 — patched by T-044's review impact sweep: item 2 (status-heading duplication +
   D3 carry-over test gap) dropped from scope — its targets were deleted by the generated-board
   rewrite; remaining scope is items 1 and 3
+- 2026-08-01 — patched by T-041 (Finish step 3): item 1's marker-span half resolved — T-041
+  extracted `markerSpan`/`InstalledMarkerBody` and routed every caller through them while
+  building its own drift check; item 1's skill-dir dry-run-label sub-item (T-017) was not in
+  T-041's scope and remains. Re-titled and re-graded (impact/complexity unchanged, cost M → S)
+  to reflect the smaller remaining surface: item 1's label sub-item + item 3 (test payload root)
