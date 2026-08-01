@@ -318,3 +318,5 @@ line-editor wedges"), 2 *noted* (R3, R6). **No new ticket minted.**
 - 2026-08-01 — READY → IN DEVELOPMENT: picked up
 - 2026-08-01 — IN DEVELOPMENT → IN REVIEW: acceptance green: all four wedge shapes upgrade cleanly end-to-end; go test ./... and 3M+ fuzz execs pass; just build/test/lint/docs-check green
 - 2026-08-01 — IN REVIEW → DONE: review passed: 6 findings, 0 blocking — 2 fixed inline (docs, 4a5d4a5), 2 folded into T-043 (item 8), 2 noted; no new ticket
+- 2026-08-01 — IN REVIEW → DONE: review passed, 6 findings, 0 blocking — 2 fixed inline (docs contracts), 2 folded into T-043 (item 8), 2 noted; no new ticket minted
+- 2026-08-01 — merged to main (PR #9, b45cb93), user-approved as an exception; squashed to one commit; branch deleted
