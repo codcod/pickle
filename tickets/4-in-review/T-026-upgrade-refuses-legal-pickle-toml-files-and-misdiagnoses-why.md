@@ -246,3 +246,4 @@ that bookkeeping on `main`.
 - 2026-08-01 — refined: all four wedge shapes re-reproduced end-to-end on v0.2.2-2-ge39e26c; re-anchored config.go:388 -> :429 (scanner) and corrected the quoted-key refusal message; soft couplings re-pointed T-012 -> T-043 and T-020 -> T-041 (both dropped/absorbed); T-018 confirmed merged (1485242); D1-D5 confirmed with user; cost M -> M-L (7 tasks, adds a bounded TOML lexer, a doctor probe and a docs-contract rewrite)
 - 2026-08-01 — TO DO → READY: plan complete; D1-D5 confirmed with user; all four shapes re-reproduced at refinement
 - 2026-08-01 — READY → IN DEVELOPMENT: picked up
+- 2026-08-01 — IN DEVELOPMENT → IN REVIEW: acceptance green: all four wedge shapes upgrade cleanly end-to-end; go test ./... and 3M+ fuzz execs pass; just build/test/lint/docs-check green
