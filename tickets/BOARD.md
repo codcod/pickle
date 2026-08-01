@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-07-31
+Last updated: 2026-08-01
 
 ## IN DEVELOPMENT
 
@@ -47,6 +47,7 @@ Last updated: 2026-07-31
 |---|---|---|---|---|---|---|
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | high | medium | M | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | high | high | XL | [] |  |
+| T-063 | order TO DO/READY by value per cost, not impact alone: use the cost axis, de-rank blocked tickets, behind a configurabl… | medium-high | medium | M | [] |  |
 | T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium | low | S | [] |  |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | medium | low | M | [] |  |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | medium | medium | M | [] |  |
