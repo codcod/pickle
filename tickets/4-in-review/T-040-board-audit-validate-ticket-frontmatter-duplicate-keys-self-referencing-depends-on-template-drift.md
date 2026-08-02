@@ -412,3 +412,4 @@ the user chooses), push, open the MR, and leave the merge to the human. Then
   low → **medium** (five checks plus the classifier refactor), cost **M** unchanged.
 - 2026-08-02 — TO DO → READY: plan complete
 - 2026-08-02 — READY → IN DEVELOPMENT: picked up
+- 2026-08-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
