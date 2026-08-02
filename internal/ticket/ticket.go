@@ -82,7 +82,12 @@ type Ticket struct {
 	DependsOn []string          // parsed depends-on ids — hard dependencies; gate pickup
 	SpawnedBy []string          // parsed spawned-by ids — lineage only, never a gate
 	Family    string            // umbrella ticket id (single, same child) — lineage only, never a gate; "" when none
-	Text      string            // full file text
+	// DuplicateKeys lists frontmatter keys that appeared more than once (each
+	// listed once, first-seen order) — a malformed-input record only. The parse
+	// still keeps the last value for each (Front is unaffected); reporting the
+	// duplication is internal/audit's job (T-040).
+	DuplicateKeys []string
+	Text          string // full file text
 }
 
 // Base is the filename without extension, e.g. "T-001-config-and-project-registry".
@@ -99,7 +104,8 @@ var (
 	// default prefix, not baked into the shape. Exported through ValidID so
 	// creation time (internal/cli) and the audit share one definition rather than
 	// growing a second. The shape is still spelled out separately in filenameRE
-	// above and in board.rowRE; unifying those is T-027's call. ValidID stays a
+	// above and in board.rowRE; unifying those is T-042's call (T-040 D6 deferred
+	// it there; T-027, which used to own it, was absorbed into T-040 and dropped). ValidID stays a
 	// pure *shape* check — that a ticket's prefix matches its project's configured
 	// prefix is a config-aware invariant, checked in internal/audit, not here.
 	idRE       = regexp.MustCompile(`^[A-Z][A-Z0-9]*-\d+$`)
@@ -132,10 +138,45 @@ func historyDate(line string) string {
 	return line[i : i+dateLen]
 }
 
+// HistoryKind classifies a History entry's body — the one place every reader of
+// `## History` (LastHistoryStatus, LastHistoryReason, MergeLine, and the board
+// audit's length check, T-040) decides what kind of line it is looking at,
+// instead of each growing its own merge/created/transition test.
+type HistoryKind string
+
+const (
+	HistoryCreated    HistoryKind = "created"    // "created (TO DO). source: …"
+	HistoryMerged     HistoryKind = "merged"     // "merged to <base> (<ref>)" / legacy "MERGED: … → …"
+	HistoryTransition HistoryKind = "transition" // "OLD → NEW: reason", NEW a legal status name
+	HistoryNote       HistoryKind = "note"       // free-form dated line (gate records, corrections, …)
+)
+
+// historyKind classifies one History entry body. Order matters: merged is
+// tested before transition, because a legacy merge line ("MERGED: feat/… →
+// main (abc123)") also contains a "→" and must not be misread as a status
+// transition.
+func historyKind(body string) HistoryKind {
+	switch {
+	case mergedRE.MatchString(body):
+		return HistoryMerged
+	case createdRE.MatchString(body):
+		return HistoryCreated
+	default:
+		if idx := strings.LastIndex(body, "→"); idx >= 0 {
+			target := strings.TrimSpace(strings.SplitN(body[idx+len("→"):], ":", 2)[0])
+			if _, ok := StatusByName(strings.ToUpper(target)); ok {
+				return HistoryTransition
+			}
+		}
+		return HistoryNote
+	}
+}
+
 // HistoryEntry is one dated line from a ticket's `## History` section.
 type HistoryEntry struct {
-	Date string // raw YYYY-MM-DD, exactly as written (the regex anchors the shape)
-	Text string // the line's body: a transition, a created line, or a merge note
+	Date string      // raw YYYY-MM-DD, exactly as written (the regex anchors the shape)
+	Text string      // the line's body: a transition, a created line, or a merge note
+	Kind HistoryKind // classified from the body's first physical line, stable across continuation folding
 }
 
 // HistoryEntries returns every dated entry of a ticket's `## History` section in
@@ -165,7 +206,8 @@ func HistoryEntries(text string) []HistoryEntry {
 		}
 		trimmed := strings.TrimSpace(line)
 		if m := historyRE.FindStringSubmatch(trimmed); m != nil {
-			out = append(out, HistoryEntry{Date: historyDate(trimmed), Text: strings.TrimSpace(m[1])})
+			body := strings.TrimSpace(m[1])
+			out = append(out, HistoryEntry{Date: historyDate(trimmed), Text: body, Kind: historyKind(body)})
 			continue
 		}
 		// Continuation of the entry above: indented text that opens no new bullet.
@@ -182,13 +224,25 @@ func HistoryEntries(text string) []HistoryEntry {
 }
 
 // ParseFrontmatter parses the YAML-ish frontmatter block into a flat map. ok is
-// false when there is no leading `---` block.
+// false when there is no leading `---` block. Duplicate keys silently overwrite
+// (last wins) — callers that need to know about them use parseFrontmatter.
 func ParseFrontmatter(text string) (map[string]string, bool) {
+	fm, _, ok := parseFrontmatter(text)
+	return fm, ok
+}
+
+// parseFrontmatter is the one frontmatter scan (package doc: "the frontmatter
+// scan lives in exactly one place") that both ParseFrontmatter and LoadAll build
+// on. dupes lists every key that appears more than once, each listed exactly
+// once in first-seen order — the map itself still keeps the *last* value for a
+// duplicated key; parse semantics are unchanged, only reported (T-040).
+func parseFrontmatter(text string) (fm map[string]string, dupes []string, ok bool) {
 	lines := strings.Split(text, "\n")
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
-		return nil, false
+		return nil, nil, false
 	}
-	fm := map[string]string{}
+	fm = map[string]string{}
+	dupeSeen := map[string]bool{}
 	for i := 1; i < len(lines) && strings.TrimSpace(lines[i]) != "---"; i++ {
 		m := fmKeyRE.FindStringSubmatch(lines[i])
 		if m == nil {
@@ -198,9 +252,13 @@ func ParseFrontmatter(text string) (map[string]string, bool) {
 		if key != "title" { // titles may legitimately contain '#'
 			val = inlineHash.ReplaceAllString(val, "")
 		}
+		if _, seen := fm[key]; seen && !dupeSeen[key] {
+			dupes = append(dupes, key)
+			dupeSeen[key] = true
+		}
 		fm[key] = strings.Trim(strings.TrimSpace(val), `"'`)
 	}
-	return fm, true
+	return fm, dupes, true
 }
 
 // ParseDepends parses a bracketed ticket-id list like "[T-001, T-002]" or "[]".
@@ -269,19 +327,16 @@ func LastHistoryStatus(text string) string {
 			continue
 		}
 		body := strings.TrimSpace(m[1])
-		if mergedRE.MatchString(body) {
+		switch historyKind(body) {
+		case HistoryMerged:
 			continue // merge note, not a status transition
-		}
-		if c := createdRE.FindStringSubmatch(body); c != nil {
+		case HistoryCreated:
+			c := createdRE.FindStringSubmatch(body)
 			status = strings.ToUpper(strings.TrimSpace(c[1]))
-			continue
-		}
-		if idx := strings.LastIndex(body, "→"); idx >= 0 {
-			target := body[idx+len("→"):]
-			target = strings.TrimSpace(strings.SplitN(target, ":", 2)[0])
-			if _, ok := StatusByName(strings.ToUpper(target)); ok {
-				status = strings.ToUpper(target)
-			}
+		case HistoryTransition:
+			idx := strings.LastIndex(body, "→")
+			target := strings.TrimSpace(strings.SplitN(body[idx+len("→"):], ":", 2)[0])
+			status = strings.ToUpper(target)
 		}
 	}
 	return status
@@ -308,18 +363,11 @@ func LastHistoryReason(text string) string {
 			continue
 		}
 		body := strings.TrimSpace(m[1])
-		if mergedRE.MatchString(body) {
-			continue // merge note, not a status transition
+		if historyKind(body) != HistoryTransition {
+			continue // merge note, created line, or free-form note
 		}
 		idx := strings.LastIndex(body, "→")
-		if idx < 0 {
-			continue // created line or free-form note
-		}
-		target := body[idx+len("→"):]
-		parts := strings.SplitN(target, ":", 2)
-		if _, ok := StatusByName(strings.ToUpper(strings.TrimSpace(parts[0]))); !ok {
-			continue
-		}
+		parts := strings.SplitN(body[idx+len("→"):], ":", 2)
 		if len(parts) == 2 {
 			reason = strings.TrimSpace(parts[1])
 		} else {
@@ -345,7 +393,7 @@ func MergeLine(text string) string {
 			continue
 		}
 		if m := historyRE.FindStringSubmatch(strings.TrimSpace(line)); m != nil {
-			if body := strings.TrimSpace(m[1]); mergedRE.MatchString(body) {
+			if body := strings.TrimSpace(m[1]); historyKind(body) == HistoryMerged {
 				merge = body
 			}
 		}
@@ -549,7 +597,7 @@ func LoadAll(root string) ([]*Ticket, []string) {
 				continue
 			}
 			text := string(data)
-			fm, ok := ParseFrontmatter(text)
+			fm, dupes, ok := parseFrontmatter(text)
 			if !ok {
 				issues = append(issues, ref+": no frontmatter block")
 				continue
@@ -557,16 +605,17 @@ func LoadAll(root string) ([]*Ticket, []string) {
 			_, num, _ := SplitID(m[1])
 			slug := strings.TrimSuffix(strings.TrimPrefix(name, m[1]+"-"), ".md")
 			tickets = append(tickets, &Ticket{
-				ID:        m[1],
-				Num:       num,
-				Slug:      slug,
-				Dir:       s.Dir,
-				Path:      path,
-				Front:     fm,
-				DependsOn: ParseDepends(fm["depends-on"]),
-				SpawnedBy: ParseDepends(fm["spawned-by"]),
-				Family:    strings.TrimSpace(fm["family"]),
-				Text:      text,
+				ID:            m[1],
+				Num:           num,
+				Slug:          slug,
+				Dir:           s.Dir,
+				Path:          path,
+				Front:         fm,
+				DependsOn:     ParseDepends(fm["depends-on"]),
+				SpawnedBy:     ParseDepends(fm["spawned-by"]),
+				Family:        strings.TrimSpace(fm["family"]),
+				DuplicateKeys: dupes,
+				Text:          text,
 			})
 		}
 	}

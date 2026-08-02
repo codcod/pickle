@@ -79,8 +79,11 @@ does deliberately. Unify on the absolute, CWD-independent form.
   have unified (`ParseCells`, `sectionSpan`, `subgroupSpan`, sync's `matchStatus`) — the sweep
   after T-044's review dropped item 2 from scope (see above). The former collision risk with
   T-044 is gone; only the T-043 sequencing note (item 3) remains live.
-- **T-040** may compose a shared `T-\d+` fragment from `filenameRE` (`internal/ticket/ticket.go:95`)
-  and `board.rowRE` (`internal/board/board.go:29`). If T-040 defers that, it belongs here.
+- **T-040 deferred the `T-\d+` unification here — it is now this epic's, unconditionally**
+  (T-040 decision D6, 2026-08-02: its self-reference check needed no shape check, so it touched no
+  regex). The shape is spelled out three times: `idRE` and `filenameRE`
+  (`internal/ticket/ticket.go:100-110`) and `board.rowRE` (`internal/board/board.go:51`);
+  `ticket.go`'s comment now names T-042 as the owner.
 - **T-013 item 6** ("project-root resolution is triplicated" across the setup commands) is the same
   defect shape and a natural fourth item, but T-013 stays standalone; fold it in only if T-013 is
   not picked up first.
@@ -105,3 +108,8 @@ does deliberately. Unify on the absolute, CWD-independent form.
   building its own drift check; item 1's skill-dir dry-run-label sub-item (T-017) was not in
   T-041's scope and remains. Re-titled and re-graded (impact/complexity unchanged, cost M → S)
   to reflect the smaller remaining surface: item 1's label sub-item + item 3 (test payload root)
+- 2026-08-03 — patched by T-040's review impact sweep (finding N8): T-040 deferred the `T-\d+`
+  regex unification here by decision D6, so the conditional cross-reference ("if T-040 defers
+  that") is now settled fact and its two stale line references were refreshed
+  (`ticket.go:95` → `:100-110`, `board.go:29` → `:51`). Scope grows by one small item; not
+  re-graded (still low/low/S).

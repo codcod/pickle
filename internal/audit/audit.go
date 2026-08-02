@@ -4,10 +4,13 @@
 package audit
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
@@ -23,10 +26,33 @@ type Result struct {
 
 var requiredKeys = []string{"id", "title", "project", "depends-on", "spawned-by", "impact", "complexity", "cost"}
 
+// optionalKeys lists frontmatter keys that are legal but not required (today:
+// T-059's family:, whose shape checks live in the per-ticket loop below and run
+// only when the key is set). The list itself validates nothing at runtime — it
+// is kept next to requiredKeys so the audit's full frontmatter vocabulary has
+// one home instead of the optional-key concept living only inside an `if`;
+// TestFrontmatterKeysMatchTemplate (T-040) checks both lists against
+// skill/resources/TEMPLATE.md, so drift between the audit and the authoring
+// guide fails in CI instead of in a user's project.
+var optionalKeys = []string{"family"}
+
+// maxHistoryEntryRunes bounds a status-transition or merge History line (T-040
+// D4). Measured over this repo's own 303 History entries (2026-08-01):
+// transitions top out at 306 runes and merge lines at 194 — 400 leaves ~25%
+// headroom while still catching the field's ~1,900-rune malformed merge line by
+// a wide margin. Deliberately NOT applied to `created` lines (provenance prose,
+// measured up to 331 runes) or free-form dated notes (up to 2199 runes, and
+// actively encouraged — gate records, fold-ins, corrections): neither carries a
+// TEMPLATE-prescribed shape to violate. A warning, not a truncation — sibling in
+// spirit to board.maxCellRunes, but truncation must never become the way
+// malformed history is hidden (see T-049).
+const maxHistoryEntryRunes = 400
+
 // Audit checks every invariant for the tickets/ tree under root, using cfg for the
 // registered-child and per-child WIP checks.
 func Audit(root string, cfg *config.Config) Result {
 	var r Result
+	auditStatusDirs(&r, root)
 	tickets, issues := ticket.LoadAll(root)
 	r.Errors = append(r.Errors, issues...)
 	r.NumTickets = len(tickets)
@@ -50,6 +76,11 @@ func Audit(root string, cfg *config.Config) Result {
 				r.errf("%s: frontmatter missing %q", ref, k)
 			}
 		}
+		// A duplicate key silently overwrites in the parse (last wins, T-033) —
+		// malformed however it arrived, so flagged however it arrived.
+		for _, k := range t.DuplicateKeys {
+			r.errf("%s: frontmatter has duplicate key %q — remove one (the parse keeps the last value)", ref, k)
+		}
 		if id := t.Front["id"]; id != "" && id != t.ID {
 			r.errf("%s: frontmatter id %s != filename id %s", ref, id, t.ID)
 		}
@@ -71,6 +102,14 @@ func Audit(root string, cfg *config.Config) Result {
 			r.errf("%s: id prefix %q does not match project %q ticket_prefix %q", ref, got, p, cp.Prefix())
 		}
 		for _, dep := range t.DependsOn {
+			// A ticket citing itself (T-027) audits clean today, then silently
+			// self-blocks at pickup: the transition guard demands the dependency
+			// be in 6-done/, which it can never be while this ticket is in
+			// development. Mirrors the spawned-by/family self-checks below.
+			if dep == t.ID {
+				r.errf("%s: depends-on lists itself", ref)
+				continue
+			}
 			if _, ok := byID[dep]; !ok {
 				r.errf("%s: depends-on %s does not exist", ref, dep)
 			}
@@ -123,7 +162,8 @@ func Audit(root string, cfg *config.Config) Result {
 	// Per-child WIP limits.
 	auditWIP(&r, tickets, cfg)
 
-	// History ↔ directory.
+	// History ↔ directory, plus the over-long-entry warning (T-040 D4/D5) —
+	// folded into this loop so the tickets are not walked a third time.
 	for _, t := range tickets {
 		ref := t.Dir + "/" + filepath.Base(t.Path)
 		st, _ := ticket.StatusByDir(t.Dir)
@@ -133,6 +173,20 @@ func Audit(root string, cfg *config.Config) Result {
 		case st.Name:
 		default:
 			r.errf("%s: last History status is %s but ticket sits in %s", ref, got, t.Dir)
+		}
+		// Only the two TEMPLATE-prescribed forms (a status transition, a merge
+		// note) carry a shape to violate. `created` lines and free-form dated
+		// notes are exempt — see maxHistoryEntryRunes.
+		for _, e := range ticket.HistoryEntries(t.Text) {
+			if e.Kind != ticket.HistoryTransition && e.Kind != ticket.HistoryMerged {
+				continue
+			}
+			if n := len([]rune(e.Text)); n > maxHistoryEntryRunes {
+				r.warnf("%s: History entry %s is %d runes (limit %d) — move the analysis into "+
+					"the Description or tickets/NOTES.md, and keep the History line to the "+
+					"prescribed 'OLD → NEW: one-clause reason' / 'merged to <base> (<ref>)' form",
+					ref, e.Date, n, maxHistoryEntryRunes)
+			}
 		}
 	}
 
@@ -183,6 +237,45 @@ func auditWIP(r *Result, tickets []*ticket.Ticket, cfg *config.Config) {
 		}
 		if c.InReview > cp.WIPInReview {
 			r.errf("WIP: child %q has %d tickets in 4-in-review (limit %d)", p, c.InReview, cp.WIPInReview)
+		}
+	}
+}
+
+// auditStatusDirs checks that all seven status directories exist (T-040 D3).
+// ticket.LoadAll deliberately treats an absent directory as empty — git does not
+// track empty directories, and the swallowing is load-bearing beyond that
+// (internal/move turns any LoadAll issue into a hard failure) — so this is the
+// one place the audit looks at the directories directly rather than through
+// LoadAll. A missing directory is an error: re-running `pickle install`
+// (idempotent) recreates it and its `.gitkeep`. A directory that exists but is
+// empty and carries no `.gitkeep` is only a warning — not yet a broken
+// invariant, but the exact predictor of the same defect on the next fresh clone
+// (git does not track empty directories).
+func auditStatusDirs(r *Result, root string) {
+	for _, s := range ticket.Statuses {
+		dir := filepath.Join(root, "tickets", s.Dir)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				r.errf("tickets/%s/: status directory is missing — re-run pickle install "+
+					"(idempotent) to recreate it, and commit its .gitkeep", s.Dir)
+			} else {
+				r.errf("tickets/%s/: %v", s.Dir, err)
+			}
+			continue
+		}
+		hasKeep, hasTicket := false, false
+		for _, e := range entries {
+			switch {
+			case e.Name() == ".gitkeep":
+				hasKeep = true
+			case !e.IsDir() && strings.HasSuffix(e.Name(), ".md"):
+				hasTicket = true
+			}
+		}
+		if !hasKeep && !hasTicket {
+			r.warnf("tickets/%s/: empty and not kept by a .gitkeep — git does not track empty "+
+				"directories, so a fresh clone will be missing this status", s.Dir)
 		}
 	}
 }

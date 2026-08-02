@@ -349,11 +349,15 @@ summary) when any invariant fails:
 
 * each ticket file sits in a known status dir and is named `T-NNN-<slug>.md`;
 * frontmatter is complete (`id`, `title`, `project`, `depends-on`,
-  `spawned-by`, `impact`, `complexity`, `cost`), grades are legal, the id
-  matches the filename, and ids are unique globally;
-* `project:` names a *registered child*, every `depends-on:` target exists,
-  and every `spawned-by:` target exists without a ticket citing itself —
-  lineage is checked for existence but *never gates* anything;
+  `spawned-by`, `impact`, `complexity`, `cost`), with no key repeated — a
+  duplicate key silently overwrites at parse time (last value wins), so it is
+  flagged wherever it is found; grades are legal, the id matches the filename,
+  and ids are unique globally;
+* `project:` names a *registered child*, every `depends-on:` target exists
+  *and is not the ticket itself* (a self-referencing dependency audits clean
+  and then silently self-blocks at pickup, since it can never reach
+  `6-done/`), and every `spawned-by:` target exists without a ticket citing
+  itself — lineage is checked for existence but *never gates* anything;
 * `BOARD.md` matches a fresh render of the ticket files — the board is a
   *generated artifact*, so any hand-edit or staleness is exactly one error:
   `BOARD.md is stale or hand-edited — run pickle board sync`;
@@ -361,7 +365,18 @@ summary) when any invariant fails:
 * each ticket's last History transition matches its directory;
 * nothing is in `3-in-development/` with a dependency not yet in `6-done/`
   (warning if a done dependency has no `MERGED` History line) —
-  `spawned-by:` parents are deliberately exempt.
+  `spawned-by:` parents are deliberately exempt;
+* all seven status directories (`1-to-do/` … `7-dropped/`) exist — a missing
+  one is an error, since `pickle install` promises all seven on every clone;
+  one that exists but is empty and carries no `.gitkeep` is only a *warning*
+  (git does not track empty directories, so a fresh clone would lose it next);
+* a status-transition or merge History line stays within 400 runes (a
+  *warning*): the two forms `tickets/README.md` §1 prescribes
+  (`OLD → NEW: reason`, `merged to <base> (<ref>)`) have a shape to violate,
+  so an outlier — a paragraph of pipeline detail pasted onto one dated line —
+  is flagged and should move into the Description or `tickets/NOTES.md`.
+  `created` lines and other free-form dated notes carry no such shape and are
+  exempt, however long.
 
 [NOTE]
 ====
@@ -374,10 +389,15 @@ mechanical edit per file).
 The 120-rune cell cap (see <<cmd-board-sync>>) has the same shape: a board
 rendered before the cap existed that holds a longer cell reports `BOARD.md is
 stale or hand-edited` until you run `pickle board sync` once.
-====
 
-Missing empty status directories are treated as empty, not errors (git does
-not track empty dirs).
+The status-directory check has the same upgrade-visible shape too: a project
+cloned before its `.gitkeep` files were committed (git does not track empty
+directories) now reports a missing-directory *error* — and because `pickle
+upgrade` deliberately never writes under `tickets/`, it cannot self-heal this.
+Re-run `pickle install` (idempotent; it only creates what is missing) to
+restore the directory and its `.gitkeep`, then re-run `pickle upgrade` or
+`pickle board audit`.
+====
 
 [#cmd-board-sync]
 == `pickle board sync`
