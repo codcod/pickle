@@ -170,9 +170,14 @@ own merits regardless of the dashboard) → 1 → 3 → 4 → 5 → 6.
 ### Soft couplings
 
 - **T-053** (done) — the dashboard whose decisions and non-goals this supersedes.
-- **T-040** — frontmatter validation. A genuine prerequisite: duplicate keys currently last-win
-  silently, and a field writer on top of that is a data-loss bug. Should probably become a hard
-  `depends-on:` at refinement, with user sign-off.
+- **T-040** (done 2026-08-03) — frontmatter validation. **Read the correction:** T-040 decision D1
+  deliberately left parse semantics unchanged — a duplicate key still last-wins in
+  `ticket.ParseFrontmatter`; what shipped is `Ticket.DuplicateKeys` plus a `board audit` **error**
+  reporting it. So the data-loss hazard for a field writer is *detectable*, not *removed*: the
+  writer must still refuse (or repair) a ticket whose frontmatter carries a duplicated key rather
+  than assume the parse is lossless. Weigh that when deciding whether this stays a soft coupling
+  or becomes a hard `depends-on:` — the useful dependency is now the `DuplicateKeys` signal, which
+  already exists.
 - **T-043** — cli test-harness hardening and ticket-new coverage. Overlaps work area 1 directly
   (same `os.Chdir`/`os.Stdout` globals, same `ticket new` gap); doing both separately means
   writing the same tests twice. Sequence them or absorb one into the other.
@@ -200,3 +205,7 @@ own merits regardless of the dashboard) → 1 → 3 → 4 → 5 → 6.
 - 2026-08-01 — work area 5 (ranking) answered "don't rank at all" and mostly closed; evidence
   and the surviving cost-tiebreak idea recorded from T-063 (dropped). Re-measure READY
   occupancy before refining any ranking UI.
+- 2026-08-03 — patched by T-040's review impact sweep (finding N9): the T-040 soft coupling
+  overstated what shipped. T-040 reports duplicate frontmatter keys at audit time but keeps
+  last-wins parse semantics (its decision D1), so the field writer still needs its own guard;
+  the coupling text now says so.
