@@ -82,7 +82,14 @@ func newTree(t *testing.T, fixtures ...fixture) string {
 	t.Helper()
 	root := t.TempDir()
 	for _, s := range ticket.Statuses {
-		if err := os.MkdirAll(filepath.Join(root, "tickets", s.Dir), 0o755); err != nil {
+		dir := filepath.Join(root, "tickets", s.Dir)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// T-040: an empty status dir with no .gitkeep now warns (predicts the
+		// fresh-clone defect git not tracking empty dirs), which would otherwise
+		// turn the health banner's "board audit clean" fixtures unclean.
+		if err := os.WriteFile(filepath.Join(dir, ".gitkeep"), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}

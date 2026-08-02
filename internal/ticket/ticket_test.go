@@ -46,6 +46,58 @@ func TestParseFrontmatter(t *testing.T) {
 	}
 }
 
+// TestParseFrontmatterDuplicateKeys: last-wins parse semantics are unchanged (a
+// duplicate key still yields one value, the last one written), but the
+// unexported scanner additionally reports which keys were duplicated — the
+// record internal/audit reports at T-040. Each offending key is reported once,
+// however many times it repeats.
+func TestParseFrontmatterDuplicateKeys(t *testing.T) {
+	const doc = `---
+id: T-001
+impact: low
+impact: high
+impact: critical
+cost: M
+---
+`
+	fm, dupes, ok := parseFrontmatter(doc)
+	if !ok {
+		t.Fatal("expected frontmatter")
+	}
+	if fm["impact"] != "critical" {
+		t.Errorf("impact = %q, want last-wins value %q", fm["impact"], "critical")
+	}
+	if len(dupes) != 1 || dupes[0] != "impact" {
+		t.Errorf("dupes = %v, want [impact] (reported once despite three occurrences)", dupes)
+	}
+
+	if _, dupes, _ := parseFrontmatter(sample); len(dupes) != 0 {
+		t.Errorf("clean frontmatter reported dupes: %v", dupes)
+	}
+}
+
+// TestHistoryKind pins the classifier every ## History reader now shares.
+// Order matters: a legacy "MERGED: … → main" line contains an arrow and must
+// classify as merged, not transition.
+func TestHistoryKind(t *testing.T) {
+	cases := []struct {
+		body string
+		want HistoryKind
+	}{
+		{"created (TO DO). source: chat", HistoryCreated},
+		{"merged to main (abc1234)", HistoryMerged},
+		{"MERGED: feat/T-001 → main (abc1234)", HistoryMerged},
+		{"TO DO → READY: implementation plan complete", HistoryTransition},
+		{"a free-form note with no arrow at all", HistoryNote},
+		{"pickup applicability gate run → nowhere legal", HistoryNote},
+	}
+	for _, c := range cases {
+		if got := historyKind(c.body); got != c.want {
+			t.Errorf("historyKind(%q) = %q, want %q", c.body, got, c.want)
+		}
+	}
+}
+
 func TestParseDepends(t *testing.T) {
 	for _, c := range []struct {
 		in   string
@@ -402,14 +454,14 @@ func TestHistoryEntries(t *testing.T) {
 `
 	got := HistoryEntries(doc)
 	want := []HistoryEntry{
-		{"2026-07-23", "created (TO DO). source: test"},
-		{"2026-07-24", "TO DO → READY: plain-hyphen separator"},
-		{"2026-07-25", "READY → IN DEVELOPMENT: extra spaces"},
-		{"2026-07-26", "merged to main (abc1234)"},
+		{"2026-07-23", "created (TO DO). source: test", HistoryCreated},
+		{"2026-07-24", "TO DO → READY: plain-hyphen separator", HistoryTransition},
+		{"2026-07-25", "READY → IN DEVELOPMENT: extra spaces", HistoryTransition},
+		{"2026-07-26", "merged to main (abc1234)", HistoryMerged},
 		// Wrapped entries fold back into one logical entry: truncating at the
 		// first physical line would cut this reason mid-sentence.
-		{"2026-07-27", "IN REVIEW → DONE: a reason so long that it wraps onto a second line and even a third"},
-		{"2026-07-28", "TO DO → READY: not a continuation of the above"},
+		{"2026-07-27", "IN REVIEW → DONE: a reason so long that it wraps onto a second line and even a third", HistoryTransition},
+		{"2026-07-28", "TO DO → READY: not a continuation of the above", HistoryTransition},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("HistoryEntries returned %d entries, want %d: %+v", len(got), len(want), got)
@@ -477,8 +529,8 @@ unindented prose must not fold
 `
 	got := HistoryEntries(doc)
 	want := []HistoryEntry{
-		{"2026-07-23", "created (TO DO). source: test wrapped tail"},
-		{"2026-07-24", "TO DO → READY: second entry"},
+		{"2026-07-23", "created (TO DO). source: test wrapped tail", HistoryCreated},
+		{"2026-07-24", "TO DO → READY: second entry", HistoryTransition},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d entries, want %d: %+v", len(got), len(want), got)
