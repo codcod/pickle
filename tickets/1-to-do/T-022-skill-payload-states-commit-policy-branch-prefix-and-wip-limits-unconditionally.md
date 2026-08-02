@@ -4,7 +4,7 @@ title: skill payload states commit policy, branch prefix and WIP limits uncondit
 project: pickle
 depends-on: []
 spawned-by: []
-impact: medium
+impact: medium-high
 complexity: low
 cost: S
 ---
