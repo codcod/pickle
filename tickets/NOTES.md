@@ -170,6 +170,93 @@ its own refinement (2026-08-02), and its decision D1 deliberately **kept** last-
 audit reports duplicates, it does not remove the hazard. That row's rationale was stale in both
 halves; the shipped behaviour is recorded in T-040's Review (N9) and in T-056's soft couplings.
 
+## Model-tier exploration (2026-08-03) — explored, not filed
+
+Idea from chat: run each flow step on a different model tier — *"filing a ticket would be
+Sonnet's work, refining and reviewing Opus"*. Explored against the tree; recorded here rather
+than filed, per the standing lesson that this theme attracts machinery. **Tier 0 (below) was
+folded into T-022; Tier 1 is parked with a pre-registered kill criterion; Tier 2 is argued
+against.**
+
+**The precedent already exists at N=1.** Review protocol step 4b (`docs-readability`) is a
+per-step model assignment shipping in the payload today: a pinned model
+(`agents/opencode/opencode.jsonc:30`, `agents/pi/extensions/docs-readability.ts:44-46`), one
+shared prompt (`skill/resources/docs-readability.prompt.md`), least privilege (opencode denies
+edit/bash/webfetch; pi passes `--no-builtin-tools`), and — decisively — *"genuinely optional and
+never blocks a review"* (`review-protocol.md:98-113`). So the proposal is **generalising an
+existing pattern from one step to seven**, and the honest way to price it is to look at what
+that one step actually cost.
+
+**Measured cost of the one tiered step we ship: it does not work here.** T-040's review recorded
+step 4b as a conscious skip — the reviewer returned `model_not_supported`. Diagnosed 2026-08-03:
+`opencode models` lists **60 models across `anthropic`, `github-copilot`, `gitlab`, `ollama`,
+`opencode` and contains zero Gemini entries**, so `github-copilot/gemini-2.5-pro` is unavailable
+to *both* bindings. This is not a login failure — it is a payload default asserting a provider
+catalog the environment does not have, i.e. **the same defect shape as T-022**: the payload
+stating one configuration as universal. Sample size 1, failure rate 100 %.
+
+**Also: the default agent cannot reach the tiered step at all.** `install --agent` defaults to
+`claude` (`install.go:72-86`), which gets the skill symlink and the `CLAUDE.md` marker — pickle
+ships **no `.claude/agents/` definitions**, although Claude Code subagents support `model:`
+frontmatter. Any tiering scheme must answer for the default installation first.
+
+**What pickle can control — three levers, and no more.** Pickle is a scaffolder with **no runtime
+role during a flow step**; it never sees the model.
+
+| lever | cost | enforceable |
+|---|---|---|
+| A — payload prose (a suggested-tier table in `SKILL.md`) | ~free, one edit, propagates by `upgrade` | no, advisory |
+| B — harness scaffolds (`.claude/agents/`, `opencode.jsonc`, pi extensions) | real pinning, × 3 harnesses × N steps | per harness |
+| C — `[tier]` in `pickle.toml` generating B | schema + generator + drift checks + docs | transitively |
+
+A rule pickle cannot check is what T-064 was dropped for: the rule existed, compliance did not.
+Lever A inherits that weakness by construction.
+
+**Two corrections to the proposed mapping**, from reading what the steps actually demand:
+
+- **It leaves the largest saving untouched.** Filing is a handful of tickets a week; **implement**
+  is the token mass, and the flow is built so the plan is *"the executable prompt"* — the single
+  strongest tier-down candidate, and it is not in the proposed split. Meanwhile *audit the board*
+  needs **no model at all** (`pickle board audit` is pure mechanics), which is the reminder that
+  the cheapest tier is sometimes zero.
+- **The real axis is independence, not cost.** The steps that would benefit — review, and the
+  pickup applicability gate, whose text already mandates *"a fresh sub-agent — free of the
+  implementer's sunk-cost bias"* (`SKILL.md:173`) — want a **different model family**, not merely
+  a better one. The evidence is already in this file: human-requested adversarial passes are **2
+  for 2** (T-063, T-064 both dropped), while the same-agent applicability gate has **0 negative
+  verdicts in ~15 runs**. That is an argument for *difference*, and it is the only part of the
+  idea with measured support.
+
+**The case against, which this file requires:** no demand signal (nobody has produced a bad flow
+outcome attributable to model tier); a portability tax of per-step × per-harness (one step cost
+two implementations plus a shared prompt); model ids that rot faster than pickle releases
+(demonstrated above); and `doctor` already treating the pinned model as pickle-owned — it warns
+when `.pi/extensions/docs-readability.ts` differs from the shipped copy, so a user who retunes
+the model reads as drift.
+
+**Three increments, ascending:**
+
+- **Tier 0 — advisory table in the payload. Folded into T-022** (2026-08-03) as a second adjacent
+  item: that ticket already rewrites `SKILL.md`, `tickets-README.md` and `review-protocol.md` to
+  state defaults and defer, and a suggested-tier table is the same move. Free, harness-agnostic,
+  and actionable by hand (`/model` before saying "refine T-NNN").
+- **Tier 1 — pin only the applicability gate**, the one step whose text already asks for a
+  separate agent, mirroring step 4b's shape exactly (shared prompt, optional, never blocking,
+  least privilege) and pinning a **different family** rather than a higher tier. **File only on a
+  demand signal**, and only with this **pre-registered kill criterion**, in the T-045 style:
+  *if after 5 gate runs the tiered gate has produced 0 findings the flow agent would not have
+  produced, drop it.* Note the criterion has a live baseline to beat: 0 negative verdicts in ~15
+  same-agent runs.
+- **Tier 2 — `[tier]` config generating per-harness agent definitions.** Argued against until
+  Tier 1 has data: it turns every model-id rotation into a `pickle upgrade` for every installed
+  project, which is exactly the failure measured above, multiplied by the number of tiered steps.
+
+**Open, not decided: what to do about step 4b's broken default.** It is a shipped default that
+fails on a legitimate Copilot login. Candidates: fold a "do not pin a model the provider may not
+offer — degrade to a named default plus an env override, and say so" item into T-022 (same defect
+shape, different files), or file it small on its own. Do not simply bump the model id: the lesson
+is the pinning, not the id.
+
 ## Cross-epic decisions
 
 **T-044 won the T-039-vs-T-044 design decision** (2026-07-26): the board becomes a generated
