@@ -104,7 +104,8 @@ var (
 	// default prefix, not baked into the shape. Exported through ValidID so
 	// creation time (internal/cli) and the audit share one definition rather than
 	// growing a second. The shape is still spelled out separately in filenameRE
-	// above and in board.rowRE; unifying those is T-027's call. ValidID stays a
+	// above and in board.rowRE; unifying those is T-042's call (T-040 D6 deferred
+	// it there; T-027, which used to own it, was absorbed into T-040 and dropped). ValidID stays a
 	// pure *shape* check — that a ticket's prefix matches its project's configured
 	// prefix is a config-aware invariant, checked in internal/audit, not here.
 	idRE       = regexp.MustCompile(`^[A-Z][A-Z0-9]*-\d+$`)

@@ -26,9 +26,11 @@ type Result struct {
 
 var requiredKeys = []string{"id", "title", "project", "depends-on", "spawned-by", "impact", "complexity", "cost"}
 
-// optionalKeys lists frontmatter keys that are legal but not required —
-// validated only when present (today: T-059's family:). Kept next to
-// requiredKeys so the audit's full frontmatter vocabulary has one home;
+// optionalKeys lists frontmatter keys that are legal but not required (today:
+// T-059's family:, whose shape checks live in the per-ticket loop below and run
+// only when the key is set). The list itself validates nothing at runtime — it
+// is kept next to requiredKeys so the audit's full frontmatter vocabulary has
+// one home instead of the optional-key concept living only inside an `if`;
 // TestFrontmatterKeysMatchTemplate (T-040) checks both lists against
 // skill/resources/TEMPLATE.md, so drift between the audit and the authoring
 // guide fails in CI instead of in a user's project.
@@ -161,7 +163,7 @@ func Audit(root string, cfg *config.Config) Result {
 	auditWIP(&r, tickets, cfg)
 
 	// History ↔ directory, plus the over-long-entry warning (T-040 D4/D5) —
-	// folded into the same per-ticket loop so History is scanned once, not twice.
+	// folded into this loop so the tickets are not walked a third time.
 	for _, t := range tickets {
 		ref := t.Dir + "/" + filepath.Base(t.Path)
 		st, _ := ticket.StatusByDir(t.Dir)
