@@ -413,3 +413,7 @@ the user chooses), push, open the MR, and leave the merge to the human. Then
 - 2026-08-02 — TO DO → READY: plan complete
 - 2026-08-02 — READY → IN DEVELOPMENT: picked up
 - 2026-08-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-02 — merged to main (PR #11, 8a61d3e), user-approved as an exception **ahead of the
+  review protocol** (out of the usual review-then-merge order, at explicit user instruction);
+  squashed to one commit; branch deleted. The ticket itself stays in IN REVIEW — the code being
+  on main does not substitute for "review ticket T-040" recording findings and a verdict.
