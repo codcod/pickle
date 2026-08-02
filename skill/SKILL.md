@@ -237,12 +237,14 @@ pickle board audit
 It verifies the flow's invariants mechanically: `BOARD.md` matches a fresh render of the
 ticket files (the board is generated — any hand-edit or staleness is one error, fixed by
 `pickle board sync`); ids are unique and match filenames; frontmatter is complete with legal
-grade values and a `project:` that names a registered child; `depends-on:` targets exist;
-`spawned-by:` targets exist and no ticket cites itself (but lineage never gates); per-child WIP
-limits hold; each ticket's last History transition matches its directory; and
-in-development tickets have all dependencies done (warning if a done dependency has no `merged`
-History line). Fix every error it reports — an error is a broken invariant, not a judgement
-call.
+grade values, no key repeated, and a `project:` that names a registered child; `depends-on:`
+targets exist and none is the ticket itself; `spawned-by:` targets exist and no ticket cites
+itself (but lineage never gates); all seven status directories exist (a missing one is an
+error, an empty one with no `.gitkeep` a warning); per-child WIP limits hold; each ticket's
+last History transition matches its directory (and an over-long transition/merge line warns);
+and in-development tickets have all dependencies done (warning if a done dependency has no
+`merged` History line). Fix every error it reports — an error is a broken invariant, not a
+judgement call.
 
 ## Notes
 
