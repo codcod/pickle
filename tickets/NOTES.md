@@ -139,6 +139,37 @@ corrects it. Recalibration means grading honestly, **not** spending headroom for
 manufactured `critical` would be the same calibration dishonesty in the other direction. The
 headroom exists for the ticket that genuinely earns it.
 
+## `impact` recalibration (2026-08-03) — second pass, 13 TO DO tickets
+
+Run as a pass over the whole TO DO group after T-040's review, against the rules' definitions
+(`tickets-README.md:129-134`). Four changed:
+
+| ticket | was | now | why |
+|---|---|---|---|
+| T-022 | medium | **medium-high** | same defect class as T-041 (graded `high` for it): the payload states commit policy, branch prefix and WIP limits unconditionally, so in any **non-default** project the shipped skill contradicts the marker block's real values and both read as authoritative — agents act on wrong project config. One notch below T-041 because it bites only non-default configurations, not every install. Complexity low / cost S. |
+| T-057 | medium | **medium-high** | the only open item guarding against **silent loss**: bookkeeping committed on a `feat/` branch is eaten by the squash-merge, and it has happened three times — once *while closing the review that flagged it*. `install` defaults `--path .` (`install.go:95`), so the **default install is single-repo** and every one of them carries the hazard. |
+| T-056 | medium-high | **medium** | second downgrade in three days, on new evidence only: work area 5 (ranking) closed as *"don't rank at all"*, and T-040's review (finding N9) showed its stated T-040 prerequisite was never removed — D1 kept last-wins parsing, so a field writer still needs its own guard. Demand for a *writable* dashboard remains unevidenced; the concurrency foundation keeps its value but nothing has raised it. Grading the backlog's one XL above tickets that fix measured field defects overstated it. |
+| T-019 | low-medium | **low** | scope shrank to a single item — the stale `PLAN.md:227` synopsis — after T-047 deleted or fixed the other three. The ticket's own note already said "likely impact low". |
+
+Distribution: **medium-high 2 · medium 4 · low-medium 2 · low 5** (13 tickets). Largest tie
+unchanged at 5 (the `low` floor), and that is the honest answer: five genuinely narrow items.
+
+**No `high` in this backlog, and that is the finding.** T-041 — the last `high` — is done and
+merged, and nothing open is a "major capability/adoption lever": every remaining item improves
+or corrects a shipped, working tool. `critical`/`high-critical` stay unused for the reason given
+in the 2026-08-01 pass. Manufacturing a `high` to refill the top of the board would be the same
+calibration dishonesty in the other direction.
+
+**Effect on the queue:** the top two are now cheap (T-022 low/S, T-057 medium/M) and the XL
+(T-056) sits sixth. Note the standing caveat above still applies — the pickup queue is READY, not
+TO DO, so this pass changes what gets *refined next*, not what gets picked up.
+
+**Correction to the 2026-08-01 table.** It records T-040 as `medium-high` because "duplicate
+frontmatter keys silently last-win, a latent data-loss path". T-040 was re-graded to `medium` at
+its own refinement (2026-08-02), and its decision D1 deliberately **kept** last-wins parsing — the
+audit reports duplicates, it does not remove the hazard. That row's rationale was stale in both
+halves; the shipped behaviour is recorded in T-040's Review (N9) and in T-056's soft couplings.
+
 ## Cross-epic decisions
 
 **T-044 won the T-039-vs-T-044 design decision** (2026-07-26): the board becomes a generated

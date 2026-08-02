@@ -4,7 +4,7 @@ title: guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook)
 project: pickle
 depends-on: []
 spawned-by: [T-054]
-impact: medium
+impact: medium-high
 complexity: medium
 cost: M
 ---

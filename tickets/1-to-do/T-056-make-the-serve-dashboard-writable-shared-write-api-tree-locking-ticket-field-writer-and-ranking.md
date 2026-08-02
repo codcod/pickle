@@ -4,7 +4,7 @@ title: make the serve dashboard writable: shared write API, tree locking, ticket
 project: pickle
 depends-on: []
 spawned-by: []
-impact: medium-high
+impact: medium
 complexity: high
 cost: XL
 ---
