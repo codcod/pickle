@@ -45,9 +45,9 @@ the binary ships.
 Soft coupling: **T-018** (made the marker block render real values, creating the contradiction) and
 **T-016** (docs-readability review step — same prose surface).
 
-### Adjacent payload-text item to sweep while in these files (not this ticket's theme)
+### Adjacent payload-text items to sweep while in these files (not this ticket's theme)
 
-A separate §8 wording defect was measured on 2026-08-01 (T-064, dropped; full evidence in
+**Item A — the §8 "freshness" heading.** A separate §8 wording defect was measured on 2026-08-01 (T-064, dropped; full evidence in
 `NOTES.md`). It is **not** an instance of this ticket's "unconditional statement that should
 defer to config" problem, so it does not belong in the title — but it edits the same two files
 and would cost minutes alongside the work above:
@@ -60,8 +60,28 @@ and would cost minutes alongside the work above:
   filing**, and that **DROP is a legal verdict** (already legal per `move.go:31-38`; verify, add
   no mechanism).
 
-If this is picked up first, widen the title accordingly; if it is judged out of scope, leave it
-in `NOTES.md` rather than filing it — the standing lesson is that this theme attracts machinery.
+**Item B — a suggested model tier per flow step (Tier 0 of the 2026-08-03 exploration; full
+analysis in `NOTES.md`).** The payload is silent on which model tier a step wants, so every step
+runs on whatever the session happens to be. Add **one advisory block** — most naturally in
+`SKILL.md` beside the existing `Defaults:` material, which is the same "state the default, defer
+the specifics" move this ticket applies elsewhere:
+
+- *audit the board* and every `pickle ticket|board` mechanic need **no model** (`board audit` is
+  pure mechanics) — worth saying, because the cheapest tier is sometimes zero;
+- *refine*, *review* and the pickup applicability gate are the judgement steps;
+- *implement* is the token mass and is designed to be executable (the plan is the prompt);
+- the applicability gate wants a **different** model, not merely a better one — its own text
+  already demands freedom from the implementer's sunk-cost bias (`SKILL.md:173`), and the measured
+  record is 0 negative verdicts in ~15 same-agent runs.
+
+Hard constraints, or this becomes the machinery the theme attracts: **advisory only** (pickle has
+no runtime role in a step and cannot enforce a tier), **no `pickle.toml` schema**, **no per-agent
+scaffolds**, and no claim that the flow depends on it. Anything beyond a prose block is Tier 1/2
+in `NOTES.md` and needs a demand signal plus a pre-registered kill criterion.
+
+If either item is picked up here, widen the title accordingly; if one is judged out of scope,
+leave it in `NOTES.md` rather than filing it — the standing lesson is that this theme attracts
+machinery.
 
 ## Implementation Plan
 
@@ -74,3 +94,11 @@ in `NOTES.md` rather than filing it — the standing lesson is that this theme a
 ## History
 
 - 2026-07-25 — created (TO DO). source: pickle ticket new
+- 2026-08-03 — re-graded medium → **medium-high** by the second impact recalibration pass: same
+  defect class as T-041 (which was graded `high` for it) — the payload contradicts the marker
+  block's real values, so agents act on wrong project config — one notch down because it bites
+  only non-default configurations. Now the top of the TO DO group at complexity low / cost S.
+- 2026-08-03 — adjacent item B added (Tier 0 of the model-tier exploration, `NOTES.md`): an
+  advisory suggested-tier-per-step block in the payload, constrained to prose — no schema, no
+  per-agent scaffolds, no enforcement. Filed here rather than as its own ticket because it fails
+  the promotion test alone and edits files this ticket already opens.
