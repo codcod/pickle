@@ -257,6 +257,229 @@ offer — degrade to a named default plus an env override, and say so" item into
 shape, different files), or file it small on its own. Do not simply bump the model id: the lesson
 is the pinning, not the id.
 
+## Pi-as-best-tier exploration (2026-08-04) — three roads, and a process failure
+
+Idea from chat: make Pi the **"best experience tier"** — hard gates instead of prose rules, agents
+spawned on different model tiers, one install command, and a board UI with a path to editable.
+Explored against pi.dev's extension/package/skills references and this tree. Recorded here rather
+than filed as a programme. **Two of the five stated requirements are already answered on the board
+— one of them against, with measurement. One item survives independent of Pi. The Pi-facing work
+is filable but contingent, and the enforcement premise it rests on has a poor field record.**
+
+**Process failure first, because this file exists to catch it.** The roadmap was produced across a
+long chat *without reading this file or the affected tickets*. `:100-101` mandates the opposite:
+*"measure the thing, check whether an existing instruction already covers it, and check whether it
+was executed."* Cost of skipping it: three of fourteen proposed tickets were already filed as
+**T-056**, and a fourth was already argued against here on 2026-08-03 with a 100 %-failure
+measurement. Cite this paragraph against the next chat-produced roadmap — **including the next one
+from whoever writes here.** A multi-phase plan is the highest-risk artifact this backlog accepts,
+because its size hides the collisions.
+
+### What was asked for
+
+| requirement | verdict |
+|---|---|
+| 1 — one install command | **New, filable.** Reachable two ways; see *the premise is satisfiable twice* below |
+| 2 — Pi as best tier (gates, enforcement) | **New, filable, contingent** — but see the guardrail firing record |
+| 3 — close to ideal UX | not independently actionable; a property of 1/2/5 |
+| 4 — agents on model tiers, sensible defaults | **Already decided, mostly against** — `:173-258` |
+| 5 — board UI, path to editable | **Already filed as T-056**, XL, twice downgraded for unevidenced demand |
+
+### The three roads, and the axis that separates them
+
+Not Go-vs-TypeScript. The axis is **where the Pi-facing surface lives and who versions it**.
+
+| road | shape | ongoing cost |
+|---|---|---|
+| **A** — generated payload | binary writes `.pi/extensions/*.ts` + agents into the repo | **high** — ~1–2 k lines of generated TS to drift-manage, and an unenforced version contract between repo-resident TS and `PATH`-resident binary |
+| **B** — package-owned | one npm package ships extension + skill + **the Go binary** (platform `optionalDependencies`, the esbuild pattern); `bin` field keeps `PATH` use | low — an npm publish step over existing goreleaser artifacts. **Zero Go rewritten** |
+| **C** — API-first | `serve` becomes the single write path; extension, web UI and any future client are thin clients | medium — daemon lifecycle; **and this is T-056** |
+
+**The premise is satisfiable twice, and the chosen half was the expensive one.** "Avoid two installs"
+was given as the reason to keep generating config from the binary (road A). But npm can *carry* the
+binary, so `pi install npm:pickle` is also one command — and it deletes both the repo payload and
+the version contract. If road A is chosen it must be for a stated reason other than install count
+(e.g. refusing a second registry, or keeping `go install` canonical). Note **T-056's Scope boundary
+already rules "the sidecar-vs-single-binary packaging question" out of scope by user decision** —
+so packaging is a separate ticket either way, not a T-056 work area.
+
+### Collisions with the board
+
+| proposed | already exists |
+|---|---|
+| `internal/api` read+write layer, typed errors, JSON-serializable types | **T-056 work area 1**, verbatim the same package name, with a fuller audit: TOCTOU id allocation (`cli/ticket.go:124`), zero `flock` hits repo-wide, no frontmatter serializer, eight `move.Move` errors collapsed to exit 1 |
+| write endpoints + tree locking | **T-056 work areas 1–2**; area 2 is flagged *"worth doing on its own merits regardless of the dashboard"* |
+| editable board UI | **T-056**, literally its title |
+| per-step model-tiered agent files | **`:250-252`** — *"Tier 2 … **argued against** until Tier 1 has data: it turns every model-id rotation into a `pickle upgrade` for every installed project"* |
+
+T-056 also documents its own split seam (*"a plausible sequence: work area 2 → 1 → 3 → 4 → 5 → 6"*)
+and was **filed as one unit at the user's direction**. Carving work area 1 out reverses that
+direction and is the user's call, not a refinement decision. T-043 overlaps area 1 directly — *"doing
+both separately means writing the same tests twice."*
+
+**T-010 (`pi-guardrail-scaffold`) was dropped as absorbed into T-009, not on merit** — *"agent
+enablement owns the pi scaffold **+ symmetry obligation**"*. That obligation is the standing answer
+to harness asymmetry: whatever Pi gains, the other harnesses owe an equivalent. Any gate-only-on-Pi
+proposal must answer to it.
+
+### The correction that de-risks B: it does not depend on T-056
+
+Worked out after reading T-056, and it reverses the ordering proposed in chat. The extension's
+**tools can shell out to the existing CLI**, which already works, is already tested, and already
+enforces every gate in `move.go:31-115`. `internal/api` was only ever needed for **C** (an in-process
+HTTP surface). So B's only Go prerequisite is a **JSON read surface** — not the write extraction.
+Sequence B → C, and C inherits T-056 rather than duplicating it.
+
+**Partly retracted on 2026-08-04, at filing time (see the postscript below).** "B does not touch
+T-056" holds for the *transport* claim — shelling out to the CLI is real, and no write API is
+needed. It fails for the read surface: the projection an extension consumes has to be lifted out
+of `internal/serve/view.go`, and that lift **is** T-056 work area 1's extraction seam. So B and C
+share one piece of work. The revised claim: **B needs no *write* API, and one shared read
+projection that T-056 area 1 would otherwise build twice.**
+
+### The enforcement premise has a poor field record — this is the finding
+
+The strongest argument for a Pi extension was that Pi's `tool_call` hook converts pickle's prose
+rules into enforcement. But **pickle already ships exactly one such guard**, and its recorded field
+history is: **one false positive (T-050, a `python3 - <<'EOF'` heredoc misread as a staging
+violation), one prompting nuisance (`:302-311`), and zero recorded true positives.** Sample size is
+small, but it is the only evidence there is, and it runs the wrong way. Any ticket proposing more
+gates must state what it expects them to catch and how that will be measured — *before* filing, in
+the T-045 style. "Enforcement beats convention" is a claim about this codebase, not an axiom, and
+the one instance we have has cost more than it saved.
+
+### Measured evidence against shipping model pins (unchanged from 2026-08-03)
+
+Restated because a road-B "agent tier" ticket would re-propose it: the one pinned model pickle ships
+(`github-copilot/gemini-2.5-pro`) is **unavailable in the observed environment — sample size 1,
+failure rate 100 %** (`:190-196`), model ids rot faster than pickle releases, and `doctor` reads a
+user's retune as drift. **Do not file per-role agent files with pinned models.** The live path
+remains **Tier 1** — pin *only* the applicability gate, a different model *family* rather than a
+higher tier, with the pre-registered kill criterion already written at `:243-249`.
+
+### The case against, which this file requires
+
+- **No demand signal beyond the requester's own ask.** Same provenance as T-060, T-062 and T-059 —
+  the three recorded wastes (`:87-90`).
+- **Harness asymmetry on a shared artifact.** Gates on Pi and prose elsewhere means the invariants
+  hold on one harness and are aspirational on the others, while `tickets/` and `BOARD.md` are shared.
+  Mitigated only by decision 3 below.
+- **Pi is pre-1.0** and churns; its flagship package sits at 0.40.x. Coupling a payload to it is one
+  thing; coupling the flow engine to it is another.
+- **A second toolchain.** This repo is two Go dependencies and a 1.14:1 test-to-source ratio.
+  TypeScript lands at 0:1 unless tsc + a test runner ship in the *same* ticket as the first line.
+- **`serve` is 20 % of the codebase and already the board UI.** Requirement 5 is a T-056 question,
+  not a Pi question.
+
+### Decisions constraining any future ticket in this theme
+
+1. **Never ship a pinned model id.** Measured, above. Degrade to a named default plus an env
+   override, and say so in the payload.
+2. **Pin exact versions in `.pi/settings.json`; never float a tool that owns a data schema.** Verify
+   whether Pi's updater treats `^` ranges as pinned before relying on a range.
+3. **Every Pi gate ships with a matching `board audit` invariant.** Pi fails fast; the binary catches
+   the same thing everywhere else. This is what keeps T-010's symmetry obligation satisfied and stops
+   a rule existing only in TypeScript.
+4. **One editable board front-end, ever.** Two is the `board.Render` mistake in a new costume.
+5. **Nothing enters `.pi/` except the version pin and `.gitignore` entries.** No generated TS in a
+   user's repo.
+6. **`upgrade` moves the tool; a migration moves the data. Never fuse them.** A release must not
+   silently rewrite sixty tickets on someone's laptop.
+7. **Three version axes stay separate**: tool version (npm/`pickle version`), data schema, config
+   schema. `payload_version` today conflates the first with nothing else, and that is fine — the
+   error would be overloading it.
+8. **The skill has exactly one source per session.** Pi natively discovers `.agents/skills/`, so a
+   package-shipped copy collides by `name:` and Pi *"warns and keeps the first skill found"* — a
+   stale repo copy would shadow a fresh packaged one. The extension must arbitrate via
+   `resources_discover`, not ship a second copy blindly.
+
+### If you proceed: the first batch
+
+Four candidates. Grades are against the 2026-08-03 recalibration (`medium-high 2 · medium 4 ·
+low-medium 2 · low 5`, no `high`), and the honest reading is that **none of these is a `high`** —
+each improves a shipped, working tool.
+
+| # | title | impact | cplx | cost | notes |
+|---|---|---|---|---|---|
+| ~~1~~ | ~~`schema_version` + fail-closed version check~~ | — | — | — | **not filed** — no reachable hazard; pre-registered against T-056 area 4. See postscript |
+| 2 | ~~`--json` on the read commands~~ → a versioned JSON read projection | low-medium | medium | M | **filed as T-065**, re-scoped: two of the five commands did not exist |
+| 3 | distribute pickle as an npm package carrying the binary (one-command install for Pi) | medium | medium | M | requirement 1 |
+| 4 | Pi extension: version handshake, skill arbitration, gates, tools | medium | medium | L | soft-couples 2 and 3; must answer the guardrail firing record |
+
+**Sequence:** 1 and 2 are independent; 3 soft-couples nothing; 4 wants 2 and 3 landed. Propose all
+couplings as **soft** (Description cross-references) — a hard `depends-on:` needs explicit sign-off
+per §3 and none of these gates the others hard.
+
+**Grade re-trigger on #1.** It guards silent loss that has occurred **zero** times, which is why it
+sits below T-057 (`medium-high`, hazard *"has happened three times"*). The reason it has not bitten:
+every frontmatter change so far — `spawned-by` (T-024), `family` (T-059) — was **additive and
+optional**, so old binaries tolerate new trees. The first *required* or *renamed* key breaks every
+older binary silently, and shipping a second distribution channel (#3) raises the odds of mixed
+versions. **If #3 lands, re-grade #1 to `medium`.**
+
+**Deliberately not in the batch, with reasons:**
+
+- **A migration framework.** Speculative machinery, and this file's whole lesson is that this theme
+  attracts it. **Pre-registered:** file `pickle migrate` only when a genuinely non-additive schema
+  change is proposed. Until then #1's fail-closed guard *is* the deliverable — it converts silent
+  corruption into a refusal, which is the whole safety value; the migration path can be written when
+  there is something to migrate.
+- **Per-role model-tiered agent files** — measured against; see above. Tier 1 only, on a demand
+  signal, with the existing kill criterion.
+- **`internal/api`, write endpoints, editable UI** — T-056. Note area 1 carries its own
+  self-nullifying condition: *"If that is not the goal, the same three pieces could land in the
+  existing packages instead, and the extraction should be dropped."*
+- **A Pi TUI board** — decision 4. `serve` is the board UI.
+
+**What would falsify this whole programme, stated in advance:** if #4 ships and, across 10 recorded
+flow steps under Pi, the gates block zero actions an agent would otherwise have taken, the
+enforcement premise is unsupported and the extension should be reduced to skill + tools. The
+baseline it must beat is the shipped guardrail's record above: 1 false positive, 0 true positives.
+
+### Postscript (2026-08-04, same day) — filing the batch falsified two of its four rows
+
+The batch above was written from the tree's *documentation*. Reading the **code** to ground rows 1
+and 2 killed one and re-scoped the other. Recorded because the batch table would otherwise read as
+authoritative, which is the T-041/T-022 defect class applied to this file.
+
+**Row 1 does not describe a reachable hazard.** The claim was that a newer field meets an older
+binary and is silently dropped. No pickle command can do that:
+
+- `internal/move/move.go:123` — `newText := appendHistory(t.Text, …)`. Moves **append**; frontmatter
+  is never re-rendered.
+- `internal/ticket/ticket.go:529` `Scaffold()` is the only frontmatter *renderer*, and its sole
+  caller is `internal/cli/ticket.go:141` — brand-new files only.
+- `parseFrontmatter` reads into `Front map[string]string`, so unknown keys survive a round trip.
+- `pickle ticket renumber` — which `tickets-README.md:122-123` describes as though it ships — **does
+  not exist**; `audit.go:101` marks it as T-060, unbuilt. (Minor doc-overstates-code finding, noted
+  not filed.)
+
+So the hazard is not merely zero-occurrence, it is **structurally absent**: it requires a
+frontmatter re-render path, and the only proposed one is T-056 work area 4's field writer. The
+guard is now **pre-registered on that**, in T-065's Description, alongside the migration framework
+under the same discipline. Its one useful part — a version handshake — moved into T-065's JSON
+envelope, where a wire format belongs rather than in 64 ticket files.
+
+**Row 2 was mis-scoped in two directions at once.** It read "`--json` on the read commands
+(`board state`, `ticket show`, …)" — but `board state` and `ticket show` **are not commands**
+(`internal/cli/cli.go:48-66`), so it was not a flag addition. Meanwhile the projection those
+commands would emit **already exists** in `internal/serve/view.go` (`buildBoard:77`,
+`buildTicket:168`, `ChildWIP:280`, `buildHealth:298`), so the hard part is lifting template-shaped
+structs into a wire type, not designing one. Filed as **T-065** (`low-medium` / medium / M) for the
+projection; `--json` on the four reads that *do* exist (`doctor`, `board audit`, `project list`,
+`version`) fell out of the critical path entirely — different audience, separable, unfiled.
+
+**Re-grade pass: nothing moved**, and that is the honest result. T-065 joins T-013 and T-050 at
+`low-medium`; distribution is now **medium-high 2 · medium 4 · low-medium 3 · low 5** (14 tickets),
+largest tie still the 5-way `low` floor. Two candidates were considered and declined: **T-043**
+(T-065 would be a fourth `captureStdout` consumer, but it is prospective, and the 2026-08-03 pass
+declined to credit prospective demand when it downgraded T-056 — the same rule cuts both ways) and
+**T-056** (a second customer for area 1's extraction is mild evidence for it, but T-056's weight is
+the writable dashboard, still unevidenced).
+
+**Phase B is now three tickets, not four.** The general lesson, which is the same one this file
+already records twice: *grade and scope against the code, not against the docs describing it.*
+
 ## Cross-epic decisions
 
 **T-044 won the T-039-vs-T-044 design decision** (2026-07-26): the board becomes a generated
