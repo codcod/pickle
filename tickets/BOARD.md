@@ -38,6 +38,7 @@ Last updated: 2026-08-05
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | low-medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -52,7 +53,6 @@ Last updated: 2026-08-05
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
-| T-019 | correct PLAN.md's five stale claims and rename it to DESIGN.md | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
