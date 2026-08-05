@@ -290,7 +290,7 @@ rg -n 'DESIGN.md' tickets/1-to-do/T-057-*.md    # re-anchored, and no ':241' rem
 
 # 5. Only dated records still say PLAN.md.
 rg -n 'PLAN\.md' --glob '!tickets/6-done/**' --glob '!tickets/NOTES.md' \
-   --glob '!tickets/1-to-do/T-019-*' --glob '!DESIGN.md' .   # nothing
+   --glob '!tickets/*/T-019-*' --glob '!DESIGN.md' .   # nothing
 
 # 6. The repo is still sound.
 just build && just test && just lint && just docs-check
@@ -343,3 +343,5 @@ The doc change *is* the deliverable.
 - 2026-08-04 — re-scoped and retitled: README items 1-3 were already dead (T-047, f7b0a0a), so the ticket becomes the whole PLAN.md correction — four further stale claims found reading it end-to-end (one an overturned "locked decision") plus the surviving synopsis item — and the rename to DESIGN.md; impact low -> low-medium; superseded README line-ref notes dropped from the Description
 - 2026-08-05 — refined: title dropped its "five" count after a sixth claim surfaced (§1's non-existent `init` command); each claim expanded to its full occurrence list (the id-namespace claim is in §1/§3/§7, the board-skeleton claim in §2/§4/§7), so the fix is a sweep per claim; prune decided — §11 and §12 deleted outright, §4–§7 cut to rationale + one pointer to cli-reference.adoc (which dissolves the stale `ticket new` synopsis rather than syncing a third copy), no section renumbering; T-057's `PLAN.md:241` re-anchored to `DESIGN.md` §7 by section, with the cited sentence kept; `tickets/NOTES.md:152` and all of `6-done/` left untouched as dated records, resolvable via a "formerly PLAN.md" breadcrumb in the preamble; no CHANGELOG entry; the four dead README items still sitting in the Description were removed. Grade unchanged (low-medium / low / S)
 - 2026-08-05 — TO DO → READY: plan complete
+- 2026-08-05 — READY → IN DEVELOPMENT: picked up
+- 2026-08-05 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent) confirmed all six claims, the prune scope, ground-truth citations and T-057's reference still hold, and WIP/board are clean; one inline amendment applied — acceptance-test step 5's glob widened from `tickets/1-to-do/T-019-*` to `tickets/*/T-019-*` since the ticket has since moved out of `1-to-do/`

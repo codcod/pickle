@@ -13,10 +13,11 @@ Last updated: 2026-08-05
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-05
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | low-medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
