@@ -84,7 +84,9 @@ unit of planning. The six locked decisions:
    for every child, chosen to keep allocation trivial and let a ticket move between children
    without renumbering — was unlocked once multi-child workspaces needed to tell a frontend's
    ids apart from a backend's at a glance; re-homing a ticket to a differently-prefixed child
-   is now a deliberate renumber (`pickle ticket renumber`), not a free relabel.
+   is now a deliberate renumber, not a free relabel — and a manual one: T-060 proposed a
+   `pickle ticket renumber` command and was dropped (`7-dropped/`), the migration being a rare
+   one-off not worth automating.
 3. **Target named in frontmatter.** Each ticket declares its child-project in a new
    `project: <name>` frontmatter field (the registered short name from `pickle project add`).
    The `tickets/` directory keeps its flat seven-status layout — tickets are **not** split
@@ -217,8 +219,9 @@ reproducible.
 The live command surface — every command, every flag, its full contract — is
 `docs/user-manual/cli-reference.adoc`; nothing here should describe it a second time, or the
 two will drift (as they did: this section's `ticket new` synopsis fell behind `--spawned-by`
-and `--family`, and its `board sync`/`install` prose kept describing a pre-T-044, interactive
-design years after both were overturned). What survives is what the manual doesn't cover:
+and `--family`; its `board sync` prose still described the hand-maintained board T-044
+overturned; and its `install` prose described an interactive registration wizard that was never
+built — §13.4). What survives is what the manual doesn't cover:
 
 - **Wire `board audit` into CI + a pre-commit hint** — still a live recommendation (see T-057),
   not a shipped feature; the manual documents the command as it exists today, not the
