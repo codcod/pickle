@@ -236,10 +236,17 @@ the model reads as drift.
 
 **Three increments, ascending:**
 
-- **Tier 0 — advisory table in the payload. Folded into T-022** (2026-08-03) as a second adjacent
-  item: that ticket already rewrites `SKILL.md`, `tickets-README.md` and `review-protocol.md` to
-  state defaults and defer, and a suggested-tier table is the same move. Free, harness-agnostic,
-  and actionable by hand (`/model` before saying "refine T-NNN").
+- **Tier 0 — advisory table in the payload. Folded into T-022 (2026-08-03), then dropped back out
+  at T-022's refinement (2026-08-05) — it stays here, unfiled.** The fold-in reasoning was that
+  T-022 already rewrites `SKILL.md`, `tickets-README.md` and `review-protocol.md` to state
+  defaults and defer, so a suggested-tier table is the same move; free, harness-agnostic, and
+  actionable by hand (`/model` before saying "refine T-NNN"). Refinement rejected it on two
+  grounds. First, it is a **different theme** — "the payload says nothing about X", not "the
+  payload states per-project config as universal" — and carrying two themes costs T-022 its `S`.
+  Second, and decisively, **T-022's own item A is the counter-evidence**: the pickup gate's prose
+  already asks for exactly the behaviour it never got, measured at **0 negative verdicts in ~15
+  runs**. Another advisory, unenforceable prose block is the same bet that just lost. Per the
+  standing lesson, it is recorded here rather than filed. Re-open only with a demand signal.
 - **Tier 1 — pin only the applicability gate**, the one step whose text already asks for a
   separate agent, mirroring step 4b's shape exactly (shared prompt, optional, never blocking,
   least privilege) and pinning a **different family** rather than a higher tier. **File only on a
@@ -256,6 +263,14 @@ fails on a legitimate Copilot login. Candidates: fold a "do not pin a model the 
 offer — degrade to a named default plus an env override, and say so" item into T-022 (same defect
 shape, different files), or file it small on its own. Do not simply bump the model id: the lesson
 is the pinning, not the id.
+
+> **T-022 refinement (2026-08-05) declined the first candidate, leaving this open.** The defect
+> class matches exactly, but the fix is a *code* change — `agents/opencode/opencode.jsonc:30` and
+> `agents/pi/extensions/docs-readability.ts:44-46`, plus an env override and its docs — while
+> T-022 is prose-only and graded `S`. Folding it in would have changed the ticket's shape and its
+> cost. So the choice is now between filing it small on its own and continuing to carry a shipped
+> default with a measured 100 % failure rate; nobody has been blocked by it, which is why it is
+> still here.
 
 ## Pi-as-best-tier exploration (2026-08-04) — three roads, and a process failure
 
