@@ -46,6 +46,13 @@ The tool's design principle is to split the two:
   file + append History + regenerate the board atomically, audit the
   invariants — are deterministic *CLI commands*.
 
+One consequence of that split: {product} never inspects which model or session
+produced a ticket, a review, or a commit, so it ships no model or agent-tier
+configuration at all. If you have more than one model tier available and want a
+starting recipe for which step to run where,
+<<agent-session-workflow>> documents one workable pattern — as a suggestion,
+not a rule the flow checks.
+
 The embedded payload lives in the {product} repository's `skill/` directory —
 laid out exactly as the installed skill (`SKILL.md` +
 `resources/{tickets-README,TEMPLATE,review-protocol,docs-readability.prompt}.md`) — and is compiled
