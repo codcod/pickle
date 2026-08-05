@@ -6,12 +6,12 @@
 > [`tickets/BOARD.md`](tickets/BOARD.md) — this repo self-hosts the flow it ships, so all work
 > flows through tickets (`T-NNN`), not this doc.
 >
-> **Progress vs. the §12 phases:** P1–P3 are delivered — config/registry, board audit,
-> `ticket new`, `install`, `ticket move`, and `board sync` are done and merged (see the board's
-> DONE section); `doctor` (T-005) plus `upgrade`/`uninstall` (T-006) complete the command
-> surface, and distribution (P5) landed in T-011. Remaining: the opencode/Pi breadth
-> (P4), plus hardening/polish tickets. Where this doc and a ticket disagree,
-> **the ticket wins**; treat §-level decisions here as the standing rationale behind them.
+> **Progress is not tracked here.** `tickets/BOARD.md` is the only place that knows what is
+> delivered; a hand-maintained summary in this file duplicated it and drifted (it claimed P4 was
+> outstanding for eleven days after T-009 merged it), so it was removed rather than repaired —
+> repairing it only restarts the drift. **All five §12 phases are delivered**; read the board's
+> DONE section for anything finer-grained. Where this doc and a ticket disagree, **the ticket
+> wins**; treat §-level decisions here as the standing rationale behind them.
 >
 > Historical references below to the workspace this was distilled from are context, not paths
 > in this repo.
@@ -316,15 +316,26 @@ child-project the feature targets** rather than guessing.
   `upgrade`/`uninstall`.
 - **P5 — distribution**: `go:embed`, releases, Homebrew tap, docs.
 
-## 13. Open questions
+## 13. Resolved questions
 
-1. **Agent-call ergonomics** — do agents reliably shell out to `pickle ticket new`, or is it
-   safer to keep authoring purely file-based and rely on `board audit` to catch drift? (Lean:
-   offer the CLI, don't mandate it; audit is the backstop.)
-2. **opencode's exact skill/instruction mechanism** — confirm current support (AGENTS.md is
-   safe; a native skill hook may not exist yet).
-3. **Marker vs symlink for `CLAUDE.md`** — symlink (`CLAUDE.md → AGENTS.md`, translator's
-   choice) vs. dual injection. Probably a flag.
-4. **How opinionated `install` is** — pure scaffold vs. interactive config wizard. Lean:
-   flags + optional wizard, always writing `pickle.toml`.
+All four of this section's original open questions are settled, each as the lean predicted.
+Kept as locked decisions with their rationale — that is what this doc is for — rather than
+deleted. **They are closed: do not re-litigate them from this file.** Resolutions confirmed
+against the code on 2026-08-04.
+
+1. **Agent-call ergonomics** — *offer the CLI, don't mandate it; `board audit` is the backstop.*
+   Resolved as leaned. The skill's procedures say to run `pickle ticket new` and to **prefer**
+   `pickle ticket move` ("it does all of it atomically and enforces the state machine + per-child
+   WIP"), but hand-authoring stays legal and the audit catches the drift.
+2. **opencode's exact skill/instruction mechanism** — resolved by **T-009** (`6-done/`).
+   opencode gets `opencode.jsonc` (`install.go:40`) alongside the shared
+   `.agents/skills/ticket-flow/`.
+3. **Marker vs symlink for `CLAUDE.md`** — resolved as *"probably a flag"*, and it is one:
+   `install --claude-symlink` (`internal/cli/install.go:26`) makes `CLAUDE.md` a symlink to
+   `AGENTS.md`; the default is a dual marker block. **This repo uses the symlink**
+   (`CLAUDE.md -> AGENTS.md`).
+4. **How opinionated `install` is** — resolved as **flags only**, always writing `pickle.toml`.
+   The "optional wizard" half of the lean was never built: there is no interactive prompt
+   anywhere in `internal/install` or `internal/cli/install.go`. Non-interactive install is
+   what makes `install` scriptable and testable, so the absence is a feature, not a gap.
 
