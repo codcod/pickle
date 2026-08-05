@@ -423,3 +423,4 @@ extra confirm prompt in a non-default project, and it is already recorded twice 
 - 2026-08-05 — READY → IN DEVELOPMENT: picked up
 - 2026-08-05 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-05 — IN REVIEW → DONE: review PASS: 4 fixed inline, 2 folded, 1 noted
+- 2026-08-05 — merged to main (PR #13, 218a90a)
