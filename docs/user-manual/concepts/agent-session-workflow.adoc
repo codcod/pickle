@@ -1,0 +1,105 @@
+[#agent-session-workflow]
+= Agent Session Workflow
+
+{product} deliberately ships no model or agent-tier configuration — the split
+between *judgment* (what a ticket says, how it's graded, refined, reviewed)
+and *mechanics* (CLI commands) means the tool never inspects which model or
+session produced a ticket, a review, or a commit (see <<the-flow>>). Which
+model handles which step, and where you draw session boundaries, is entirely
+up to you and your coding agent.
+
+This page documents one workable pattern for teams with access to more than
+one model tier — a faster/cheaper one and a stronger/pricier one. It is a
+suggestion to adapt to your own agent and provider, not a rule the flow
+checks or enforces.
+
+== Session boundaries are also cost boundaries
+
+A session's cost is driven by the *whole accumulated transcript*, reprocessed
+by whichever model handles the next turn — switching models mid-session
+doesn't erase the cost of the turns already in context. The flow's own
+procedures already define natural, self-contained handoff points:
+
+* A ticket's `## Description` and `## Implementation Plan` are meant to be
+  the spec — refinement exists precisely so the plan is a complete,
+  self-contained prompt (the READY gate, <<lifecycle>>).
+* The review protocol's own "load context" step reads only the ticket, the
+  project's `AGENTS.md`, and `pickle.toml` — it is designed to work from a
+  cold session, independent of whoever implemented the ticket.
+
+Matching your session boundaries to those same handoff points keeps each step
+honest about what context it actually needs — which is also what keeps it
+cheap.
+
+== A pattern mapped to the procedures
+
+[cols="2,2,2,4"]
+|===
+| Step | Session | Suggested tier | Why
+
+| Explore an idea
+| One ongoing chat
+| Lighter/default; escalate only for a genuine design fork
+| Open-ended, no judgement gate yet — most of it doesn't need the strongest
+  model available.
+
+| *Make it a ticket* (<<the-flow>>)
+| Same chat, or new
+| Lighter
+| Mostly mechanical: dedup search, `pickle ticket new`, filling the template,
+  grading against the backlog.
+
+| *Refine a ticket* (<<lifecycle>>)
+| Continue only while context is still small; otherwise start fresh from the
+  ticket file
+| Heavier
+| The READY gate is a judgement call — open decisions, scope splits, concrete
+  tasks. If exploration ran long, a fresh session reading just the ticket
+  costs less than dragging a large transcript through the heavier tier.
+
+| *Implement a ticket*
+| New session
+| Lighter
+| The Implementation Plan is meant to be a self-contained executable prompt;
+  starting cold (no exploration history) is also the real test that
+  refinement did its job.
+
+| *Validate / review a ticket* (<<lifecycle>>)
+| New session
+| Heavier
+| Severity-and-disposition calls benefit from both independence from the
+  implementer and stronger judgement.
+
+| Commit / push / open the MR
+| Same session as the review, switch tier
+| Lighter
+| Mechanical once the verdict is reached — no reason to keep paying the
+  heavier tier's rate for it.
+
+| Tell the agent a merge happened
+| Lightweight follow-up
+| Lighter
+| Bookkeeping only — a `## History` line.
+
+| Pick up the next ticket
+| New session
+| —
+| Keeps context (and cost) from growing unbounded across unrelated tickets.
+|===
+
+== Notes
+
+* The pickup applicability gate (<<lifecycle>>) already asks for a *fresh
+  sub-agent* to audit the plan's assumptions, free of the implementer's
+  sunk-cost bias. That sub-agent is a good place to pin a lighter tier
+  explicitly — it runs a scoped, bounded re-check against the ticket and the
+  board, not open-ended reasoning.
+* If your provider caches repeated prompt prefixes, the cache is normally
+  keyed per model. Switching tiers within a session still nets a saving over
+  staying on the heavier tier throughout — it just won't reuse a cache warmed
+  by a different model, so a round trip back to the heavier tier isn't
+  "free."
+* None of this is checked by `pickle board audit` or any other command —
+  <<the-flow>>'s judgment/mechanics split means model choice stays entirely
+  outside the tool's invariants. Treat this page as a starting recipe, not a
+  requirement.
