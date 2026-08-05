@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 ## IN DEVELOPMENT
 
@@ -45,7 +45,6 @@ Last updated: 2026-08-05
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | medium-high | medium | M | [] |  |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |  |
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
@@ -92,6 +91,7 @@ Last updated: 2026-08-05
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | yes — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted |
 | T-053 | pickle serve — local web dashboard to visualize the board and its changes | yes — merged to main (PR #2, 8c33f5c), user-approved as an exception; squashed to one commit; branch deleted |
 | T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | yes — merged to main (PR #3, b70e238), user-approved as an exception; kept both |
+| T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | yes — merged to main (PR #14, 9a9af59) |
 | T-058 | per-child ticket_prefix: optional id prefix per child-project, default T | yes — merged to main (0f3049f) |
 | T-059 | family: group tickets under an umbrella ticket id for curated pickup order | yes — merged to main (#7) |
 | T-061 | Board child-project filter buttons in the serve dashboard | yes — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed |

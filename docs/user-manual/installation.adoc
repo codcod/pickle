@@ -55,7 +55,14 @@ Cutting an actual release is tag-driven and documented in the repository's
 [source,sh]
 ----
 pickle install        # lay down the ticket flow — see the CLI reference
+pickle hooks install  # optional: guard ticket bookkeeping (once per clone)
 pickle version
 ----
+
+`pickle hooks install` arms a `pre-commit` guard that refuses ticket and board
+bookkeeping staged on a feature branch — the one flow rule nothing else can
+enforce. Hooks live in `.git/` and are never cloned or pushed, so run it once
+in **each** clone you work from, including a fresh clone of a project that
+already uses it. See <<cmd-hooks>>.
 
 Continue with <<your-first-project>>.

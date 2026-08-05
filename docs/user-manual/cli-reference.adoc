@@ -27,6 +27,10 @@ ever written to `~/` or outside the project root.
 | `pickle uninstall [--dry-run]`
 | Remove skill/symlinks/markers; keep `tickets/` + `pickle.toml`.
 
+| `pickle hooks install\|uninstall\|status\|run`
+| Manage the `pre-commit` guard that refuses ticket bookkeeping staged on a
+  feature branch.
+
 | `pickle ticket new "<title>" --project <name>`
 | Allocate `T-NNN`, scaffold the ticket, regenerate the board.
 
@@ -51,7 +55,7 @@ ever written to `~/` or outside the project root.
 
 ----
 pickle install [--project <name>] [--path <path>] [--build/--test/--lint/--docs <cmd>]
-               [--agent claude,opencode,pi] [--claude-symlink]
+               [--agent claude,opencode,pi] [--claude-symlink] [--hooks]
 ----
 
 Run once in a project to lay down the flow. It:
@@ -67,7 +71,11 @@ Run once in a project to lay down the flow. It:
   block into `AGENTS.md`;
 * writes `pickle.toml` registering the first child-project (`--project`,
   default: the root dir name; `--path`, default `.`);
-* wires up each agent named in `--agent` (see below).
+* wires up each agent named in `--agent` (see below);
+* with `--hooks`, also installs the pre-commit bookkeeping guard, exactly as
+  <<cmd-hooks>> does. It is opt-in because it writes outside the install root
+  (into `.git/`), and a failure there is reported as a warning: the install
+  itself is already complete and correct.
 
 === `--agent` — which coding agents to wire up
 
@@ -232,6 +240,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
 * pickle-owned agent scaffolds (`.pi/extensions/*.ts`) match the shipped
   version — a drifted file is a *warning* pointing at `pickle upgrade`
   (customizations belong in sibling files);
+* the state of the pre-commit guard (<<cmd-hooks>>) is reported. The guard is
+  opt-in, so an absent hook is *not* a finding — just a line naming
+  `pickle hooks install`, which is also the answer after a fresh clone, since
+  hooks are never cloned. Only a hook written by an *older* pickle is a
+  *warning*, pointing at `pickle upgrade`; a hook pickle does not own is
+  reported and left alone;
 * each registered child's `path` is a git repository;
 * the installed `payload_version` matches the binary — a mismatch is a
   *warning*, and `doctor` first checks whether `upgrade` could actually
@@ -259,7 +273,8 @@ file itself is never deleted), and the agent scaffolds: the pickle-owned
 `.pi/extensions/` files go (pruning `.pi/` only when left empty — your own
 extensions keep it alive), and `opencode.jsonc` goes *only* while still
 byte-identical to the shipped template; one you have edited is yours and
-stays.
+stays. A pickle-owned `pre-commit` hook (<<cmd-hooks>>) is removed too; a hook
+pickle did not write is reported and left in place.
 
 *`tickets/` and `pickle.toml` are both left intact* — the board, the tickets,
 and the child-project registry are instance data, so a later `pickle install`
@@ -269,6 +284,83 @@ or `pickle upgrade` re-attaches cleanly to the same configuration.
 Idempotent: on an already-clean tree it reports nothing removed rather than
 failing. A self-host *symlinked* skill directory has only the link removed —
 the tree it points at is never deleted.
+
+[#cmd-hooks]
+== `pickle hooks`
+
+----
+pickle hooks install [--force]
+pickle hooks uninstall [--dry-run|-n]
+pickle hooks status
+pickle hooks run pre-commit
+----
+
+Installs, inspects and runs pickle's `pre-commit` guard: it **refuses a commit
+that stages `tickets/` paths while a feature branch is checked out**.
+
+The flow puts code on a child's `feat/T-NNN-<slug>` branch and ticket/board
+bookkeeping on the base branch. Bookkeeping that rides along on a feature
+branch is folded into a single commit — or dropped — by a squash-merge, after
+which `BOARD.md` indexes tickets whose recorded status disagrees with where the
+files are. The rejection message names the branch, the staged paths, and the
+way out.
+
+`install` writes a short shim that calls `pickle hooks run pre-commit`, so the
+rule reads the live `pickle.toml` (each child's `branch_prefix`) and cannot go
+stale the way a generated script with the prefixes baked in would. The shim is
+marked `# pickle:hook v1`, and that marker is the whole of pickle's ownership
+claim: a `pre-commit` hook without it is someone else's and is never modified,
+removed, or overwritten unless you pass `--force`. To keep your own hook *and*
+the guard, chain it:
+
+[source,sh]
+----
+pickle hooks run pre-commit || exit 1
+----
+
+The target directory is whatever `git rev-parse --git-path hooks` resolves to,
+so an existing `core.hooksPath` (Husky, Lefthook, pre-commit.com) is honoured
+and the shim lands where git will actually look for it. Pickle never sets
+`core.hooksPath` itself — that setting is repo-global and would evict those
+tools.
+
+`uninstall` removes the hook only while it carries pickle's marker;
+`--dry-run` (`-n`) reports what would go and changes nothing. `status` prints
+the state (absent, installed by pickle, stale, or foreign) and the resolved
+path.
+
+=== What the guard does and does not catch
+
+[IMPORTANT]
+====
+**Hooks are per-clone.** They live in `.git/`, which git never clones or
+pushes, so every clone of a project needs `pickle hooks install` once. This is
+also why `pickle doctor` mentions an absent hook instead of assuming a project
+that wants the guard already has it.
+====
+
+* **`git commit --no-verify` bypasses it**, deliberately — that is the escape
+  hatch for the rare commit whose *product* is a file under `tickets/` (a
+  change to the board renderer's fixtures, say).
+* **`--amend` is checked against the index only.** The hook does run, but
+  `git diff --cached` compares the index with `HEAD`, so amending a commit that
+  *already* contains `tickets/` shows nothing to object to.
+* **A merge, cherry-pick or revert in progress is passed through**: those
+  commits carry files you never staged by hand, and refusing them would leave
+  you stuck mid-operation. A detached `HEAD` is passed through as well — there
+  is no branch name to judge.
+* **It is best-effort and terminal-first.** The shim finds `pickle` on `PATH`;
+  GUI and IDE clients often commit with a minimal `PATH` that lacks
+  `/opt/homebrew/bin` or `$GOPATH/bin`, and there the guard is silently
+  skipped rather than blocking the commit.
+* **It fails open, always.** No `pickle` on `PATH`, no `pickle.toml`, an
+  unparseable config, no git — each of those skips the check and allows the
+  commit. `pickle hooks run pre-commit` exits `1` for a violation and *only*
+  for a violation, `0` when the commit is fine or the guard could not run, and
+  `2` for a bad invocation. That contract is what makes an older `pickle`
+  first on your `PATH` harmless: it exits `2` on the unknown `hooks` verb, and
+  the shim treats anything other than `1` as "no violation" instead of
+  blocking every commit in the repository.
 
 [#cmd-ticket-new]
 == `pickle ticket new`

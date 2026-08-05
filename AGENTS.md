@@ -60,6 +60,12 @@ earns a **disposition** (rules §5), and most are resolved without a new ticket.
   (squash or keep history) + push + open the MR — **merging is always the human's**.
   Overarching bookkeeping (tickets, board, docs) may be committed automatically,
   always with **explicit pathspecs** (`git add <paths>`, never `git add -A`/`.`).
+- **Where commits land.** Code goes on the child's feature branch; **ticket and board
+  bookkeeping is committed on the base branch**, never on a feature branch — a squash-merge
+  folds or drops it and the board then disagrees with the tickets it indexes. This covers a
+  review's own moves too, and it is why a reviewer on a feature branch reads the ticket from
+  the base branch. `pickle hooks install` enforces it locally, once per clone (bypass a
+  single commit with `git commit --no-verify`).
 
 ### Board rule
 

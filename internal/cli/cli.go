@@ -53,6 +53,8 @@ func Run(payload fs.FS, version string, args []string) int {
 		return runDoctor(args[1:])
 	case "uninstall":
 		return runUninstall(args[1:])
+	case "hooks":
+		return runHooks(args[1:])
 	case "project":
 		return runProject(args[1:])
 	case "ticket":
@@ -91,6 +93,12 @@ Setup commands:
   doctor                  Verify install integrity (skill, symlinks, markers, child paths).
   uninstall [--dry-run]   Remove skill/symlinks/markers; leave tickets/ and pickle.toml
                           intact. --dry-run (-n) lists what would go, changing nothing.
+  hooks install [--force]     Install the pre-commit guard that refuses ticket
+                              bookkeeping staged on a feature branch. Once per clone.
+  hooks uninstall [--dry-run] Remove pickle's pre-commit hook (a foreign hook is left alone).
+  hooks status                Report the hook's state and resolved path.
+  hooks run pre-commit        Run the guard (the installed shim's entry point).
+                              Exits 1 only for a violation.
 
 Flow commands:
   ticket new "<title>" --project <name> [--impact .. --complexity .. --cost ..]

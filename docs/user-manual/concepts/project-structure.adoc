@@ -136,10 +136,17 @@ What that changes in practice:
 * `pickle doctor` checks that every registered child is a git repo, so a child
   at `.` requires a `.git` at the root — install into the repository itself,
   not into a parent directory holding it.
-* One history carries both roles. `tickets/`, `BOARD.md` and `pickle.toml` sit
-  in the same repo as the `feat/T-NNN-<slug>` branches cut from it, so a
-  feature branch can hold the code change *and* the ticket's move to
-  `4-in-review/`.
+* One history carries both roles, so the split between them has to be
+  deliberate. `tickets/`, `BOARD.md` and `pickle.toml` sit in the same repo as
+  the `feat/T-NNN-<slug>` branches cut from it: code belongs on the feature
+  branch, while **ticket and board bookkeeping belongs on the base branch**.
+  Bookkeeping that rides along on a feature branch is folded into one commit —
+  or dropped — by a squash-merge, and the board then indexes tickets whose
+  recorded status disagrees with where the files actually are.
+* Nothing about `git add tickets` *looks* wrong on a feature branch, which is
+  why `pickle hooks install` exists: it installs a `pre-commit` hook that
+  refuses staged `tickets/` paths while a feature branch is checked out. Hooks
+  are per-clone (see <<cmd-hooks>>).
 * Commit hygiene therefore matters more, not less: stage with explicit
   pathspecs (`git add <paths>`, never `git add -A`) so a code commit does not
   sweep up an unrelated board regeneration, and keep ticket/board bookkeeping

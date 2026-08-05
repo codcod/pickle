@@ -117,3 +117,9 @@ Soft couplings (no `depends-on:`, no ordering enforced):
 
 - 2026-07-27 — created (TO DO). source: field finding, pickle 0.1.0 guardrail false positive;
   re-scoped at triage from hardening the matcher to changing the verdict
+- 2026-08-06 — patched by the T-057 review's impact sweep (finding N5, disposition `fixed inline`
+  there): T-057 deliberately added **no** fourth guardrail rule (its decision 1 — a pi extension
+  guards only a pi session, and the `pre-commit` hook guards every committer), but it did add a
+  header paragraph to `agents/pi/extensions/pickle-guardrails.ts` saying so, which shifts this
+  ticket's line references (`segments()` `:24-29` and below) by 5. Behaviour is untouched, so the
+  verdict-semantics question here is unchanged; re-verify the line numbers at refinement

@@ -62,10 +62,34 @@ settle:
   explicitly: orphan pages (an `.adoc` under `docs/user-manual/` with no `include::`), pages with
   no inbound xref (weaker — the TOC is a legitimate entry point), and `link:`/`http` URLs
   (out of scope: needs the network).
+- **Inter-document `xref:` forms are a second, distinct class** (added 2026-08-06 by the T-057
+  review, finding N3). The manual is **one assembled book** (`docs/user-manual.adoc` +
+  `include::`), so every cross-file reference must be `<<anchor>>`. Writing
+  `xref:cli-reference.adoc#cmd-hooks[…]` instead is *not* an unresolved anchor — asciidoctor
+  resolves it happily, to `cli-reference.pdf#cmd-hooks` in the PDF and `cli-reference.epub#cmd-hooks`
+  in the EPUB, **neither of which exists**. T-057 shipped two such links and `just docs-check`
+  passed; they were caught only by grepping the rendered artifacts, and were fixed in `a7e2ada`.
+  A set-difference checker over `[#id]`/`<<id>>` would have missed both, so the checker must also
+  **reject the `xref:<file>.adoc#…` form outright** for any file that is `include::`-d into the
+  book — the cheapest half of this ticket, and the one with a proven miss.
 - **Auto-generated ids.** Asciidoctor generates section ids when an explicit `[#id]` is absent;
   the checker must not report a reference to one of those as unresolved. At filing every
   `<<…>>` target in this manual resolves to an *explicit* anchor, so the simple version is
   correct today — but that is a property to assert, not to assume.
+
+### Also in scope: `docs-check` does not run in CI at all
+
+Folded in from T-057's pickup gate (finding F11, 2026-08-05). Even a *perfect* anchor checker
+wired into `just docs-check` would not run automatically: `.github/workflows/ci.yml` runs
+`go vet` / `gofmt` / `go test` / `go build` only, so `snowball check` is a local-only gate that a
+contributor (or an agent) can skip by never invoking it. This ticket's fix therefore has two
+halves, and the second is what makes the first load-bearing:
+
+1. the anchor/xref check itself (above);
+2. **a CI job that runs the docs gate** — which also settles the "where it lives" question above:
+   a Go test under `internal/` reaching `../../docs/` runs in CI *for free* today, whereas a
+   `just docs-check` extension needs `snowball` installed in the workflow. Refinement should price
+   both (a Go test needs no new CI dependency; a `snowball` job also validates the render).
 
 ### Soft couplings
 
@@ -86,3 +110,8 @@ settle:
 
 - 2026-08-05 — created (TO DO). source: pickle ticket new
 - 2026-08-05 — filed from a docs session, not a review: registering the Agent Session Workflow page turned up that `snowball check` passes on an injected dead xref, and the manual's references had to be verified by an ad-hoc script instead
+- 2026-08-05 — patched by T-057's pickup gate (finding F11, disposition `folded`): scope gained the
+  CI half — `docs-check` is not wired into `.github/workflows/ci.yml` at all, so the docs gate
+  never runs unattended
+- 2026-08-06 — patched by the T-057 review (finding N3, disposition `folded`): scope gained the
+  inter-document `xref:<file>.adoc#id[]` class, with two live examples the current gate passed
