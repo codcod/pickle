@@ -29,6 +29,8 @@ include::user-manual/concepts/multi-project.adoc[leveloffset=+1]
 
 include::user-manual/concepts/project-structure.adoc[leveloffset=+1]
 
+include::user-manual/concepts/agent-session-workflow.adoc[leveloffset=+1]
+
 [part]
 == CLI Reference
 
