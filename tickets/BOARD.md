@@ -20,11 +20,10 @@ Last updated: 2026-08-05
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-022 | payload states commit policy, branch/ticket prefixes and WIP limits unconditionally; §8 pickup gate reads as freshness,… | [] |
 
 ## REWORK
 
@@ -78,6 +77,7 @@ Last updated: 2026-08-05
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
 | T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | yes — merged to main (ce306c2), user-approved; PR #12; branch deleted |
+| T-022 | payload states commit policy, branch/ticket prefixes and WIP limits unconditionally; §8 pickup gate reads as freshness,… | no — publish-gated |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — MERGED: feat/T-024-spawned-by-lineage-frontmatter → main (3c4c131, squashed) |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | yes — merged to main (PR #9, b45cb93), user-approved as an exception; squashed to one commit; branch deleted |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |

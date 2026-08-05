@@ -272,6 +272,15 @@ is the pinning, not the id.
 > default with a measured 100 % failure rate; nobody has been blocked by it, which is why it is
 > still here.
 
+> **The T-022 review (2026-08-05) hit it again, n=2.** Step 4b's `docs_readability` tool exited 1
+> with `400 model_not_supported` for `github-copilot/gemini-2.5-pro`, so the review's own
+> readability pass was a recorded conscious skip. Also logged there as finding **F5**: the same
+> defect shape in the *other* direction — `agents/pi/extensions/pickle-guardrails.ts:5-11,84-88`
+> and `agents/opencode/opencode.jsonc:59-67` assert the publish gate unconditionally without
+> reading `child_publish_gated`, so a project that turns publish-gating off still gets the prompt
+> and the comment that says it cannot be off. Same two files, same class; if the pin is ever filed
+> small on its own, this belongs in the same ticket.
+
 ## Pi-as-best-tier exploration (2026-08-04) — three roads, and a process failure
 
 Idea from chat: make Pi the **"best experience tier"** — hard gates instead of prose rules, agents

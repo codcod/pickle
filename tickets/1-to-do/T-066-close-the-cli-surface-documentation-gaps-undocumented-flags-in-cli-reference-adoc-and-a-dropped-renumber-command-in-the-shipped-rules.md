@@ -35,7 +35,7 @@ Swept by comparing every `fs.String/Bool` flag in `internal/cli/*.go` against th
 
 ### 2. A dropped command cited as the mechanism, in the payload every project installs
 
-`skill/resources/tickets-README.md:122-123` states that re-homing a ticket to a
+`skill/resources/tickets-README.md:127-128` states that re-homing a ticket to a
 differently-prefixed child *"is a renumber, not a free relabel (`pickle ticket renumber`)"*, and
 `internal/audit/audit.go:101` comments that a mismatched prefix *"goes red here until `pickle
 ticket renumber` (T-060) runs"*. **T-060 is in `7-dropped/`** — dropped 2026-07-28 with the
@@ -61,7 +61,12 @@ which is why they are here.
 
 - **T-019** (`DESIGN.md`) — lineage only; its §7 pointer is what raises the stakes here.
 - **T-022** / **T-041** — same defect class (stale authoritative text in shipped payload /
-  marker block). No overlap in the files touched.
+  marker block). **T-022 now overlaps in one file** (`skill/resources/tickets-README.md`): it
+  added a precedence blockquote to §0 and rewrote §8's pickup-gate paragraph, which is what
+  shifted the renumber claim from `:122-123` to `:127-128`. The lines are disjoint from this
+  ticket's, but re-verify them at refinement. T-022 also already added the missing
+  `ticket_prefix` bullet to `docs/user-manual/configuration.adoc:55` — **do not double-fix it**;
+  this ticket still owns `cli-reference.adoc`.
 - **T-058** / **T-060** — the `ticket_prefix` schema and its dropped migration command.
 
 ## Implementation Plan
@@ -75,3 +80,4 @@ which is why they are here.
 ## History
 
 - 2026-08-05 — created (TO DO). source: pickle ticket new; spawned by the T-019 review, batching its non-blocking findings N3 (flags shipped but undocumented in cli-reference.adoc) and N5 (`pickle ticket renumber` cited in the skill payload though T-060 was dropped)
+- 2026-08-05 — patched by the T-022 review's impact sweep: the renumber claim's line reference re-verified (122-123 → 127-128) and the T-022 coupling corrected — the two tickets do share `skill/resources/tickets-README.md`, and `configuration.adoc`'s `ticket_prefix` bullet is already done
