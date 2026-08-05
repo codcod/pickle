@@ -38,6 +38,7 @@ Last updated: 2026-08-05
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | high | high | L | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -45,7 +46,6 @@ Last updated: 2026-08-05
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | medium-high | medium | M | [] |  |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |  |
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
