@@ -400,5 +400,5 @@ theme: shipped text describing the CLI surface has drifted from the CLI), 1 note
 - 2026-08-05 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent) confirmed all six claims, the prune scope, ground-truth citations and T-057's reference still hold, and WIP/board are clean; one inline amendment applied — acceptance-test step 5's glob widened from `tickets/1-to-do/T-019-*` to `tickets/*/T-019-*` since the ticket has since moved out of `1-to-do/`
 - 2026-08-05 — implementation note: acceptance-test step 5's exclusion glob amended inline to also exclude `tickets/BOARD.md` — its T-019 row is a generated reflection of the ticket's own title (which legitimately names "PLAN.md", the file being renamed), not a stray reference
 - 2026-08-05 — IN DEVELOPMENT → IN REVIEW: acceptance green
-- 2026-08-05 — IN REVIEW → DONE: reviewed, no blocking findings; 5 non-blocking — 2 fixed inline, 2 batched into new ticket T-066, 1 noted (see ## Review)
 - 2026-08-05 — IN REVIEW → DONE: reviewed: no blocking findings; 5 non-blocking (2 fixed inline, 2 -> T-066, 1 noted)
+- 2026-08-05 — merged to main (ce306c2), user-approved; PR #12; branch deleted
