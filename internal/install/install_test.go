@@ -693,6 +693,72 @@ func TestPayloadDispositionVocabulary(t *testing.T) {
 	}
 }
 
+// TestPayloadDefersToProjectConfig guards T-022's fix: the payload used to state
+// commit policy, branch prefix, ticket-id prefix and WIP limits as absolutes
+// ("pushing a child-project requires explicit user approval", "feat/T-NNN",
+// "≤ 1") even though all four are per-child (or overarching) `pickle.toml`
+// settings (internal/config/config.go's DefaultBranchPrefix, DefaultTicketPrefix,
+// DefaultWIPInDevelopment/Review, and CommitPolicy.ChildPublishGated) that
+// MarkerBlock (internal/install/install.go:796-877) renders per project,
+// including the inverted "not publish-gated" wording when child_publish_gated is
+// false. A non-default project therefore shipped two authoritative,
+// contradicting surfaces: the marker block's real values and the skill's
+// absolute prose. Two things must hold for that fix to stick:
+//
+//  1. Every payload file that states these defaults also states, once, that
+//     project configuration wins over the stated default — the literal anchor
+//     `Project configuration wins`.
+//  2. The specific absolute phrasings that caused the contradiction are gone
+//     for good. This blocklist is deliberately short: the payload legitimately
+//     keeps stating defaults in this vocabulary ("publish-gated", "≤ 1", …), and
+//     a broad sweep for e.g. every "never push" would fail on correct prose that
+//     merely states the default. Only the two phrasings that were themselves the
+//     defect are checked — the frontmatter description every agent loader reads,
+//     and the §8 pickup-gate heading that named the wrong test (T-022 adjacent
+//     item A: it read "freshness", its own mandate was assumptions true/required/
+//     worth it, so DROP as a legal verdict went unexercised).
+func TestPayloadDefersToProjectConfig(t *testing.T) {
+	files := []string{
+		"skill/SKILL.md",
+		"skill/resources/tickets-README.md",
+		"skill/resources/review-protocol.md",
+		"skill/resources/TEMPLATE.md",
+	}
+
+	body := make(map[string]string, len(files))
+	for _, rel := range files {
+		b, err := os.ReadFile(filepath.Join(payloadRoot(), filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatalf("read %s: %v", rel, err)
+		}
+		body[rel] = string(b)
+	}
+
+	// 1. Every payload file names the precedence rule.
+	const anchor = "Project configuration wins"
+	for _, rel := range files {
+		if !strings.Contains(body[rel], anchor) {
+			t.Errorf("%s does not contain %q: a project's AGENTS.md marker block renders the"+
+				" real branch prefix, ticket prefix, WIP limits and commit policy, and this"+
+				" file must say it wins over the default stated here", rel, anchor)
+		}
+	}
+
+	// 2. The retired absolute phrasings never come back.
+	const frontmatterLie = "pushing a child-project requires explicit user approval"
+	if strings.Contains(body["skill/SKILL.md"], frontmatterLie) {
+		t.Errorf("skill/SKILL.md frontmatter description still states %q as fact: it is false"+
+			" for any project with child_publish_gated = false", frontmatterLie)
+	}
+
+	const freshnessHeading = "Pickup is gated by a freshness check"
+	if strings.Contains(body["skill/resources/tickets-README.md"], freshnessHeading) {
+		t.Errorf("tickets-README.md still heads the pickup gate %q: its own mandate (SKILL.md's"+
+			" \"true, required, worth it\") is a merit test, not just an aging check, and DROP is"+
+			" a legal verdict there", freshnessHeading)
+	}
+}
+
 // TestVerifyStampedVersion covers the guard that stops Upgrade reporting a
 // version it did not actually put on disk. The config writer's own parse-back
 // check makes this unreachable today; it exists so that a future regression
