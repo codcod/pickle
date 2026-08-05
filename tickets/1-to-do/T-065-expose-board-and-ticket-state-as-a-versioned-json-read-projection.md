@@ -75,12 +75,22 @@ writer (work area 4), which is what creates the hazard.
 
 ### Honest scope of the benefit
 
-**There is no consumer today.** The value is contingent on something choosing to read it — the
-motivating candidate is an agent-harness extension that enforces flow gates (see
-`tickets/NOTES.md`, "Pi-as-best-tier exploration"), which is not filed. Graded `low-medium`
-for that reason, not `medium`: it is enabling infrastructure whose payoff is deferred, and it
-should not outrank tickets that fix measured field defects. If nothing consumes it, this is
-dead weight — that is the risk, stated up front.
+**There is no consumer today, and the motivating one was withdrawn the same day this was
+filed.** The candidate was an agent-harness extension enforcing flow gates; it was assessed
+against the field record hours later and **not filed** — its one evidenced rule already belongs
+to T-057, which had itself already concluded that a harness extension is the wrong primary
+mechanism (*"a pi extension only guards a pi session"*). See `tickets/NOTES.md`, "Second
+postscript (2026-08-04)".
+
+What survives without it: pickle has **no machine-readable output at all**, and T-056 work
+area 1 would have to build this projection regardless. That is real but weaker than the case
+at filing time. Graded `low-medium` — enabling infrastructure with deferred, now less certain,
+payoff; it should not outrank tickets that fix measured field defects.
+
+**Refinement must first decide whether this ticket should exist at all**, and specifically
+whether it stands alone or folds into T-056 work area 1 — the honest options are (a) refine as
+scoped, (b) fold into T-056 area 1 and drop this, (c) drop until a consumer is real. Do not
+default to (a) because the ticket is already on the board.
 
 ### What must not be assumed at refinement
 

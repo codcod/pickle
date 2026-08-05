@@ -480,6 +480,86 @@ the writable dashboard, still unevidenced).
 **Phase B is now three tickets, not four.** The general lesson, which is the same one this file
 already records twice: *grade and scope against the code, not against the docs describing it.*
 
+### Second postscript (2026-08-04) — rows 3 and 4 die too; the phase does not survive
+
+Rows 1 and 2 were corrected above. Applying the **same evidentiary standard** to rows 3 and 4 —
+*what recorded evidence shows this solves a problem we actually have?* — ends the phase.
+
+**Row 3, the npm package: not filed.** Six arguments were tried and all six fail.
+
+1. **"One install command" is already true, twice.** `README.md:21-30` ships
+   `brew install codcod/tap/pickle` and `go install github.com/codcod/pickle@latest`. npm would be
+   a *third* channel. The stated requirement was satisfied before it was raised.
+2. **No field evidence of install friction.** The only two recorded real-world sessions — the
+   `unity` 84-ticket migration and the `snowball` second-child onboarding (both triaged in this
+   file) — produced **five filed tickets** (T-049, T-050, T-051, T-052, plus a fold into T-040).
+   **Not one concerns obtaining the binary.** All five are post-install semantics.
+3. **T-013 says the same from the other side.** Its ten "install polish" items are marker spacing,
+   summary labels, CLI coverage, root resolution, a double config load, file modes — **all
+   internals of the `install` command, none about the channel.**
+4. **Extension delivery is already solved.** `internal/install/install.go:58-59` writes
+   `.pi/extensions/docs-readability.ts` and `.pi/extensions/pickle-guardrails.ts` from embedded
+   assets. Road A is not a rejected alternative, it is the **shipped mechanism**; npm would replace
+   working code, so the burden is on npm to beat it.
+5. **The version-contract argument is answered by T-065.** npm+pin's one real edge over road A is
+   enforceable binary↔extension coupling. T-065's envelope carries the emitting binary's version so
+   a consumer can refuse a dialect it does not understand — drift is handled at runtime regardless
+   of delivery.
+6. **Per-project pinning has no team to serve, and is circular.** It helps the *second* contributor
+   onward; the record shows one external workspace and notes no second contributor. And the pin
+   only exists after someone ran `pickle install`, which needs the binary — so it never helps the
+   first user.
+
+**Pre-registered triggers — file it when any one fires:** (a) a version-drift incident actually
+reported in a pickle-using repo; (b) the extension needs a third-party npm dependency Pi's
+built-in imports do not provide; (c) a second contributor hits a mismatch the runtime handshake
+cannot resolve.
+
+**Row 4, the Pi extension: not filed — T-057 already owns its one evidenced rule, and already
+decided against the extension as the primary mechanism.** Gate by gate:
+
+- **Skill arbitration** — the hazard was *created by row 3* (a packaged copy shadowing the repo
+  copy). With no package there is one copy, `.agents/skills/ticket-flow/`. **Moot.**
+- **Version handshake** — mechanism now exists in T-065; needs a consumer, and row 4 was to be it.
+  Circular.
+- **WIP / board-hand-edit gates** — no recorded occurrence. T-052 is the audit *misclassifying*
+  staleness as a hand-edit; the feared event has not been observed.
+- **Bookkeeping on a `feat/` branch** — the one gate with real evidence: **three occurrences**, one
+  *"immediately after the same mistake was written up as a finding"*. It is already **T-057**
+  (`medium-high`, the backlog's joint-top grade).
+
+And T-057 has already settled the mechanism against the extension: *"**a pi extension only guards
+a pi session.** All three violations above were made by an agent shelling out to `git` outside any
+such hook."* Its likely answer is a `pre-commit` hook as the real enforcement — harness-agnostic,
+guarding humans and scripts too — with a guardrail rule as the fast in-session explanation. So the
+one evidenced gate wants **a fourth rule in the existing 96-line `pickle-guardrails.ts`**, junior
+to a git hook, not a new extension architecture.
+
+The shipped extension's own record remains the baseline any expansion must beat: **1 false
+positive (T-050), 0 recorded true positives.**
+
+**The general rule this yields, worth keeping:** *anything enforceable in the binary belongs in the
+binary* — it works in every harness and is covered by Go tests. An agent-side gate is justified
+only for actions that **bypass pickle entirely** (raw `git` in a bash call), which is exactly the
+two rules already shipped.
+
+### Where that leaves the programme
+
+**Phase B is not a phase.** Of four proposed tickets: one filed and re-scoped (T-065), one
+pre-registered (`schema_version`, on T-056 area 4), two killed with triggers recorded. The
+"Pi as best-experience tier" idea reduces, on the evidence, to **T-057** — already filed, already
+top-graded, already analysed, and not Pi-specific at all.
+
+**Consequence for T-065, recorded honestly:** its motivating consumer was row 4, which is now not
+being filed. Its Description says as much. It keeps standalone value (there is no machine-readable
+output at all, and T-056 area 1 would build the projection anyway), but its consumer story is
+weaker than at filing, and **refinement should decide whether it stands alone or folds into T-056
+work area 1** rather than defend it because it is already on the board.
+
+**Requirement 3 — "close-to-ideal UX" — is the one with field evidence, and it is already on the
+board:** T-013, T-051, T-052, T-057. Five findings from real use, none needing a new distribution
+channel or a harness tier.
+
 ## Cross-epic decisions
 
 **T-044 won the T-039-vs-T-044 design decision** (2026-07-26): the board becomes a generated
