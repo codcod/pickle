@@ -68,8 +68,8 @@ what makes hooks awkward:
 A cheaper, near-zero-risk subset worth pricing separately during refinement: have
 **`pickle board audit` fail** when the current branch matches `branch_prefix` and `tickets/`
 has staged or committed changes not on the base. That reuses machinery that already exists and
-already runs, needs no git config, and `PLAN.md:241` already anticipates wiring audit into "CI
-+ a pre-commit hint".
+already runs, needs no git config, and `DESIGN.md` §7 already anticipates wiring audit into
+"CI + a pre-commit hint".
 
 ### Soft couplings
 

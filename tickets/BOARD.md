@@ -51,8 +51,8 @@ Last updated: 2026-08-05
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
+| T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
-| T-019 | correct PLAN.md's five stale claims and rename it to DESIGN.md | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
@@ -77,6 +77,7 @@ Last updated: 2026-08-05
 | T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | yes — MERGED: feat/T-009-agent-enablement → main (22d2871, squash), user-approved; branch deleted |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
+| T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | no — publish-gated |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — MERGED: feat/T-024-spawned-by-lineage-frontmatter → main (3c4c131, squashed) |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | yes — merged to main (PR #9, b45cb93), user-approved as an exception; squashed to one commit; branch deleted |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |
