@@ -346,3 +346,4 @@ feat/)` correctly, and the manual is not the surface carrying the defect. `READM
   step-4b pinned-model item stays parked: same defect class, but a code change, not prose.
   Grades unchanged (medium-high / low / S).
 - 2026-08-05 — TO DO → READY: plan complete
+- 2026-08-05 — READY → IN DEVELOPMENT: picked up

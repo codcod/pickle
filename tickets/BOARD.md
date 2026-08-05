@@ -13,10 +13,11 @@ Last updated: 2026-08-05
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-022 | payload states commit policy, branch/ticket prefixes and WIP limits unconditionally; §8 pickup gate reads as freshness,… | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-05
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-022 | payload states commit policy, branch/ticket prefixes and WIP limits unconditionally; §8 pickup gate reads as freshness,… | medium-high | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
