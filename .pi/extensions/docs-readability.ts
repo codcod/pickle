@@ -1,6 +1,7 @@
 /**
- * docs-readability — Pi extension: an optional Markdown readability reviewer for
- * ticket-flow reviews while developing `pickle`.
+ * docs-readability — Pi extension scaffolded by `pickle install --agent pi`:
+ * an optional AsciiDoc/Markdown readability reviewer for ticket-flow reviews
+ * (review protocol Step 4b).
  *
  * Exposes a Gemini readability reviewer two ways, sharing one core helper:
  *   - `docs_readability` tool  — LLM-callable, used by the flow agent mid-review.
@@ -10,24 +11,24 @@
  * default (same subscription as the opencode backend), or a direct
  * `GEMINI_API_KEY` (`google` provider).
  *
- * It is a SUGGESTION SERVICE only: it reads the given AsciiDoc/Markdown files and
- * returns a list of suggestions. It never edits files — the flow agent applies approved
- * edits with its own tools. This mirrors the opencode `docs-readability`
- * subagent (opencode.jsonc); both share ONE prompt at
- * `.agents/skills/ticket-flow/resources/docs-readability.prompt.md`.
- *
- * The prompt ships in the skill payload (skill/resources/, reached here via the
- * self-host symlink), and `pickle install` scaffolds this same reviewer into
- * projects (T-009); this file is the dev-repo copy of the shipped extension.
+ * It is a SUGGESTION SERVICE only: it reads the given AsciiDoc/Markdown files
+ * and returns a list of suggestions. It never edits files — the flow agent
+ * applies approved edits with its own tools. This mirrors the opencode
+ * `docs-readability` subagent (opencode.jsonc); both share ONE prompt, shipped
+ * with the skill at `.agents/skills/ticket-flow/resources/docs-readability.prompt.md`.
  *
  * Mechanism: Pi has no in-process "call model X" primitive, so — like Pi's own
  * examples/extensions/subagent — it spawns a Gemini-pinned `pi` subprocess in
  * print mode with `--no-builtin-tools`, so the child can neither read nor write
  * files; it only transforms the prompt text into suggestions.
  *
+ * This file is pickle-owned: `pickle upgrade` refreshes it in place and
+ * `pickle uninstall` removes it. Put customizations in a SEPARATE extension
+ * file next to this one, not in here.
+ *
  * Install: auto-discovered from `.pi/extensions/` once the project is trusted.
  * Hot-reload after edits with `/reload`. Requires a one-time `pi` `/login` to
- * GitHub Copilot (or `export GEMINI_API_KEY=…`). See .pi/README.md.
+ * GitHub Copilot (or `export GEMINI_API_KEY=…`).
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
@@ -44,8 +45,8 @@ import { join, resolve } from "node:path";
 const PROVIDER = process.env.DOCS_READABILITY_PROVIDER ?? "github-copilot";
 const MODEL = process.env.DOCS_READABILITY_MODEL ?? "gemini-2.5-pro";
 
-// Canonical reviewer prompt — SHARED with the opencode docs-readability agent.
-// Ships in the skill payload; resolved here via the self-host symlink.
+// Canonical reviewer prompt — SHARED with the opencode docs-readability agent;
+// shipped with the installed ticket-flow skill.
 const PROMPT_PATH = ".agents/skills/ticket-flow/resources/docs-readability.prompt.md";
 
 // Guard the single-arg prompt size passed to the subprocess.
