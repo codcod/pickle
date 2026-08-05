@@ -1,6 +1,6 @@
 ---
 name: ticket-flow
-description: Operate a ticket-based, board-driven feature flow (installed by the `pickle` CLI) across one or more connected child-projects. Use when asked to "make it a ticket", "refine ticket T-NNN" (make it ready), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses. One markdown ticket per feature; a ticket's status is the directory it lives in; each ticket targets one registered child-project via `project:` frontmatter; a generated BOARD.md is the live index (never hand-edited; prose goes in tickets/NOTES.md); reviews classify findings by severity (blocking vs non-blocking) and then disposition each non-blocking one, defaulting to note-and-close; pushing a child-project requires explicit user approval.
+description: Operate a ticket-based, board-driven feature flow (installed by the `pickle` CLI) across one or more connected child-projects. Use when asked to "make it a ticket", "refine ticket T-NNN" (make it ready), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses. One markdown ticket per feature; a ticket's status is the directory it lives in; each ticket targets one registered child-project via `project:` frontmatter; a generated BOARD.md is the live index (never hand-edited; prose goes in tickets/NOTES.md); reviews classify findings by severity (blocking vs non-blocking) and then disposition each non-blocking one, defaulting to note-and-close; publishing a child-project follows the project's configured commit policy (default: explicit user approval).
 ---
 
 # Ticket flow
@@ -73,12 +73,17 @@ WIP limits, and an optional per-child review addendum. Defaults:
   board, docs) may be committed automatically, always with explicit pathspecs.
 - **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced **per child**.
 
+> **Project configuration wins.** The bullets above state the flow's defaults, once.
+> Where this skill names a branch prefix, a ticket-id prefix, a WIP limit or a commit policy
+> elsewhere, it is restating one of these same defaults — the project's `AGENTS.md` marker block
+> renders what `pickle.toml` actually configures for each child, and it wins on any disagreement.
+
 ## The rules (summary — full text in `resources/tickets-README.md`)
 
 - **Status = directory.** A ticket's status *is* the folder it sits in. There is **no `status:`
   field**; record every transition as a dated line in the ticket's `## History`.
 - **Child-project target.** Every ticket has a `project:` frontmatter naming one registered
-  child; its `feat/` branch is cut in that child's repo.
+  child; its feature branch is cut in that child's repo.
 - **IDs (`<PREFIX>-NNN`, per-child counters).** A child's `ticket_prefix` (default `T`) followed
   by a number, monotonically increasing **within that prefix**, **never reused**
   (`max(existing ids sharing that prefix across all status dirs) + 1`). Children that leave the
@@ -105,8 +110,8 @@ WIP limits, and an optional per-child review addendum. Defaults:
 - **Board rule.** `BOARD.md` is **generated** — regenerated wholesale from the ticket files by
   `pickle ticket new`, `pickle ticket move` and `pickle board sync`. Never edit it by hand;
   hand-written planning notes go in `tickets/NOTES.md`.
-- **WIP limits per child.** `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, counted independently
-  per child.
+- **WIP limits per child.** `3-in-development/` ≤ 1, `4-in-review/` ≤ 1 by default, counted
+  independently per child (a project may tune either — see *Project configuration* above).
 - **Every move** = move the file + one dated `## History` line, and the board regenerates.
   Prefer `pickle ticket move` — it does all of it atomically and enforces the state machine +
   per-child WIP.
@@ -177,19 +182,21 @@ When asked to implement ticket T-NNN:
      READY.** For each assumption, confirm it is still **true**, **required**, and **worth it**.
    - The agent returns a **findings list classified like a review** — severity *and* disposition
      per the rules §5. **Present it and get approval on the routing:** clean → proceed; plan
-     invalidated → move back to `2-ready/`/`1-to-do/` and re-refine; otherwise disposition each
-     finding, defaulting to note-and-close. An amendment to the plan being picked up takes the
-     inline disposition (edit the plan, record it in the ticket's History); adjacent work earns a
-     ticket only by passing §5's promotion test, batched by theme.
+     invalidated → move back to `2-ready/`/`1-to-do/` and re-refine; assumption proven wrong at
+     filing and no longer worth it → **drop** (`7-dropped/` is a legal target from `2-ready/`,
+     with a reason); otherwise disposition each finding, defaulting to note-and-close. An
+     amendment to the plan being picked up takes the inline disposition (edit the plan, record it
+     in the ticket's History); adjacent work earns a ticket only by passing §5's promotion test,
+     batched by theme.
 4. **Move** the ticket: `pickle ticket move T-NNN in-development --reason "picked up"`.
 5. **Create the feature branch** `feat/T-NNN-<slug>` **inside the target child-project's repo**
    (from the agreed base, default `main`).
 6. **Execute the Implementation Plan top-to-bottom** — it is the executable prompt.
 7. **Run the acceptance test** and the child's build/validate commands until green.
 8. **Finish:** write the summary, prepare the suggested commit message (ticket id in brackets).
-   Commit locally on the ticket branch; **do not push or open a merge request without user
-   approval** (commit policy). `pickle ticket move T-NNN in-review --reason "acceptance green"`
-   and hand back.
+   Commit locally on the ticket branch; publish only per the project's configured commit policy
+   (default: do not push or open a merge request without user approval).
+   `pickle ticket move T-NNN in-review --reason "acceptance green"` and hand back.
 
 ## Procedure: rework a ticket
 
@@ -221,8 +228,9 @@ child). In short:
 3. On a concluding verdict, **move the ticket** (`pickle ticket move …`).
 4. **Present the child-project commit message** (and merge-request attributes) **to the user
    for approval**. Only after approval: finalize the branch (squash or keep history), push, and
-   **create the merge request** in that child's repo. Never push a child or open an MR without
-   approval; **merging is the human's**.
+   **create the merge request** in that child's repo, per the project's configured commit policy
+   (default: never push a child or open an MR without approval); **merging is always the
+   human's**.
 5. Overarching-repo bookkeeping (ticket edits, moves, board) is committed per the project's
    commit policy (may be automated, explicit pathspecs only).
 

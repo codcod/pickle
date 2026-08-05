@@ -43,11 +43,15 @@ git checkout -b feat/T-NNN-<slug>
 ```
 
 Do all work on this branch, committing locally as you go (WIP commits are encouraged —
-crash-safety and diffable rework rounds). **Never push the child-project or open a merge
-request without explicit user approval** (the project's commit policy): end with a summary
-and a suggested commit message (see Finish, below); once the user approves, finalize the
-branch (squash to the approved commit or keep the history — the user chooses), push, and
-open the merge request — **merging is always the human's.**
+crash-safety and diffable rework rounds). Publish only per the project's commit policy
+(default: never push the child-project or open a merge request without explicit user
+approval): end with a summary and a suggested commit message (see Finish, below); once the
+user approves, finalize the branch (squash to the approved commit or keep the history — the
+user chooses), push, and open the merge request — **merging is always the human's.**
+
+> **Project configuration wins.** The branch name above uses the flow's default prefixes
+> (`feat/`, `T`); the commit policy stated is also a default. The project's `AGENTS.md` /
+> `pickle.toml` states what is actually configured — it wins on any disagreement.
 
 > If this ticket depends on an un-merged branch (in any child-project), **stop and tell the
 > human** rather than building on top of it.
@@ -99,10 +103,11 @@ user-facing surface.>
    <body — what and why>
    ```
 
-5. Commit locally on the ticket branch, but do **not** push or open a merge request without
-   user approval. Present the commit message; only after approval finalize the branch
-   (squash or keep history — the user chooses), push, and open the merge request (merging is
-   the human's). Hand back to the user.
+5. Commit locally on the ticket branch. Publish only per the project's commit policy
+   (default: do **not** push or open a merge request without user approval). Present the
+   commit message; only after approval finalize the branch (squash or keep history — the user
+   chooses), push, and open the merge request (merging is always the human's). Hand back to
+   the user.
 
 ## Review
 

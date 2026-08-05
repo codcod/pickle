@@ -52,9 +52,19 @@ Hand-edits are always preserved on load.
   by the agent when implementing and reviewing tickets that target it (this
   repository, for example, registers `docs = "just docs-check"` to validate
   this manual);
+* `ticket_prefix` (default `T`) — the per-child id prefix (`<PREFIX>-NNN`);
 * `branch_prefix` (default `feat/`);
 * `wip_in_development` / `wip_in_review` (default 1);
 * optional per-child `review_addendum`.
+
+The shipped ticket-flow skill (`.agents/skills/ticket-flow/`) states only the
+flow's *defaults* for the ticket-id prefix, the branch prefix, the WIP limits
+and the commit policy, deferring to the project's actual configuration. The
+`AGENTS.md` marker block is the authoritative render of what is actually
+configured: after changing `ticket_prefix`, `branch_prefix`,
+`wip_in_development`/`wip_in_review` or `[commit]`, re-run `pickle upgrade` (or
+`pickle project add`, which re-renders it directly) and read the marker block
+— not the skill — for this project's real values.
 
 == Parsing
 
