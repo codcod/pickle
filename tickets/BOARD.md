@@ -45,7 +45,6 @@ Last updated: 2026-08-05
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-022 | skill payload states commit policy, branch prefix and WIP limits unconditionally | medium-high | low | S | [] |  |
 | T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | medium-high | medium | M | [] |  |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |  |
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
@@ -78,6 +77,7 @@ Last updated: 2026-08-05
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
 | T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | yes — merged to main (ce306c2), user-approved; PR #12; branch deleted |
+| T-022 | payload states commit policy, branch/ticket prefixes and WIP limits unconditionally; §8 pickup gate reads as freshness,… | yes — merged to main (PR #13, 218a90a) |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — MERGED: feat/T-024-spawned-by-lineage-frontmatter → main (3c4c131, squashed) |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | yes — merged to main (PR #9, b45cb93), user-approved as an exception; squashed to one commit; branch deleted |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |

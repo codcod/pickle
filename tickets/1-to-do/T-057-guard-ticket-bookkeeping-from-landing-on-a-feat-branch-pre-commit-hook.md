@@ -22,11 +22,20 @@ branch. Nothing enforces that split, and it has now been violated three times in
 | T-053 | two bookkeeping commits rode the branch; the squash-merge ate them | `59dc0fd docs(tickets): restore T-053 bookkeeping after the squash merge` |
 | T-054 | the in-review move committed on the branch | caught as review finding **Q1**; branch reset, commit cherry-picked to `main` |
 | T-054 again | `T-056`'s ticket file committed on the branch **while closing the review that flagged Q1** | noticed only because `pickle board audit` reported 55 tickets instead of 56 |
+| T-022 | the *inverse* case, and a new failure mode: bookkeeping went to `main` correctly (`b1621da`), but the review branch was cut one commit earlier, so the reviewer checking out the feature branch (as the review protocol instructs) read `tickets/3-in-development/` and opened by recording the handback move as missing | caught as review finding **F6**; the review's own bookkeeping was moved off the branch onto `main` and the branch rebased |
 
-Three occurrences, one of them immediately after the same mistake was written up as a finding,
+Four occurrences, one of them immediately after the same mistake was written up as a finding,
 is not inattention — it is a missing guardrail. The failure is silent at the moment it happens
 (`git commit` succeeds, the board still renders) and only surfaces later, either as a wrong
 ticket count or as bookkeeping destroyed by a squash-merge.
+
+**The split has a second, opposite hazard the fix must not ignore** (T-022's row above). Doing it
+*right* — bookkeeping on the base — makes the ticket's true status **invisible from the feature
+branch**, which is precisely where `review-protocol.md` step 1 sends the reviewer to locate the
+ticket. Whichever enforcement lands, refinement should decide what the reviewer is told to do
+about it: read `tickets/` from the base branch rather than the checkout, or have the tooling say
+so. The repo is not yet consistent either way — T-019's bookkeeping rode its branch and survived
+only because that PR was merged, not squashed.
 
 ### This is not a self-hosting quirk — it affects default installs
 
@@ -95,3 +104,4 @@ already runs, needs no git config, and `DESIGN.md` §7 already anticipates wirin
 - 2026-07-28 — created (TO DO). source: chat — user request for a pre-commit hook rejecting
   `tickets/` paths on a `feat/` branch, after the T-054 review caught the violation (Q1) and
   it then recurred while that same review was being closed
+- 2026-08-05 — patched by the T-022 review's impact sweep (finding F6, disposition `folded`): a fourth occurrence added to the violation table — the inverse case, where correct base-branch bookkeeping made the ticket's status invisible to a reviewer on the feature branch — plus a note that refinement must settle what the reviewer reads

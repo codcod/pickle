@@ -48,6 +48,11 @@ referenced, not copied.
 - **One shared board, sub-grouped by child** (§6). **One global id namespace** (§3) regardless
   of child. **WIP limits are enforced per child** (§6).
 
+> **Project configuration wins.** Branch prefix, ticket-id prefix, WIP limits and commit policy
+> are all per-child (or overarching) `pickle.toml` settings; this document states the flow's
+> defaults for them (`feat/`, `T`, `≤ 1`, publish-gated). The project's `AGENTS.md` marker block
+> renders what is actually configured for each child, and it wins on any disagreement.
+
 ## 1. Status is the directory — one source of truth
 
 A ticket's status **is the directory it lives in**. There is **no `status:` field in the
@@ -195,11 +200,13 @@ All other transitions are forward-only, as diagrammed.
 "Refined" must be objective. A ticket is **READY only when its Implementation Plan** satisfies
 every item below:
 
-1. **Feature branch** named (`feat/T-NNN-<slug>`), created **inside the target child-project's
-   repo** before any change. (Commit policy: local WIP commits on the branch are allowed — **the
-   child-project is never pushed and no merge request is opened without explicit user
-   approval**; approval unlocks finalize (squash or keep history) + push + merge request;
-   **merging is the human's**. The project's `AGENTS.md` / `pickle.toml` states specifics.)
+1. **Feature branch** named per the child's configured branch and ticket-id prefixes (default
+   `feat/T-NNN-<slug>`), created **inside the target child-project's repo** before any change.
+   (Commit policy default: local WIP commits on the branch are allowed — **the child-project is
+   not pushed and no merge request is opened without explicit user approval, unless the project
+   configures otherwise**; approval unlocks finalize (squash or keep history) + push + merge
+   request; **merging is always the human's**. The project's `AGENTS.md` / `pickle.toml` states
+   specifics.)
 2. **Prerequisite gate** stated (or "none").
 3. **Confirmed design decisions** the implementer must honour (pull any project-wide decisions
    from the project's own docs / `AGENTS.md`).
@@ -324,11 +331,16 @@ different question: it earns a **disposition** (§5), and three of the four reso
 new ticket — including `fixed inline`, a bounded and recorded edit on the branch already under
 review. The pipeline above governs **features**; §5 governs **findings**.
 
-**Pickup is gated by a freshness check.** Before a READY ticket enters `3-in-development/`,
-its plan's assumptions are re-verified against the *current* target child-project (a ticket can
-age while the tree moves under it) by a spawned, unbiased sub-agent — scoped to the ticket's own
-assumptions plus the board delta since it went READY, run on every pickup. A plan found
-stale is routed back to `2-ready/`/`1-to-do/` to be re-refined rather than implemented.
+**Pickup is gated by an applicability check — testing merit, not only freshness.** Before a
+READY ticket enters `3-in-development/`, its plan's assumptions are re-verified against the
+*current* target child-project by a spawned, unbiased sub-agent — scoped to the ticket's own
+assumptions plus the board delta since it went READY, run on every pickup. The scope is not
+only assumptions that **aged**; it equally covers ones that were **wrong at filing** and went
+unnoticed. A plan found stale, or no
+longer worth building, is routed back to `2-ready/`/`1-to-do/` to be re-refined — or, when an
+assumption no longer holds and re-refining would not save it, **dropped**: `7-dropped/` is
+already a legal target from `2-ready/` (with a reason), and DROP is as legitimate a verdict here
+as proceed or route-back.
 The gate's own findings take **the four dispositions of §5**, with the same default: an
 amendment to the plan under pickup is `fixed inline` (edit the plan, record it in History) or
 `folded`; genuinely adjacent work is `noted` unless it passes the promotion test. A gate that
