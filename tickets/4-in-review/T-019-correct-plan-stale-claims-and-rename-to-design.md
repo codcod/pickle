@@ -290,7 +290,7 @@ rg -n 'DESIGN.md' tickets/1-to-do/T-057-*.md    # re-anchored, and no ':241' rem
 
 # 5. Only dated records still say PLAN.md.
 rg -n 'PLAN\.md' --glob '!tickets/6-done/**' --glob '!tickets/NOTES.md' \
-   --glob '!tickets/*/T-019-*' --glob '!DESIGN.md' .   # nothing
+   --glob '!tickets/*/T-019-*' --glob '!tickets/BOARD.md' --glob '!DESIGN.md' .   # nothing
 
 # 6. The repo is still sound.
 just build && just test && just lint && just docs-check
@@ -345,3 +345,5 @@ The doc change *is* the deliverable.
 - 2026-08-05 — TO DO → READY: plan complete
 - 2026-08-05 — READY → IN DEVELOPMENT: picked up
 - 2026-08-05 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent) confirmed all six claims, the prune scope, ground-truth citations and T-057's reference still hold, and WIP/board are clean; one inline amendment applied — acceptance-test step 5's glob widened from `tickets/1-to-do/T-019-*` to `tickets/*/T-019-*` since the ticket has since moved out of `1-to-do/`
+- 2026-08-05 — implementation note: acceptance-test step 5's exclusion glob amended inline to also exclude `tickets/BOARD.md` — its T-019 row is a generated reflection of the ticket's own title (which legitimately names "PLAN.md", the file being renamed), not a stray reference
+- 2026-08-05 — IN DEVELOPMENT → IN REVIEW: acceptance green
