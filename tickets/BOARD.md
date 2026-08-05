@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ## IN DEVELOPMENT
 
@@ -51,10 +51,10 @@ Last updated: 2026-08-04
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
+| T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
-| T-019 | README accuracy polish (prose duplicates command table, phased-plan tagging) | low | low | S | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |  |
@@ -77,6 +77,7 @@ Last updated: 2026-08-04
 | T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | yes — MERGED: feat/T-009-agent-enablement → main (22d2871, squash), user-approved; branch deleted |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
+| T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | yes — merged to main (ce306c2), user-approved; PR #12; branch deleted |
 | T-024 | add spawned-by: lineage frontmatter field (provenance, non-gating) | yes — MERGED: feat/T-024-spawned-by-lineage-frontmatter → main (3c4c131, squashed) |
 | T-026 | upgrade refuses legal pickle.toml files and misdiagnoses why | yes — merged to main (PR #9, b45cb93), user-approved as an exception; squashed to one commit; branch deleted |
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |

@@ -1,17 +1,18 @@
 # `pickle` — externalizing the ticket flow as a CLI
 
-> **Origin design doc.** This is the plan `pickle` was built from — distilled from a
-> hand-wired ticket-flow in a separate workspace. It is kept for the *why* (rationale and
-> locked decisions); it is **not** the live tracker. The live tracker is
-> [`tickets/BOARD.md`](tickets/BOARD.md) — this repo self-hosts the flow it ships, so all work
-> flows through tickets (`T-NNN`), not this doc.
+> **Origin design doc** (formerly `PLAN.md`, renamed by T-019 — old `PLAN.md:NNN` citations in
+> `tickets/6-done/` and `tickets/NOTES.md` refer to this file). This is the plan `pickle` was
+> built from — distilled from a hand-wired ticket-flow in a separate workspace. It is kept for
+> the *why* (rationale and locked decisions); it is **not** the live tracker. The live tracker
+> is [`tickets/BOARD.md`](tickets/BOARD.md) — this repo self-hosts the flow it ships, so all
+> work flows through tickets (`T-NNN`), not this doc.
 >
 > **Progress is not tracked here.** `tickets/BOARD.md` is the only place that knows what is
 > delivered; a hand-maintained summary in this file duplicated it and drifted (it claimed P4 was
 > outstanding for eleven days after T-009 merged it), so it was removed rather than repaired —
-> repairing it only restarts the drift. **All five §12 phases are delivered**; read the board's
-> DONE section for anything finer-grained. Where this doc and a ticket disagree, **the ticket
-> wins**; treat §-level decisions here as the standing rationale behind them.
+> repairing it only restarts the drift. **Everything this doc planned has shipped**; read the
+> board's DONE section for anything finer-grained. Where this doc and a ticket disagree, **the
+> ticket wins**; treat §-level decisions here as the standing rationale behind them.
 >
 > Historical references below to the workspace this was distilled from are context, not paths
 > in this repo.
@@ -26,11 +27,11 @@ cd my-project
 pickle install
 ```
 
-After `init`, a coding agent (Claude Code, opencode, Pi) working in that project understands
-requests like *"create a feature to review the Jira board"* and responds by **authoring a
-correctly-formatted ticket** in `tickets/1-to-do/T-NNN-<slug>.md` and **updating `BOARD.md`**
-— because `init` installed the skill, the board scaffold, and the agent-instruction markers
-that teach it the flow.
+After `pickle install`, a coding agent (Claude Code, opencode, Pi) working in that project
+understands requests like *"create a feature to review the Jira board"* and responds by
+**authoring a correctly-formatted ticket** in `tickets/1-to-do/T-NNN-<slug>.md` and **updating
+`BOARD.md`** — because `install` wrote the skill, the generated board, and the
+agent-instruction markers that teach it the flow.
 
 The worked example: a project building a Zig-based Jira-board reviewer. `pickle install` there,
 then "create a feature to review the Jira board" → a ticket describing that capability, filed
@@ -38,9 +39,10 @@ and boarded.
 
 `pickle` also supports an **overarching project that contains several connected
 child-projects** — e.g. the frontend and backend layers of one application, or two
-cooperating tools. One board and one ticket-id namespace span all of them; each ticket names
-its target child in frontmatter. `translator` is itself a one-child instance of this (board
-in `translator/`, build target the nested `ai-sdlc/` repo). See §3.
+cooperating tools. One board spans all of them; each ticket names its target child in
+frontmatter and gets a `<PREFIX>-NNN` id from that child's own counter (§3). `translator` is
+itself a one-child instance of this (board in `translator/`, build target the nested
+`ai-sdlc/` repo). See §3.
 
 ## 2. Design principle — split judgment from mechanics
 
@@ -50,11 +52,11 @@ The flow already embodies this split; `pickle` should preserve it hard:
   grading impact/complexity/cost against the backlog, refining a plan to the READY gate,
   reviewing and classifying findings blocking vs non-blocking. This is *prompt/skill*
   territory. `pickle` ships it as content, it never tries to automate it.
-- **Mechanics (the CLI, deterministic)** — scaffolding directories, copying the board
-  skeleton, allocating the next `T-NNN` (`max()+1` across all status dirs), moving a ticket
-  file + syncing the board + appending a History line atomically, and running the invariant
-  checker (`check-board.py`). Today these are done by the agent "by hand"; every one of them
-  is arithmetic or file-shuffling that a CLI does more reliably.
+- **Mechanics (the CLI, deterministic)** — scaffolding directories, rendering the board fresh
+  from ticket state, allocating the next id (per-child counter, `max()+1` within that child's
+  prefix), moving a ticket file + regenerating the board + appending a History line atomically,
+  and running the invariant checker (`check-board.py`). Today these are done by the agent "by
+  hand"; every one of them is arithmetic or file-shuffling that a CLI does more reliably.
 
 Net: `pickle` = **installer of the judgment layer** + **executor of the mechanical layer**.
 The agent calls `pickle` for the mechanical steps (or a human does), and the skill tells the
@@ -72,10 +74,19 @@ unit of planning. The six locked decisions:
    **sub-grouped by child-project** (a `### <child>` heading under the status heading), with
    the impact ordering applied inside each child's group for TO DO / READY. There is exactly
    one board — no per-child boards.
-2. **One ticket-id namespace.** IDs stay a single global sequence, `T-NNN`, `max()+1` across
-   *all* status dirs regardless of child-project. This keeps id allocation trivial and lets a
-   ticket move between children (rare) without renumbering. The child a ticket belongs to is
-   orthogonal to its id.
+2. **Per-child id counters** *(superseded — originally locked as a single sequence shared by
+   every child; see below)*. Each child configures its own `ticket_prefix` in `pickle.toml`
+   (default `T`), and an id is `<PREFIX>-NNN` with `max()+1` **within that prefix**, across all
+   status dirs. Numbers are unique only within a prefix, so an id is always written qualified
+   (`RICK-137`, never "137"). **A single global namespace is now the degenerate case**:
+   children that all leave `ticket_prefix` unset share the one legacy `T` counter, which is
+   exactly what a single-child project sees. The original lock — one global `T-NNN` sequence
+   for every child, chosen to keep allocation trivial and let a ticket move between children
+   without renumbering — was unlocked once multi-child workspaces needed to tell a frontend's
+   ids apart from a backend's at a glance; re-homing a ticket to a differently-prefixed child
+   is now a deliberate renumber, not a free relabel — and a manual one: T-060 proposed a
+   `pickle ticket renumber` command and was dropped (`7-dropped/`), the migration being a rare
+   one-off not worth automating.
 3. **Target named in frontmatter.** Each ticket declares its child-project in a new
    `project: <name>` frontmatter field (the registered short name from `pickle project add`).
    The `tickets/` directory keeps its flat seven-status layout — tickets are **not** split
@@ -112,20 +123,16 @@ simple case.
 
 ## 4. What gets installed (the payload)
 
-Everything under today's `.agents/skills/ticket-flow/resources/` is the canonical payload:
-
-| Source (today) | Role | How `pickle` handles it |
-|---|---|---|
-| `SKILL.md` | the flow procedures | **embedded in the binary**, written to the agent skill dir(s) on `install` |
-| `resources/tickets-README.md` | the rules (§1–§8) | embedded; installed into the skill dir (single source of truth); gains the `project:`-field + per-child-WIP rules (§3) |
-| `resources/TEMPLATE.md` | ticket template | embedded; agent reads it from the skill dir; **adds a `project:` frontmatter field** (§3) |
-| `resources/review-protocol.md` | generic review procedure | embedded; installed |
-| `resources/BOARD.md` | board skeleton | embedded; **copied into the project** as `tickets/BOARD.md` (the only instance-data copy); status sections are **sub-grouped by child** (§3) |
-| `resources/check-board.py` | invariant checker | **superseded** — reimplemented as `pickle board audit` (native, no python dep); the script may still ship for editor-standalone use |
-
-Key rule carried over: **the rules/template/protocol are the skill's, referenced not copied**;
-only the board skeleton is instance data. `pickle upgrade` can then refresh the skill payload
-without touching a project's tickets.
+The skill payload (`SKILL.md` + `resources/`: the rules, the ticket template, the review
+protocol) is **embedded in the binary** and installed into the agent skill dir(s) —
+**referenced, never copied**, so `pickle upgrade` can refresh it without touching a project's
+tickets. `tickets/BOARD.md` is the one thing that is *not* embedded payload: it is **generated**
+fresh from the ticket tree by `install` (only when the file is absent), and regenerated
+wholesale by `ticket new` / `ticket move` / `board sync` — never a copied skeleton, never
+hand-edited (the original design — a copied skeleton meant to be maintained by hand — was
+overturned by T-044).
+`check-board.py`'s invariant-checking role is **superseded** by `pickle board audit` (native, no
+Python dependency); the script may still ship for editor-standalone use.
 
 ## 5. The hard part — multi-agent installation
 
@@ -152,8 +159,9 @@ Strategy:
    extension pattern (git-staging deny-list, publish gate, self-install guard) adapted to the
    project's config. This is the one place the payload is genuinely agent-specific.
 
-`pickle install` prompts (or takes flags) for which agents to wire: `--agent claude,pi,opencode`
-or auto-detect from existing `.claude/`, `.pi/`, `AGENTS.md`.
+`pickle install` takes **flags** for which agents to wire (`--agent claude,pi,opencode`) or
+auto-detects from existing `.claude/`, `.pi/`, `AGENTS.md` — there is no interactive prompt
+(§13.4).
 
 **Install scope is per-project, not global.** `pickle` installs the skill, board, markers, and
 config into the overarching project's own tree (`.agents/skills/`, `tickets/`, `pickle.toml`,
@@ -165,7 +173,8 @@ own "promote to global" note: `pickle`'s unit is the project.)
 ## 6. Project configuration (captured at `install`, consumed by the skill)
 
 The skill is project-agnostic; the project plugs specifics into its `AGENTS.md` marker block.
-`pickle install` gathers these interactively (or from `pickle.toml` / flags) and writes them.
+`pickle install` gathers these from `pickle.toml` / flags — non-interactively (§13.4) — and
+writes them.
 
 **Overarching-project config** (one set):
 - **Commit policy** (mirrors `translator`'s, uniform across all children):
@@ -207,45 +216,20 @@ reproducible.
 
 ## 7. CLI surface
 
-**Human/setup commands**
-- `pickle install` — scaffold `tickets/{1-to-do…7-dropped}`, copy `BOARD.md`, write
-  `tickets/README.md` pointer, install skill for detected/selected agents, inject markers,
-  write `pickle.toml`, and **register the first child-project** (prompt for name + path, or
-  `--project <name> <path>`). Idempotent; safe to re-run.
-- `pickle project add <name> <path>` — register another connected child-project (§3): append
-  a `[[project]]` block to `pickle.toml` (its build/validate commands, branch/commit policy,
-  per-child WIP), so tickets may target it via `project: <name>`. `pickle project list` /
-  `pickle project remove <name>` (remove refused while any live ticket targets it).
-- `pickle upgrade` — refresh the embedded skill payload + marker block to the CLI's version;
-  never touches tickets or the board contents.
-- `pickle doctor` — verify install integrity (skill present, symlinks valid, markers present,
-  agents wired, every registered child path resolves) — the install-side board-audit analogue.
-- `pickle uninstall` — remove skill/symlinks/markers, leave `tickets/` intact.
+The live command surface — every command, every flag, its full contract — is
+`docs/user-manual/cli-reference.adoc`; nothing here should describe it a second time, or the
+two will drift (as they did: this section's `ticket new` synopsis fell behind `--spawned-by`
+and `--family`; its `board sync` prose still described the hand-maintained board T-044
+overturned; and its `install` prose described an interactive registration wizard that was never
+built — §13.4). What survives is what the manual doesn't cover:
 
-**Mechanical flow commands (callable by the agent or a human)** — these enforce the
-invariants the agent would otherwise do by hand:
-- `pickle ticket new "<title>" --project <name> [--impact … --complexity … --cost …]` —
-  allocate next `T-NNN` (`max+1` across *all* status dirs, one global namespace), instantiate
-  `TEMPLATE.md` into `1-to-do/` with the `project:` field set, add the board row (under that
-  child's `### <child>` sub-group in the section), write the `created` History line. Fails
-  if `--project` isn't a registered child. (The agent still writes the Description/plan prose
-  — the CLI just guarantees id + target + placement + board sync.)
-- `pickle ticket move T-NNN <status> --reason "…"` — move the file, append the dated History
-  transition, update the board row **in one atomic step**. Rejects illegal transitions
-  (state machine + backward-move sign-off rules) and **per-child WIP limits** (counts only the
-  ticket's own `project`).
-- `pickle board audit` — the native reimplementation of `check-board.py`: every invariant
-  (one board row per ticket in the right section, ids unique + matching filenames, complete
-  frontmatter with legal grades, **`project:` present and a registered child**, `depends-on`
-  targets exist, **per-child WIP limits**, last-History matches directory, in-dev deps done).
-  Exit non-zero on any error. Wire it into CI + a pre-commit hint.
-- `pickle board sync` — regenerate/repair board rows from ticket frontmatter + locations
-  (escape hatch when hand-edits drift; the board stays hand-maintainable but this rescues it).
-
-Design tension to resolve: **how much the agent uses these vs. edits files directly.** The
-skill should instruct the agent to *prefer the CLI* for id allocation and moves (mechanical,
-error-prone by hand) while authoring prose directly in the ticket file. Board audit is the
-safety net that catches either path drifting.
+- **Wire `board audit` into CI + a pre-commit hint** — still a live recommendation (see T-057),
+  not a shipped feature; the manual documents the command as it exists today, not the
+  aspiration.
+- **Design tension, unresolved by design:** how much the agent uses the CLI vs. edits files
+  directly. The skill instructs the agent to *prefer* the CLI for id allocation and moves
+  (mechanical, error-prone by hand) while authoring prose directly in the ticket file. Board
+  audit is the safety net that catches either path drifting.
 
 ## 8. How the agent actually understands the request
 
@@ -276,7 +260,9 @@ child-project the feature targets** rather than guessing.
   installed skill's version and rewrites in place. `pickle.toml` records the version a project
   was initialized/upgraded to.
 - **The skill source of truth**: keep the canonical `resources/` in the `pickle` repo; the
-  `translator` copy becomes a *consumer* of `pickle` (dogfood — see §11), not the master.
+  `translator` copy becomes a *consumer* of `pickle`, not the master. (The dogfooding path this
+  once pointed at is complete — this repo now self-hosts the flow it ships; see
+  `tickets/BOARD.md`.)
 
 ## 10. Naming / vocabulary
 
@@ -288,33 +274,6 @@ child-project the feature targets** rather than guessing.
 - New multi-project vocabulary: **child-project** (a registered, connected build target with
   its own repo), the ticket `project:` frontmatter field, the board's per-child `### <child>`
   sub-groups, and `pickle project add/list/remove`.
-
-## 11. Migration / dogfooding path
-
-1. Extract `.agents/skills/ticket-flow/resources/` into the new `pickle` repo as the canonical
-   payload; port `check-board.py` logic to `pickle board audit`.
-2. Build `pickle install/upgrade/doctor` + `ticket new/move` + `board audit/sync`.
-3. **Dogfood in `translator`**: replace the hand-maintained skill copy with `pickle install`
-   output (or `pickle upgrade`), and adapt `.pi/README.md` to say "install via `pickle`".
-   Translator's `.pi/extensions/workspace-guardrails.ts` becomes the reference for the
-   `--agent pi` guardrail scaffold.
-4. Validate against a fresh throwaway project (the Zig Jira-reviewer example) end-to-end:
-   `pickle install` → agent files a ticket → `pickle board audit` clean.
-
-## 12. Phased build plan (tickets, once `pickle` has its own board)
-
-- **P1 — payload + audit engine**: embed resources (incl. the `project:`-field template +
-  board sub-grouped by child); `pickle board audit` at parity with `check-board.py` **plus the
-  multi-project invariants** (registered `project:`, per-child WIP); `pickle ticket new
-  --project` (id allocation + template + board row).
-- **P2 — install/installer + project registry**: scaffold + marker injection + skill install
-  + `pickle.toml` with the `[[project]]` registry; `pickle project add/list/remove`; Claude
-  Code + Zed/Pi coverage; `doctor` (incl. child-path resolution).
-- **P3 — moves + state machine**: `pickle ticket move` with transition/**per-child WIP**/
-  sign-off enforcement; `board sync`.
-- **P4 — multi-agent breadth**: opencode wiring; Pi guardrail scaffold (`--agent pi`);
-  `upgrade`/`uninstall`.
-- **P5 — distribution**: `go:embed`, releases, Homebrew tap, docs.
 
 ## 13. Resolved questions
 
