@@ -645,3 +645,4 @@ showed a finished feature as still in development until a human asked for the re
   blank-vs-unset `GIT_DIR` bug that made the guard inert until `pickle doctor`'s new line exposed it
 - 2026-08-06 — IN DEVELOPMENT → IN REVIEW: acceptance green (handback move missed at implementation)
 - 2026-08-06 — IN REVIEW → DONE: reviewed: no blocking findings; 10 non-blocking (4 fixed inline, 3 folded to T-043/T-066/T-067, 3 noted)
+- 2026-08-06 — merged to main (PR #14, 9a9af59)
