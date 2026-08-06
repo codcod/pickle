@@ -389,3 +389,4 @@ refactor. Therefore:
   stays declined (D4); T-042 sequenced after this ticket, which owns `TestMain` (D5). Re-graded
   cost **L → M**; complexity stays medium (blast radius: 15 call sites)
 - 2026-08-06 — TO DO → READY: plan complete; epic split (T-069 took the config writers)
+- 2026-08-06 — READY → IN DEVELOPMENT: picked up

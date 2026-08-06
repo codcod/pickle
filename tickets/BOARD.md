@@ -13,10 +13,11 @@ Last updated: 2026-08-06
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-06
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
