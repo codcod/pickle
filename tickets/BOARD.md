@@ -20,11 +20,10 @@ Last updated: 2026-08-06
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-06
 
 | id | title | open findings |
 |---|---|---|
+| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | review REWORK: 1 blocking (R1: folded-text transition target disagrees with HistoryEntry.Kind on two shapes); 5 non-blo… |
 
 ## READY (impact order, per child)
 
@@ -60,6 +60,7 @@ Last updated: 2026-08-06
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
+| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low | low | S | [] |  |
 
 ## DONE
 
