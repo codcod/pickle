@@ -68,7 +68,7 @@ settle:
   `xref:cli-reference.adoc#cmd-hooks[…]` instead is *not* an unresolved anchor — asciidoctor
   resolves it happily, to `cli-reference.pdf#cmd-hooks` in the PDF and `cli-reference.epub#cmd-hooks`
   in the EPUB, **neither of which exists**. T-057 shipped two such links and `just docs-check`
-  passed; they were caught only by grepping the rendered artifacts, and were fixed in `5a6dd10`.
+  passed; they were caught only by grepping the rendered artifacts, and were fixed in `a7e2ada`.
   A set-difference checker over `[#id]`/`<<id>>` would have missed both, so the checker must also
   **reject the `xref:<file>.adoc#…` form outright** for any file that is `include::`-d into the
   book — the cheapest half of this ticket, and the one with a proven miss.
