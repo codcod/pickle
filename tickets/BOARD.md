@@ -38,6 +38,7 @@ Last updated: 2026-08-06
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -45,7 +46,7 @@ Last updated: 2026-08-06
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |  |
+| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | medium-high | medium | M | [] |  |
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
