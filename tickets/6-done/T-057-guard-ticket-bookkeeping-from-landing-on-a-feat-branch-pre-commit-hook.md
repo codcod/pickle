@@ -586,6 +586,7 @@ All ten confirmed decisions plus 11–12 honoured; decisions 1 and 2 verified as
 | N3 | non-blocking | **folded → T-067** | N2's whole class is invisible to the docs gate: `just docs-check` passed with both dead links, and T-067's proposed checker diffs `[#id]`/`[[id]]` against `<<id>>` only — an inter-document `xref:<file>.adoc#id[]` would still slip through | `justfile:23`, T-067 *Shape of the fix* | item added to T-067: in a single assembled book, **any** `xref:*.adoc#…` is a defect; flag the form, not just unresolved anchors |
 | N4 | non-blocking | **fixed inline** | `writeRejection`'s comment justified its computed column with *"the `tickets/` path is configurable"* — it is not: `tickets` is a hardcoded literal in 14 places across `internal/`. The computation is still correct (the prefix is worktree-top-relative, so a child registered deeper renders `sub/dir/tickets/`), but the stated reason was wrong | `internal/hook/hook.go` (old comment) vs `rg '"tickets"' internal` | comment corrected to name the real reason (`a7e2ada`) |
 | N5 | non-blocking | **fixed inline** | `pickle-guardrails.ts`'s header says the marker block's *"non-negotiable git rules … are encoded here"* and lists two. Task 6d gave the marker block a **third** git rule that decision 1 deliberately does not mirror there, so the branch made its own scaffold's header comment false | `agents/pi/extensions/pickle-guardrails.ts:1-19` vs `MarkerBlock()` | paragraph added stating the third rule lives in the hook, and why (guards every committer, reads `branch_prefix`) — no behaviour change, so T-050 is untouched (`a7e2ada`) |
+| F9′ | non-blocking | **promoted → T-068** | *(added 2026-08-06, post-merge.)* The review's `noted` row on F9 (best-effort, terminal-first: a minimal `PATH` skips the guard) was **measured within minutes of arming the guard in this repo** — `PATH` held `/opt/homebrew/bin/pickle` 0.2.2, which predates the `hooks` verb, so the shim degraded to a no-op while `hooks status` and `doctor` both reported the guard as installed and current. Promoted per rules §5 (a later reviewer may promote a `noted` row by citing it) | live smoke test on a throwaway `feat/` branch: `pickle: bookkeeping guard skipped (hooks run exited 2)` and the commit went through | **T-068** — batches this with F9; the fail-open contract stays, the reporting is what must change |
 | N6 | non-blocking | noted | The branch introduced 8 `**bold**` spans into a manual whose house style is single-asterisk `*bold*` (the only prior use was one `**and**` at `cli-reference.adoc:197`). Renders identically in AsciiDoc, so this is style only — and several of the new spans open on a backtick, where unconstrained bold is the safer form | `grep -c '\*\*'` per file | leave as is; if the manual ever gets a style guide, normalise there rather than in a feature branch |
 | N7 | non-blocking | **folded → T-043** | `runInstall`'s `--hooks` block (task 4) has no automated test — neither the success path nor the "warning, install still succeeds" branch. It is covered only by the acceptance transcript, which is not run by `just test` or CI | `internal/cli/install.go:97-107`; no `--hooks` occurrence in `internal/cli/*_test.go` | item added to T-043 Part 2 (its theme is exactly `internal/cli` coverage gaps) |
 | N8 | non-blocking | noted | The rule is now written in four places, but **not** in `SKILL.md`'s *implement* procedure step 8 — the exact moment three of the four recorded violations happened ("commit locally on the ticket branch … then `pickle ticket move … in-review`" never says the move is committed on the base branch). The *review* procedure got an explicit reminder; the implement one did not | `skill/SKILL.md` *Procedure: implement a ticket* step 8 vs `resources/review-protocol.md:38-45` | pre-existing omission, so not an inline fix (rules §5). Rules §0 + the marker block + the hook now cover it; if the violation recurs at handback, promote this row |
@@ -594,7 +595,10 @@ All ten confirmed decisions plus 11–12 honoured; decisions 1 and 2 verified as
 
 **Disposition summary:** 10 non-blocking findings, 0 blocking — **4 fixed inline** (N1, N2, N4,
 N5, all in `a7e2ada`), **3 folded** (N3 → T-067, N7 → T-043, N10 → T-066), **3 noted** (N6, N8,
-N9). No new tickets: every promotable finding landed in a ticket that already owned its ground.
+N9). No new tickets at review time: every promotable finding landed in a ticket that already owned
+its ground. **Amended post-merge:** F9's `noted` row was promoted to **T-068** once field evidence
+turned it from a caveat into a measured no-op — the recoverability `noted` is supposed to provide,
+used for real.
 
 ### Process note (not a finding against the work)
 
@@ -646,3 +650,8 @@ showed a finished feature as still in development until a human asked for the re
 - 2026-08-06 — IN DEVELOPMENT → IN REVIEW: acceptance green (handback move missed at implementation)
 - 2026-08-06 — IN REVIEW → DONE: reviewed: no blocking findings; 10 non-blocking (4 fixed inline, 3 folded to T-043/T-066/T-067, 3 noted)
 - 2026-08-06 — merged to main (PR #14, 9a9af59)
+- 2026-08-06 — post-merge verification: guard armed in this repo (`pickle hooks install`, untracked
+  `.git/hooks/pre-commit`) and smoke-tested on a throwaway `feat/` branch — it was **inert**,
+  because the `pickle` on `PATH` (Homebrew 0.2.2) predates the `hooks` verb and the shim's fail-open
+  waved the commit through. Correct behaviour, invisible reporting: **T-068** filed for it,
+  promoting this review's `noted` finding F9
