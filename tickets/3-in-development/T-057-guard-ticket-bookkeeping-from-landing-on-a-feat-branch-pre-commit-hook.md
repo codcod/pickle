@@ -531,3 +531,4 @@ merge this repo's own guard is armed by a human running `pickle hooks install` f
   unstaging after a rejection (B1), an unborn-`feat/` repo, an old-binary skew step, `/tmp`-anchored
   `mktemp`, and the marker-drift check moved before uninstall (F12). F11 folded into T-067 (CI half
   added there). Grades unchanged; status unchanged (READY throughout)
+- 2026-08-06 — READY → IN DEVELOPMENT: picked up; gate re-verified, plan applies
