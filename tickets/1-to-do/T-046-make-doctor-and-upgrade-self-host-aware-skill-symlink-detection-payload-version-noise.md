@@ -62,3 +62,9 @@ T-026 (upgrade refuses legal pickle.toml) — sequence, don't run concurrently.
   warning text is therefore only one of two shapes, and the self-host skip must sit **ahead of
   both** branches, not just the one. No plan to invalidate (this ticket is unrefined); the
   `sequence, don't run concurrently` coupling is now discharged — T-026 landed first
+- 2026-08-06 — patched by the T-068 filing (post-merge verification of T-057): **T-068** now owns
+  the neighbouring `doctor` defect — the pre-commit guard reported as healthy while the `pickle` on
+  `PATH` cannot run it. Deliberately not folded here: that one is version skew in *any* install,
+  this ticket's ground is self-host noise. Both edit `internal/doctor/doctor.go`, so sequence them
+  rather than running them concurrently, and whichever lands second re-verifies the other's
+  message shapes
