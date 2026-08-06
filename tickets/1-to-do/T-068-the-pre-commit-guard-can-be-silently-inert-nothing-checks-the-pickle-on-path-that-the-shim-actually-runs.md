@@ -46,6 +46,12 @@ exits `2` on the unknown verb, and the shim treats anything but `1` as "no viola
 **nothing joins the two facts up**: the file on disk is current, the binary that will execute it
 is not, and only a deliberate commit-and-observe test reveals it.
 
+**A second, cosmetic half of the same skew** (observed on every commit in this repo since):
+the old binary answers the unknown verb by dumping its **entire `usage()` text** before the
+shim's one-line notice, so each commit prints ~35 lines of unrelated help. Whatever the fix,
+`hooks run` on an unknown verb should be terse — the shim's notice is the message that matters,
+and burying it is how a notice becomes noise people filter out.
+
 ### Why this matters more than a normal doctor gap
 
 - The guard's value is entirely in the moments nobody is watching. A guard that reports itself
