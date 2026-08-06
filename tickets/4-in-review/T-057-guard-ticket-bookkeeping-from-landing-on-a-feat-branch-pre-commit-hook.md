@@ -578,3 +578,4 @@ merge this repo's own guard is armed by a human running `pickle hooks install` f
   `DESIGN.md` §7. `just build && just test && just lint && just docs-check` green; the 12-step
   acceptance transcript passes. Deviations recorded in the plan's *Implementation notes* — notably a
   blank-vs-unset `GIT_DIR` bug that made the guard inert until `pickle doctor`'s new line exposed it
+- 2026-08-06 — IN DEVELOPMENT → IN REVIEW: acceptance green (handback move missed at implementation)
