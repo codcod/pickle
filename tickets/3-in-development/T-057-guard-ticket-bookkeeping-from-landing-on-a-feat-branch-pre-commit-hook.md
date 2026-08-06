@@ -478,6 +478,45 @@ is what proves task 6d's `MarkerBlock()` change agrees with the hand-mirrored `A
 is the fail-open regression: with a stub `pickle` that exits 2, the commit **goes through** with a
 one-line stderr notice. Re-runnable verbatim from a clean `mktemp -d`.
 
+### Implementation notes (2026-08-06) — deviations from the plan
+
+All 8 tasks shipped on `feat/T-057-bookkeeping-pre-commit-hook` (commit `cc96393`). The plan held
+up; what differs, for the reviewer:
+
+1. **`GIT_DIR=` (empty) is not the same as unset** — the first cut of `gitAt` blanked the `GIT_*`
+   variables via `append(os.Environ(), "GIT_DIR=", …)`, and git reads that as an empty repository
+   path: `fatal: not a git repository: ''`. Every git call failed, so the guard was **inert** and
+   fail-open hid it — `pickle doctor` reported "no git repository at the install root" *inside this
+   repo*, which is what caught it. `withoutRepoEnv` now removes the entries. The same trap is in the
+   tests (`t.Setenv(name, "")` followed by `os.Unsetenv`), so it is commented in both places.
+2. **`ticketsPrefix` resolves symlinks on both sides.** `git rev-parse --show-toplevel` answers with
+   the real path (`/private/tmp/…`) while `cfg.Root()` carries whatever the caller walked in on
+   (`/tmp/…`) — on macOS the two never compare equal, so the guard would silently never fire in a
+   temp dir, and could miss real violations wherever the config root is reached through a symlink.
+   Not in the plan; found by probing git before writing the code.
+3. **`hook.Refresh` returns `(Result, error)`, not `(bool, error)`** (plan, task 1). `Upgrade` needs
+   the resolved path to label its `  + … (refreshed)` line, and that path is not
+   `.git/hooks/pre-commit` when `core.hooksPath` redirects it. `Result` also gained a `Kind` field
+   so `install.Uninstall` can branch on "foreign" without string-matching `Skipped`.
+4. **The rejection message's remedy block computes its comment column.** `tickets/` is
+   configurable, so a hardcoded column renders ragged for any other path length.
+5. **`internal/install/testdata/markerblock.golden` regenerated** (`UPDATE_GOLDEN=1`). The plan named
+   `MarkerBlock()` but not its golden test; the diff is exactly the new six-line bullet.
+6. **Tests beyond the plan's list:** `TestShimExitCodes` runs the *real shim* against stub `pickle`
+   binaries exiting 0/1/2/7 and absent-from-`PATH`, which is the only way to prove decision 3's
+   contract end to end; `TestShimBlocksOnlyExitCodeOne` asserts on the shipped text and fails if
+   anyone restores `|| exit 1`; `TestHooksAreAdvertised` guards the help text;
+   `TestMarkerBlockStatesWhereCommitsLand` guards task 6d's prose. The B2 regression test was
+   verified to bite by reintroducing the `rev-parse --abbrev-ref HEAD` bug (it fails, along with two
+   `TestPreCommit` subtests whose fixtures are also unborn).
+7. **Acceptance transcript, one mechanical fix on top of the re-refined version:** step 4's exit-code
+   assertion cannot read `$?` after an `if` (that is the `if`'s own status, always 0) — it needs
+   `set +e` around the commit. The runnable script lives at `/tmp/t057-acceptance.sh` during the
+   session; its 12 steps all pass, including step 9 printing
+   `pickle: bookkeeping guard skipped (hooks run exited 2)` and allowing the commit.
+8. **F11 was folded into T-067 during the re-refinement**, not here (committed on `main` as
+   `8adb56c`); F10 stayed `noted`, and the new `cli-reference.adoc` section is self-contained.
+
 ### Docs update
 
 Task 7 in full (`cli-reference.adoc`, `project-structure.adoc`, `installation.adoc`,
@@ -532,3 +571,10 @@ merge this repo's own guard is armed by a human running `pickle hooks install` f
   `mktemp`, and the marker-drift check moved before uninstall (F12). F11 folded into T-067 (CI half
   added there). Grades unchanged; status unchanged (READY throughout)
 - 2026-08-06 — READY → IN DEVELOPMENT: picked up; gate re-verified, plan applies
+- 2026-08-06 — implemented on `feat/T-057-bookkeeping-pre-commit-hook` (`cc96393`): `internal/hook`
+  (the only package that shells out to git), the `pickle hooks` verb, `install --hooks`,
+  upgrade/uninstall/doctor wiring, the rule written into the payload (rules §0, review protocol,
+  `SKILL.md`, `MarkerBlock()` + the hand-mirrored `AGENTS.md`), the manual, `CHANGELOG.md` and
+  `DESIGN.md` §7. `just build && just test && just lint && just docs-check` green; the 12-step
+  acceptance transcript passes. Deviations recorded in the plan's *Implementation notes* — notably a
+  blank-vs-unset `GIT_DIR` bug that made the guard inert until `pickle doctor`'s new line exposed it
