@@ -9,6 +9,7 @@ import (
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/doctor"
+	"github.com/codcod/pickle/internal/hook"
 	"github.com/codcod/pickle/internal/install"
 )
 
@@ -25,6 +26,7 @@ func runInstall(args []string) int {
 	noClaude := fs.Bool("no-claude", false, "deprecated: use --agent to choose agents (drops claude from the set)")
 	claudeSymlink := fs.Bool("claude-symlink", false, "make CLAUDE.md a symlink to AGENTS.md instead of a marker block")
 	agentSpec := fs.String("agent", "", `comma-separated agents to wire up: claude, opencode, pi (default "claude")`)
+	hooks := fs.Bool("hooks", false, "also install the pre-commit bookkeeping guard (same as `pickle hooks install`)")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
@@ -90,6 +92,20 @@ func runInstall(args []string) int {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", e)
 		}
 		return errf("post-install audit found %d error(s)", len(a.Errors))
+	}
+
+	// The hook is opt-in and deliberately not part of a plain install: it writes
+	// outside the install root (into .git/) and only helps in a repo that carries
+	// both the code and the board. A failure here is a warning, never a failed
+	// install — the scaffolding is already on disk and correct.
+	if *hooks {
+		if hres, herr := hook.Install(root, false); herr != nil {
+			fmt.Fprintf(os.Stderr, "pickle install: hooks install skipped: %v\n", herr)
+		} else if hres.Changed {
+			fmt.Printf("  + %s\n", hres.Path)
+		} else {
+			fmt.Printf("  = %s (%s)\n", hres.Path, hres.Skipped)
+		}
 	}
 
 	fmt.Printf("\npickle installed in %s (child %q). Next: pickle ticket new \"<title>\" --project %s\n",

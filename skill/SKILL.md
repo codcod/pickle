@@ -70,7 +70,9 @@ WIP limits, and an optional per-child review addendum. Defaults:
   Commits with the ticket id appended in brackets at the end of the subject.
 - **Commit policy** — child-projects are publish-gated (no push/MR without approval; approval →
   finalize + push + open MR; the human merges). The overarching project's bookkeeping (tickets,
-  board, docs) may be committed automatically, always with explicit pathspecs.
+  board, docs) may be committed automatically, always with explicit pathspecs, and **on the base
+  branch — never on a feature branch** (rules §0): a squash-merge would fold or drop it and leave
+  the board disagreeing with the tickets. `pickle hooks install` enforces this locally, per clone.
 - **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced **per child**.
 
 > **Project configuration wins.** The bullets above state the flow's defaults, once.

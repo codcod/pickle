@@ -1,9 +1,9 @@
 // Package doctor implements `pickle doctor`: the install-side analogue of
 // `board audit`. It is a pure, fixture-testable check of an installed project's
 // integrity — the installed skill payload, the .claude view symlink, the
-// AGENTS.md/CLAUDE.md marker block, the agent scaffolds, pickle.toml, and each
-// registered child's git repo. Like audit, it never prints or exits — it
-// returns findings.
+// AGENTS.md/CLAUDE.md marker block, the agent scaffolds, the pre-commit guard,
+// pickle.toml, and each registered child's git repo. Like audit, it never prints
+// or exits — it returns findings.
 package doctor
 
 import (
@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/hook"
 	"github.com/codcod/pickle/internal/install"
 )
 
@@ -49,6 +50,7 @@ func Check(root, version string, payload fs.FS) Result {
 	checkClaudeView(root, &r)
 	checkMarkers(root, cfg, &r)
 	checkAgentScaffolds(root, payload, &r)
+	checkHooks(root, &r)
 	if cfg != nil {
 		checkChildren(root, cfg, &r)
 		checkVersion(cfg, version, &r)
@@ -217,6 +219,39 @@ func checkAgentScaffolds(root string, payload fs.FS, r *Result) {
 			continue
 		}
 		r.ok(fmt.Sprintf("agent scaffold current (%s)", f.Installed))
+	}
+}
+
+// checkHooks reports the state of the pre-commit bookkeeping guard.
+//
+// The guard is opt-in, so its absence is never a finding — only a line saying
+// how to arm it, which is also the answer for the case a pickle.toml key was
+// once considered for: hooks live in .git/ and are never cloned, so a fresh
+// clone of a project that uses the guard starts without one. Only a stale
+// pickle-owned shim earns a warning, mirroring the agent-scaffold drift check.
+// A tree that is not a git repository says so and stops: `checkChildren` already
+// owns that verdict as a real check, and duplicating it here would report the
+// same broken install twice.
+func checkHooks(root string, r *Result) {
+	st, err := hook.Status(root)
+	if err != nil {
+		r.warnf("hooks: %v", err)
+		return
+	}
+	switch st.Kind {
+	case hook.KindNoRepo:
+		r.ok("pre-commit guard not applicable (no git repository at the install root)")
+	case hook.KindAbsent:
+		r.ok("pre-commit guard not installed (optional — `pickle hooks install` arms it; hooks are per-clone)")
+	case hook.KindForeign:
+		r.ok(fmt.Sprintf("pre-commit hook present but not pickle's (%s) — left alone", st.Path))
+	case hook.KindOwned:
+		if st.Stale {
+			r.warnf("hooks: %s was written by an older pickle (shim v%d, this binary ships v%d) — run `pickle upgrade`",
+				st.Path, st.Version, hook.ShimVersion)
+			return
+		}
+		r.ok(fmt.Sprintf("pre-commit guard installed and current (%s)", st.Path))
 	}
 }
 

@@ -18,8 +18,19 @@ import (
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/hook"
 	"github.com/codcod/pickle/internal/ticket"
 )
+
+// hookLabel names a hook path for the created/removed lists: relative to root
+// when it lives inside the project (the normal .git/hooks case), absolute when
+// core.hooksPath points somewhere else entirely.
+func hookLabel(root, path string) string {
+	if rel, err := filepath.Rel(root, path); err == nil && !strings.HasPrefix(rel, "..") {
+		return filepath.ToSlash(rel)
+	}
+	return path
+}
 
 // Marker delimiters for the injected AGENTS.md/CLAUDE.md block. Anything between
 // them is pickle-managed and replaced on re-run; text outside is preserved.
@@ -320,6 +331,15 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		res.created(f.Installed + " (refreshed)")
 	}
 
+	// Pre-commit hook: refresh a pickle-owned shim an older binary wrote. Never
+	// installs one that is absent (the guard is opt-in) and never touches a
+	// foreign hook. A tree that is not a git repository is a no-op, not an error.
+	if hres, err := hook.Refresh(root); err != nil {
+		return res, err
+	} else if hres.Changed {
+		res.created(hookLabel(root, hres.Path) + " (refreshed)")
+	}
+
 	if cfg.PayloadVersion == payloadVersion {
 		res.skipped(config.FileName + " (already at " + payloadVersion + ")")
 		return res, nil
@@ -427,6 +447,19 @@ func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error
 		// os.Remove fails on a non-empty dir — exactly the contract wanted here.
 		_ = os.Remove(filepath.Join(root, filepath.FromSlash(PiExtensionsDir)))
 		_ = os.Remove(filepath.Join(root, ".pi"))
+	}
+
+	// Pre-commit hook (pickle-owned, recognised by its marker). Absent, foreign
+	// and non-git trees are all normal here: uninstall runs on trees that never
+	// had a hook, so only an owned one is reported.
+	if hres, err := hook.Uninstall(root, opts.DryRun); err != nil {
+		return res, err
+	} else if hres.Would {
+		res.removed(hookLabel(root, hres.Path) + " (dry-run)")
+	} else if hres.Changed {
+		res.removed(hookLabel(root, hres.Path))
+	} else if hres.Kind == hook.KindForeign {
+		res.skipped(hookLabel(root, hres.Path) + " (not pickle's, left in place)")
 	}
 
 	// opencode.jsonc: removed only while still byte-identical to the shipped
@@ -867,6 +900,12 @@ func MarkerBlock(cfg *config.Config) string {
 		"- **WIP limits** (per child):" + wip.String() + "\n" +
 		"- **Commit policy.** " + childPolicy + "\n" +
 		"  " + overarching + " (`git add <paths>`, never `git add -A`/`.`).\n" +
+		"- **Where commits land.** Code goes on the child's feature branch; **ticket and board\n" +
+		"  bookkeeping is committed on the base branch**, never on a feature branch — a squash-merge\n" +
+		"  folds or drops it and the board then disagrees with the tickets it indexes. This covers a\n" +
+		"  review's own moves too, and it is why a reviewer on a feature branch reads the ticket from\n" +
+		"  the base branch. `pickle hooks install` enforces it locally, once per clone (bypass a\n" +
+		"  single commit with `git commit --no-verify`).\n" +
 		"\n" +
 		"### Board rule\n" +
 		"\n" +

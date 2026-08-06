@@ -223,9 +223,18 @@ and `--family`; its `board sync` prose still described the hand-maintained board
 overturned; and its `install` prose described an interactive registration wizard that was never
 built — §13.4). What survives is what the manual doesn't cover:
 
-- **Wire `board audit` into CI + a pre-commit hint** — still a live recommendation (see T-057),
-  not a shipped feature; the manual documents the command as it exists today, not the
-  aspiration.
+- **The pre-commit hint shipped as `pickle hooks` (T-057)** — an opt-in `pre-commit` guard that
+  refuses staged `tickets/` paths while a feature branch is checked out, installed by
+  `pickle hooks install` (or `pickle install --hooks`) and owned via a `# pickle:hook v1` marker
+  in the file. It is a shim calling `pickle hooks run pre-commit`, so the rule tracks each
+  child's configured `branch_prefix` instead of baking it into a script; `internal/hook` is the
+  only package that shells out to git.
+- **The audit-side half of that recommendation was declined, deliberately.** `board audit` does
+  *not* check which branch it is on. `internal/audit` is git-free and its tests are plain temp
+  dirs; adding `git rev-parse`/`merge-base` would make the audit's verdict depend on the
+  environment it runs in, and it would need a `base_branch` config key that does not exist. The
+  hook is where branch knowledge belongs. Wiring `board audit` into CI remains worthwhile and
+  unshipped — as does running the docs gate there at all (T-067).
 - **Design tension, unresolved by design:** how much the agent uses the CLI vs. edits files
   directly. The skill instructs the agent to *prefer* the CLI for id allocation and moves
   (mechanical, error-prone by hand) while authoring prose directly in the ticket file. Board
