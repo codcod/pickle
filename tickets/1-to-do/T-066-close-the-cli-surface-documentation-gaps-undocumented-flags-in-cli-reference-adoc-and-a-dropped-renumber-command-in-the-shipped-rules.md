@@ -48,6 +48,22 @@ T-019 fixed the same claim where *it* had introduced it (`DESIGN.md` §3 decisio
 `fixed inline`); these two occurrences are pre-existing and outside a docs-only ticket's scope,
 which is why they are here.
 
+### 3. A markup bug that mangles a sentence in the shipped PDF
+
+Added 2026-08-06 by the **T-057** review (finding N10, disposition `folded`) — same file, same
+"shipped text is wrong" theme, and pre-existing, so it was not the reviewer's to fix inline.
+
+`cli-reference.adoc`'s `pickle doctor` bullet list writes `` `.pi/extensions/*.ts` ``. The `*`
+inside the glob opens an **unconstrained bold** span that runs on to the next `*` — the one
+opening `*warning*` two lines later. The PDF therefore renders:
+
+> pickle-owned agent scaffolds (.pi/extensions/.ts) match the shipped version — a drifted file
+> is a \*warning pointing at pickle upgrade
+
+— the glob loses its asterisk and the emphasis leaks. Fix: use a passthrough (`+.pi/extensions/*.ts+`)
+or escape the asterisk, then re-render and confirm. Cheap, and worth sweeping the file for other
+globs inside backticks while it is open.
+
 ### Shape of the fix (for refinement)
 
 - Document the missing flags where the manual already documents their siblings — no new page.
@@ -81,3 +97,7 @@ which is why they are here.
 
 - 2026-08-05 — created (TO DO). source: pickle ticket new; spawned by the T-019 review, batching its non-blocking findings N3 (flags shipped but undocumented in cli-reference.adoc) and N5 (`pickle ticket renumber` cited in the skill payload though T-060 was dropped)
 - 2026-08-05 — patched by the T-022 review's impact sweep: the renumber claim's line reference re-verified (122-123 → 127-128) and the T-022 coupling corrected — the two tickets do share `skill/resources/tickets-README.md`, and `configuration.adoc`'s `ticket_prefix` bullet is already done
+- 2026-08-06 — patched by the T-057 review (finding N10, disposition `folded`): scope gained item 3,
+  the unconstrained-bold swallow at the `.pi/extensions/*.ts` glob that mangles the doctor bullet in
+  the rendered PDF/EPUB. T-057 added a `[#cmd-hooks]` section to this file (self-contained, per its
+  own gate finding F10) plus an Overview-table row — re-verify line references at refinement
