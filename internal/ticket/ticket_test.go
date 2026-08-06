@@ -185,6 +185,147 @@ func TestLastHistoryStatusSkipsMerge(t *testing.T) {
 	}
 }
 
+// TestLastHistoryStatusArrowInReason pins a real, live defect found in T-058's
+// actual History (discovered during T-043, not by inspection): a reason clause
+// containing its own "→" was read by LastIndex(body, "→") in preference to the
+// transition's own arrow, so the whole entry silently reclassified as a note
+// and "status" stuck at the previous transition. T-058 only kept auditing clean
+// because a later, differently-worded duplicate DONE line happened to mask it.
+// transitionTarget/splitTransition fix this by anchoring on the body's first
+// colon — by this repo's own convention that colon always separates the
+// transition from its reason — before ever searching for an arrow.
+func TestLastHistoryStatusArrowInReason(t *testing.T) {
+	const doc = `## History
+- 2026-07-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-07-28 — IN REVIEW → DONE: review PASS; 2 non-blocking → fixed inline (docs: a.adoc, b.adoc)
+`
+	if got := LastHistoryStatus(doc); got != "DONE" {
+		t.Errorf("LastHistoryStatus = %q, want DONE (reason's own arrow must not be read as the transition)", got)
+	}
+	want := "review PASS; 2 non-blocking → fixed inline (docs: a.adoc, b.adoc)"
+	if got := LastHistoryReason(doc); got != want {
+		t.Errorf("LastHistoryReason = %q, want %q (full reason, including its own arrow)", got, want)
+	}
+	const body = "IN REVIEW → DONE: review PASS; 2 non-blocking → fixed inline (docs: a.adoc, b.adoc)"
+	if got := historyKind(body); got != HistoryTransition {
+		t.Errorf("historyKind(%q) = %q, want %q", body, got, HistoryTransition)
+	}
+}
+
+// TestLastHistoryReasonFoldsContinuations pins the divergence T-043 found: a
+// transition's "OLD → NEW:" always sits on an entry's first physical line by
+// this repo's own convention (HistoryEntry.Kind is frozen from exactly that
+// line, deliberately, so an entry's classification cannot change as more of it
+// is read), but a *long reason* routinely wraps onto a continuation line — this
+// repo's own tickets do it constantly. LastHistoryReason used to read only the
+// first physical line and silently truncate the reason at the wrap point;
+// routing it through HistoryEntries's fold (like LastHistoryStatus) fixed that.
+func TestLastHistoryReasonFoldsContinuations(t *testing.T) {
+	const doc = `## History
+- 2026-07-28 — IN REVIEW → DONE: a long reason that
+  wraps onto a continuation line
+`
+	if got := LastHistoryStatus(doc); got != "DONE" {
+		t.Errorf("LastHistoryStatus = %q, want DONE", got)
+	}
+	want := "a long reason that wraps onto a continuation line"
+	if got := LastHistoryReason(doc); got != want {
+		t.Errorf("LastHistoryReason = %q, want %q (full reason across the wrap, not truncated at the fold)", got, want)
+	}
+}
+
+// TestTransitionSurvivesContinuationFolding is the T-043 review's blocking
+// finding R1, both shapes. The fix that made a reason's own arrow stop hijacking
+// the transition (see above) anchored the reason clause on the body's *first*
+// colon and then re-derived the target from the entry's *folded* text — which
+// broke two other shapes:
+//
+//   - a reason-less transition with a hand-written continuation line folds to
+//     "TO DO → READY <prose>", whose candidate target is no longer a legal
+//     status. HistoryEntry.Kind (frozen on the first physical line) still said
+//     transition while the re-derivation resolved to nothing, so the entry was a
+//     transition to nowhere and the status silently fell back to the entry above;
+//   - "audit fix: TO DO → READY" carries a colon *before* the transition, so
+//     splitting on the first colon left a head with no arrow in it at all.
+//
+// Both now resolve, and the first can no longer misresolve by construction:
+// Kind and Target are decided together, from the same first physical line.
+func TestTransitionSurvivesContinuationFolding(t *testing.T) {
+	for _, c := range []struct {
+		name, doc, wantStatus, wantReason string
+	}{
+		{
+			name:       "reason-less transition with a continuation line",
+			doc:        "## History\n- 2026-08-06 — created (TO DO). source: test\n- 2026-08-06 — TO DO → READY\n  a hand-written note wrapped under the transition\n",
+			wantStatus: "READY",
+			wantReason: "", // the entry carries no ": reason" clause at all
+		},
+		{
+			name:       "a colon before the transition",
+			doc:        "## History\n- 2026-08-06 — created (TO DO). source: test\n- 2026-08-06 — audit fix: TO DO → READY\n",
+			wantStatus: "READY",
+			wantReason: "",
+		},
+		{
+			name:       "two arrows and no reason: the leftmost legal candidate wins",
+			doc:        "## History\n- 2026-08-06 — IN DEVELOPMENT → IN REVIEW → DONE\n",
+			wantStatus: "DONE",
+			wantReason: "",
+		},
+		{
+			name:       "a note mentioning an arrow and a status name stays a note",
+			doc:        "## History\n- 2026-08-06 — TO DO → READY: refined\n- 2026-08-06 — clarified that a merge → DONE requires a human\n",
+			wantStatus: "READY",
+			wantReason: "refined",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := LastHistoryStatus(c.doc); got != c.wantStatus {
+				t.Errorf("LastHistoryStatus = %q, want %q", got, c.wantStatus)
+			}
+			if got := LastHistoryReason(c.doc); got != c.wantReason {
+				t.Errorf("LastHistoryReason = %q, want %q", got, c.wantReason)
+			}
+			// The invariant behind the fix, asserted directly: an entry classified
+			// as a transition always names a legal target, and one that is not a
+			// transition never names any — whatever folding did to its Text.
+			for _, e := range HistoryEntries(c.doc) {
+				if e.Kind == HistoryTransition {
+					if _, ok := StatusByName(e.Target); !ok {
+						t.Errorf("entry %+v is a transition whose Target is not a legal status", e)
+					}
+				} else if e.Target != "" {
+					t.Errorf("entry %+v is not a transition but carries Target %q", e, e.Target)
+				}
+			}
+		})
+	}
+}
+
+// TestLastHistoryStatusUnexercisedShapes rounds out coverage the ticket found
+// missing entirely: no History, an empty one, case-insensitive status matching,
+// an unknown target ignored as a note rather than accepted, and a trailing note
+// that must not overwrite the last real transition.
+func TestLastHistoryStatusUnexercisedShapes(t *testing.T) {
+	for _, c := range []struct {
+		name, doc, want string
+	}{
+		{"no History section at all", "# T-001 — x\n\nno history here\n", ""},
+		{"empty History section", "## History\n\n<!-- nothing yet -->\n", ""},
+		{"lowercase target still matches", "## History\n- 2026-08-06 — to do → ready: refined\n", "READY"},
+		{"mixed-case target still matches", "## History\n- 2026-08-06 — To Do → In Review: skipped a step\n", "IN REVIEW"},
+		{"unknown target is a note, not a transition", "## History\n- 2026-08-06 — created (TO DO). source: test\n- 2026-08-06 — audit run → nowhere legal\n", "TO DO"},
+		{"a trailing note does not overwrite the last transition", "## History\n- 2026-08-06 — TO DO → READY: refined\n- 2026-08-06 — a free-form note about the plan\n", "READY"},
+		{"content under a different heading level is not History", "### History\n- 2026-08-06 — TO DO → READY: refined\n", ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := LastHistoryStatus(c.doc); got != c.want {
+				t.Errorf("LastHistoryStatus(%q) = %q, want %q", c.doc, got, c.want)
+			}
+		})
+	}
+}
+
 func TestLoadAllToleratesMissingDirs(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "tickets", "1-to-do")
@@ -453,15 +594,21 @@ func TestHistoryEntries(t *testing.T) {
 - 2026-12-31 — a dated bullet after ## History ends must be ignored
 `
 	got := HistoryEntries(doc)
+	// Keyed fields, not positional: Target was added to HistoryEntry by T-043's
+	// rework and a positional literal silently re-purposes the next field the
+	// next time the struct grows. Asserting Target here also pins the invariant
+	// the rework rests on — Kind and Target are decided together, from the
+	// entry's first physical line, so a folded entry cannot claim to be a
+	// transition to nowhere.
 	want := []HistoryEntry{
-		{"2026-07-23", "created (TO DO). source: test", HistoryCreated},
-		{"2026-07-24", "TO DO → READY: plain-hyphen separator", HistoryTransition},
-		{"2026-07-25", "READY → IN DEVELOPMENT: extra spaces", HistoryTransition},
-		{"2026-07-26", "merged to main (abc1234)", HistoryMerged},
+		{Date: "2026-07-23", Text: "created (TO DO). source: test", Kind: HistoryCreated},
+		{Date: "2026-07-24", Text: "TO DO → READY: plain-hyphen separator", Kind: HistoryTransition, Target: "READY"},
+		{Date: "2026-07-25", Text: "READY → IN DEVELOPMENT: extra spaces", Kind: HistoryTransition, Target: "IN DEVELOPMENT"},
+		{Date: "2026-07-26", Text: "merged to main (abc1234)", Kind: HistoryMerged},
 		// Wrapped entries fold back into one logical entry: truncating at the
 		// first physical line would cut this reason mid-sentence.
-		{"2026-07-27", "IN REVIEW → DONE: a reason so long that it wraps onto a second line and even a third", HistoryTransition},
-		{"2026-07-28", "TO DO → READY: not a continuation of the above", HistoryTransition},
+		{Date: "2026-07-27", Text: "IN REVIEW → DONE: a reason so long that it wraps onto a second line and even a third", Kind: HistoryTransition, Target: "DONE"},
+		{Date: "2026-07-28", Text: "TO DO → READY: not a continuation of the above", Kind: HistoryTransition, Target: "READY"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("HistoryEntries returned %d entries, want %d: %+v", len(got), len(want), got)
@@ -529,8 +676,8 @@ unindented prose must not fold
 `
 	got := HistoryEntries(doc)
 	want := []HistoryEntry{
-		{"2026-07-23", "created (TO DO). source: test wrapped tail", HistoryCreated},
-		{"2026-07-24", "TO DO → READY: second entry", HistoryTransition},
+		{Date: "2026-07-23", Text: "created (TO DO). source: test wrapped tail", Kind: HistoryCreated},
+		{Date: "2026-07-24", Text: "TO DO → READY: second entry", Kind: HistoryTransition, Target: "READY"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d entries, want %d: %+v", len(got), len(want), got)

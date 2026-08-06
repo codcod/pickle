@@ -162,14 +162,61 @@ func historyKind(body string) HistoryKind {
 	case createdRE.MatchString(body):
 		return HistoryCreated
 	default:
-		if idx := strings.LastIndex(body, "→"); idx >= 0 {
-			target := strings.TrimSpace(strings.SplitN(body[idx+len("→"):], ":", 2)[0])
-			if _, ok := StatusByName(strings.ToUpper(target)); ok {
-				return HistoryTransition
-			}
+		if _, _, ok := transitionParts(body); ok {
+			return HistoryTransition
 		}
 		return HistoryNote
 	}
+}
+
+// arrow is the transition separator this repo's History lines are written with.
+const arrow = "→"
+
+// transitionParts locates the transition inside a History entry body
+// ("OLD → NEW[: reason]") and returns NEW plus the reason clause, reporting ok
+// only when NEW is a legal status name. It is the single place that decides
+// whether a body is a status transition at all: historyKind, HistoryEntries and
+// LastHistoryReason all resolve to this one function instead of each re-deriving
+// the split, which is what let three readers drift out of sync before T-043.
+//
+// The rule is **the leftmost arrow whose candidate target is a legal status
+// name**, where the candidate ends at the next colon. Three shapes, all real,
+// force exactly that rule:
+//
+//   - "IN REVIEW → DONE: review PASS; 2 non-blocking → fixed inline" — a reason
+//     may contain an arrow of its own (T-058's actual History). Searching for the
+//     *last* arrow read the reason's arrow and demoted the entry to a note.
+//   - "audit fix: TO DO → READY" — a body may carry a colon *before* the
+//     transition, so the reason clause cannot be found by splitting on the
+//     body's *first* colon; that only worked while every reason came last.
+//   - "IN DEVELOPMENT → IN REVIEW → DONE" — two arrows and no reason. The
+//     leftmost candidate ("IN REVIEW → DONE") is not a legal status, so the scan
+//     continues rather than giving up, and the entry still resolves to DONE.
+//
+// Requiring the candidate to be a legal status *exactly* (not merely to start
+// with one) is what keeps a note that happens to mention an arrow — "clarified
+// that a merge → DONE requires a human" — a note.
+func transitionParts(body string) (target, reason string, ok bool) {
+	for rest := body; ; {
+		i := strings.Index(rest, arrow)
+		if i < 0 {
+			return "", "", false
+		}
+		rest = rest[i+len(arrow):]
+		candidate, tail := rest, ""
+		if j := strings.Index(rest, ":"); j >= 0 {
+			candidate, tail = rest[:j], strings.TrimSpace(rest[j+1:])
+		}
+		if name := strings.ToUpper(strings.TrimSpace(candidate)); statusExists(name) {
+			return name, tail, true
+		}
+	}
+}
+
+// statusExists reports whether name is a legal status display name.
+func statusExists(name string) bool {
+	_, ok := StatusByName(name)
+	return ok
 }
 
 // HistoryEntry is one dated line from a ticket's `## History` section.
@@ -177,6 +224,14 @@ type HistoryEntry struct {
 	Date string      // raw YYYY-MM-DD, exactly as written (the regex anchors the shape)
 	Text string      // the line's body: a transition, a created line, or a merge note
 	Kind HistoryKind // classified from the body's first physical line, stable across continuation folding
+	// Target is the transition's destination status display name, or "" unless
+	// Kind is HistoryTransition. It is derived from the *same* first physical
+	// line Kind is, in the same pass, so the two cannot disagree — a reader that
+	// re-derived the target from the folded Text could, and did: "TO DO → READY"
+	// with a wrapped continuation line folds to "TO DO → READY <prose>", whose
+	// candidate target is no longer a legal status, so the entry classified as a
+	// transition and then resolved to no status at all (T-043 review, R1).
+	Target string
 }
 
 // HistoryEntries returns every dated entry of a ticket's `## History` section in
@@ -207,7 +262,13 @@ func HistoryEntries(text string) []HistoryEntry {
 		trimmed := strings.TrimSpace(line)
 		if m := historyRE.FindStringSubmatch(trimmed); m != nil {
 			body := strings.TrimSpace(m[1])
-			out = append(out, HistoryEntry{Date: historyDate(trimmed), Text: body, Kind: historyKind(body)})
+			e := HistoryEntry{Date: historyDate(trimmed), Text: body, Kind: historyKind(body)}
+			if e.Kind == HistoryTransition {
+				// Same input as historyKind just classified, so Kind and Target
+				// are decided together and stay true after folding (T-043 R1).
+				e.Target, _, _ = transitionParts(body)
+			}
+			out = append(out, e)
 			continue
 		}
 		// Continuation of the entry above: indented text that opens no new bullet.
@@ -310,33 +371,25 @@ func ParseIDList(raw string) ([]string, error) {
 }
 
 // LastHistoryStatus returns the display name of the newest status-bearing History
-// transition, or "" if none is parseable. Merge notes ("… — MERGED: …") are skipped.
+// transition, or "" if none is parseable. Merge notes ("… — MERGED: …") are
+// skipped.
+//
+// Routed through HistoryEntries (rather than re-walking text itself) so a
+// transition wrapped across continuation lines folds exactly the way
+// HistoryEntries already folds it for every other reader — the two used to be
+// able to disagree on where an entry ends, T-043. It reads HistoryEntry.Target
+// rather than re-deriving the target from the folded Text: re-derivation is what
+// let an entry be classified a transition and still yield no status (T-043 R1).
 func LastHistoryStatus(text string) string {
-	inHistory := false
 	status := ""
-	for _, line := range strings.Split(text, "\n") {
-		if strings.HasPrefix(line, "## ") {
-			inHistory = strings.TrimSpace(line) == "## History"
-			continue
-		}
-		if !inHistory {
-			continue
-		}
-		m := historyRE.FindStringSubmatch(strings.TrimSpace(line))
-		if m == nil {
-			continue
-		}
-		body := strings.TrimSpace(m[1])
-		switch historyKind(body) {
-		case HistoryMerged:
-			continue // merge note, not a status transition
+	for _, e := range HistoryEntries(text) {
+		switch e.Kind {
 		case HistoryCreated:
-			c := createdRE.FindStringSubmatch(body)
-			status = strings.ToUpper(strings.TrimSpace(c[1]))
+			if c := createdRE.FindStringSubmatch(e.Text); c != nil {
+				status = strings.ToUpper(strings.TrimSpace(c[1]))
+			}
 		case HistoryTransition:
-			idx := strings.LastIndex(body, "→")
-			target := strings.TrimSpace(strings.SplitN(body[idx+len("→"):], ":", 2)[0])
-			status = strings.ToUpper(target)
+			status = e.Target
 		}
 	}
 	return status
@@ -347,31 +400,26 @@ func LastHistoryStatus(text string) string {
 // transition carries no reason. Merge notes and created lines are skipped — they
 // are not transitions. The board renderer derives the DROPPED `reason` and REWORK
 // `open findings` cells from this, so those facts live only in the ticket (D3).
+//
+// Routed through HistoryEntries for the same reason as LastHistoryStatus
+// (T-043): a reason clause wrapped onto a continuation line used to be silently
+// truncated to its first physical line, because the old per-line walk never saw
+// the fold HistoryEntries already performs for every other reader.
+//
+// The reason — unlike the target, which is frozen with Kind on the entry's first
+// physical line — is read from the *folded* Text, since folding it back together
+// is the whole point. When the folded text no longer presents a transition (a
+// reason-less "TO DO → READY" whose continuation line is plain prose), there is
+// no reason clause to report and "" is the answer.
 func LastHistoryReason(text string) string {
-	inHistory := false
 	reason := ""
-	for _, line := range strings.Split(text, "\n") {
-		if strings.HasPrefix(line, "## ") {
-			inHistory = strings.TrimSpace(line) == "## History"
-			continue
-		}
-		if !inHistory {
-			continue
-		}
-		m := historyRE.FindStringSubmatch(strings.TrimSpace(line))
-		if m == nil {
-			continue
-		}
-		body := strings.TrimSpace(m[1])
-		if historyKind(body) != HistoryTransition {
+	for _, e := range HistoryEntries(text) {
+		if e.Kind != HistoryTransition {
 			continue // merge note, created line, or free-form note
 		}
-		idx := strings.LastIndex(body, "→")
-		parts := strings.SplitN(body[idx+len("→"):], ":", 2)
-		if len(parts) == 2 {
-			reason = strings.TrimSpace(parts[1])
-		} else {
-			reason = ""
+		reason = ""
+		if _, r, ok := transitionParts(e.Text); ok {
+			reason = r
 		}
 	}
 	return reason
