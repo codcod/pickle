@@ -498,6 +498,61 @@ agree with `HistoryEntry.Kind` for the two shapes in R1, on the same branch, wit
 added as tests. Do **not** take R2 (it is T-070's) and do not chase R3's coverage floor. Re-run
 the acceptance test, including D8's before/after `board audit` guard on the real tree.
 
+### Rework pass — 2026-08-06 (commit `84628dc`, same branch)
+
+**R1 — fixed.** Nothing else was touched: the pass changes `internal/ticket/ticket.go` and
+`internal/ticket/ticket_test.go` only.
+
+- **The disagreement is gone by construction.** `HistoryEntry` gained a `Target` field, filled in
+  the same pass — and from the same *first physical line* — that decides `Kind`.
+  `LastHistoryStatus` now reads `e.Target` instead of re-parsing the folded `Text`, so "classified
+  as a transition" and "resolves to a status" can no longer disagree. `LastHistoryReason` still
+  reads the folded text, which is the whole point of folding; when the folded text presents no
+  transition (a reason-less entry with prose wrapped under it) there is no reason clause and `""`
+  is the answer.
+- **One scan replaces two half-rules.** `splitTransition` + `transitionTarget` are replaced by
+  `transitionParts`, whose rule is **the leftmost arrow whose candidate target — the text up to
+  the next colon — is a legal status name, exactly**. Both R1 shapes resolve again, T-043's
+  original T-058 fix is preserved, and `"IN DEVELOPMENT → IN REVIEW → DONE"` now resolves by
+  *continuing* the scan rather than giving up. The exactness requirement is load-bearing: it is
+  what keeps a note that merely mentions `"→ DONE requires a human"` a note.
+- **Both R1 shapes, plus the two above, are pinned** in
+  `TestTransitionSurvivesContinuationFolding`, which also asserts the invariant directly — every
+  entry with `Kind == HistoryTransition` names a legal `Target`, and every other entry names none.
+  The two `HistoryEntries` fixtures moved from positional to keyed literals and now assert
+  `Target` as well.
+
+**Behaviour vs. `main`, all five shapes measured on three trees** (`main`, the reviewed `efcb2dc`,
+this pass) — the pass is now a strict improvement over `main` with no regression:
+
+| shape | `main` | `efcb2dc` (reviewed) | now |
+|---|---|---|---|
+| reason-less transition + continuation line | `READY` | `""` ✗ | `READY` ✓ |
+| colon before the transition | `READY` | `TO DO` ✗ | `READY` ✓ |
+| two arrows, no reason | `DONE` | `DONE` | `DONE` ✓ |
+| arrow inside the reason (T-058's real line) | `""` ✗ | `DONE` ✓ | `DONE` ✓ |
+| reason wrapped across a fold | truncated | full ✓ | full ✓ |
+
+**Acceptance re-run:** `just build`, `just test`, `just lint`, `just docs-check` all green;
+`go test -race -count=2 ./internal/cli/ ./internal/ticket/ ./internal/config/` green; coverage
+`internal/ticket` 94.4% → **94.5%**, `internal/cli` 70.4% and `internal/config` 85.6% unchanged;
+D8's guard held — `board audit` on the real 70-ticket tree is **0 errors, 0 warnings** with the old
+*and* the new binary, and `board sync` leaves `BOARD.md` byte-identical.
+
+**Mutations.** A, B and C (the harness guards) re-run unchanged and still fail as named. D's
+original form — reverting `internal/ticket/ticket.go` wholesale to `main` — is now a **compile
+error** rather than a test failure, because `HistoryEntry` gained a field; its intent is carried by
+three finer mutations, each applied, observed and reverted:
+
+| mutation | expected failure | observed |
+|---|---|---|
+| E1 — make `LastHistoryStatus` re-derive the target from the folded `Text` (i.e. re-introduce R1) | the reason-less-plus-continuation case | `LastHistoryStatus = "TO DO", want "READY"` ✓ |
+| E2 — scan for the **last** arrow instead of the leftmost legal one | T-043's original T-058 fix | `LastHistoryStatus = "IN REVIEW", want DONE` ✓ |
+| E3 — accept a candidate that merely *starts with* a legal status name | the two-arrow case **and** the note-mentioning-an-arrow case | both fail (`"IN REVIEW"` instead of `DONE`; `"DONE"` instead of `READY`) ✓ |
+
+E3 is worth keeping in the record: prefix matching was one of the two fixes this review itself
+suggested, and the mutation shows it would have traded R1 for a false positive on notes.
+
 ### Impact sweep — deferred to the concluding review, items already known
 
 Both are consequences of this branch that the concluding review must patch (they are recorded
@@ -550,3 +605,4 @@ here, not applied, because the rework pass may move the lines again):
 - 2026-08-06 — READY → IN DEVELOPMENT: picked up
 - 2026-08-06 — IN DEVELOPMENT → IN REVIEW: acceptance green: build/test/lint/docs-check pass; item 6 turned out to be a live bug, fixed and mutation-tested
 - 2026-08-06 — IN REVIEW → REWORK: review REWORK: 1 blocking (R1: folded-text transition target disagrees with HistoryEntry.Kind on two shapes); 5 non-blocking (1 new ticket T-070, 4 noted)
+- 2026-08-06 — REWORK → IN REVIEW: findings fixed: R1 resolved (Kind and Target now decided together; transitionParts scans for the leftmost legal target), 3 new mutations green, D8 guard held

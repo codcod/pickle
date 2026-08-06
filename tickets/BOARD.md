@@ -20,10 +20,11 @@ Last updated: 2026-08-06
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-06
 
 | id | title | open findings |
 |---|---|---|
-| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | review REWORK: 1 blocking (R1: folded-text transition target disagrees with HistoryEntry.Kind on two shapes); 5 non-blo… |
 
 ## READY (impact order, per child)
 
