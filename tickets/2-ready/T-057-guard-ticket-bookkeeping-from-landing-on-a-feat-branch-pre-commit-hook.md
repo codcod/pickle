@@ -97,6 +97,35 @@ already runs, needs no git config, and `DESIGN.md` §7 already anticipates wirin
 
 ## Implementation Plan
 
+> **STALE — do not execute as written.** The pickup applicability gate (2026-08-05) found four
+> **blocking** mechanical defects and the user routed the ticket back to READY for re-refinement
+> rather than amending the plan inline at pickup. The plan below is unchanged from the first
+> refinement; the gate's findings are recorded immediately after this note and are the
+> re-refinement's mandate. The *design* decisions (1–10) survived the audit intact — what failed is
+> the mechanics: one wrong git call, the shim's exit-code contract, no-git degradation, and an
+> acceptance transcript that cannot run verbatim.
+
+### Pickup gate findings (2026-08-05)
+
+Run by a fresh sub-agent per rules §8; every blocking finding re-verified by hand before being
+recorded here. Severity + disposition per rules §5. The eight `fixed inline` items were **not**
+applied — the route-back makes them the re-refinement's work.
+
+| # | finding | evidence | severity | disposition |
+|---|---|---|---|---|
+| B1 | Acceptance step 4 cannot pass: step 3's rejection leaves `tickets/` **in the index**, so the "code only" commit stages `code.txt` *on top of it* and is rejected too; the end state collapses into one commit holding both. Needs `git restore --staged tickets/` after step 3 (which also exercises the remedy the message prints) and a re-`git add tickets` before step 5. | simulated the decision-7 predicate as a real hook | blocking | fixed inline |
+| B2 | Predicate step 1 uses the wrong git call. On an **unborn branch** (`git init -b main`, no commits) `git rev-parse --abbrev-ref HEAD` fails: `fatal: ambiguous argument 'HEAD'`, rc=128, prints `HEAD` — so a fresh repo is misread as detached and bookkeeping on `feat/…` slips through via fail-open. `git symbolic-ref --quiet --short HEAD` is correct: `main` rc=0 on an unborn branch, `''` rc=1 when detached. Transcript step 2 also passes by fail-open rather than by the rule, so it proves nothing — it needs a commit first. | re-verified locally, git 2.55 | blocking | fixed inline |
+| B3 | The shim is fail-**closed** on version skew, inverting decision 4. `pickle hooks run pre-commit \|\| exit 1` treats *any* non-zero as a violation, and an older `pickle` first on `PATH` (`go install`, a second clone, Homebrew lag) exits `exitUsage`=2 on an unknown verb — **every commit in the repo blocked**. Needs a reserved exit code for "violation" (only `exitError`=1) with everything else passed through, or a `--probe` handshake. | `internal/cli/cli.go:26,70` | blocking | fixed inline |
+| B4 | `Upgrade`/`doctor` wiring assumes a real git repo, but the existing fixtures fake one with an empty dir (`internal/doctor/doctor_test.go:30`, `internal/cli/cli_test.go:191`), where `git rev-parse --path-format=absolute --git-path hooks` exits 128. `hook.Refresh` in `Upgrade` and `checkHooks` in `Check` would error in every current test root and in any non-git install. The plan must specify: not-a-repo → silent no-op (upgrade) and one `ok` line (doctor). Also worth stating: this is pickle's **first** `os/exec` use (0 hits repo-wide today). | verified | blocking | fixed inline |
+| F5 | The rebase branch of the in-progress check is dead code: `rebase --continue` never runs `pre-commit`, and during a rebase HEAD is detached anyway (step 1 already passes). `--amend`, a conflicted merge's `git commit`, and `cherry-pick --continue` **do** run it, so `MERGE_HEAD`/`CHERRY_PICK_HEAD`/`REVERT_HEAD` stay; drop `rebase-merge`/`rebase-apply` or mark it belt-and-braces. | hook-logging probe | non-blocking | fixed inline |
+| F6 | The manual currently states the **opposite** of what task 6 writes down: "a feature branch can hold the code change *and* the ticket's move to `4-in-review/`". Task 7 says only "state the split" — it must **replace** that sentence, or the manual contradicts the hook. (`review-protocol.md:30-32` and `SKILL.md:192,234` are correctly covered by 6b/6c.) | `docs/user-manual/concepts/project-structure.adoc:139-142` | non-blocking | fixed inline |
+| F8 | Git env leaks into both the implementation and the tests: the hook runs with `GIT_INDEX_FILE=.git/index` (**relative**), `GIT_PREFIX=<subdir>/`, and in a linked worktree `GIT_DIR=…/.git/worktrees/<wt>` — so any `git -C <dir>` where `<dir>` ≠ the hook's cwd reads the wrong index/repo. Tests must clear `GIT_DIR`/`GIT_INDEX_FILE`/`GIT_WORK_TREE` and pin `HOME`/`GIT_CONFIG_GLOBAL`, or a developer's global `core.hooksPath` makes the install test write outside `t.TempDir()`. | env probe | non-blocking | fixed inline |
+| F12 | Transcript hygiene: the closing "verify `pickle doctor` reports no marker drift" sits *after* step 8's `pickle uninstall` has stripped the markers (move it before step 7); `git add pickle.toml tickets AGENTS.md` is a partial stage (leaves `CLAUDE.md`, `.agents/…`, `.claude/skills/ticket-flow` untracked) and should say so; and the transcript cannot be pasted into a pi session in this repo — `.pi/extensions/workspace-guardrails.ts:102` blocks any segment matching `pickle install` that does not target `/tmp`, so it must be run from a script under `/tmp`. | verified | non-blocking | fixed inline |
+| F7 | `--amend` is guarded only against the index: the hook does run on `--amend`, but `git diff --cached` is index-vs-HEAD, so amending a commit that *already* contains `tickets/` shows nothing. Acceptable — but the docs should say it rather than imply amends are covered. | — | non-blocking | noted |
+| F9 | Fail-open plus `PATH` lookup makes the guard silently absent in GUI/IDE commits (Fork, SourceTree, JetBrains all run with a minimal `PATH` lacking `/opt/homebrew/bin` and `$GOPATH/bin`), so `command -v pickle` fails. One honest sentence in `cli-reference.adoc`: the guard is best-effort and terminal-first. | — | non-blocking | noted |
+| F10 | `cli-reference.adoc` overlaps T-066's declared file ownership ("No file overlap (T-066 owns `cli-reference.adoc`)"), and dead anchors are unvalidated today — which is T-067's whole premise — so a broken xref to a new `[#cmd-hooks]` would not be caught. Keep the new section self-contained and re-check both tickets at implementation time. Recorded here rather than added to T-066: T-057's section does not exist yet, so an item there would be speculative. | `tickets/1-to-do/T-067-…md:74` | non-blocking | noted (cross-ref T-066, T-067) |
+| F11 | `just docs-check` is not in CI (`.github/workflows/ci.yml` runs vet/gofmt/test/build only), so `snowball check` is local-only and task 7's docs breakage could land unnoticed. The new hook tests themselves are CI-safe: git exists, the plan sets `user.email`/`user.name` locally, and the file skips without git. | verified | non-blocking | noted |
+
 ### Feature branch
 
 `feat/T-057-bookkeeping-pre-commit-hook`, cut from `main` in the `pickle` child (this repo).
@@ -366,3 +395,10 @@ merge this repo's own guard is armed by a human running `pickle hooks install` f
   ticket now spans a new git-touching package, a CLI verb, install/upgrade/uninstall/doctor wiring
   and the payload prose
 - 2026-08-05 — TO DO → READY: plan complete
+- 2026-08-05 — pickup applicability gate run (rules §8) before any move or branch: 4 blocking +
+  8 non-blocking findings, recorded in the plan's *Pickup gate findings*. User routed the ticket
+  **back to READY for re-refinement** instead of amending the plan inline at pickup, so no move
+  and no `feat/` branch happened — the ticket stayed in `2-ready/` throughout and its plan is
+  marked STALE. Design decisions 1–10 survived the audit; the defects are mechanical
+  (`git rev-parse --abbrev-ref HEAD` misreads an unborn branch, the shim is fail-closed on version
+  skew, no-git degradation unspecified, acceptance transcript not runnable verbatim)
