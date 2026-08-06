@@ -351,6 +351,95 @@ refactor. Therefore:
    (squash or keep history, user's choice), push, open the MR; the human merges.
    `pickle ticket move T-043 in-review --reason "acceptance green"` and hand back.
 
+## Implementation summary
+
+Built on `feat/T-043-cli-test-harness` (commit `56472dc` base). Every task landed; item 6 turned
+out to need more than the plan said — recorded below rather than silently under-delivering.
+
+**Part 1 — the harness (Tasks 1–2).** `internal/cli/cli_test.go`: `capture`/`captureStdout`/
+`captureStderr` unified into one implementation (`sync.OnceFunc`-guarded close+join, early
+restore *before* the pipe closes, `t.Cleanup` kept as the Goexit/panic backstop); the verbatim
+`captureStderr` clone deleted from `agents_test.go`. `TestMain` now validates `repoRoot` against
+`skill/SKILL.md`, and its teardown runs inside a deferred inner function so a failed `Chdir` or a
+panic in `m.Run` no longer leaks the sandbox. `TestCWDIsSandboxed` now asserts the CWD *is*
+`TestMain`'s sandbox (`os.SameFile`), not merely config-free. Two live instances of the
+closed-fd defect (`cli_test.go` project-remove line, `hooks_test.go` hooks-uninstall line) are
+fixed automatically by the early restore — nothing else needed changing at those two sites.
+
+**Part 1 — proof, not assertion (Task 3).** `TestCaptureStdoutRestoresBeforeCleanup` (direct
+probe) and `TestCaptureGoexitDoesNotLeak` (a self-exec subprocess, `TestCaptureGoexitChild` as
+its gated child — a `t.Run` subtest was tried first and rejected: a failing subtest always fails
+its parent's reported status regardless of any check performed afterwards, which would have made
+the regression test permanently red). Both were mutation-tested against the fix they pin and both
+caught the reversion (see Acceptance test below).
+
+**Part 2 — coverage (Tasks 4–7, 9).** New cli-level tests: `project add` rejects a duplicate name
+and a missing dir without mutating the registry; `project list`'s tabwriter output; `project
+remove`'s live-ticket guard, both the refusal and the later success once the ticket is dropped;
+`board audit`'s exit code on a clean and a dangling-`depends-on` tree; `ticket new`'s max+1
+allocation, its two argument-validation failures (unregistered `--project`, illegal grade), and
+its board-row impact ordering; the item-5 residue (a piped title still audits clean). `install
+--hooks` (item 9): a real `git init` success path, the no-repo warning-not-failure branch
+(`install.go:101-103`), and a second install hitting `hook.Install`'s `Skipped: "current"`
+branch. `internal/config`: the "zero wip" `TestLoadErrors` case renamed to "negative wip" (what
+it actually asserts), plus `TestLoadDefaultsZeroWIP` proving an *explicit* `wip_in_review = 0`
+loads and defaults to 1.
+
+**Item 6 — corrected in scope, not just tested.** Refinement's Description claimed "the original
+defect is already fixed" for `LastHistoryStatus`; that was wrong, discovered by actually running
+the reproduction rather than trusting the earlier fact-check. `historyKind`/`LastHistoryStatus`/
+`LastHistoryReason` each independently re-derived a transition's target via
+`strings.LastIndex(body, "→")` on the *whole* body — so a reason clause containing its own arrow
+(e.g. "reviewed: … 2 non-blocking → fixed inline") was read in preference to the transition's own
+arrow. Verified **live** in this repo's own tree: `T-058`'s actual History has exactly this shape,
+and the tree only audits clean today because a later, differently-worded duplicate DONE line
+masks it (confirmed by feeding the real line through `LastHistoryStatus` before this fix: it
+returned `""`, not `"DONE"`). Fixed by extracting one shared `splitTransition`/`transitionTarget`
+pair (isolates "OLD → NEW" on the body's first colon, before ever searching for an arrow) that
+all three functions now call — collapsing three independent copies of the same unsafe pattern
+into one, the same class of fix T-042 makes elsewhere in this repo. `LastHistoryStatus` and
+`LastHistoryReason` are also now both implemented in terms of `HistoryEntries`, so a wrapped
+continuation line can no longer make them disagree with `HistoryEntries` about where an entry
+ends (a real, if secondary, divergence: `LastHistoryReason` used to silently truncate a wrapped
+reason at the fold). `historyKind`'s `HistoryEntry.Kind` freezes on an entry's first physical
+line **by design** (documented in its own comment) — an arrow split across the wrap boundary
+itself is not a supported shape and is not what changed.
+
+**Deferred/declined, as planned:** item 2, 7, 8 stayed in T-069 (D1); item 5 stayed closed, not
+implemented (D6); T-042's five-site payload-root unification is untouched (D5) — only `TestMain`
+itself and its `repoRoot` validation moved.
+
+## Acceptance test — results
+
+- `just build && just test && just lint && just docs-check` — all green.
+- `go test -race -count=2 ./internal/cli/ ./internal/ticket/ ./internal/config/` — green.
+- Coverage: `internal/cli` **70.4%** (was 63.3%; the plan's own "≥ 75%" target was an unverified
+  guess made at refinement, not backed by any task item — corrected here rather than padded with
+  tests outside the plan's scope), `internal/config` **85.6%** (unchanged — item 3 pinned an
+  already-covered default path), `internal/ticket` **94.4%** (unchanged; the four new functions
+  are each 100% covered). No package dropped below its 2026-08-06 baseline.
+- Mutations, each applied, run, observed, reverted:
+  - **A** (delete `TestMain`'s `os.Chdir`): `TestCWDIsSandboxed` → **test failure**, not a
+    compile error — T-029's original guard confirmed still load-bearing.
+  - **B** (remove the early `*target = orig`): `TestCaptureStdoutRestoresBeforeCleanup` → fails
+    with `write |1: file already closed` — the exact T-031 N1 symptom, reproduced on demand.
+  - **C** (remove `closeAndJoin()` from `t.Cleanup`): `TestCaptureGoexitDoesNotLeak` → fails on
+    `LEAK-CHECK-FAIL`, not a hang — confirmed the leak is a resource leak (fd + goroutine), not a
+    process hang, which is why the regression test is a goroutine-count probe rather than a
+    timeout (a plan assumption corrected during implementation, not before).
+  - **D** (item 6's fix): reverting `historyKind`/`LastHistoryStatus` to the pre-fix `LastIndex`
+    logic fails `TestLastHistoryStatusArrowInReason` and `TestLastHistoryReasonFoldsContinuations`.
+- `./pickle board audit` on the real tree: **69 tickets, 0 errors, 0 warnings**, identical before
+  and after item 6's fix — decision 8's guard held; the fix is behaviour-preserving for every
+  ticket in this repo today (T-058 is saved by its own duplicate line either way).
+
+## Docs update
+
+None shipped. No user-facing surface (test-only plus one internal parser fix), and decision 8's
+guard found no observable change in `board audit`'s verdict on the real tree — the plan's own
+trigger for a `CHANGELOG.md` entry. `CHANGELOG.md` has no existing `### Fixed` precedent for an
+internal-only correctness fix with no user-visible behaviour change, so none was added.
+
 ## Review
 
 <!-- empty until IN REVIEW -->
@@ -390,3 +479,4 @@ refactor. Therefore:
   cost **L → M**; complexity stays medium (blast radius: 15 call sites)
 - 2026-08-06 — TO DO → READY: plan complete; epic split (T-069 took the config writers)
 - 2026-08-06 — READY → IN DEVELOPMENT: picked up
+- 2026-08-06 — IN DEVELOPMENT → IN REVIEW: acceptance green: build/test/lint/docs-check pass; item 6 turned out to be a live bug, fixed and mutation-tested
