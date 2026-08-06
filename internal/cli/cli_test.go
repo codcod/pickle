@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
@@ -19,6 +23,12 @@ import (
 // starts in internal/cli/, which is exactly what TestMain changes.
 var repoRoot string
 
+// testSandbox identifies TestMain's sandbox directory by inode (via os.Stat),
+// not by path string: os.Getwd() and the path MkdirTemp returned are not
+// guaranteed to be textually identical (e.g. a symlinked TMPDIR), so
+// TestCWDIsSandboxed compares with os.SameFile instead of string equality.
+var testSandbox os.FileInfo
+
 // TestMain makes CWD safety the default rather than opt-in. Commands in this
 // package resolve their target by walking *up* from the process CWD
 // (loadConfig -> os.Getwd -> config.Find), so a test that forgot newProject's
@@ -26,38 +36,59 @@ var repoRoot string
 // burning a global ticket id, which is never reused. Running the whole package
 // from a throwaway directory means such a test fails loudly instead.
 //
-// TestCWDIsSandboxed proves this actually holds.
+// TestCWDIsSandboxed proves this actually holds. Go permits exactly one
+// TestMain per package: a second consumer of this harness (T-012, T-057) must
+// extend this function, never add a second one.
 func TestMain(m *testing.M) {
 	wd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "TestMain: getwd: %v\n", err)
 		os.Exit(1)
 	}
-	repoRoot, err = filepath.Abs(filepath.Join(wd, "..", ".."))
+	root, err := filepath.Abs(filepath.Join(wd, "..", ".."))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "TestMain: resolve repo root: %v\n", err)
 		os.Exit(1)
 	}
-	// Keep the path in a named variable the cleanup below references: the
-	// acceptance test's mutation C deletes the Chdir call and requires a test
-	// failure, not an unused-variable compile error.
+	// wd/../.. is a guess, taken on faith until now: confirm it against what
+	// install.Run actually reads (the payload marker), so a wrong value fails
+	// right here with a clear reason instead of surfacing far away as an opaque
+	// "install: ..." error in every test that calls newProject (T-043, T-031 N4).
+	if _, err := os.Stat(filepath.Join(root, "skill", "SKILL.md")); err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: resolved repo root %s does not look like the pickle repo (skill/SKILL.md missing): %v\n", root, err)
+		os.Exit(1)
+	}
+	repoRoot = root
+
 	sandbox, err := os.MkdirTemp("", "pickle-cli-sandbox")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "TestMain: sandbox: %v\n", err)
 		os.Exit(1)
 	}
-	if err := os.Chdir(sandbox); err != nil {
-		fmt.Fprintf(os.Stderr, "TestMain: chdir sandbox: %v\n", err)
+	if testSandbox, err = os.Stat(sandbox); err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: stat sandbox: %v\n", err)
 		os.Exit(1)
 	}
 
-	code := m.Run()
-
-	// Step out before removing it: each test's t.Chdir restored the sandbox as
-	// the CWD, and deleting the directory you are standing in is sloppy.
-	// os.Exit runs no deferred functions, so this cannot be a defer.
-	_ = os.Chdir(repoRoot)
-	_ = os.RemoveAll(sandbox)
+	// Run inside an inner function so a defer is legal: os.Exit runs no
+	// deferred functions in TestMain's own body, but a defer inside an inner
+	// function still runs while that function's stack unwinds — on a normal
+	// return, on a failed Chdir below, and during a panic inside m.Run — which
+	// is what stops the sandbox leaking on exactly those two paths (T-031 N3).
+	// Keep `sandbox` a named variable the deferred cleanup closes over: the
+	// acceptance test's mutation A deletes the os.Chdir call below and must
+	// produce a test failure, not an unused-variable compile error.
+	code := func() int {
+		defer func() {
+			_ = os.Chdir(repoRoot)
+			_ = os.RemoveAll(sandbox)
+		}()
+		if err := os.Chdir(sandbox); err != nil {
+			fmt.Fprintf(os.Stderr, "TestMain: chdir sandbox: %v\n", err)
+			return 1
+		}
+		return m.Run()
+	}()
 	os.Exit(code)
 }
 
@@ -132,6 +163,11 @@ func newProject(t *testing.T) string {
 // process CWD no pickle.toml is discoverable, so a config-resolving command run
 // without newProject fails loudly instead of writing into the real board. Delete
 // TestMain's os.Chdir and this test fails — that is the point of it.
+//
+// It also asserts the CWD *is* testSandbox (by inode, not by path string), not
+// merely "config-free": a leaked os.Chdir to some other config-free directory
+// (e.g. a t.TempDir() from an earlier test that forgot t.Chdir's auto-restore)
+// would satisfy the first check but not the second.
 func TestCWDIsSandboxed(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -140,45 +176,174 @@ func TestCWDIsSandboxed(t *testing.T) {
 	if path, err := config.Find(wd); err == nil {
 		t.Fatalf("default test CWD %s resolves a real config at %s — the TestMain sandbox is broken", wd, path)
 	}
+	wdInfo, err := os.Stat(wd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(wdInfo, testSandbox) {
+		t.Fatalf("CWD %s is not TestMain's sandbox — some earlier test left the CWD somewhere else", wd)
+	}
 }
 
-// captureStdout runs fn with os.Stdout redirected to a pipe and returns what it
-// printed. The commands in this package print their diagnostics with fmt.Printf
-// to the real os.Stdout (no injectable writer), so this is the only way to
-// assert them. os.Stdout is process-global — like the CWD, it forbids
-// t.Parallel() in this package.
-func captureStdout(t *testing.T, fn func()) string {
+// capture redirects *target (os.Stdout or os.Stderr — both process-global, like
+// the sandboxed CWD, so no test in this package may call t.Parallel()) through
+// a pipe for the duration of fn and returns what was written. The commands in
+// this package print with fmt.Printf/fmt.Fprintln to the real stream (no
+// injectable writer), so this is the only way to assert them; that refactor is
+// deliberately declined here (T-043 D4) rather than done package-wide inside a
+// harness-hardening change.
+//
+// *target is restored as soon as fn returns — *before* the pipe is closed — not
+// only via t.Cleanup. Restoring solely in t.Cleanup, which runs at the *test's*
+// end, left *target pointing at a closed pipe for everything between a call
+// returning and the test finishing: every later print in the package silently
+// discarded its output ("file already closed"), and two real call sites hit
+// this before the early restore was added (T-031 N1, T-043). t.Cleanup stays as
+// the Goexit/panic backstop for when fn calls t.Fatal and skips the assignment
+// below entirely — this is an *additional* release, not a reversal of T-029's
+// original decision to restore only through t.Cleanup.
+//
+// Closing the write end and joining the reader goroutine happen exactly once,
+// from whichever path runs first, via closeAndJoin wrapped in sync.OnceFunc:
+// nine of this package's fifteen capture call sites invoke t.Fatalf inside fn,
+// which triggers runtime.Goexit and skips everything after fn() in the body
+// below, so the t.Cleanup path must be able to do the whole teardown alone or
+// leak the pipe and its reader goroutine for the rest of the process (T-031 N2).
+func capture(t *testing.T, target **os.File, fn func()) string {
 	t.Helper()
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
 	}
-	orig := os.Stdout
-	os.Stdout = w
-	// Restore through t.Cleanup, never by an assignment after fn(): a t.Fatal or
-	// panic inside fn calls runtime.Goexit, which would skip the restore and
-	// leave this pipe installed as os.Stdout for every later test in the package.
-	t.Cleanup(func() { os.Stdout = orig })
+	orig := *target
+	*target = w
 
-	// Drain concurrently: fn writing more than the pipe buffer (~64 KiB) would
-	// block forever against a reader that only starts after it returns, hanging
-	// the test instead of failing it.
+	// Drain concurrently: fn writing more than the pipe buffer (16–64 KiB,
+	// OS-dependent — darwin starts at 16 KiB) would block forever against a
+	// reader that only starts after fn returns, hanging the test instead of
+	// failing it.
 	done := make(chan string, 1)
 	go func() {
 		b, _ := io.ReadAll(r)
 		done <- string(b)
 	}()
 
+	var out string
+	closeAndJoin := sync.OnceFunc(func() {
+		_ = w.Close() // unblocks the reader
+		out = <-done
+		_ = r.Close()
+	})
+	t.Cleanup(func() {
+		*target = orig
+		closeAndJoin()
+	})
+
 	fn()
 
-	if err := w.Close(); err != nil { // unblocks the reader
-		t.Fatalf("close pipe writer: %v", err)
-	}
-	out := <-done
-	if err := r.Close(); err != nil {
-		t.Fatalf("close pipe reader: %v", err)
-	}
+	*target = orig // early release — see the doc comment above
+	closeAndJoin()
 	return out
+}
+
+// captureStdout captures fn's writes to os.Stdout. See capture.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	return capture(t, &os.Stdout, fn)
+}
+
+// captureStderr captures fn's writes to os.Stderr. See capture. Historically a
+// verbatim copy of captureStdout living in agents_test.go, carrying the same two
+// defects; unified here so there is exactly one implementation to keep correct
+// (T-043).
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	return capture(t, &os.Stderr, fn)
+}
+
+// TestCaptureStdoutRestoresBeforeCleanup pins T-031 N1 / T-043: os.Stdout must
+// be usable immediately after captureStdout returns, not only once the *test*
+// ends and t.Cleanup finally runs. Before the early restore this failed with
+// "file already closed", because captureStdout's own (already-closed) pipe
+// writer was still installed as os.Stdout at this point — exactly the failure
+// two real call sites hit (cli_test.go's project-remove line, hooks_test.go's
+// hooks-uninstall line) before this fix.
+func TestCaptureStdoutRestoresBeforeCleanup(t *testing.T) {
+	captureStdout(t, func() { fmt.Println("inside the capture") })
+	n, err := fmt.Fprintln(os.Stdout, "after capture returns, before the test ends")
+	if err != nil {
+		t.Fatalf("os.Stdout is unusable immediately after captureStdout returns: %v", err)
+	}
+	if n == 0 {
+		t.Fatal("wrote 0 bytes to os.Stdout after captureStdout returned")
+	}
+}
+
+// goexitChildEnv gates TestCaptureGoexitChild: it must never run as part of a
+// normal `go test ./internal/cli/` (which would either fail the suite on its
+// intentional t.Fatal, or contaminate results depending on run order), only as
+// the subprocess TestCaptureGoexitDoesNotLeak launches.
+const goexitChildEnv = "PICKLE_TEST_CAPTURE_GOEXIT_CHILD"
+
+// TestCaptureGoexitChild intentionally fails inside a capture call. A t.Run
+// subtest cannot exercise this in-process: a subtest's failure bubbles up and
+// fails the parent regardless of any check performed afterwards, so the child
+// registers its own leak check as a t.Cleanup *before* calling capture. Cleanups
+// run LIFO, so capture's own cleanup (registered second, inside capture) runs
+// first — by the time this one runs, capture's close+join has already
+// happened if the fix holds. It prints a marker rather than asserting: this
+// process's own exit code is always non-zero (the test really did fail) and
+// carries no information about whether the leak check passed.
+func TestCaptureGoexitChild(t *testing.T) {
+	if os.Getenv(goexitChildEnv) != "1" {
+		t.Skip("only runs as TestCaptureGoexitDoesNotLeak's subprocess")
+	}
+	before := runtime.NumGoroutine()
+	t.Cleanup(func() {
+		deadline := time.Now().Add(2 * time.Second)
+		for time.Now().Before(deadline) {
+			if runtime.NumGoroutine() <= before {
+				fmt.Println("LEAK-CHECK-OK")
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		fmt.Println("LEAK-CHECK-FAIL")
+	})
+	capture(t, &os.Stdout, func() {
+		t.Fatal("intentional failure inside fn — capture must still close its pipe and join its goroutine")
+	})
+}
+
+// TestCaptureGoexitDoesNotLeak pins T-031 N2 / T-043: nine of this package's
+// fifteen capture call sites call t.Fatalf inside fn, which invokes
+// runtime.Goexit and skips every statement after fn() in capture's body —
+// including the close+join that unblocks and retires the reader goroutine. If
+// t.Cleanup cannot perform that teardown on its own, the pipe and its goroutine
+// leak for the rest of the process, once per such failure.
+func TestCaptureGoexitDoesNotLeak(t *testing.T) {
+	if os.Getenv(goexitChildEnv) == "1" {
+		t.Skip("this process is the child")
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=^TestCaptureGoexitChild$")
+	cmd.Env = append(os.Environ(), goexitChildEnv+"=1")
+	// The parent's own CWD is already TestMain's sandbox, not go test's usual
+	// internal/cli/ — the child's own TestMain computes repoRoot as wd/../..,
+	// so it must start from the real internal/cli/ (via the already-validated
+	// repoRoot) or its own repo-root validation fails for an unrelated reason.
+	cmd.Dir = filepath.Join(repoRoot, "internal", "cli")
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected the child subprocess to fail (t.Fatal inside fn); output:\n%s", out)
+	}
+	switch {
+	case bytes.Contains(out, []byte("LEAK-CHECK-OK")):
+		// pass
+	case bytes.Contains(out, []byte("LEAK-CHECK-FAIL")):
+		t.Errorf("capture's reader goroutine leaked when fn called t.Fatal inside it; child output:\n%s", out)
+	default:
+		t.Fatalf("child subprocess produced neither leak-check marker; output:\n%s", out)
+	}
 }
 
 // TestProjectAddRefreshesMarkerBlock is T-041's write-half regression: a new
@@ -578,4 +743,252 @@ func TestServeHelpIsAdvertised(t *testing.T) {
 			t.Errorf("pickle help does not mention %q", want)
 		}
 	}
+}
+
+// TestProjectAddRejectsDuplicateAndMissingDir (T-043 item 1): the two argument
+// validations runProjectAdd performs that no test exercised — a name already
+// registered, and a path that does not resolve to a directory under the
+// config root — and that neither rejection mutates the registry.
+func TestProjectAddRejectsDuplicateAndMissingDir(t *testing.T) {
+	root := newProject(t) // registers "demo" at "."
+	if got := Run(nil, "test", []string{"project", "add", "demo", "."}); got == exitOK {
+		t.Error("project add demo (duplicate name) = exitOK, want an error")
+	}
+	if got := Run(nil, "test", []string{"project", "add", "other", "does-not-exist"}); got == exitOK {
+		t.Error("project add other does-not-exist = exitOK, want an error")
+	}
+	cfg, err := config.Load(filepath.Join(root, "pickle.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Projects) != 1 {
+		t.Errorf("Projects = %v, want exactly one entry (demo) — neither rejection should register anything", cfg.Projects)
+	}
+}
+
+// TestProjectListOutput (item 1): runProjectList's tabwriter output, end to end.
+func TestProjectListOutput(t *testing.T) {
+	root := newProject(t)
+	if err := os.Mkdir(filepath.Join(root, "lib"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := Run(nil, "test", []string{"project", "add", "lib", "lib", "--build", "make build"}); got != exitOK {
+		t.Fatalf("project add = %d, want %d", got, exitOK)
+	}
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "list"}); got != exitOK {
+			t.Fatalf("project list = %d, want %d", got, exitOK)
+		}
+	})
+	for _, want := range []string{"NAME", "demo", "lib", "make build", "1/1"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("project list missing %q, got:\n%s", want, out)
+		}
+	}
+}
+
+// TestProjectRemoveRefusesLiveTicket (item 1): the guard that stops removing a
+// child while a non-terminal ticket still targets it, and confirms removal
+// succeeds once that ticket reaches a terminal status.
+func TestProjectRemoveRefusesLiveTicket(t *testing.T) {
+	root := newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "still open", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"project", "remove", "demo"}); got == exitOK {
+		t.Error("project remove demo = exitOK, want a refusal (T-001 targets it)")
+	}
+	cfg, err := config.Load(filepath.Join(root, "pickle.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := cfg.Project("demo"); !ok {
+		t.Error("demo was removed despite the live-ticket guard")
+	}
+	if got := Run(nil, "test", []string{"ticket", "move", "T-001", "dropped", "--reason", "test cleanup"}); got != exitOK {
+		t.Fatalf("ticket move = %d", got)
+	}
+	if got := Run(nil, "test", []string{"project", "remove", "demo"}); got != exitOK {
+		t.Fatalf("project remove demo = %d once the blocking ticket was dropped, want %d", got, exitOK)
+	}
+}
+
+// TestBoardAuditCLIExitCodes (item 1): runBoardAudit's exit code on a clean vs
+// a broken tree, at the cli boundary (internal/audit has its own unit tests).
+func TestBoardAuditCLIExitCodes(t *testing.T) {
+	root := newProject(t)
+	if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+		t.Fatalf("board audit (clean tree) = %d, want %d", got, exitOK)
+	}
+	if got := Run(nil, "test", []string{"ticket", "new", "broken", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	dir := filepath.Join(root, "tickets", "1-to-do")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var path string
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "T-001-") {
+			path = filepath.Join(dir, e.Name())
+		}
+	}
+	if path == "" {
+		t.Fatal("T-001 scaffold not found")
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A dangling depends-on: the target does not exist anywhere in the tree.
+	broken := strings.Replace(string(body), "depends-on: []", "depends-on: [T-404]", 1)
+	if err := os.WriteFile(path, []byte(broken), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := Run(nil, "test", []string{"board", "audit"}); got == exitOK {
+		t.Error("board audit (dangling depends-on) = exitOK, want non-zero")
+	}
+}
+
+// TestTicketNewAllocatesMaxPlusOne (item 4): a fresh id is max(existing)+1 and
+// the scaffold audits clean immediately, not only after a later board sync.
+func TestTicketNewAllocatesMaxPlusOne(t *testing.T) {
+	root := newProject(t)
+	for _, title := range []string{"first", "second"} {
+		if got := Run(nil, "test", []string{"ticket", "new", title, "--project", "demo"}); got != exitOK {
+			t.Fatalf("ticket new %q = %d", title, got)
+		}
+	}
+	if body := readTicket(t, root, "T-002"); !strings.Contains(body, "title: second") {
+		t.Errorf("expected T-002 to be the second ticket:\n%s", body)
+	}
+	if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+		t.Fatalf("board audit = %d, want clean", got)
+	}
+}
+
+// TestTicketNewRejectsUnregisteredProject and TestTicketNewRejectsIllegalGrade
+// (item 4): the two argument-validation failure modes, both asserting the
+// tree is untouched on rejection (the same load-bearing shape as
+// TestTicketNewRejectsInjectionInTitle next door).
+func TestTicketNewRejectsUnregisteredProject(t *testing.T) {
+	root := newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "x", "--project", "nope"}); got != exitError {
+		t.Errorf("ticket new --project nope = %d, want %d", got, exitError)
+	}
+	assertNoTickets(t, root)
+}
+
+func TestTicketNewRejectsIllegalGrade(t *testing.T) {
+	root := newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "x", "--project", "demo", "--impact", "banana"}); got != exitError {
+		t.Errorf("ticket new --impact banana = %d, want %d", got, exitError)
+	}
+	assertNoTickets(t, root)
+}
+
+// TestTicketNewBoardRowOrderedByImpact (item 4): a fresh ticket's board row
+// lands in its child's impact-ordered sub-group immediately — runTicketNew
+// calls board.Regenerate itself, not only a later `board sync`.
+func TestTicketNewBoardRowOrderedByImpact(t *testing.T) {
+	root := newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "the low one", "--project", "demo", "--impact", "low"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "new", "the critical one", "--project", "demo", "--impact", "critical"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	board, err := os.ReadFile(filepath.Join(root, "tickets", "BOARD.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lowIdx := strings.Index(string(board), "T-001")
+	criticalIdx := strings.Index(string(board), "T-002")
+	if lowIdx < 0 || criticalIdx < 0 {
+		t.Fatalf("expected both T-001 and T-002 in BOARD.md:\n%s", board)
+	}
+	if criticalIdx > lowIdx {
+		t.Errorf("T-002 (critical) sorted after T-001 (low) in BOARD.md — impact ordering not applied on ticket new")
+	}
+}
+
+// TestTicketNewPipeTitleYieldsAuditCleanBoard is the residue of item 5
+// (T-012's original title-sanitization item) once T-044/T-049 landed one-way
+// board-cell sanitisation at the render boundary: a title containing '|' —
+// already proven to round-trip verbatim into the ticket file by
+// TestTicketNewAcceptsAwkwardButLegalTitle next door — must also still
+// produce an audit-clean board, the one assertion this item shrank to.
+func TestTicketNewPipeTitleYieldsAuditCleanBoard(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "pipe | in title", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+		t.Fatalf("board audit = %d, want clean after a piped title", got)
+	}
+}
+
+// TestInstallHooksFlag (item 9): `pickle install --hooks` had no coverage but
+// T-057's manual acceptance transcript, which just(test)/CI never runs. Two
+// branches: the success path (a real git repository) and the deliberate "a
+// hook failure is a warning, the install still succeeds" branch (no git
+// repository at all, install.go:101-103).
+func TestInstallHooksFlag(t *testing.T) {
+	payload := os.DirFS(repoRoot)
+
+	t.Run("git repository: hook installed, exit OK", func(t *testing.T) {
+		root := t.TempDir()
+		t.Chdir(root)
+		gitInit(t, root, "main")
+		out := captureStdout(t, func() {
+			if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+				t.Fatalf("install --hooks = %d, want %d", code, exitOK)
+			}
+		})
+		if !strings.Contains(out, "pre-commit") {
+			t.Errorf("install --hooks did not report the hook path:\n%s", out)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".git", "hooks", "pre-commit")); err != nil {
+			t.Errorf("hook was not written: %v", err)
+		}
+	})
+
+	t.Run("not a git repository: warning, install still succeeds", func(t *testing.T) {
+		root := t.TempDir()
+		t.Chdir(root)
+		var stderr string
+		_ = captureStdout(t, func() {
+			stderr = captureStderr(t, func() {
+				if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+					t.Fatalf("install --hooks (no git) = %d, want %d (a hook failure is a warning, not a failed install)", code, exitOK)
+				}
+			})
+		})
+		if !strings.Contains(stderr, "hooks install skipped") {
+			t.Errorf("expected the skip warning on stderr, got: %q", stderr)
+		}
+		if _, err := os.Stat(filepath.Join(root, "pickle.toml")); err != nil {
+			t.Errorf("install itself should still have succeeded: %v", err)
+		}
+	})
+
+	t.Run("a second install hits the Skipped branch", func(t *testing.T) {
+		root := t.TempDir()
+		t.Chdir(root)
+		gitInit(t, root, "main")
+		if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+			t.Fatalf("first install --hooks = %d", code)
+		}
+		// A second install re-applies the whole scaffold; hook.Install must see
+		// its own shim already current and report "skipped" rather than an error.
+		out := captureStdout(t, func() {
+			if code := Run(payload, "test", []string{"install", "--project", "demo2", "--hooks"}); code != exitOK {
+				t.Fatalf("second install --hooks = %d, want %d", code, exitOK)
+			}
+		})
+		if !strings.Contains(out, "current") {
+			t.Errorf("expected the second install to report the hook already current, got:\n%s", out)
+		}
+	})
 }

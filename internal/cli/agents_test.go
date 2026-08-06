@@ -4,42 +4,15 @@ package cli
 // the claude-only default, and the --no-claude deprecation shim.
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// captureStderr mirrors captureStdout for the diagnostics runInstall writes
-// with fmt.Fprintln(os.Stderr, …). Same process-global caveat: no t.Parallel().
-func captureStderr(t *testing.T, fn func()) string {
-	t.Helper()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	orig := os.Stderr
-	os.Stderr = w
-	t.Cleanup(func() { os.Stderr = orig })
-
-	done := make(chan string, 1)
-	go func() {
-		b, _ := io.ReadAll(r)
-		done <- string(b)
-	}()
-
-	fn()
-
-	if err := w.Close(); err != nil {
-		t.Fatalf("close pipe writer: %v", err)
-	}
-	out := <-done
-	if err := r.Close(); err != nil {
-		t.Fatalf("close pipe reader: %v", err)
-	}
-	return out
-}
+// captureStderr lives in cli_test.go (T-043 unified it with captureStdout into
+// one helper — this file used to carry a verbatim, independently-defective
+// clone of the same function).
 
 func TestInstallAgentFlag(t *testing.T) {
 	payload := os.DirFS(repoRoot)

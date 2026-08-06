@@ -64,16 +64,21 @@ resolved by T-041, 2026-08-01 — see above) and item 3 (test payload root).
 | `internal/doctor/doctor_test.go:14` | the same function duplicated verbatim |
 | `internal/move/move_test.go:20` | inlined `os.DirFS(filepath.Join("..", ".."))` |
 | `internal/sync/sync_test.go:21` | inlined `os.DirFS(filepath.Join("..", ".."))` |
-| `internal/cli/cli_test.go:19` (T-029) | package-level `repoRoot`, absolute, computed in `TestMain` |
+| `internal/cli/cli_test.go:24` (T-029, re-anchored by T-043) | package-level `repoRoot`, absolute, computed in `TestMain`, **now validated against `skill/SKILL.md`** |
 
 The first four break if the test process's CWD ever moves — which **T-043**'s `TestMain` sandbox
 does deliberately. Unify on the absolute, CWD-independent form.
 
 ### Sequencing
 
-- **T-043** (test harness + coverage) touches `internal/cli/cli_test.go` and the same test files
-  as item 3. Land one before the other, not concurrently; item 3 is arguably T-043's prerequisite,
-  though not a hard `depends-on`.
+- **T-043** (test harness + coverage) **landed first** (2026-08-06, D5): it owns `TestMain` and
+  left item 3's five-site unification untouched, so the sequencing question is settled and this
+  ticket is now unblocked. One consequence for item 3: `TestMain` no longer merely computes
+  `wd/../..` — it also `os.Stat`s the payload marker `skill/SKILL.md` under the resolved root and
+  exits with a clear message if it is missing. When item 3 replaces the computation with the shared
+  CWD-independent helper, **delete that validation with it** (the helper cannot resolve a wrong
+  root, so the check becomes dead weight) rather than leaving a stat against a path the helper no
+  longer derives.
 - **T-044** (which superseded T-039, 2026-07-26) rewrote `internal/board` and `internal/sync`
   heavily (single renderer, sync becomes regenerate) and **deleted** the helpers item 2 would
   have unified (`ParseCells`, `sectionSpan`, `subgroupSpan`, sync's `matchStatus`) — the sweep
@@ -113,3 +118,8 @@ does deliberately. Unify on the absolute, CWD-independent form.
   that") is now settled fact and its two stale line references were refreshed
   (`ticket.go:95` → `:100-110`, `board.go:29` → `:51`). Scope grows by one small item; not
   re-graded (still low/low/S).
+- 2026-08-06 — patched by T-043's review impact sweep: T-043 landed (harness + command-layer
+  coverage), so item 3's sequencing note is settled — this ticket goes second, as D5 agreed, and
+  the harness inventory row is re-anchored (`cli_test.go:19` → `:24`). Item 3 gains one
+  instruction: delete `TestMain`'s new `os.Stat(skill/SKILL.md)` root validation along with the
+  `wd/../..` computation it guards. Scope and grade unchanged (low/low/S)

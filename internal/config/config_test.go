@@ -59,6 +59,31 @@ func TestLoadValidAndDefaults(t *testing.T) {
 	}
 }
 
+// TestLoadDefaultsZeroWIP (T-043 item 3): the "zero wip" case in
+// TestLoadErrors actually asserted -1, an error case renamed to "negative
+// wip" alongside this addition. An *omitted or explicit* wip_in_review = 0
+// must load successfully and default to 1 — applyDefaults treats the Go zero
+// value as "unset", the same rule TestLoadValidAndDefaults already pins for a
+// wholly-omitted field; this pins the explicit-zero shape too.
+func TestLoadDefaultsZeroWIP(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, `payload_version = "1"
+[[project]]
+name = "a"
+path = "."
+wip_in_development = 0
+wip_in_review = 0
+`)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v (explicit wip_in_review = 0 must default, not error)", err)
+	}
+	p := c.Projects[0]
+	if p.WIPInDevelopment != DefaultWIPInDevelopment || p.WIPInReview != DefaultWIPInReview {
+		t.Errorf("WIP = %d/%d, want the defaults %d/%d", p.WIPInDevelopment, p.WIPInReview, DefaultWIPInDevelopment, DefaultWIPInReview)
+	}
+}
+
 func TestLoadErrors(t *testing.T) {
 	cases := map[string]string{
 		"no project": `payload_version = "1"
@@ -87,7 +112,7 @@ path = "."
 name = "dup"
 path = "."
 `,
-		"zero wip": `payload_version = "1"
+		"negative wip": `payload_version = "1"
 [[project]]
 name = "a"
 path = "."

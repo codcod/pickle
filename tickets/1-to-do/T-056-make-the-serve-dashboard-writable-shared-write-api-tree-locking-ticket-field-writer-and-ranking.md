@@ -178,9 +178,13 @@ own merits regardless of the dashboard) → 1 → 3 → 4 → 5 → 6.
   than assume the parse is lossless. Weigh that when deciding whether this stays a soft coupling
   or becomes a hard `depends-on:` — the useful dependency is now the `DuplicateKeys` signal, which
   already exists.
-- **T-043** — cli test-harness hardening and ticket-new coverage. Overlaps work area 1 directly
-  (same `os.Chdir`/`os.Stdout` globals, same `ticket new` gap); doing both separately means
-  writing the same tests twice. Sequence them or absorb one into the other.
+- **T-043** — cli test-harness hardening and ticket-new coverage: **landed 2026-08-06**, so the
+  overlap with work area 1 is now an asset rather than a hazard. The harness it leaves is one
+  `capture(t, &os.Stdout|&os.Stderr, fn)` helper that restores early and closes once from either
+  exit path, a `TestMain` sandbox that validates the repo root, and cli-level tests for
+  `project add|list|remove`, `board audit`, `ticket new` and `install --hooks`. Reuse it — do not
+  build a second harness, and note that no test in package `cli` may call `t.Parallel()` (the CWD
+  and both std streams are process-global).
 - **T-038** — `ticket new`'s title contract, i.e. the `validateTitle` that work area 1 moves.
 - **T-042** — internal helper consolidation, touching `internal/board`/`internal/sync`;
   `tickets/NOTES.md` already warns it must not run concurrently with other board work.
@@ -209,3 +213,7 @@ own merits regardless of the dashboard) → 1 → 3 → 4 → 5 → 6.
   overstated what shipped. T-040 reports duplicate frontmatter keys at audit time but keeps
   last-wins parse semantics (its decision D1), so the field writer still needs its own guard;
   the coupling text now says so.
+- 2026-08-06 — patched by T-043's review impact sweep: T-043 landed, so work area 1's “doing both
+  separately means writing the same tests twice” hazard is resolved — the harness and the
+  `ticket new` cli tests exist now, and this ticket should consume them rather than re-create them
+  (the no-`t.Parallel()` rule in package `cli` comes with them)

@@ -45,7 +45,7 @@ Last updated: 2026-08-06
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | medium | medium | L | [] |  |
+| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | medium-high | medium | M | [] |  |
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
@@ -59,6 +59,7 @@ Last updated: 2026-08-06
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
+| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low | low | S | [] |  |
 
 ## DONE
 
@@ -86,6 +87,7 @@ Last updated: 2026-08-06
 | T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | yes — MERGED: feat/T-036-review-disposition-valves → main (5367843, squashed) |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | yes — merged to main (PR #11, 8a61d3e), user-approved as an exception **ahead of the |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | yes — merged to main (PR #10, 25d2152), user-approved as an exception; squashed to one commit; branch deleted |
+| T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | yes — merged to main (PR #15, 17e2341), user-approved; squashed to 5291aeb; branch deleted |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
 | T-047 | AsciiDoc user manual in docs/ + slim README to about & install | yes — merged to main (local squash merge 7a0995d) |
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |

@@ -68,7 +68,10 @@ writer (work area 4), which is what creates the hazard.
   extraction seam**. Doing this ticket and T-056 area 1 independently means building the
   projection twice; the same duplication hazard T-056 already records against **T-043**.
   Sequence them or fold one into the other — do not run them concurrently.
-- **T-043** — CLI test harness; new subcommands are exactly what it would cover.
+- **T-043** — CLI test harness: **landed 2026-08-06**. New subcommands are exactly what it
+  covers, so a `board json`/`ticket json` verb arrives with a harness already in place
+  (`capture(t, …)` for stdout/stderr, `newProject(t)` for a throwaway install, and the
+  `runProject*`/`runTicketNew`/`runBoardAudit` cli-level tests as the pattern to copy).
 - **T-052** — `board audit`'s verdict classification. If audit health is exposed as structured
   data, the "stale **or** hand-edited" conflation becomes a field a consumer reads, so the two
   tickets should agree on the vocabulary rather than inventing two.
@@ -117,3 +120,6 @@ default to (a) because the ticket is already on the board.
   tickets/NOTES.md (2026-08-04); scope corrected before filing after reading the code (the two
   commands it was to flag did not exist, and the paired `schema_version` guard was found to
   have no reachable hazard, so it was pre-registered here instead of filed)
+- 2026-08-06 — patched by T-043's review impact sweep: T-043 landed, so the cli-test harness this
+  ticket's acceptance test would have needed already exists — the note now says what to reuse
+  instead of what to expect
