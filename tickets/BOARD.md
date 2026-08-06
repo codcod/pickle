@@ -13,10 +13,11 @@ Last updated: 2026-08-06
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-06
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 

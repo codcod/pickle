@@ -445,3 +445,4 @@ back.
   `opencode.jsonc` (**D10**). Re-graded complexity low → medium, cost S → M (shim bump + probe +
   four call sites + docs); impact stays medium. T-046 must not run concurrently (same `checkHooks`)
 - 2026-08-06 — TO DO → READY: plan complete
+- 2026-08-06 — READY → IN DEVELOPMENT: picked up
