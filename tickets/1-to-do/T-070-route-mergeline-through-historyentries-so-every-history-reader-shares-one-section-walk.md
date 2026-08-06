@@ -37,6 +37,40 @@ MergeLine("## History\n- 2026-08-06 — merged to main\n  (abc1234) after review
   = "merged to main"        // want "merged to main (abc1234) after review"
 ```
 
+### Item 2 — resolve a transition's target and reason in one pass (T-043 review, R7)
+
+Folded here by T-043's **scoped re-review** (finding R7, disposition `folded`): T-043's rework left
+a deliberate asymmetry between the two halves of a transition.
+
+- The **target** is frozen on the entry's *first physical line*, together with `Kind`
+  (`HistoryEntry.Target`) — that is exactly what makes the two agree by construction, and it must
+  stay that way.
+- The **reason** is read from the *folded* text by `LastHistoryReason`, because folding a wrapped
+  reason back together is the whole point of `HistoryEntries`.
+
+Nothing checks that the two came from the *same* arrow. For a hand-authored entry whose
+continuation line contains a second arrow, they need not:
+
+```
+- 2026-08-06 — TO DO → READY
+  and later IN REVIEW → DONE: some clause
+```
+
+yields `LastHistoryStatus` = `"READY"` (first line) with `LastHistoryReason` = `"some clause"`
+(the continuation's arrow). No entry in the tree looks like this and `pickle ticket move` cannot
+write one, which is why it is `low` and folded rather than filed on its own.
+
+**Shape of the fix:** have `HistoryEntries` resolve target *and* reason in the same pass it already
+classifies `Kind` — e.g. store the reason on the entry too, taking it from the folded text but
+anchored at the arrow the target was found at — so the pair provably belongs to one transition and
+`LastHistoryReason` stops re-scanning. That lands naturally with item 1: both are "one pass, one
+source of truth" for the `## History` readers.
+
+### Why both items are one ticket
+
+They are the same theme — the `## History` reader family sharing one path — and they touch the same
+twenty lines of `internal/ticket/ticket.go`. Splitting them would mean two reviews of one function.
+
 **Impact is `low` deliberately.** A conventional merge line (`merged to main (abc1234)`) is far too
 short to wrap, so no ticket in the tree is affected today and `HasMergeLine`'s gate verdict is
 unchanged either way (a truncated line is still non-empty). The value is the collapse to one walk,
@@ -67,3 +101,7 @@ plus removing the one reader that can still disagree with the other three. A `bo
   last `## History` reader that still walks the section itself, and the only one that does not fold
   continuation lines. Filed narrow on purpose: R1 (transition classification) went to T-043's
   rework instead, so this ticket is the `MergeLine` unification alone
+- 2026-08-06 — patched by T-043's scoped re-review: gains **item 2** (finding R7, disposition
+  `folded`) — a transition's target is frozen on the entry's first physical line while its reason
+  is read from the folded text, and nothing checks that the two came from the same arrow. Same
+  theme, same twenty lines, so it is an item here rather than a second ticket

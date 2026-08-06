@@ -79,7 +79,7 @@ messages T-026 decision D5 required. T-018 left the asymmetry deliberately rathe
 own blast radius.
 
 **Fix:** `return writePreservingMode(path, []byte(c.Render()))` — one line. Reuse
-`config_test.go:663` (symlink) and `:697` (unwritable parent) as the test shapes.
+`config_test.go:691` (symlink) and `:727` (unwritable parent) as the test shapes.
 
 ### 3. Two residual line-editor wedges — legal files that refuse to upgrade
 
@@ -114,7 +114,7 @@ then appends the key last with a trailing `\r` and **no `\n`** — raw output
 `would leave the file unparseable (… control characters: '0x0d')`. Same for `"a = 1\r\n# tail"`.
 **Fix:** only append `\r` when another line follows the insert point.
 
-`FuzzSetPayloadVersion` (`config_test.go:639`) is seeded from `payloadVersionFixtures` (`:527`,
+`FuzzSetPayloadVersion` (`config_test.go:664`) is seeded from `payloadVersionFixtures` (`:550`,
 30 cases); the checked-in corpus at `internal/config/testdata/fuzz/FuzzSetPayloadVersion/` has
 **one** entry. Add a fixture per shape above.
 
@@ -186,3 +186,10 @@ impact breaks ties by id and this id is higher.
   turned out **reachable end-to-end** via `pickle project add`. D2 (fix render *and* validate),
   D3 (fsync in; hardlinks/xattrs/ownership/read-only documented and declined) and D7
   (medium-high, above T-043) are user-confirmed
+- 2026-08-06 — patched by T-043's review impact sweep: T-043 landed its item 3 (the only edit it
+  made to `internal/config/config_test.go`), inserting `TestLoadDefaultsZeroWIP` and renaming
+  `TestLoadErrors`' “zero wip” case to “negative wip” — what it actually asserts. Every line
+  reference in this ticket shifted **+25** and is refreshed above (`:663`→`:691` symlink,
+  `:697`→`:727` unwritable parent, `:639`→`:664` `FuzzSetPayloadVersion`, `:527`→`:550`
+  `payloadVersionFixtures`). No production code moved, so the plan's substance is unchanged; the
+  “do not touch `internal/config` production code” split (D1) held in both directions
