@@ -101,10 +101,15 @@ func runInstall(args []string) int {
 	if *hooks {
 		if hres, herr := hook.Install(root, false); herr != nil {
 			fmt.Fprintf(os.Stderr, "pickle install: hooks install skipped: %v\n", herr)
-		} else if hres.Changed {
-			fmt.Printf("  + %s\n", hres.Path)
 		} else {
-			fmt.Printf("  = %s (%s)\n", hres.Path, hres.Skipped)
+			if hres.Changed {
+				fmt.Printf("  + %s\n", hres.Path)
+			} else {
+				fmt.Printf("  = %s (%s)\n", hres.Path, hres.Skipped)
+			}
+			// Same PATH-capability check `hooks install` runs on its own (T-068):
+			// this is the other moment the evidence exists and the user is looking.
+			warnIfInert("pickle install")
 		}
 	}
 

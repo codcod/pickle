@@ -168,7 +168,8 @@ func TestInstallWritesAnExecutableOwnedShim(t *testing.T) {
 func TestShimBlocksOnlyExitCodeOne(t *testing.T) {
 	s := Shim()
 	for _, want := range []string{
-		"command -v pickle >/dev/null 2>&1 || exit 0",
+		"command -v pickle >/dev/null 2>&1 || {",
+		"pickle not found on PATH",
 		`[ "$rc" -eq 1 ] && exit 1`,
 		"exit 0\n",
 	} {
@@ -182,7 +183,9 @@ func TestShimBlocksOnlyExitCodeOne(t *testing.T) {
 }
 
 // TestShimExitCodes runs the real shim against stub pickles to prove the
-// contract end to end: only exit 1 stops a commit.
+// contract end to end: only exit 1 stops a commit, and (T-068) the two
+// degraded paths — an old binary and no binary at all — both say so on
+// stderr instead of failing silently.
 func TestShimExitCodes(t *testing.T) {
 	isolate(t)
 	dir := t.TempDir()
@@ -192,15 +195,16 @@ func TestShimExitCodes(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name     string
-		stub     string // body of the fake `pickle` on PATH, "" for none
-		wantExit int
+		name       string
+		stub       string // body of the fake `pickle` on PATH, "" for none
+		wantExit   int
+		wantStderr string // substring to require on stderr, "" = don't check
 	}{
-		{"violation", "#!/bin/sh\nexit 1\n", 1},
-		{"allowed", "#!/bin/sh\nexit 0\n", 0},
-		{"old binary, unknown verb", "#!/bin/sh\nexit 2\n", 0},
-		{"internal error", "#!/bin/sh\nexit 7\n", 0},
-		{"not on PATH", "", 0},
+		{"violation", "#!/bin/sh\nexit 1\n", 1, ""},
+		{"allowed", "#!/bin/sh\nexit 0\n", 0, ""},
+		{"old binary, unknown verb", "#!/bin/sh\nexit 2\n", 0, "hooks run exited 2"},
+		{"internal error", "#!/bin/sh\nexit 7\n", 0, "hooks run exited 7"},
+		{"not on PATH", "", 0, "pickle not found on PATH"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			bin := t.TempDir()
@@ -212,6 +216,8 @@ func TestShimExitCodes(t *testing.T) {
 			cmd := exec.Command(shim)
 			cmd.Dir = dir
 			cmd.Env = []string{"PATH=" + bin}
+			var errBuf bytes.Buffer
+			cmd.Stderr = &errBuf
 			err := cmd.Run()
 			got := 0
 			var ee *exec.ExitError
@@ -223,6 +229,9 @@ func TestShimExitCodes(t *testing.T) {
 			}
 			if got != tc.wantExit {
 				t.Errorf("shim exit = %d, want %d", got, tc.wantExit)
+			}
+			if tc.wantStderr != "" && !strings.Contains(errBuf.String(), tc.wantStderr) {
+				t.Errorf("shim stderr = %q, want it to contain %q", errBuf.String(), tc.wantStderr)
 			}
 		})
 	}

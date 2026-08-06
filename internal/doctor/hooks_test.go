@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,6 +37,48 @@ func gitFixture(t *testing.T) string {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	return root
+}
+
+// pinPATH sets PATH deterministically for a probe test. `git` must still
+// resolve (the fixture's `git init` and internal/hook's gitAt/gitHere calls
+// need it), but which `pickle` (if any) internal/hook.Probe() finds must not
+// depend on whatever happens to be installed on the developer's machine or CI
+// runner (T-068) — without this, TestCheckHooksOwnedAndStale would be flaky
+// wherever a real `pickle` sits on PATH already. git is symlinked into a
+// **fresh, otherwise-empty** directory rather than trusting its own directory
+// wholesale: on this very machine `git` and `pickle` are both installed into
+// the same Homebrew bin dir, and pointing PATH at that whole directory would
+// leak the real `pickle` straight back in. binDirs, when given, are searched
+// before that directory, so a stub `pickle` placed in one of them wins the
+// lookup; with no binDirs, `pickle` is deterministically absent.
+func pinPATH(t *testing.T, binDirs ...string) {
+	t.Helper()
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git not on PATH")
+	}
+	gitOnly := t.TempDir()
+	if err := os.Symlink(gitPath, filepath.Join(gitOnly, "git")); err != nil {
+		t.Fatal(err)
+	}
+	dirs := append(append([]string{}, binDirs...), gitOnly)
+	t.Setenv("PATH", strings.Join(dirs, string(os.PathListSeparator)))
+}
+
+// stubPickle writes a fake `pickle` that answers `hooks run pre-commit` with
+// rc and `version` with a fixed string, and returns the directory it lives
+// in (ready to pass to pinPATH). It is a stand-in for a real binary skewed
+// against the shim: capable (rc 0) or not (any other code, mirroring an
+// older pickle's exit 2 on the then-unknown `hooks` verb).
+func stubPickle(t *testing.T, rc int) string {
+	t.Helper()
+	dir := t.TempDir()
+	body := fmt.Sprintf("#!/bin/sh\ncase \"$1\" in\n  hooks) exit %d ;;\n  version) echo \"pickle 0.2.2\" ;;\n  *) exit %d ;;\nesac\n", rc, rc)
+	path := filepath.Join(dir, "pickle")
+	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }
 
 func hasPassedContaining(passed []string, sub string) bool {
@@ -78,6 +121,10 @@ func TestCheckHooksOwnedAndStale(t *testing.T) {
 		t.Fatalf("hook.Install: %v", err)
 	}
 
+	// A current shim also probes the PATH pickle (T-068): pin PATH to a stub
+	// that can run the guard, or this assertion would depend on whatever
+	// happens to be installed on the machine running the test.
+	pinPATH(t, stubPickle(t, 0))
 	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
 	if len(res.Warnings) != 0 {
 		t.Errorf("a current hook warned: %v", res.Warnings)
@@ -87,13 +134,14 @@ func TestCheckHooksOwnedAndStale(t *testing.T) {
 	}
 
 	// A shim written by an older pickle: the one hook state worth a warning,
-	// because `pickle upgrade` fixes it.
+	// because `pickle upgrade` fixes it. The stale branch never probes PATH (it
+	// already has a warning to give), so PATH is irrelevant here.
 	path := filepath.Join(root, ".git", "hooks", "pre-commit")
 	body, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale := strings.Replace(string(body), "pickle:hook v1", "pickle:hook v0", 1)
+	stale := strings.Replace(string(body), fmt.Sprintf("pickle:hook v%d", hook.ShimVersion), "pickle:hook v0", 1)
 	if err := os.WriteFile(path, []byte(stale), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +170,65 @@ func TestCheckHooksForeignIsLeftAlone(t *testing.T) {
 	if !hasPassedContaining(res.Passed, "not pickle's") {
 		t.Errorf("foreign hook not reported: %v", res.Passed)
 	}
+}
+
+// TestCheckHooksProbesPATH pins T-068: an owned, current shim only reports
+// itself healthy when the `pickle` the shim will actually resolve from PATH
+// can run the guard, and the probe is skipped entirely for a hook that is not
+// armed (absent) — it must not pay the exec cost, or produce a finding, for a
+// guard nobody installed.
+func TestCheckHooksProbesPATH(t *testing.T) {
+	t.Run("incapable pickle on PATH warns and is inert", func(t *testing.T) {
+		root := gitFixture(t)
+		if _, err := hook.Install(root, false); err != nil {
+			t.Fatalf("hook.Install: %v", err)
+		}
+		bin := stubPickle(t, 2) // mirrors an older pickle's exit 2 on the (then) unknown `hooks` verb
+		pinPATH(t, bin)
+		res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+		if !hasWarnContaining(res.Warnings, "inert") {
+			t.Errorf("incapable PATH pickle did not warn: %v", res.Warnings)
+		}
+		if !hasWarnContaining(res.Warnings, filepath.Join(bin, "pickle")) {
+			t.Errorf("warning does not name the incapable binary's path: %v", res.Warnings)
+		}
+	})
+
+	t.Run("capable pickle on PATH passes", func(t *testing.T) {
+		root := gitFixture(t)
+		if _, err := hook.Install(root, false); err != nil {
+			t.Fatalf("hook.Install: %v", err)
+		}
+		pinPATH(t, stubPickle(t, 0))
+		res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+		if len(res.Warnings) != 0 {
+			t.Errorf("a capable PATH pickle warned: %v", res.Warnings)
+		}
+		if !hasPassedContaining(res.Passed, "can run it") {
+			t.Errorf("capable PATH pickle not reported as such: %v", res.Passed)
+		}
+	})
+
+	t.Run("no pickle at all on PATH warns", func(t *testing.T) {
+		root := gitFixture(t)
+		if _, err := hook.Install(root, false); err != nil {
+			t.Fatalf("hook.Install: %v", err)
+		}
+		pinPATH(t) // git only — no `pickle` anywhere on PATH
+		res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+		if !hasWarnContaining(res.Warnings, "no pickle is on PATH") {
+			t.Errorf("absent PATH pickle did not warn: %v", res.Warnings)
+		}
+	})
+
+	t.Run("absent hook never probes", func(t *testing.T) {
+		root := gitFixture(t) // no hook.Install: the guard is not armed
+		pinPATH(t, stubPickle(t, 2))
+		res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+		if len(res.Warnings) != 0 || len(res.Errors) != 0 {
+			t.Errorf("an unarmed guard produced findings from an unrelated incapable PATH pickle: warnings=%v errors=%v", res.Warnings, res.Errors)
+		}
+	})
 }
 
 // TestCheckHooksWithoutAGitRepo is the shape of every other fixture in this

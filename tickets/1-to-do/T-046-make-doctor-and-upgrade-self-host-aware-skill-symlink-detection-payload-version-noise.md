@@ -68,3 +68,15 @@ T-026 (upgrade refuses legal pickle.toml) — sequence, don't run concurrently.
   this ticket's ground is self-host noise. Both edit `internal/doctor/doctor.go`, so sequence them
   rather than running them concurrently, and whichever lands second re-verifies the other's
   message shapes
+- 2026-08-06 — patched by the **T-068 review impact sweep**: T-068 has landed (reviewed, one
+  blocking docs finding in rework), so this ticket is the one that lands second and inherits the
+  re-verification. Concretely, `checkHooks`'s `KindOwned` branch is no longer two outcomes but
+  three: stale → warning (unchanged), current-but-`PATH`-pickle-incapable → **new** warning
+  (`… is installed and current, but … inert …`), current-and-capable → `ok`, whose text gained a
+  trailing `, and the pickle on PATH can run it`. Two consequences for refining this ticket: (a)
+  any self-host skip must not accidentally suppress the new inert warning, which is about the
+  user's `PATH` rather than about self-hosting; (b) in *this* repo the new warning fires for real
+  until the Homebrew `pickle` catches up (measured: 0.2.2 at `/opt/homebrew/bin/pickle`), so it
+  joins the standing self-host `doctor` noise this ticket exists to triage — decide explicitly
+  whether it is in scope. `internal/hook` also gained `probe.go`, which is the *only* new
+  `os/exec` site and stays behind that package

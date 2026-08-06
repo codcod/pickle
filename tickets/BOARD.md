@@ -50,11 +50,11 @@ Last updated: 2026-08-06
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
-| T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
+| T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |  |
@@ -98,6 +98,7 @@ Last updated: 2026-08-06
 | T-058 | per-child ticket_prefix: optional id prefix per child-project, default T | yes — merged to main (0f3049f) |
 | T-059 | family: group tickets under an umbrella ticket id for curated pickup order | yes — merged to main (#7) |
 | T-061 | Board child-project filter buttons in the serve dashboard | yes — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed |
+| T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives |
 
 ## DROPPED
 

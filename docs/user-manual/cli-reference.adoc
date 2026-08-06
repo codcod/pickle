@@ -245,7 +245,10 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   `pickle hooks install`, which is also the answer after a fresh clone, since
   hooks are never cloned. Only a hook written by an *older* pickle is a
   *warning*, pointing at `pickle upgrade`; a hook pickle does not own is
-  reported and left alone;
+  reported and left alone; an installed, current hook is further checked for
+  whether the `pickle` first on `PATH` can actually run it — a *warning*
+  naming the incapable binary's path and version when it cannot
+  (<<hooks-version-skew,version skew>>);
 * each registered child's `path` is a git repository;
 * the installed `payload_version` matches the binary — a mismatch is a
   *warning*, and `doctor` first checks whether `upgrade` could actually
@@ -308,7 +311,7 @@ way out.
 `install` writes a short shim that calls `pickle hooks run pre-commit`, so the
 rule reads the live `pickle.toml` (each child's `branch_prefix`) and cannot go
 stale the way a generated script with the prefixes baked in would. The shim is
-marked `# pickle:hook v1`, and that marker is the whole of pickle's ownership
+marked `# pickle:hook v2`, and that marker is the whole of pickle's ownership
 claim: a `pre-commit` hook without it is someone else's and is never modified,
 removed, or overwritten unless you pass `--force`. To keep your own hook *and*
 the guard, chain it:
@@ -326,8 +329,33 @@ tools.
 
 `uninstall` removes the hook only while it carries pickle's marker;
 `--dry-run` (`-n`) reports what would go and changes nothing. `status` prints
-the state (absent, installed by pickle, stale, or foreign) and the resolved
-path.
+the state (absent, installed by pickle, stale, or foreign), the resolved
+path, and — for an installed, current hook — whether the `pickle` first on
+your `PATH` can actually run it (see *version skew*, below).
+
+[#hooks-version-skew]
+=== Version skew: an installed shim is not the same thing as a working guard
+
+The shim is a fixed file, but it calls back into *whatever* `pickle` is first
+on `PATH` at commit time — and that can be a different, older binary than the
+one that wrote the shim (a freshly built binary next to a lagging package
+manager copy, a second clone, `go install` alongside Homebrew). `hooks
+install`, `hooks status` and `doctor` (<<cmd-doctor>>) all probe for this —
+running the same call the shim itself makes, in a directory with nothing in
+it — and warn when the guard they just reported as "current" is one an older
+`pickle` cannot actually run:
+
+----
+pickle hooks install: warning: the pickle on PATH cannot run the guard — it is
+inert (0.2.2 at /opt/homebrew/bin/pickle)
+  this binary is /usr/local/bin/pickle — put it first on PATH, or upgrade the
+  pickle that is
+----
+
+This is a warning, never a failure: the shim on disk is correct regardless of
+what happens to be first on `PATH` right now. Fix it by reordering `PATH` (put
+the binary that ran `hooks install` first) or by upgrading whichever `pickle`
+your package manager provides.
 
 === What the guard does and does not catch
 
@@ -353,14 +381,20 @@ that wants the guard already has it.
   GUI and IDE clients often commit with a minimal `PATH` that lacks
   `/opt/homebrew/bin` or `$GOPATH/bin`, and there the guard is silently
   skipped rather than blocking the commit.
+* **An older `pickle` first on `PATH` degrades the same way, and now says
+  so.** `hooks install`, `hooks status` and `doctor` each warn when the
+  binary the shim will actually resolve cannot run the guard — see
+  <<hooks-version-skew,version skew>>.
 * **It fails open, always.** No `pickle` on `PATH`, no `pickle.toml`, an
   unparseable config, no git — each of those skips the check and allows the
-  commit. `pickle hooks run pre-commit` exits `1` for a violation and *only*
-  for a violation, `0` when the commit is fine or the guard could not run, and
-  `2` for a bad invocation. That contract is what makes an older `pickle`
-  first on your `PATH` harmless: it exits `2` on the unknown `hooks` verb, and
-  the shim treats anything other than `1` as "no violation" instead of
-  blocking every commit in the repository.
+  commit, with one line on stderr naming which case it was (`pickle:
+  bookkeeping guard skipped (…)`) rather than staying silent. `pickle hooks run
+  pre-commit` exits `1` for a violation and *only* for a violation, `0` when
+  the commit is fine or the guard could not run, and `2` for a bad invocation.
+  That contract is what makes an older `pickle` first on your `PATH` harmless:
+  it exits `2` on the unknown `hooks` verb, and the shim treats anything other
+  than `1` as "no violation" instead of blocking every commit in the
+  repository.
 
 [#cmd-ticket-new]
 == `pickle ticket new`
@@ -601,5 +635,9 @@ not expose it.
 `pickle version` prints the build version: the value stamped at build time
 (goreleaser / `just build`), falling back to the module version the Go
 toolchain records (so a `go install …@vX.Y.Z` binary reports its tag), and
-`dev` only when neither exists. `pickle help` prints the usage summary; so does
-any unknown command, with a non-zero exit.
+`dev` only when neither exists. `pickle help` (exit `0`) and a bare `pickle` with
+no arguments (exit `2`) both print the full usage summary. An **unrecognised**
+command is terser — one line naming `pickle help`, exit `2` — so an older
+`pickle` left first on `PATH` degrading on the once-unknown `hooks` verb
+(<<cmd-hooks>>) does not bury the guard's own one-line notice under a full
+usage dump on every commit.

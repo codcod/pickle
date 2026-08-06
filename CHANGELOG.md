@@ -17,7 +17,7 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   board bookkeeping on the base branch, and a squash-merge of a branch carrying bookkeeping
   folds or drops it, leaving `BOARD.md` disagreeing with the tickets it indexes. The hook is a
   shim calling back into the binary, so the rule reads each child's live `branch_prefix` instead
-  of baking it into a script, and ownership is a `# pickle:hook v1` marker in the file — a
+  of baking it into a script, and ownership is a `# pickle:hook v2` marker in the file — a
   `pre-commit` hook pickle did not write is never modified without `--force`. The hooks directory
   comes from git, so an existing `core.hooksPath` (Husky, Lefthook) is honoured. It **fails
   open**: no `pickle` on `PATH`, no `pickle.toml`, no git, or an older `pickle` on `PATH` all
@@ -25,11 +25,30 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   for a violation). `pickle upgrade` refreshes a stale shim but never arms an absent one,
   `pickle uninstall` removes a pickle-owned hook, and `pickle doctor` reports the state — absent
   is not a finding, since hooks are per-clone and never cloned.
+- **A PATH-capability probe for the pre-commit guard (T-068).** A `pre-commit` hook that is
+  present and current on disk was still measured as silently inert: the shim resolves `pickle`
+  from `PATH` at commit time, and an older release there (Homebrew lag, a second clone,
+  `go install` next to a packaged copy) exits `2` on the once-unknown `hooks` verb and degrades
+  correctly — but nothing said so. `pickle hooks install`, `pickle hooks status` and
+  `pickle doctor` now probe the PATH `pickle` (the shim's own call, run in an empty directory) and
+  warn, naming the incapable binary's path and best-effort version, when it cannot run the guard;
+  a same-file or otherwise-capable PATH `pickle` stays silent.
 - **The rule the guard enforces is now written into the payload** (T-057). The rules (§0), the
   review protocol, `SKILL.md` and the `AGENTS.md` marker block all state where commits land; the
   review protocol also fixes the mirror-image hazard the split creates — a reviewer on a feature
   branch must read the ticket and board from the base branch (`git show <base>:tickets/…`),
   because a branch cut before the bookkeeping landed shows a stale ticket.
+
+### Changed
+
+- **The pre-commit shim bumps to `# pickle:hook v2`** (T-068). Its guard-absent branch now prints
+  one stderr notice (`pickle: bookkeeping guard skipped (pickle not found on PATH)`) instead of
+  degrading silently — the same reasoning that already made an unexpected exit code speak — and a
+  cosmetic doubled `#` in the v1 marker line is fixed. `pickle upgrade` refreshes an owned v1 shim
+  in place; the fail-open contract is unchanged (exit `1` still means a violation, and only that).
+- **An unrecognised top-level command answers in one line** (T-068), pointing at `pickle help`,
+  instead of printing the full usage text ahead of it. `pickle` with no arguments still prints the
+  whole usage summary.
 
 ## [0.2.2] - 2026-07-29
 

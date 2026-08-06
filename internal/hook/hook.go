@@ -35,7 +35,14 @@ import (
 // ShimVersion is the version of the shim this binary writes. It is recorded in
 // the marker line so `pickle doctor` can spot an older shim and `pickle
 // upgrade` can refresh it.
-const ShimVersion = 1
+//
+// v2 (T-068): the guard-absent branch prints a one-line stderr notice instead
+// of exiting silently — the same reasoning as the unexpected-exit-code line
+// below: silence hides a dead guard, which is the failure this hook exists to
+// prevent. The bump also fixes a cosmetic defect in v1's own marker line (a
+// doubled `#`, see marker()/Shim() below) — both are shim-text changes, so
+// both ride the same version bump `pickle upgrade` already refreshes on.
+const ShimVersion = 2
 
 // HookName is the only hook pickle installs.
 const HookName = "pre-commit"
@@ -61,12 +68,21 @@ var ErrNoRepo = errors.New("not a git repository (or git is unavailable)")
 // means "violation". Anything else is reported and waved through, because a
 // guard that cannot run must never stop a commit — and a guard that is silently
 // dead is the exact failure this hook exists to prevent, so it says so.
+//
+// The guard-absent branch (T-068, ShimVersion 2) is held to the same rule: it
+// must never grow an `exit 1` — a missing `pickle` is exactly the degraded
+// state the fail-open contract exists for — but it must not stay silent
+// either, for the same reason the unexpected-exit-code line below isn't
+// silent.
 func Shim() string {
 	return "#!/bin/sh\n" +
-		"# " + marker() + " — installed by `pickle hooks install`, removed by `pickle hooks uninstall`.\n" +
+		marker() + " — installed by `pickle hooks install`, removed by `pickle hooks uninstall`.\n" +
 		"# Refuses ticket bookkeeping (tickets/) staged on a feature branch. The rule lives in the\n" +
 		"# binary so it tracks pickle.toml. Bypass one commit with `git commit --no-verify`.\n" +
-		"command -v pickle >/dev/null 2>&1 || exit 0   # guard absent, never blocking\n" +
+		"command -v pickle >/dev/null 2>&1 || {\n" +
+		"  echo \"pickle: bookkeeping guard skipped (pickle not found on PATH)\" >&2\n" +
+		"  exit 0                                        # guard absent, never blocking\n" +
+		"}\n" +
 		"pickle hooks run " + HookName + "\n" +
 		"rc=$?\n" +
 		"[ \"$rc\" -eq 1 ] && exit 1                     # 1 = violation, and only 1\n" +
