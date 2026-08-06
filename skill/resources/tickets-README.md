@@ -47,6 +47,24 @@ referenced, not copied.
   child name). The `feat/T-NNN-<slug>` branch for a ticket is cut **inside that child's repo**.
 - **One shared board, sub-grouped by child** (§6). **One global id namespace** (§3) regardless
   of child. **WIP limits are enforced per child** (§6).
+- **Where commits land.** The code for a ticket is committed on that child's
+  `feat/T-NNN-<slug>` branch. **The bookkeeping — the ticket file, its History lines, the
+  generated `BOARD.md` — is committed on the base branch of the overarching project**, never on
+  a feature branch. This is not tidiness: a squash-merge of the feature branch folds every
+  bookkeeping commit into the code commit, or drops it, and the board then indexes tickets whose
+  recorded status disagrees with where the files are. It applies to every move a ticket makes,
+  including the ones a *review* performs.
+  - In the **single-repo default** (`path = "."`, one child at the overarching root) the code and
+    the board share one repository and one branch namespace, which is exactly what makes the
+    split easy to violate by accident — nothing about `git add tickets` looks wrong on a feature
+    branch.
+  - `pickle hooks install` enforces it locally: a `pre-commit` hook that refuses staged
+    `tickets/` paths while HEAD is a feature branch. Hooks live in `.git/` and are never cloned,
+    so it is once per clone. `git commit --no-verify` bypasses it for the rare commit whose
+    *product* is a file under `tickets/`.
+  - The mirror-image hazard, for readers: a feature branch cut *before* the bookkeeping landed
+    on the base branch shows a **stale ticket** in its worktree. Read the ticket and the board
+    from the base branch (`git show <base>:tickets/…`), not from the branch under review.
 
 > **Project configuration wins.** Branch prefix, ticket-id prefix, WIP limits and commit policy
 > are all per-child (or overarching) `pickle.toml` settings; this document states the flow's

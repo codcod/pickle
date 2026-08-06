@@ -10,6 +10,12 @@
  *      explicit user approval (present the commit message + MR attributes first);
  *      merging is always the human's.
  *
+ * The marker block's remaining git rule — *where commits land*: code on the
+ * feature branch, ticket/board bookkeeping on the base branch — is deliberately
+ * NOT mirrored here. It is enforced by `pickle hooks install`, a `pre-commit` hook
+ * that guards every committer (agent, human or script) rather than only a pi
+ * session, and that reads each child's `branch_prefix` from `pickle.toml`.
+ *
  * This file is pickle-owned: `pickle upgrade` refreshes it in place and
  * `pickle uninstall` removes it. Put project-specific rules in a SEPARATE
  * extension file next to this one, not in here.

@@ -8,6 +8,29 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle hooks` — a pre-commit guard for ticket bookkeeping** (T-057). New verb
+  `pickle hooks install [--force] | uninstall [--dry-run] | status | run pre-commit`, plus
+  `pickle install --hooks`. The installed hook refuses a commit that stages `tickets/` paths
+  while a feature branch is checked out: the flow puts code on `feat/T-NNN-<slug>` and ticket +
+  board bookkeeping on the base branch, and a squash-merge of a branch carrying bookkeeping
+  folds or drops it, leaving `BOARD.md` disagreeing with the tickets it indexes. The hook is a
+  shim calling back into the binary, so the rule reads each child's live `branch_prefix` instead
+  of baking it into a script, and ownership is a `# pickle:hook v1` marker in the file — a
+  `pre-commit` hook pickle did not write is never modified without `--force`. The hooks directory
+  comes from git, so an existing `core.hooksPath` (Husky, Lefthook) is honoured. It **fails
+  open**: no `pickle` on `PATH`, no `pickle.toml`, no git, or an older `pickle` on `PATH` all
+  skip the check rather than block the commit (`hooks run` exits `1` for a violation and only
+  for a violation). `pickle upgrade` refreshes a stale shim but never arms an absent one,
+  `pickle uninstall` removes a pickle-owned hook, and `pickle doctor` reports the state — absent
+  is not a finding, since hooks are per-clone and never cloned.
+- **The rule the guard enforces is now written into the payload** (T-057). The rules (§0), the
+  review protocol, `SKILL.md` and the `AGENTS.md` marker block all state where commits land; the
+  review protocol also fixes the mirror-image hazard the split creates — a reviewer on a feature
+  branch must read the ticket and board from the base branch (`git show <base>:tickets/…`),
+  because a branch cut before the bookkeeping landed shows a stale ticket.
+
 ## [0.2.2] - 2026-07-29
 
 ### Added

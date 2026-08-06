@@ -35,6 +35,14 @@ child addendum** (whichever exist).
 > approval — see step 9). End with a summary, the commit message(s) and merge-request attributes
 > for approval, and a next-ticket suggestion.
 >
+> **But read the ticket from the base branch.** Bookkeeping is committed on the base branch, not
+> on the feature branch (the rules §0), so a branch cut before the ticket's move to
+> `4-in-review/` landed shows a **stale ticket file** in its worktree — an older Implementation
+> Plan, a missing History line, a status the board contradicts. The branch is authoritative for
+> the *code*; the base branch is authoritative for the *ticket and the board*. Read them with
+> `git show <base>:tickets/4-in-review/T-NNN-*.md` (or from a checkout of the base branch), and
+> record this review's own findings and moves on the base branch too.
+>
 > **Project configuration wins.** The branch prefix (`feat/`), the ticket-id prefix (`T`, in
 > every `T-NNN` here), the commit policy above, and any WIP limit named elsewhere in this
 > protocol are the flow's defaults. The project's `AGENTS.md` marker block renders what
@@ -44,7 +52,10 @@ child addendum** (whichever exist).
 
 ## 1. Load context
 
-- Locate the ticket: `tickets/4-in-review/T-NNN-*.md`. Read it in full — `## Description`,
+- Locate the ticket: `tickets/4-in-review/T-NNN-*.md`, **as it exists on the base branch** — if
+  the feature branch is already checked out, `git show <base>:tickets/4-in-review/T-NNN-*.md`
+  rather than the worktree copy (see the box above; a stale read has already caused a review to
+  audit the wrong plan). Read it in full — `## Description`,
   `## Implementation Plan` (its acceptance test, tasks, and confirmed decisions are the
   checklist for step 2), and `## History`.
 - If this is a **scoped re-review** (the ticket was previously in `tickets/5-rework/`), read the
