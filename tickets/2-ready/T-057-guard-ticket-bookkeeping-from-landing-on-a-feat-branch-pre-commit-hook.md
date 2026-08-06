@@ -97,19 +97,19 @@ already runs, needs no git config, and `DESIGN.md` §7 already anticipates wirin
 
 ## Implementation Plan
 
-> **STALE — do not execute as written.** The pickup applicability gate (2026-08-05) found four
-> **blocking** mechanical defects and the user routed the ticket back to READY for re-refinement
-> rather than amending the plan inline at pickup. The plan below is unchanged from the first
-> refinement; the gate's findings are recorded immediately after this note and are the
-> re-refinement's mandate. The *design* decisions (1–10) survived the audit intact — what failed is
-> the mechanics: one wrong git call, the shim's exit-code contract, no-git degradation, and an
-> acceptance transcript that cannot run verbatim.
+> **Re-refined 2026-08-05 (second pass).** The pickup applicability gate found four **blocking**
+> mechanical defects; the user routed the ticket back to READY, and this pass applied all eight of
+> the gate's `fixed inline` amendments. The design (decisions 1–10) is unchanged — what changed is
+> the branch-name git call (decision 7), the shim's exit-code contract (decisions 3–4), git
+> cwd/environment discipline and no-git degradation (new decisions 11–12), and an acceptance
+> transcript that now runs verbatim.
 
 ### Pickup gate findings (2026-08-05)
 
 Run by a fresh sub-agent per rules §8; every blocking finding re-verified by hand before being
-recorded here. Severity + disposition per rules §5. The eight `fixed inline` items were **not**
-applied — the route-back makes them the re-refinement's work.
+recorded here. Severity + disposition per rules §5. **All eight `fixed inline` items are applied
+in the plan below**; the table stays as the permanent evidence record (rules §5: `noted` is not
+"ignored"), with the amendment each one produced named in its row.
 
 | # | finding | evidence | severity | disposition |
 |---|---|---|---|---|
@@ -124,7 +124,12 @@ applied — the route-back makes them the re-refinement's work.
 | F7 | `--amend` is guarded only against the index: the hook does run on `--amend`, but `git diff --cached` is index-vs-HEAD, so amending a commit that *already* contains `tickets/` shows nothing. Acceptable — but the docs should say it rather than imply amends are covered. | — | non-blocking | noted |
 | F9 | Fail-open plus `PATH` lookup makes the guard silently absent in GUI/IDE commits (Fork, SourceTree, JetBrains all run with a minimal `PATH` lacking `/opt/homebrew/bin` and `$GOPATH/bin`), so `command -v pickle` fails. One honest sentence in `cli-reference.adoc`: the guard is best-effort and terminal-first. | — | non-blocking | noted |
 | F10 | `cli-reference.adoc` overlaps T-066's declared file ownership ("No file overlap (T-066 owns `cli-reference.adoc`)"), and dead anchors are unvalidated today — which is T-067's whole premise — so a broken xref to a new `[#cmd-hooks]` would not be caught. Keep the new section self-contained and re-check both tickets at implementation time. Recorded here rather than added to T-066: T-057's section does not exist yet, so an item there would be speculative. | `tickets/1-to-do/T-067-…md:74` | non-blocking | noted (cross-ref T-066, T-067) |
-| F11 | `just docs-check` is not in CI (`.github/workflows/ci.yml` runs vet/gofmt/test/build only), so `snowball check` is local-only and task 7's docs breakage could land unnoticed. The new hook tests themselves are CI-safe: git exists, the plan sets `user.email`/`user.name` locally, and the file skips without git. | verified | non-blocking | noted |
+| F11 | `just docs-check` is not in CI (`.github/workflows/ci.yml` runs vet/gofmt/test/build only), so `snowball check` is local-only and task 7's docs breakage could land unnoticed. The new hook tests themselves are CI-safe: git exists, the plan sets `user.email`/`user.name` locally, and the file skips without git. | verified | non-blocking | **folded → T-067** (its ground: the docs pipeline validates nothing; item added there 2026-08-05) |
+
+**Where each `fixed inline` amendment landed:** B1 + F12 → the rewritten *Acceptance test*;
+B2 + F5 → decision 7 steps 1–2 and task 1's `PreCommit`; B3 → decisions 3–4, `Shim()` in task 1,
+and task 3's exit-code contract; B4 → new decision 12 and task 5; F8 → new decision 11 and
+task 2's env hygiene; F6 → task 7's first bullet.
 
 ### Feature branch
 
@@ -152,14 +157,22 @@ decision below is *not* to add a fourth guardrail rule, so nothing is inherited 
    and would need a `base_branch` config key that does not exist. Keeping the audit git-free is a
    deliberate property — state it in the code comment that declines the check (`DESIGN.md` §7,
    task 8).
-3. **The hook is a shim; the rule lives in Go.** `.git/hooks/pre-commit` is a five-line `sh`
-   script that execs `pickle hooks run pre-commit`. The rule therefore reads live `pickle.toml`
+3. **The hook is a shim; the rule lives in Go.** `.git/hooks/pre-commit` is a short `sh` script
+   that runs `pickle hooks run pre-commit`. The rule therefore reads live `pickle.toml`
    and can never go stale, and it is unit-testable. A generated self-contained `sh` script with
    the prefixes baked in was rejected for going stale silently.
-4. **The guard fails open, always.** If `pickle` is not on `PATH`, if no `pickle.toml` is found,
-   or if the config fails to parse, the hook prints one line to stderr and **exits 0**. A missing
-   or misconfigured guard must never brick `git commit`. The only non-zero exit is an actual
-   violation.
+   **Exit-code contract (finding B3):** `pickle hooks run pre-commit` exits **`1` if and only if
+   the commit is a violation**, `0` when the commit is allowed *or* the guard degraded, `2` for a
+   usage error. The shim blocks on `1` and on nothing else — `|| exit 1` would have been
+   fail-*closed*, because an older `pickle` first on `PATH` (a second clone, `go install`, Homebrew
+   lag) exits `2` on the unknown verb (`internal/cli/cli.go:26,70`) and would have blocked **every
+   commit in the repo**. This contract is part of the CLI's surface: never reuse exit `1` in
+   `hooks run` for anything but a violation.
+4. **The guard fails open, always.** If `pickle` is not on `PATH`, if no `pickle.toml` is found, if
+   the config fails to parse, if `git` is missing, or if the tree is not a git repo, the guard
+   **exits 0**. A missing or misconfigured guard must never brick `git commit`. On an *unexpected*
+   exit code the shim prints one stderr line naming the code and continues — silence there would
+   hide a dead guard, which is the failure mode this whole ticket exists to prevent.
 5. **`.git/hooks/pre-commit`, not `core.hooksPath`.** Setting `core.hooksPath` is repo-global and
    collides with Husky / pre-commit.com / Lefthook. Resolve the target directory with
    `git rev-parse --path-format=absolute --git-path hooks`, which **honours an existing
@@ -179,8 +192,14 @@ decision below is *not* to add a fourth guardrail rule, so nothing is inherited 
 7. **The predicate.** Reject a commit when **all** of: HEAD is a branch (not detached);
    its name starts with the `branch_prefix` of **any** registered child (union; default `feat/`);
    and the staged paths intersect the `tickets/` directory of the `pickle.toml` that governs this
-   repo. Pass otherwise. Explicitly pass during a merge / rebase / cherry-pick / revert in
-   progress. Only `tickets/` is guarded — never `pickle.toml`, never `skill/`.
+   repo. Pass otherwise. Explicitly pass during a merge / cherry-pick / revert in progress. Only
+   `tickets/` is guarded — never `pickle.toml`, never `skill/`.
+   **The branch name comes from `git symbolic-ref --quiet --short HEAD`, never from
+   `git rev-parse --abbrev-ref HEAD`** (finding B2): on an **unborn** branch — a freshly
+   `git init`-ed repo with no commits, which is exactly what `pickle install` lands in — `rev-parse`
+   exits 128 and prints the literal `HEAD`, which reads as "detached" and would wave bookkeeping
+   through on `feat/…`. `symbolic-ref` returns `main` there (exit 0) and empty with exit 1 when
+   genuinely detached. Verified on git 2.55.
 8. **Escape hatch.** `git commit --no-verify`, named in the rejection message together with the
    legitimate case (a change whose *product* lives under `tickets/`).
 9. **The rule gets written down.** The split it enforces is currently stated **nowhere** in the
@@ -189,25 +208,44 @@ decision below is *not* to add a fourth guardrail rule, so nothing is inherited 
 10. **Not split.** The docs half is arguably schedulable alone, but a hook without the written
     rule enforces something undocumented, and the written rule without the hook is exactly
     today's state (four violations). One ticket.
+11. **Git cwd/env discipline (finding F8).** In the `hooks run` path **every git call inherits the
+    hook's working directory and environment — no `-C`**. Git invokes `pre-commit` from the
+    worktree top with `GIT_INDEX_FILE` set to a **relative** path and, inside a linked worktree,
+    `GIT_DIR` pointing at `.git/worktrees/<wt>`; a `git -C <root>` call would therefore inspect a
+    *different index* than the one being committed. `-C` is used only by `Install`/`Uninstall`/
+    `Status`/`Refresh`, which the user invokes from an arbitrary directory with no `GIT_*` set.
+    Config discovery for `hooks run` is `config.Find(cwd)`, so the governing `pickle.toml` is the
+    one above the commit, not one passed in.
+12. **Degrade silently where there is no git (finding B4).** `git` missing or the tree not a
+    repository is a normal state, not an error: `Refresh` no-ops, `doctor`'s `checkHooks` emits one
+    `ok` line, `hooks run` exits 0, and `Install` is the *only* entry point that reports it as a
+    failure (the user asked for a hook and cannot have one). This matters because the existing test
+    fixtures fake a child repo with an empty directory (`internal/doctor/doctor_test.go:30`,
+    `internal/cli/cli_test.go:191`). Related: this ticket introduces pickle's **first** `os/exec`
+    use (0 hits repo-wide today) — confine it to `internal/hook` behind the single `git()` helper so
+    the rest of the tree stays exec-free and `internal/audit` stays git-free (decision 2).
 
 ### Tasks
 
 **1. New package `internal/hook/hook.go`.** No dependency on `internal/install` (avoids a cycle;
-`install` imports `hook`, not the reverse). Shells out to `git` via one unexported helper
-`git(dir string, args ...string) (string, error)`.
+`install` imports `hook`, not the reverse). Shells out to `git` via **two** unexported helpers, so
+decision 11 is structural rather than a habit: `gitAt(dir string, args ...string)` (used only by
+Install/Uninstall/Status/Refresh) and `gitHere(args ...string)` (no `-C`, inherits cwd + env; the
+**only** helper the `PreCommit` path may call).
 
 - `const ShimVersion = 1`; `const marker = "# pickle:hook v1"`.
-- `Shim() string` — the script text, ending in a trailing newline:
+- `Shim() string` — the script text, ending in a trailing newline. Note the exit-code handling: it
+  is the whole of decision 3's contract, so it must not be "simplified" back to `|| exit 1`:
   ```sh
   #!/bin/sh
   # pickle:hook v1 — installed by `pickle hooks install`, removed by `pickle hooks uninstall`.
   # Refuses ticket bookkeeping (tickets/) staged on a feature branch. The rule lives in the
   # binary so it tracks pickle.toml. Bypass one commit with `git commit --no-verify`.
-  if command -v pickle >/dev/null 2>&1; then
-    pickle hooks run pre-commit || exit 1
-  else
-    echo "pickle: not on PATH — bookkeeping guard skipped" >&2
-  fi
+  command -v pickle >/dev/null 2>&1 || exit 0   # guard absent, never blocking
+  pickle hooks run pre-commit
+  rc=$?
+  [ "$rc" -eq 1 ] && exit 1                     # 1 = violation, and only 1
+  [ "$rc" -ne 0 ] && echo "pickle: bookkeeping guard skipped (hooks run exited $rc)" >&2
   exit 0
   ```
 - `HooksDir(root string) (string, error)` — `git -C root rev-parse --path-format=absolute
@@ -221,24 +259,39 @@ decision below is *not* to add a fourth guardrail rule, so nothing is inherited 
 - `Status(root string) (State, error)` — `Absent` / `Owned{Version, Stale bool}` / `Foreign`,
   plus the resolved path (so `hooks status` can show a `core.hooksPath` redirect).
 - `Refresh(root string) (bool, error)` — rewrite an owned-but-stale shim; no-op otherwise.
-- `PreCommit(root string, cfg *config.Config, w io.Writer) (ok bool, err error)` — the rule of
-  decision 7:
-  1. `git rev-parse --abbrev-ref HEAD`; `HEAD` (detached) → ok.
-  2. in-progress operation → ok: any of `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD` (via
-     `git rev-parse --git-path <name>`) or the `rebase-merge` / `rebase-apply` directories exists.
+- `PreCommit(cfg *config.Config, w io.Writer) (ok bool, err error)` — the rule of decision 7. Takes
+  **no root**: per decision 11 it works on the cwd's repo via `gitHere`, which is the index git is
+  actually committing.
+  1. `git symbolic-ref --quiet --short HEAD` — exit 1 / empty → detached → ok. **Not**
+     `rev-parse --abbrev-ref HEAD` (finding B2; a comment must say why, or it will be "tidied"
+     back).
+  2. in-progress operation → ok: any of `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD` exists
+     (via `git rev-parse --git-path <name>`). **No `rebase-merge`/`rebase-apply` check** — verified
+     dead code (finding F5): `rebase --continue` does not run `pre-commit`, and mid-rebase HEAD is
+     detached, so step 1 already returns ok.
   3. no configured `BranchPrefix` matches the branch name → ok.
   4. `git rev-parse --show-toplevel`; compute `tickets/`'s path **relative to that top level**
      from `cfg.Root()`. If it escapes the repo (`..`), → ok (multi-repo child: nothing to guard).
-  5. `git diff --cached --name-only -z`; ok unless a staged path is under that prefix.
+  5. `git diff --cached --name-only -z`; ok unless a staged path is under that prefix. Paths are
+     top-level-relative even when the hook runs from a subdirectory — do not join them with
+     `GIT_PREFIX`.
   6. On violation write the rejection message to `w`: the branch, the offending staged paths
      (cap the list at 10 plus an `… and N more` line), *why* (a squash-merge of this branch eats
      the bookkeeping; the board then disagrees with the tickets), the remedy
      (`git restore --staged tickets/`, commit the code, commit the bookkeeping on the base
      branch), and the `--no-verify` escape hatch with its legitimate case.
+  Not covered, by design (finding F7): `git commit --amend` of a commit that *already* contains
+  `tickets/` — the hook does run, but `git diff --cached` is index-vs-HEAD and shows nothing. The
+  docs say so rather than implying amends are guarded.
 
 **2. `internal/hook/hook_test.go`.** `t.Skip` the whole file when `exec.LookPath("git")` fails.
 Helper builds a real temp repo (`git init -b main`, `user.email`/`user.name` set locally, a
 `pickle.toml` + `tickets/` tree via the existing `config` API). Cases:
+
+**Env hygiene (finding F8), applied to every test:** clear `GIT_DIR`, `GIT_INDEX_FILE`,
+`GIT_WORK_TREE` and `GIT_PREFIX`, and pin `HOME` + `GIT_CONFIG_GLOBAL` into `t.TempDir()` —
+otherwise a developer's global `core.hooksPath` makes the install tests write **outside** the temp
+tree. Set `user.email`/`user.name` locally per repo, never globally.
 
 - install → file exists, mode `0o755`, contains the marker; re-install is idempotent;
 - a foreign `pre-commit` is refused, survives byte-identical, and `--force` overwrites it;
@@ -249,16 +302,31 @@ Helper builds a real temp repo (`git init -b main`, `user.email`/`user.name` set
   fixes only the stale-owned case;
 - `PreCommit`: `main` + staged `tickets/` → ok; `feat/T-1-x` + staged `tickets/` → violation,
   message names the branch and the path; `feat/T-1-x` + staged code only → ok; mixed staging →
-  violation; detached HEAD → ok; mid-rebase → ok; a child configured with
-  `branch_prefix = "wip/"` → `wip/…` rejected and `feat/…` allowed; `tickets/` outside the repo
-  → ok.
+  violation; detached HEAD → ok; a child configured with `branch_prefix = "wip/"` → `wip/…`
+  rejected and `feat/…` allowed; `tickets/` outside the repo → ok;
+- **regression tests for the four blocking gate findings**, each named after it so the reason
+  survives:
+  - **B2** — an **unborn** `feat/T-1-x` (`git init -b feat/T-1-x`, no commits) with staged
+    `tickets/` → violation. This is the case `rev-parse --abbrev-ref HEAD` waves through;
+  - **F5/F7** — with `MERGE_HEAD` present → ok (write the file directly; no need to stage a real
+    conflict);
+  - **B4** — `PreCommit` in a non-repo directory, and with `git` forced missing via `PATH` → ok,
+    no error surfaced to the caller; `Refresh`/`Status` in a non-repo → no-op, no error;
+  - **F8** — run `PreCommit` from a **subdirectory** with `GIT_PREFIX` set and a *relative*
+    `GIT_INDEX_FILE`, and inside a **linked worktree** (`git worktree add`) → correct verdict in
+    both, proving no `-C` crept into the path;
+- **B3, at the CLI level** (in `internal/cli/cli_test.go`): `hooks run pre-commit` returns exactly
+  `1` on a violation and `0` when allowed or degraded, and an unknown `hooks` subcommand returns
+  `2` — the contract the shim's `[ "$rc" -eq 1 ]` depends on.
 
 **3. CLI verb — new `internal/cli/hooks.go`, wired in `internal/cli/cli.go`.**
 `pickle hooks install [--force] | uninstall [--dry-run|-n] | status | run pre-commit`. One verb
 (`hooks`), no separate `hook` verb. `run pre-commit` is the shim's entry point: it locates
-`pickle.toml` with `config.Find`/`Load` and, per decision 4, **exits 0 on any error other than a
-violation** (a violation is `exitError`). An unknown subcommand is `exitUsage`. Add the `hooks`
-block to `usage()`'s *Setup commands* group.
+`pickle.toml` with `config.Find(cwd)`/`Load` and, per decisions 3–4, **exits `1` only for a
+violation** and `0` on every other outcome — no config found, unparseable config, no git, not a
+repo. An unknown subcommand is `exitUsage` (`2`). Document the three exit codes in the handler's
+doc comment as a contract the shipped shim depends on. Add the `hooks` block to `usage()`'s *Setup
+commands* group.
 
 **4. `pickle install --hooks`** in `internal/cli/install.go` (`runInstall`): after the post-install
 audit passes, call `hook.Install(root, false)` and print the created path in the same `  + %s`
@@ -268,13 +336,19 @@ style. A failure here prints a warning and does **not** fail the install.
 - `internal/install/install.go` → `Uninstall`: remove the pickle-owned hook (honouring
   `UninstallOptions.DryRun`, reported through `res.removed`/`res.skipped` like the pi scaffolds).
 - `internal/install/install.go` → `Upgrade`: `hook.Refresh(root)` — refresh an owned, stale shim;
-  never install one that is absent.
+  never install one that is absent; **no-op without error when the root is not a git repo**
+  (decision 12 — today's `Upgrade` tests run in exactly such a tree).
 - `internal/doctor/doctor.go`: new `checkHooks(root, r)` called from `Check` — owned+current →
   `ok`; owned+stale → warning pointing at `pickle upgrade` (mirrors the agent-scaffold check);
   absent → `ok` line noting it is optional and naming `pickle hooks install`; foreign → `ok` line
-  saying the hook is not pickle's and is left alone. Never an error: the hook is opt-in.
+  saying the hook is not pickle's and is left alone; **not a git repo / no git → one `ok` line**.
+  Never an error and never a *new* warning class: the hook is opt-in, and `checkChildren` already
+  owns "is this a git repo" as a real check (`doctor.go:226`) — do not duplicate that verdict here.
 - Extend `internal/install/install_test.go`, `internal/doctor/doctor_test.go` and
-  `internal/cli/cli_test.go` for the uninstall/upgrade/doctor/CLI paths above.
+  `internal/cli/cli_test.go` for the uninstall/upgrade/doctor/CLI paths above. **The existing
+  fixtures fake a child repo with an empty directory** (`doctor_test.go:30`, `cli_test.go:191`), so
+  they exercise decision 12's no-git path by default — add one fixture that is a *real* `git init`
+  repo to cover the owned/stale/foreign branches.
 
 **6. Write the rule into the payload** (the half that makes the hook legitimate):
 - **6a** `skill/resources/tickets-README.md` §0 — new bullet **Where commits land**: code on the
@@ -296,13 +370,23 @@ style. A failure here prints a warning and does **not** fail the install.
   to `AGENTS.md`, so it needs nothing). Do **not** run `pickle install|upgrade` against this repo.
 
 **7. Docs** (`just docs-check` must stay green):
+- `docs/user-manual/concepts/project-structure.adoc`: **replace, do not extend**, the sentence at
+  lines 139–142 — "so a feature branch **can** hold the code change *and* the ticket's move to
+  `4-in-review/`" is the exact opposite of the rule this ticket ships, and leaving it makes the
+  manual contradict the hook (finding F6). It becomes: one history carries both roles, which is
+  *why* the split must be deliberate — code on the feature branch, ticket/board bookkeeping on the
+  base branch — with a pointer to `pickle hooks install`.
 - `docs/user-manual/cli-reference.adoc`: new `[#cmd-hooks] == pickle hooks` section after
   `== pickle uninstall`, documenting all four subcommands, the shim, `core.hooksPath` handling,
-  fail-open behaviour, `--no-verify`, and that hooks are per-clone (never cloned). Amend the
+  the three exit codes, `--no-verify`, and that hooks are per-clone (never cloned). Amend the
   `pickle install` section (`--hooks`), the `pickle uninstall` section (removes the owned hook),
-  and the `pickle doctor` bullet list (reports hook state).
-- `docs/user-manual/concepts/project-structure.adoc`: in the single-repo bullet list ("One history
-  carries both roles" …), state the split and point at `pickle hooks install`.
+  and the `pickle doctor` bullet list (reports hook state). Three honesty sentences the gate asked
+  for: the guard is **best-effort and terminal-first** — GUI/IDE clients (Fork, SourceTree,
+  JetBrains) commit with a minimal `PATH` where `command -v pickle` fails and the guard is silently
+  skipped (F9); `--amend` is checked against the index only, so amending a commit that already
+  contains `tickets/` is not caught (F7); and an older `pickle` on `PATH` degrades to no guard
+  rather than to a blocked repo (B3). Keep the section self-contained — T-066 owns this file's
+  other gaps and anchors are unvalidated until T-067 (F10).
 - `docs/user-manual/installation.adoc`: one short paragraph — after installing, single-repo
   projects should run `pickle hooks install`, once per clone.
 - `CHANGELOG.md`: an `### Added` entry under `## [Unreleased]`.
@@ -323,39 +407,76 @@ Then the end-to-end scenario, in a **throwaway directory with the binary copied 
 policy). The shim resolves `pickle` from `PATH`, so the copy is named `pickle` inside a temp `bin`
 that is prepended to `PATH` — the policy's point is that no in-repo binary path is referenced:
 
+**Write the transcript below to a file under `/tmp` and run it with `sh -e`** — it cannot be pasted
+into a pi session in this repo, because `.pi/extensions/workspace-guardrails.ts:102` blocks any
+segment matching `pickle install` that does not clearly target a throwaway dir (finding F12). That
+guard is correct and stays; the script is the way through it.
+
 ```sh
 just build
-D=$(mktemp -d); mkdir -p "$D/bin"; cp pickle "$D/bin/pickle"; export PATH="$D/bin:$PATH"
+D=$(mktemp -d /tmp/t057.XXXXXX)   # literal /tmp: bare `mktemp -d` gives /var/folders/… on macOS,
+                                 # which the self-modify guard does not recognise as throwaway
+mkdir -p "$D/bin"; cp pickle "$D/bin/pickle"; export PATH="$D/bin:$PATH"
 mkdir -p "$D/repo" && cd "$D/repo" && git init -q -b main .
 git config user.email t@example.com && git config user.name test
 pickle install --project demo --hooks
 test -x .git/hooks/pre-commit && grep -q 'pickle:hook' .git/hooks/pre-commit   # 1. installed
+pickle doctor -v | grep -i hook                                               # 2. state reported,
+pickle doctor                                                                 #    no marker drift
 
-git add pickle.toml tickets AGENTS.md && git commit -qm 'chore: scaffold'      # 2. base: allowed
+# Partial stage on purpose: .agents/, .claude/ and CLAUDE.md stay untracked (F12) — the
+# bookkeeping paths are what the guard cares about. `main` here is still unborn: with
+# decision 7's symbolic-ref this is a genuine base-branch pass, not a fail-open (B2).
+git add pickle.toml tickets AGENTS.md && git commit -qm 'chore: scaffold'      # 3. base: allowed
+
 git checkout -qb feat/T-001-demo
 pickle ticket new "demo" --project demo >/dev/null
-git add tickets && git commit -m 'docs(tickets): file T-001'                   # 3. MUST FAIL (1)
-echo x > code.txt && git add code.txt && git commit -qm 'feat: code (T-001)'   # 4. code: allowed
-git add tickets && git commit -q --no-verify -m 'docs(tickets): file T-001'    # 5. escape hatch
-git checkout -q --detach && git commit -q --allow-empty -m 'detached'          # 6. detached: ok
+before=$(git rev-parse HEAD)
+git add tickets && git commit -m 'docs(tickets): file T-001'                   # 4. MUST FAIL (rc 1)
+test "$before" = "$(git rev-parse HEAD)"                                      #    nothing committed
+
+# The index still holds tickets/ after a rejection — unstage it, exactly as the message says,
+# or the next commit is rejected for the same reason (B1).
+git restore --staged tickets/
+echo x > code.txt && git add code.txt && git commit -qm 'feat: code (T-001)'   # 5. code: allowed
+git add tickets && git commit -q --no-verify -m 'docs(tickets): file T-001'    # 6. escape hatch
+git checkout -q --detach && git commit -q --allow-empty -m 'detached'          # 7. detached: ok
 git checkout -q feat/T-001-demo
 
-pickle hooks status          # owned, current, path shown
-pickle doctor -v | grep -i hook
-pickle hooks uninstall && pickle hooks status                                  # 7. absent
+# 8. Unborn feature branch — the B2 hole, in its own repo (no commit exists yet).
+mkdir -p "$D/unborn" && cd "$D/unborn" && git init -q -b feat/T-001-x .
+git config user.email t@example.com && git config user.name test
+pickle install --project demo --hooks >/dev/null
+pickle ticket new "demo" --project demo >/dev/null
+git add tickets && git commit -m 'docs(tickets): file T-001'                   #    MUST FAIL (rc 1)
+cd "$D/repo"
+
+# 9. Old-binary skew must degrade to "no guard", never to a blocked repo (B3). Stage the
+#    bookkeeping with the real binary FIRST — the stub shadows `pickle` entirely.
+pickle ticket new "skew" --project demo >/dev/null
+mkdir -p "$D/oldbin" && printf '#!/bin/sh\nexit 2\n' > "$D/oldbin/pickle"
+chmod +x "$D/oldbin/pickle"
+git add tickets
+( PATH="$D/oldbin:$PATH"; git commit -qm 'skew: allowed with a warning' )      #    MUST SUCCEED
+
+pickle hooks status                                                           # owned, current, path
+pickle hooks uninstall && pickle hooks status                                 # 10. absent
 printf '#!/bin/sh\nexit 0\n' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
-pickle hooks install         # MUST refuse (foreign hook), file unchanged
-pickle hooks install --force # overwrites
-pickle uninstall -n | grep pre-commit && pickle uninstall                      # 8. removed
+sum=$(cksum .git/hooks/pre-commit)
+pickle hooks install || true                                                  # 11. MUST refuse
+test "$sum" = "$(cksum .git/hooks/pre-commit)"                                #     unchanged
+pickle hooks install --force && grep -q 'pickle:hook' .git/hooks/pre-commit    #     overwrites
+pickle uninstall -n | grep pre-commit && pickle uninstall                      # 12. removed
+test ! -e .git/hooks/pre-commit
 ```
 
-Expected: steps 1, 2, 4, 5, 6, 7 succeed; **step 3 exits non-zero** with the rejection message
-naming the branch, the staged `tickets/` path and `--no-verify`, and leaves `git log` unchanged;
-the foreign hook is refused without modification and only `--force` replaces it; `pickle uninstall`
-removes the owned hook and `-n` lists it. Re-runnable verbatim from a clean `mktemp -d`.
-
-Also verify the payload edits round-trip: `pickle doctor` in that throwaway install reports no
-marker drift (proving task 6d's `MarkerBlock()` change and the hand-mirrored `AGENTS.md` agree).
+Expected: every numbered step succeeds except **4, 8 and 11, which must fail** — 4 and 8 with the
+rejection message naming the branch, the staged `tickets/` path and `--no-verify`, and with `HEAD`
+unmoved; 11 refusing to touch a foreign hook (byte-identical `cksum`) until `--force`. Step 2 is
+placed **before** any uninstall so the marker-drift check still has markers to read (F12), and it
+is what proves task 6d's `MarkerBlock()` change agrees with the hand-mirrored `AGENTS.md`. Step 9
+is the fail-open regression: with a stub `pickle` that exits 2, the commit **goes through** with a
+one-line stderr notice. Re-runnable verbatim from a clean `mktemp -d`.
 
 ### Docs update
 
@@ -402,3 +523,11 @@ merge this repo's own guard is armed by a human running `pickle hooks install` f
   marked STALE. Design decisions 1–10 survived the audit; the defects are mechanical
   (`git rev-parse --abbrev-ref HEAD` misreads an unborn branch, the shim is fail-closed on version
   skew, no-git degradation unspecified, acceptance transcript not runnable verbatim)
+- 2026-08-05 — re-refined (second pass) in `2-ready/`: applied all eight of the gate's `fixed
+  inline` amendments — `symbolic-ref` for the branch name (B2), an explicit exit-code contract with
+  the shim blocking only on `1` (B3), new decisions 11–12 for git cwd/env discipline (F8) and no-git
+  degradation (B4), the dead rebase check dropped (F5), `project-structure.adoc:139-142` now
+  *replaced* rather than extended (F6), and an acceptance transcript that runs verbatim — index
+  unstaging after a rejection (B1), an unborn-`feat/` repo, an old-binary skew step, `/tmp`-anchored
+  `mktemp`, and the marker-drift check moved before uninstall (F12). F11 folded into T-067 (CI half
+  added there). Grades unchanged; status unchanged (READY throughout)

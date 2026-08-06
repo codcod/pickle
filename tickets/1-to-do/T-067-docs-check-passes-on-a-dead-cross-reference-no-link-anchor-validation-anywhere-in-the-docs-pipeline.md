@@ -67,6 +67,20 @@ settle:
   `<<…>>` target in this manual resolves to an *explicit* anchor, so the simple version is
   correct today — but that is a property to assert, not to assume.
 
+### Also in scope: `docs-check` does not run in CI at all
+
+Folded in from T-057's pickup gate (finding F11, 2026-08-05). Even a *perfect* anchor checker
+wired into `just docs-check` would not run automatically: `.github/workflows/ci.yml` runs
+`go vet` / `gofmt` / `go test` / `go build` only, so `snowball check` is a local-only gate that a
+contributor (or an agent) can skip by never invoking it. This ticket's fix therefore has two
+halves, and the second is what makes the first load-bearing:
+
+1. the anchor/xref check itself (above);
+2. **a CI job that runs the docs gate** — which also settles the "where it lives" question above:
+   a Go test under `internal/` reaching `../../docs/` runs in CI *for free* today, whereas a
+   `just docs-check` extension needs `snowball` installed in the workflow. Refinement should price
+   both (a Go test needs no new CI dependency; a `snowball` job also validates the render).
+
 ### Soft couplings
 
 - **T-066** — also docs-surface, but a *content* gap (undocumented flags, a dropped command
@@ -86,3 +100,6 @@ settle:
 
 - 2026-08-05 — created (TO DO). source: pickle ticket new
 - 2026-08-05 — filed from a docs session, not a review: registering the Agent Session Workflow page turned up that `snowball check` passes on an injected dead xref, and the manual's references had to be verified by an ad-hoc script instead
+- 2026-08-05 — patched by T-057's pickup gate (finding F11, disposition `folded`): scope gained the
+  CI half — `docs-check` is not wired into `.github/workflows/ci.yml` at all, so the docs gate
+  never runs unattended
