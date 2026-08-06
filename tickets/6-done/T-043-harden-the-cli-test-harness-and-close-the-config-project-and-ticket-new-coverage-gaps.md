@@ -662,3 +662,4 @@ here, not applied, because the rework pass may move the lines again):
 - 2026-08-06 — IN REVIEW → REWORK: review REWORK: 1 blocking (R1: folded-text transition target disagrees with HistoryEntry.Kind on two shapes); 5 non-blocking (1 new ticket T-070, 4 noted)
 - 2026-08-06 — REWORK → IN REVIEW: findings fixed: R1 resolved (Kind and Target now decided together; transitionParts scans for the leftmost legal target), 3 new mutations green, D8 guard held
 - 2026-08-06 — IN REVIEW → DONE: review PASS after one rework pass; 7 findings: 1 blocking (R1) fixed and re-verified, 1 new ticket (T-070), 1 folded (R7 into T-070), 4 noted
+- 2026-08-06 — merged to main (PR #15, 17e2341), user-approved; squashed to 5291aeb; branch deleted
