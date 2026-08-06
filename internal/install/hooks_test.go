@@ -1,6 +1,7 @@
 package install
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,7 +51,7 @@ func TestUpgradeRefreshesAStaleHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(strings.Replace(string(body), "pickle:hook v1", "pickle:hook v0", 1)), 0o755); err != nil {
+	if err := os.WriteFile(path, []byte(strings.Replace(string(body), fmt.Sprintf("pickle:hook v%d", hook.ShimVersion), "pickle:hook v0", 1)), 0o755); err != nil {
 		t.Fatal(err)
 	}
 

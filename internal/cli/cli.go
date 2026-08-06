@@ -69,8 +69,13 @@ func Run(payload fs.FS, version string, args []string) int {
 		usage(os.Stdout)
 		return exitOK
 	default:
-		fmt.Fprintf(os.Stderr, "pickle: unknown command %q\n\n", args[0])
-		usage(os.Stderr)
+		// Terse, deliberately (T-068): a hooks-aware shim degrades on an unknown
+		// verb from an *older* pickle first on PATH (T-057 decision 3), and that
+		// binary dumping its full usage() text ahead of the shim's one real
+		// notice buries the message that matters under noise on every commit.
+		// The no-argument path above keeps the full usage — this is only for a
+		// command that was typed and not recognised.
+		fmt.Fprintf(os.Stderr, "pickle: unknown command %q — run `pickle help`\n", args[0])
 		return exitUsage
 	}
 }

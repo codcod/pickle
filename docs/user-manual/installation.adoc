@@ -65,4 +65,11 @@ enforce. Hooks live in `.git/` and are never cloned or pushed, so run it once
 in **each** clone you work from, including a fresh clone of a project that
 already uses it. See <<cmd-hooks>>.
 
+The guard runs whatever `pickle` is first on your `PATH`, not necessarily the
+binary that just ran `hooks install` — if you installed from a freshly built
+binary while `PATH` still resolves an older release (Homebrew lag, a second
+clone, `go install` alongside a packaged copy), `pickle doctor` will tell you
+the guard is inert instead of reporting it as healthy
+(<<hooks-version-skew,version skew>>).
+
 Continue with <<your-first-project>>.

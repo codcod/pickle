@@ -33,6 +33,22 @@ func runHooks(args []string) int {
 	}
 }
 
+// warnIfInert reports (to stderr, never affecting the caller's exit code) when
+// the `pickle` the just-armed shim will actually resolve from PATH cannot run
+// it (T-068) — the shim was written correctly regardless of what happens to be
+// first on PATH right now, so this is advisory, at the one moment (install)
+// the evidence exists and the user is looking.
+func warnIfInert(prefix string) {
+	p := hook.Probe().Problem()
+	if p == "" {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "%s: warning: %s\n", prefix, p)
+	if exe, err := os.Executable(); err == nil {
+		fmt.Fprintf(os.Stderr, "  this binary is %s — put it first on PATH, or upgrade the pickle that is\n", exe)
+	}
+}
+
 // hookRoot locates the install root (the directory holding pickle.toml).
 func hookRoot() (string, error) {
 	wd, err := os.Getwd()
@@ -67,6 +83,7 @@ func runHooksInstall(args []string) int {
 	} else {
 		fmt.Printf("  = %s (%s)\n", res.Path, res.Skipped)
 	}
+	warnIfInert("pickle hooks install")
 	return exitOK
 }
 
@@ -126,6 +143,12 @@ func runHooksStatus(args []string) int {
 			state = fmt.Sprintf("stale, v%d — run `pickle upgrade`", st.Version)
 		}
 		fmt.Printf("%s: installed by pickle, %s (%s)\n", hook.HookName, state, st.Path)
+		reach := hook.Probe()
+		if p := reach.Problem(); p != "" {
+			fmt.Printf("  %s\n", p)
+		} else {
+			fmt.Printf("  PATH: %s can run the guard\n", reach.Path)
+		}
 	}
 	return exitOK
 }

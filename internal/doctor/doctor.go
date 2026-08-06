@@ -251,8 +251,26 @@ func checkHooks(root string, r *Result) {
 				st.Path, st.Version, hook.ShimVersion)
 			return
 		}
-		r.ok(fmt.Sprintf("pre-commit guard installed and current (%s)", st.Path))
+		// The shim on disk is current, but that only matters if the `pickle` the
+		// shim actually resolves from PATH can run it (T-068) — probed only here,
+		// for an owned+current shim, so an absent/foreign/stale guard (already
+		// handled above, and free of the exec cost) never pays for it either.
+		// The exec itself lives entirely behind internal/hook (T-057 decision 12):
+		// this package never spawns a process directly, and still only returns
+		// findings rather than printing or exiting. It does now *cause* an exec
+		// through hook.Probe, which is why that call is confined to this one
+		// branch — every other doctor check remains a pure filesystem read.
+		if p := hook.Probe().Problem(); p != "" {
+			r.warnf("hooks: %s is installed and current, but %s", st.Path, p)
+			return
+		}
+		r.ok(fmt.Sprintf("pre-commit guard installed and current (%s), and the pickle on PATH can run it", st.Path))
 	}
+	// Nothing else in the tree earns this treatment (T-068 decision 10): `pickle
+	// serve`, the pi scaffolds and opencode.jsonc are all "pickle wrote a file
+	// something else reads", but none of them re-executes through PATH the way
+	// the shim calls back into `pickle hooks run` — only the hook has a
+	// version-coupled contract with the binary.
 }
 
 // checkChildren verifies every registered child path resolves to a git repo

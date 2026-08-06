@@ -225,10 +225,18 @@ built — §13.4). What survives is what the manual doesn't cover:
 
 - **The pre-commit hint shipped as `pickle hooks` (T-057)** — an opt-in `pre-commit` guard that
   refuses staged `tickets/` paths while a feature branch is checked out, installed by
-  `pickle hooks install` (or `pickle install --hooks`) and owned via a `# pickle:hook v1` marker
-  in the file. It is a shim calling `pickle hooks run pre-commit`, so the rule tracks each
-  child's configured `branch_prefix` instead of baking it into a script; `internal/hook` is the
-  only package that shells out to git.
+  `pickle hooks install` (or `pickle install --hooks`) and owned via a `# pickle:hook` marker (a
+  version suffix follows; it bumps whenever the shim's text changes) in the file. It is a shim
+  calling `pickle hooks run pre-commit`, so the rule tracks each child's configured
+  `branch_prefix` instead of baking it into a script; `internal/hook` is the only package that
+  shells out to git.
+- **A current shim is not the same guarantee as a working guard (T-068).** The shim resolves
+  `pickle` from `PATH` at commit time, which can be an older binary than the one that wrote it
+  (Homebrew lag, a second clone, `go install` alongside a packaged copy) — T-057's fail-open
+  contract degrades correctly either way, but `hooks status`/`doctor` reported "current" as
+  though that were the whole story. `internal/hook.Probe()` closes the gap: it runs the shim's
+  own call (`hooks run pre-commit`) in an empty directory and reports whether the resolved
+  binary can actually answer it, behind the same git-only-in-`internal/hook` boundary.
 - **The audit-side half of that recommendation was declined, deliberately.** `board audit` does
   *not* check which branch it is on. `internal/audit` is git-free and its tests are plain temp
   dirs; adding `git rev-parse`/`merge-base` would make the audit's verdict depend on the

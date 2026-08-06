@@ -1,12 +1,54 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// pinPathWithPickle sets PATH deterministically for a PATH-probe test
+// (T-068): `git` must still resolve (hook.Install/Status need it), but which
+// `pickle` the CLI's own probe finds must not depend on whatever happens to
+// be installed on the developer's machine or CI runner. `git` is symlinked
+// into a fresh, otherwise-empty directory rather than trusting its own
+// directory wholesale — a real `pickle` commonly lives right next to `git`
+// (e.g. the same Homebrew bin dir), which would leak straight back in.
+// binDir, when non-empty, is searched first, so a stub `pickle` placed there
+// wins the lookup; "" leaves `pickle` deterministically absent.
+func pinPathWithPickle(t *testing.T, binDir string) {
+	t.Helper()
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git not on PATH")
+	}
+	gitOnly := t.TempDir()
+	if err := os.Symlink(gitPath, filepath.Join(gitOnly, "git")); err != nil {
+		t.Fatal(err)
+	}
+	dirs := []string{gitOnly}
+	if binDir != "" {
+		dirs = append([]string{binDir}, dirs...)
+	}
+	t.Setenv("PATH", strings.Join(dirs, string(os.PathListSeparator)))
+}
+
+// stubPickleBin writes a fake `pickle` that answers `hooks run pre-commit`
+// with rc and `version` with a fixed string, and returns the directory it
+// lives in (ready to pass to pinPathWithPickle) — a stand-in for a binary
+// that is (rc 0) or is not (any other code, mirroring an older pickle's exit
+// 2 on the then-unknown `hooks` verb) able to run the guard.
+func stubPickleBin(t *testing.T, rc int) string {
+	t.Helper()
+	dir := t.TempDir()
+	body := fmt.Sprintf("#!/bin/sh\ncase \"$1\" in\n  hooks) exit %d ;;\n  version) echo \"pickle 0.2.2\" ;;\n  *) exit %d ;;\nesac\n", rc, rc)
+	if err := os.WriteFile(filepath.Join(dir, "pickle"), []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
 
 // gitOrSkip skips a test that needs a real repository when git is unavailable.
 func gitOrSkip(t *testing.T) {
@@ -176,6 +218,108 @@ func TestHooksInstallStatusUninstall(t *testing.T) {
 	})
 	if !strings.Contains(out, "absent") {
 		t.Errorf("hooks status does not report an absent hook:\n%s", out)
+	}
+}
+
+// TestHooksInstallWarnsWhenPathPickleIsInert pins T-068: the shim written by
+// `hooks install` is always current, but that is only half the guarantee — the
+// binary the shim will actually resolve from PATH must be able to run it, and
+// this is the one moment the evidence exists and the user is looking.
+func TestHooksInstallWarnsWhenPathPickleIsInert(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+	pinPathWithPickle(t, stubPickleBin(t, 2)) // mirrors an old pickle's exit 2 on the unknown `hooks` verb
+
+	errOut := captureStderr(t, func() {
+		if got := Run(nil, "test", []string{"hooks", "install"}); got != exitOK {
+			t.Fatalf("hooks install = %d", got)
+		}
+	})
+	if !strings.Contains(errOut, "inert") {
+		t.Errorf("hooks install did not warn about an inert guard:\n%s", errOut)
+	}
+	if !strings.Contains(errOut, "0.2.2") {
+		t.Errorf("warning does not name the incapable binary's version:\n%s", errOut)
+	}
+}
+
+// TestHooksInstallNoWarningWhenPathPickleIsCapable is the negative of the
+// above: a capable PATH pickle (even a different file from this binary) must
+// stay silent — path difference alone is never a finding.
+func TestHooksInstallNoWarningWhenPathPickleIsCapable(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+	pinPathWithPickle(t, stubPickleBin(t, 0))
+
+	errOut := captureStderr(t, func() {
+		if got := Run(nil, "test", []string{"hooks", "install"}); got != exitOK {
+			t.Fatalf("hooks install = %d", got)
+		}
+	})
+	if strings.Contains(errOut, "warning") {
+		t.Errorf("hooks install warned despite a capable PATH pickle:\n%s", errOut)
+	}
+}
+
+// TestHooksStatusReportsPathCapability: `hooks status` reports the file's own
+// state *and* whether the PATH pickle can actually run it — two different
+// signals the T-068 measurement showed both saying "healthy" together.
+func TestHooksStatusReportsPathCapability(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+	if got := Run(nil, "test", []string{"hooks", "install"}); got != exitOK {
+		t.Fatalf("hooks install = %d", got)
+	}
+	pinPathWithPickle(t, stubPickleBin(t, 2))
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"hooks", "status"}); got != exitOK {
+			t.Fatalf("hooks status = %d", got)
+		}
+	})
+	if !strings.Contains(out, "inert") {
+		t.Errorf("hooks status did not report the inert PATH pickle:\n%s", out)
+	}
+}
+
+// TestUnknownCommandIsTerse pins T-068's cosmetic half: an old pickle answers
+// its own unknown-verb case tersely too (that binary cannot be changed
+// retroactively), but *this* binary's own unknown-command path must not dump
+// the full usage() text ahead of a caller's one-line notice — exactly what
+// buried the shim's real message in ~40 lines of noise on every commit.
+func TestUnknownCommandIsTerse(t *testing.T) {
+	errOut := captureStderr(t, func() {
+		if got := Run(nil, "test", []string{"frobnicate"}); got != exitUsage {
+			t.Fatalf("Run = %d, want %d", got, exitUsage)
+		}
+	})
+	if strings.Count(errOut, "\n") != 1 {
+		t.Errorf("unknown command produced %d line(s), want exactly one:\n%s", strings.Count(errOut, "\n"), errOut)
+	}
+	if !strings.Contains(errOut, "pickle help") {
+		t.Errorf("unknown-command message does not point at `pickle help`:\n%s", errOut)
+	}
+	for _, absent := range []string{"Usage:", "Flow commands:", "Setup commands:"} {
+		if strings.Contains(errOut, absent) {
+			t.Errorf("unknown-command message still dumps full usage (%q present):\n%s", absent, errOut)
+		}
+	}
+}
+
+// TestNoArgsStillPrintsFullUsage guards the deliberate asymmetry: only a typed,
+// unrecognised command is terse (T-068) — running pickle bare is exactly when
+// the full usage is what's wanted.
+func TestNoArgsStillPrintsFullUsage(t *testing.T) {
+	errOut := captureStderr(t, func() {
+		if got := Run(nil, "test", nil); got != exitUsage {
+			t.Fatalf("Run = %d, want %d", got, exitUsage)
+		}
+	})
+	if !strings.Contains(errOut, "Usage:") || !strings.Contains(errOut, "Flow commands:") {
+		t.Errorf("no-args invocation no longer prints full usage:\n%s", errOut)
 	}
 }
 
