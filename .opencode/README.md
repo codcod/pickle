@@ -1,7 +1,7 @@
 # Using OpenCode to develop `pickle`
 
 This directory plus [`../opencode.jsonc`](../opencode.jsonc) configures
-[OpenCode](https://opencode.ai) to operate `pickle`'s **self-hosted ticket
+[OpenCode](https://opencode.ai) to operate `pickle`'s **self-hosted brine
 flow**. It is dev tooling for building pickle — nothing here is part of the flow
 pickle ships (the embedded `skill/` payload).
 
@@ -25,7 +25,7 @@ On first run, authenticate with a provider:
 - `/connect` for OpenCode Zen (curated models), or log in with **GitHub** to use
   your **Copilot** subscription (also what the docs-readability reviewer uses),
   or with **OpenAI** for **ChatGPT Plus/Pro**;
-- or set `ANTHROPIC_API_KEY` for direct Claude access (the tiers the ticket flow
+- or set `ANTHROPIC_API_KEY` for direct Claude access (the tiers brine
   is written against — haiku/sonnet/opus).
 
 ## What OpenCode picks up automatically
@@ -99,7 +99,7 @@ option for Bun via `opencode --help` / the OpenCode docs).
 
 ## Isolation reminder
 
-Operate the flow only through tickets and the ticket-flow skill. Feature work
+Operate the flow only through tickets and the brine skill. Feature work
 happens on `feat/T-NNN-<slug>` branches; the child-project (`pickle`) is
 publish-gated (present the commit message + MR attributes for approval before
 pushing), while board/ticket bookkeeping may be committed automatically with

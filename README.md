@@ -1,6 +1,6 @@
 # pickle
 
-`pickle` installs and operates a **ticket-based, board-driven feature flow** in
+`pickle` installs and operates **brine**, a ticket-based, board-driven feature flow, in
 any project.
 
 Run `pickle install` in a project and a coding agent (Claude Code, opencode, Pi)
@@ -40,7 +40,7 @@ just build            # → ./pickle   (or: go build -o pickle .)
 Then, inside any project:
 
 ```sh
-pickle install        # lay down the ticket flow
+pickle install        # lay down brine
 pickle version
 ```
 

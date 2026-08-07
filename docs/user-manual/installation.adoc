@@ -54,7 +54,7 @@ Cutting an actual release is tag-driven and documented in the repository's
 
 [source,sh]
 ----
-pickle install        # lay down the ticket flow — see the CLI reference
+pickle install        # lay down brine — see the CLI reference
 pickle hooks install  # optional: guard ticket bookkeeping (once per clone)
 pickle version
 ----

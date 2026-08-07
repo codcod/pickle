@@ -18,7 +18,7 @@ pickle install --agent claude          # or: --agent claude,opencode,pi
 ----
 
 This scaffolds `tickets/` (seven status directories plus the generated
-`BOARD.md` and hand-written `NOTES.md`), installs the ticket-flow skill into
+`BOARD.md` and hand-written `NOTES.md`), installs the {flow} skill into
 `.agents/skills/ticket-flow/`, injects a marker block into `AGENTS.md`, wires
 up each named agent, and writes `pickle.toml` registering the *first
 child-project* — by default the project itself, at `.`. Full flag reference:

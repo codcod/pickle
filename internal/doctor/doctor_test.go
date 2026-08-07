@@ -53,6 +53,31 @@ func TestCheckHealthyInstall(t *testing.T) {
 	}
 }
 
+// TestCheckReportsFlowName (T-073): checkConfig reports the effective flow
+// name as a passed check, both when pickle.toml has no explicit flow key
+// (falls back to the default, "brine") and when one is set explicitly.
+func TestCheckReportsFlowName(t *testing.T) {
+	root := installFixture(t)
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Passed, "flow: brine") {
+		t.Errorf("expected a passed entry reporting the default flow name, got: %v", res.Passed)
+	}
+
+	cfgPath := filepath.Join(root, config.FileName)
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg.Flow = "brine"
+	if err := cfg.Save(""); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	res = Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Passed, "flow: brine") {
+		t.Errorf("expected a passed entry reporting the explicit flow name, got: %v", res.Passed)
+	}
+}
+
 func TestCheckBrokenArtifacts(t *testing.T) {
 	cases := []struct {
 		name   string

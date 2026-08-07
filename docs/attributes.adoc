@@ -4,3 +4,4 @@
 :repo-url: https://github.com/codcod/pickle
 :homebrew-tap: codcod/taps
 :skill-dir: .agents/skills/ticket-flow
+:flow: brine

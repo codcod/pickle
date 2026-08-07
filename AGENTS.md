@@ -2,7 +2,7 @@
 
 `pickle` is a Go CLI that installs and operates a **ticket-based, board-driven feature flow**
 in any project (see [`README.md`](README.md)). This repo **self-hosts that flow**: its own
-work is planned and tracked through the very ticket flow it ships.
+work is planned and tracked through the very brine flow it ships.
 
 Consequences of self-hosting that the generated block below cannot know, and which
 therefore live out here where `pickle upgrade` will not overwrite them:
@@ -28,14 +28,14 @@ therefore live out here where `pickle upgrade` will not overwrite them:
     until it is made self-host-aware.
 
 <!-- pickle:begin -->
-## Ticket flow (start here)
+## Brine (start here)
 
 **Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the generated index of every ticket by
 status. No feature is built directly from a chat message or a raw idea — work enters only as a
 ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it
 earns a **disposition** (rules §5), and most are resolved without a new ticket.
 
-- The flow engine is the **ticket-flow skill** at `.agents/skills/ticket-flow/`. It holds
+- The flow engine is the **brine skill** at `.agents/skills/ticket-flow/`. It holds
   the rules (`resources/tickets-README.md`), the ticket template
   (`resources/TEMPLATE.md`), and the review protocol
   (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/ticket-flow`.

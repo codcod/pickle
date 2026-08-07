@@ -71,6 +71,7 @@ func checkConfig(root string, r *Result) *config.Config {
 		return nil
 	}
 	r.ok(fmt.Sprintf("pickle.toml parses (%d child-project(s))", len(cfg.Projects)))
+	r.ok(fmt.Sprintf("flow: %s", cfg.FlowName()))
 	return cfg
 }
 

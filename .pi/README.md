@@ -1,6 +1,6 @@
 # Using the Pi coding agent to develop `pickle`
 
-`pickle` **self-hosts the ticket flow it ships** — its own work is planned and tracked through
+`pickle` **self-hosts the brine flow it ships** — its own work is planned and tracked through
 that flow. This directory configures the [Pi coding agent](https://pi.dev) to operate it.
 
 > Read [`../AGENTS.md`](../AGENTS.md) first. Pi loads it automatically as project context; it

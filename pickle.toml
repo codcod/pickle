@@ -12,6 +12,10 @@ payload_version = "v0.2.2-44-g559a331"
 # generic review protocol (see skill/resources/review-protocol.md). None yet.
 # review_addendum = "review-addendum.md"
 
+# Name of the flow this project runs (T-073). "brine" is the only legal value
+# today; exercising the key here, in the one place that matters most.
+flow = "brine"
+
 [commit]
 # Overarching bookkeeping (tickets/, BOARD.md, docs) may be auto-committed, always
 # with explicit pathspecs (never `git add -A`/`.`).
