@@ -62,6 +62,25 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 - **An unrecognised top-level command answers in one line** (T-068), pointing at `pickle help`,
   instead of printing the full usage text ahead of it. `pickle` with no arguments still prints the
   whole usage summary.
+- **`pickle board audit` (and hence `pickle upgrade`'s post-check) no longer errors on a board
+  that is merely out of date in its generated layout** (T-052). The documented onboarding
+  sequence — `pickle project add <name> <path>` then `pickle upgrade` — used to end in
+  `ERROR: BOARD.md is stale or hand-edited` and a non-zero exit for a workspace where nothing
+  was wrong: registering a child changes the board's *generated shape* (a new per-child section
+  under every status heading, a new WIP line), so a board that was in sync a second earlier no
+  longer matches a fresh render. The check is now two-tiered: if every ticket row still matches
+  (same status section, same child sub-group, same cell text) and only the generated scaffolding
+  around them is stale, that is a *warning* — `BOARD.md is out of date in its generated layout
+  only (every ticket row matches) — run pickle board sync` — and does not fail `board audit` or
+  `upgrade`. If any row itself disagrees with the tickets, it is still an *error* —
+  `BOARD.md does not match the ticket files (rows differ) — run pickle board sync`. Nothing can
+  tell a hand-edit apart from a routine registry or renderer change, so the split is on harm, not
+  cause. `pickle project add`/`pickle project remove` now also regenerate `BOARD.md` themselves
+  (printing `+ tickets/BOARD.md`) right after they refresh the `AGENTS.md`/`CLAUDE.md` marker
+  block, since the registered-child list feeds both — the reported sequence is now silent and
+  clean end to end. `pickle upgrade` still never reads or writes anything under `tickets/`, and
+  `pickle board sync --dry-run` is unaffected: it still reports layout-only drift as a pending
+  change and exits non-zero.
 
 ## [0.2.2] - 2026-07-29
 

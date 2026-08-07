@@ -148,15 +148,23 @@ func Audit(root string, cfg *config.Config) Result {
 		}
 	}
 
-	// Board staleness check (T-044 D6). The board is a generated artifact, so the
-	// only board invariant is "the file matches a fresh render" — one
-	// byte-comparison after normalising the `Last updated:` line on both sides.
+	// Board staleness check (T-044 D6, two-tiered by T-052). The board is a
+	// generated artifact, so the invariant is that its ticket rows match a
+	// fresh render — but the file also carries generated scaffolding (preamble,
+	// WIP-limit lines, per-child sub-headings and counts) that a registry change
+	// or a renderer upgrade can make stale without any row disagreeing. Rows
+	// must match (an error otherwise); the layout merely should (a warning
+	// otherwise) — see board.Compare for the classification itself.
 	boardPath := filepath.Join(root, "tickets", "BOARD.md")
 	if data, err := os.ReadFile(boardPath); err != nil {
 		r.errf("BOARD.md: %v", err)
-	} else if board.NormalizeLastUpdated(string(data)) !=
-		board.NormalizeLastUpdated(board.Render(tickets, cfg, "")) {
-		r.errf("BOARD.md is stale or hand-edited — run pickle board sync")
+	} else {
+		switch board.Compare(string(data), board.Render(tickets, cfg, "")) {
+		case board.DriftRows:
+			r.errf("BOARD.md does not match the ticket files (rows differ) — run pickle board sync")
+		case board.DriftLayout:
+			r.warnf("BOARD.md is out of date in its generated layout only (every ticket row matches) — run pickle board sync")
+		}
 	}
 
 	// Per-child WIP limits.

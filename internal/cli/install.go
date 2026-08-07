@@ -77,7 +77,9 @@ func runInstall(args []string) int {
 		return errf("%v", err)
 	}
 
-	// Post-install self-check: a correct install must be board-audit-clean.
+	// Post-install self-check: a correct install must be board-audit-clean
+	// (zero errors; a warning — e.g. layout-only board staleness, T-052 — is
+	// printed but does not fail the install).
 	cfgPath, err := config.Find(root)
 	if err != nil {
 		return errf("%v", err)
@@ -87,6 +89,9 @@ func runInstall(args []string) int {
 		return errf("%v", err)
 	}
 	a := audit.Audit(cfg.Root(), cfg)
+	for _, w := range a.Warnings {
+		fmt.Fprintf(os.Stderr, "WARNING: %s\n", w)
+	}
 	if len(a.Errors) > 0 {
 		for _, e := range a.Errors {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", e)
@@ -165,12 +170,17 @@ func runUpgrade(args []string) int {
 		return errf("%v", err)
 	}
 
-	// Post-upgrade self-check: an upgrade must leave the project board-audit-clean.
+	// Post-upgrade self-check: an upgrade must leave the project board-audit-clean
+	// (zero errors; a warning — e.g. layout-only board staleness, T-052 — is
+	// printed but does not fail the upgrade).
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		return errf("%v", err)
 	}
 	a := audit.Audit(cfg.Root(), cfg)
+	for _, w := range a.Warnings {
+		fmt.Fprintf(os.Stderr, "WARNING: %s\n", w)
+	}
 	if len(a.Errors) > 0 {
 		for _, e := range a.Errors {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", e)

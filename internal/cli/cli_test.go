@@ -411,6 +411,103 @@ func TestProjectAddRefreshesMarkerBlock(t *testing.T) {
 	}
 }
 
+// TestProjectAddRegeneratesBoard (T-052): the registered-child list is a
+// board.Render input (a new child gains its own `### <child>` section + WIP
+// line under every status heading), so `project add` must regenerate
+// tickets/BOARD.md the same moment it refreshes the marker block — otherwise
+// the very next `pickle upgrade` reports the board stale, for a workspace
+// where nothing is wrong (the ticket's own field report).
+func TestProjectAddRegeneratesBoard(t *testing.T) {
+	root := newProject(t) // installs child "demo" at "."
+	if err := os.MkdirAll(filepath.Join(root, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "add", "web", "sub"}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "+ tickets/BOARD.md") {
+		t.Errorf("project add did not report regenerating the board, got:\n%s", out)
+	}
+
+	auditOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+			t.Fatalf("board audit = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(auditOut, "0 error(s), 0 warning(s)") {
+		t.Errorf("board audit not clean right after project add, got:\n%s", auditOut)
+	}
+
+	// project remove regenerates too — web's section must disappear, not just
+	// its frontmatter registration.
+	removeOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "remove", "web"}); got != exitOK {
+			t.Fatalf("project remove = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(removeOut, "+ tickets/BOARD.md") {
+		t.Errorf("project remove did not report regenerating the board, got:\n%s", removeOut)
+	}
+	board, err := os.ReadFile(filepath.Join(root, "tickets", "BOARD.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(board), "### web") {
+		t.Errorf("BOARD.md still carries a web section after project remove:\n%s", board)
+	}
+}
+
+// TestUpgradeWarnsOnLayoutOnlyBoardDrift (T-052): a board that is stale only in
+// its generated layout (here, a hand-edited WIP limit in pickle.toml, the same
+// class of divergence a registry change produces) must not fail `pickle
+// upgrade` — it prints the warning and still exits 0. Row divergence stays an
+// error either way (unchanged by this ticket) and is covered at the audit
+// level by internal/audit's own test table, not duplicated here.
+func TestUpgradeWarnsOnLayoutOnlyBoardDrift(t *testing.T) {
+	root := newProject(t) // installs child "demo" at ".", board already in sync
+
+	cfgPath := filepath.Join(root, "pickle.toml")
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range cfg.Projects {
+		cfg.Projects[i].WIPInReview = cfg.Projects[i].WIPInReview + 1
+	}
+	if err := cfg.Save(""); err != nil {
+		t.Fatal(err)
+	}
+
+	auditOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+			t.Fatalf("board audit = %d, want %d (layout-only drift must not error)", got, exitOK)
+		}
+	})
+	if !strings.Contains(auditOut, "WARNING: BOARD.md is out of date in its generated layout only") {
+		t.Errorf("board audit did not warn about layout-only drift, got:\n%s", auditOut)
+	}
+
+	// runUpgrade reads Payload (set by Run's first argument, distinct from the
+	// install.Run(os.DirFS(repoRoot), ...) newProject used directly) to refresh
+	// the skill copy — nil would panic inside install.copyPayload, so it must be
+	// passed here even though this test cares only about the board warning.
+	// Prints WARNING/ERROR to stderr, alongside its own +/= progress lines on
+	// stdout (mirroring runInstall) — captured separately.
+	var code int
+	upgradeErr := captureStderr(t, func() {
+		code = Run(os.DirFS(repoRoot), "test", []string{"upgrade"})
+	})
+	if code != exitOK {
+		t.Fatalf("upgrade = %d, want %d (a warning must not fail the upgrade); stderr:\n%s", code, exitOK, upgradeErr)
+	}
+	if !strings.Contains(upgradeErr, "WARNING: BOARD.md is out of date in its generated layout only") {
+		t.Errorf("upgrade did not print the layout-drift warning, got:\n%s", upgradeErr)
+	}
+}
+
 // TestProjectAddNotesStageableChild (T-051): registering a child at a nested
 // path that is a real, unignored git repository prints a note naming it —
 // the same sentence `pickle doctor` warns with, and neither changes the exit

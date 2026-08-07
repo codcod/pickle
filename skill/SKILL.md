@@ -258,9 +258,11 @@ When asked to audit the board (or after a burst of moves, as a self-check):
 pickle board audit
 ```
 
-It verifies the flow's invariants mechanically: `BOARD.md` matches a fresh render of the
-ticket files (the board is generated — any hand-edit or staleness is one error, fixed by
-`pickle board sync`); ids are unique and match filenames; frontmatter is complete with legal
+It verifies the flow's invariants mechanically: `BOARD.md`'s ticket rows match a fresh render
+of the ticket files (the board is generated) — checked in two tiers: every row matching but
+only the generated layout (WIP lines, per-child sections) being out of date is a *warning*, a
+row itself disagreeing with the tickets is an *error*; both are fixed by `pickle board sync`.
+Ids are unique and match filenames; frontmatter is complete with legal
 grade values, no key repeated, and a `project:` that names a registered child; `depends-on:`
 targets exist and none is the ticket itself; `spawned-by:` targets exist and no ticket cites
 itself (but lineage never gates); all seven status directories exist (a missing one is an

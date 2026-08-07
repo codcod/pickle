@@ -319,9 +319,11 @@ group. WIP counts, the DONE `merged` cell and the DROPPED/REWORK reason cells ar
 from the config, the merge History line, and the last transition's `--reason` respectively.
 
 > **Board rule: never edit `BOARD.md` by hand.** Edit the tickets — the board follows. If the
-> board looks wrong or stale, run `pickle board sync`; `pickle board audit` reports a stale or
-> hand-edited board as one error. Hand-written planning prose (triage records, parked notes,
-> cross-ticket decisions) lives in `tickets/NOTES.md`, which the tooling never touches.
+> board looks wrong or stale, run `pickle board sync`; `pickle board audit` checks it in two
+> tiers — every ticket row still matching but the generated layout (WIP lines, per-child
+> sections) being out of date is a *warning*, any row itself disagreeing with the tickets is an
+> *error* — both point at the same fix. Hand-written planning prose (triage records, parked
+> notes, cross-ticket decisions) lives in `tickets/NOTES.md`, which the tooling never touches.
 
 **WIP limits (per child-project):** `3-in-development/` ≤ 1, `4-in-review/` ≤ 1 (tune per
 project). Rendered at the top of the board from `pickle.toml`, counted independently for each
