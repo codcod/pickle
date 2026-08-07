@@ -61,7 +61,13 @@ instance data::
 == What to commit
 
 *Everything `pickle install` writes is meant to be tracked.* It produces no
-build artifacts, so there is nothing to add to `.gitignore`.
+build artifacts, so a single-repo project (the default, `path = "."`) has
+nothing to add to `.gitignore` on pickle's account. A *second* child
+registered at a nested path is different. It is another repository's working
+tree sitting inside this one, and until `.gitignore` ignores it, it is an
+ordinary stageable directory like any other. `pickle project add` and
+`pickle doctor` both say so (see <<cli-reference>>), but pickle never edits
+`.gitignore` itself.
 
 [cols="2,3"]
 |===

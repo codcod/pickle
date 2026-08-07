@@ -34,6 +34,12 @@ and an optional per-child review addendum — see <<configuration>>. The agent
 uses the child's own commands when implementing and reviewing a ticket that
 targets it.
 
+A child registered at a path other than `.` is a nested git repository, and
+until `.gitignore` ignores it, it is an ordinary stageable directory to the
+overarching repo — `pickle project add` and `pickle doctor` both flag that gap
+(naming the entry to add), but neither ever writes to `.gitignore` itself; see
+<<project-structure>>.
+
 == Crossing children
 
 Dependencies and lineage may both cross children: a frontend ticket may

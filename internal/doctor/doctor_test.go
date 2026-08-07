@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,6 +41,116 @@ func hasErrContaining(errs []string, sub string) bool {
 		}
 	}
 	return false
+}
+
+func requireGit(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+}
+
+func gitInit(t *testing.T, dir string) {
+	t.Helper()
+	if out, err := exec.Command("git", "-C", dir, "init", "-q", "-b", "main").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+}
+
+// secondChildFixture extends installFixture (a healthy, self-hosted "."
+// install) with a second child registered at a nested, real git repository
+// named "child" — the shape T-051's check cares about. The nested repo is
+// left unignored by the caller so each test controls whether/when a
+// .gitignore entry appears.
+func secondChildFixture(t *testing.T) (root string, cfg *config.Config) {
+	t.Helper()
+	requireGit(t)
+	root = installFixture(t)
+	gitInit(t, root) // the outer "." install only faked a bare .git/ dir
+
+	nested := filepath.Join(root, "child")
+	if err := os.Mkdir(nested, 0o755); err != nil {
+		t.Fatalf("mkdir child: %v", err)
+	}
+	gitInit(t, nested)
+
+	cfgPath := filepath.Join(root, config.FileName)
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if err := cfg.AddProject(config.Project{Name: "child", Path: "child"}); err != nil {
+		t.Fatalf("AddProject: %v", err)
+	}
+	if err := cfg.Save(""); err != nil {
+		t.Fatalf("cfg.Save: %v", err)
+	}
+	cfg, err = config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("config.Load (reload): %v", err)
+	}
+	return root, cfg
+}
+
+// TestCheckChildStageableWarns (T-051): a registered child at a nested path
+// that git would still stage whole earns exactly one warning and no error —
+// doctor's exit code must stay 0 for this alone.
+func TestCheckChildStageableWarns(t *testing.T) {
+	root, _ := secondChildFixture(t)
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("expected no errors, got: %v", res.Errors)
+	}
+	if !hasWarnContaining(res.Warnings, `child "child"`) || !hasWarnContaining(res.Warnings, "/child/") {
+		t.Fatalf("expected a warning naming child \"child\" and /child/, got: %v", res.Warnings)
+	}
+}
+
+// TestCheckChildIgnoredIsSilent (T-051): once .gitignore covers the child,
+// the warning disappears and a verbose pass line takes its place.
+func TestCheckChildIgnoredIsSilent(t *testing.T) {
+	root, _ := secondChildFixture(t)
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("/child/\n"), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("expected no errors, got: %v", res.Errors)
+	}
+	if hasWarnContaining(res.Warnings, `child "child"`) {
+		t.Fatalf("expected no child-staging warning once ignored, got: %v", res.Warnings)
+	}
+	if !hasPassedContaining(res.Passed, `child "child" is git-ignored`) {
+		t.Fatalf("expected a passed line reporting the child is ignored, got: %v", res.Passed)
+	}
+}
+
+// TestCheckSelfHostChildNeverWarns (T-051): a child registered at "." (the
+// single-repo default, and this repo's own shape) never triggers the check
+// at all — there is nothing to stage, the child *is* the repo.
+func TestCheckSelfHostChildNeverWarns(t *testing.T) {
+	root := installFixture(t) // sole child at ".", bare .git/ dir, no real repo
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if hasWarnContaining(res.Warnings, "nested git repository") {
+		t.Fatalf("expected no nested-repo warning for a \".\" child, got: %v", res.Warnings)
+	}
+}
+
+// TestCheckHealthyInstallUnaffected reconfirms TestCheckHealthyInstall's
+// invariant explicitly for T-051: installFixture's ".git" is a bare directory
+// with no real repository inside, so vcs.ChildState resolves Unknown there
+// and the new check must stay silent — checkChildren's git-repo error (if
+// any) is unrelated and already covered by TestCheckBrokenArtifacts.
+func TestCheckHealthyInstallUnaffected(t *testing.T) {
+	root := installFixture(t)
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("expected no errors on a healthy install, got: %v", res.Errors)
+	}
+	if len(res.Warnings) != 0 {
+		t.Fatalf("expected no warnings on a healthy install, got: %v", res.Warnings)
+	}
 }
 
 func TestCheckHealthyInstall(t *testing.T) {

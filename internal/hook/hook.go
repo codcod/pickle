@@ -8,9 +8,10 @@
 //
 // Two deliberate properties of this package:
 //
-//   - It is the only package in pickle that shells out to git. Keeping the
-//     dependency in one file is what lets `board audit` stay git-free and
-//     testable in a plain temp dir (T-057 decisions 2 and 12).
+//   - It is one of only two packages in pickle that shell out to git (the
+//     other is internal/vcs, T-051). Keeping the dependency confined is what
+//     lets `board audit` stay git-free and testable in a plain temp dir
+//     (T-057 decisions 2 and 12).
 //   - The installed hook is a three-line shim that calls back into this binary
 //     (`pickle hooks run pre-commit`), so the rule reads the live pickle.toml
 //     and cannot go stale the way a generated script with the branch prefixes

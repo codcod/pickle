@@ -94,6 +94,14 @@ func runInstall(args []string) int {
 		return errf("post-install audit found %d error(s)", len(a.Errors))
 	}
 
+	// The child registered at *path ("." by default) just appeared on disk;
+	// if it is not "." and this repository would still stage it whole, say so
+	// now — the same sentence `pickle doctor` would warn with later, and the
+	// same helper `project add` uses (T-051).
+	if p, ok := cfg.Project(name); ok {
+		noteIfStageable(cfg.Root(), *p)
+	}
+
 	// The hook is opt-in and deliberately not part of a plain install: it writes
 	// outside the install root (into .git/) and only helps in a repo that carries
 	// both the code and the board. A failure here is a warning, never a failed

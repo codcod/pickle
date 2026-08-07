@@ -411,6 +411,56 @@ func TestProjectAddRefreshesMarkerBlock(t *testing.T) {
 	}
 }
 
+// TestProjectAddNotesStageableChild (T-051): registering a child at a nested
+// path that is a real, unignored git repository prints a note naming it —
+// the same sentence `pickle doctor` warns with, and neither changes the exit
+// code. Once `.gitignore` covers the child, both the note and the doctor
+// warning disappear.
+func TestProjectAddNotesStageableChild(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t) // installs child "demo" at "."
+	gitInit(t, root, "main")
+
+	sub := filepath.Join(root, "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitInit(t, sub, "main")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "add", "web", "sub"}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "registered child-project \"web\"") {
+		t.Errorf("missing the registration confirmation line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "note:") || !strings.Contains(out, "/sub/") {
+		t.Errorf("expected a note: line naming /sub/, got:\n%s", out)
+	}
+
+	doctorOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
+			t.Fatalf("doctor = %d, want %d (a stageable child is a warning, not an error)", got, exitOK)
+		}
+	})
+	if !strings.Contains(doctorOut, "WARNING:") || !strings.Contains(doctorOut, "/sub/") {
+		t.Errorf("expected doctor to warn about /sub/, got:\n%s", doctorOut)
+	}
+
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("/sub/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	doctorOut = captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
+			t.Fatalf("doctor = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(doctorOut, "WARNING:") {
+		t.Errorf("expected no warning once .gitignore covers /sub/, got:\n%s", doctorOut)
+	}
+}
+
 // TestTicketNewSpawnedBy covers the --spawned-by flag end to end: the scaffold
 // it writes and the audit's verdict on it.
 func TestTicketNewSpawnedBy(t *testing.T) {
