@@ -20,10 +20,11 @@ Last updated: 2026-08-07
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-07
 
 | id | title | open findings |
 |---|---|---|
-| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | review: 1 blocking (F1 — Save now ignores the umask when creating pickle.toml); 6 non-blocking (3 fixed inline, 3 noted) |
 
 ## READY (impact order, per child)
 

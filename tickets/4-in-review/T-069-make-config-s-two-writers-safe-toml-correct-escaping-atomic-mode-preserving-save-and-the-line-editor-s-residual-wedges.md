@@ -378,6 +378,31 @@ delimiter, literal `''''`, dotted and quoted keys, single-line inline tables.
 3 *noted* (F2, F6, F7). No new tickets: none passed §5's promotion test, and F1 is a scoped fix
 on this branch rather than follow-up ground.
 
+### Rework (2026-08-07) — F1 fixed
+
+On `feat/T-069-config-writers-safe` @ `72abc6a`. `writePreservingMode` now branches on
+`os.Stat(path)`: a target that does not exist yet has nothing to lose atomically and no mode
+to preserve, so it goes through plain `os.WriteFile(path, data, 0o644)` and lets the umask
+narrow it, exactly like every other file `pickle install` creates; an existing target is
+unchanged — still create-temp + fsync + chmod + rename, still preserving its own mode
+regardless of the umask in effect at rewrite time. Doc comment on `writePreservingMode`
+updated to state the split.
+
+Four new tests: `TestWritePreservingModeCreateRespectsUmask` (umask 077 → new file 0600),
+`TestWritePreservingModeRewriteIgnoresUmask` (existing 0640 file stays 0640 under umask 077 at
+rewrite time), `TestSaveCreatesNewConfigRespectingUmask` (the same, through `Save` the way
+`install.go`'s `writeConfig` calls it). `internal/config` coverage 87.6% → 87.7%.
+
+Re-verified the finding's own repro on the rebuilt binary:
+
+```
+umask 077 && pk install   ->  pickle.toml now -rw-------  (was -rw-r--r--)
+umask 022 / 002           ->  unchanged, -rw-r--r--
+umask 022, chmod 600, then (umask 022; pk project add ...)  ->  still -rw-------
+```
+
+`just build`/`test`/`lint`/`docs-check` all green. Committed locally as `72abc6a`.
+
 ### Impact sweep (step 8)
 
 - **T-073** (`2-ready/` on the feature branch, `1-to-do/` on `main` — see F5) plans to emit the
@@ -412,3 +437,4 @@ on this branch rather than follow-up ground.
 - 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green; all 13 plan tasks done, coverage
   85.6% → 87.6%, committed locally on `feat/T-069-config-writers-safe` (not pushed)
 - 2026-08-07 — IN REVIEW → REWORK: review: 1 blocking (F1 — Save now ignores the umask when creating pickle.toml); 6 non-blocking (3 fixed inline, 3 noted)
+- 2026-08-07 — REWORK → IN REVIEW: F1 fixed: writePreservingMode no longer ignores the umask on creation
