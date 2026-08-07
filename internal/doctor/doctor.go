@@ -306,8 +306,10 @@ func checkChildren(root string, cfg *config.Config, r *Result) {
 			// "Tracked" covers a deliberate gitlink *and* a child whose
 			// contents were already committed as ordinary files, which this
 			// package cannot tell apart (see vcs's package doc) — so the line
-			// says what git reports, not which of the two it is.
-			r.ok(fmt.Sprintf("child %q is tracked by this repository (%s) — not stageable by accident", p.Name, p.Path))
+			// says what git reports and nothing more. It must not promise the
+			// child is safe: if the contents were committed as ordinary files,
+			// `git add <child>` still stages whatever is untracked under it.
+			r.ok(fmt.Sprintf("child %q is tracked by this repository (%s)", p.Name, p.Path))
 		case vcs.Unknown:
 			// no git on PATH, root not a repository, or an unexpected exit
 			// code — silent by design (vcs.State's zero value).

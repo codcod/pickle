@@ -16,18 +16,27 @@
 // keeping the dependency out of the packages that must stay testable in a
 // plain temp dir (board audit, ticket loading).
 //
-// Two limits of asking git this way, both accepted (T-051 review, F7/F8):
+// Three limits of asking git this way, all accepted (T-051 review, F7/F8/R2):
 //
 //   - The question is answered by whichever repository git discovers from
 //     root. If root is not itself a repository but sits inside one, that is
-//     the *enclosing* repo, and the root-anchored entry Advice suggests names
-//     that repo's .gitignore rather than one at root.
+//     the *enclosing* repo — and then the advice is not merely written in the
+//     wrong file but is the wrong pattern: Advice anchors the entry at root
+//     ("/child/"), while the enclosing repo needs it anchored at its own
+//     toplevel ("/sub/child/"). pickle cannot render a usable entry for that
+//     layout, so treat the suggestion as indicative there.
+//   - The entry is rendered literally, so a child whose directory name
+//     contains a gitignore metacharacter (`[`, `]`, `\`, `*`, `?`) yields a
+//     pattern that matches something other than itself — `/foo[1]/` does not
+//     match `foo[1]`. Escaping is left undone deliberately: such names are
+//     vanishingly rare and the wrong escape would be worse than none.
 //   - Tracked is inferred from `ls-files` matching anything under the path, so
 //     a child whose contents were already committed as ordinary files reads
-//     Tracked exactly like a deliberate gitlink. The check therefore prevents
-//     the staging accident but goes quiet once it has already happened —
-//     reporting it would need a gitlink-vs-blob distinction this package does
-//     not draw.
+//     Tracked exactly like a deliberate gitlink — and such a child is *not*
+//     safe: `git add <child>` still stages its untracked files. The check
+//     therefore prevents the staging accident but goes quiet once it has
+//     already happened; reporting it would need a gitlink-vs-blob distinction
+//     this package does not draw.
 package vcs
 
 import (

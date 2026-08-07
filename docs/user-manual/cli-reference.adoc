@@ -171,10 +171,10 @@ When `<path>` is anything other than `.`, `add` also checks whether *this*
 repository would still stage that nested child whole — that is, whether
 anything yet tells git to leave it alone: a `.gitignore` entry, or an index
 entry for a deliberate submodule/gitlink. If nothing does, `add` prints a
-`note:` line naming the entry to add. `pickle doctor`
-(below) repeats the same check on every run, so a child that drifts into this
-state later (an entry deleted, or a child registered before the check
-existed) is still caught. pickle never writes to `.gitignore` itself — see
+`note:` line naming the entry to add. `pickle doctor` (below) repeats the
+same check on every run, so a child that drifts into this state later (an
+entry deleted, or a child registered before the check existed) is still
+caught. pickle never writes to `.gitignore` itself — see
 <<project-structure>>.
 
 [#cmd-upgrade]
