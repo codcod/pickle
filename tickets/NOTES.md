@@ -725,3 +725,41 @@ its verification record bound to *both* HEAD and a worktree digest
 moment the tree moves. brine's "acceptance tests pass" is an honour system by comparison.
 This is pure mechanics — pickle's half of the `DESIGN.md` §2 split — and independent of the
 naming, interop and brine-v tracks. Worth a ticket if someone wants it; not filed with them.
+
+## T-083 filed (2026-08-07) — the backlog assessment §3 mandates, actually run
+
+**T-083** (`## Outcome` section + a `board audit` warning) was filed from chat after a proposed
+"Decision Inputs" ticket section — three tables per ticket, covering cost-of-inaction, RICE-ish
+scoring and a scope matrix — was challenged and reduced to its one surviving finding.
+
+**Why the original was rejected, recorded so it is not re-proposed:** it was an
+incident-postmortem template aimed at a general-purpose feature flow; its Section 2 introduced a
+second prioritisation vocabulary (Reach/Impact/Confidence/Effort) alongside the existing
+`impact`/`complexity`/`cost` with no reconciliation rule; its Section 1d verdict line is the
+"is this worth it? yes" checkbox **T-064** was dropped for; and it was anchored to a
+`## What to add (for refinement)` section that does not exist in this repo's `TEMPLATE.md`.
+
+**The surviving finding is about ticket legibility, not ordering or gating** — which is what
+keeps it out of the T-045/T-063/T-064 graveyard. Measured across `1-to-do/` (23 tickets): **9
+open with mechanism or provenance, 8 with an outcome, 6 mixed**, and the split correlates with
+provenance (review-spawned tickets lead with lineage; field-spawned tickets lead with the
+symptom). Second measurement, and the one that makes the fix cheap: the two `impact`
+recalibration passes wrote **11 one-line justifications into the tables in this file and into
+zero tickets** — `T-055` and `T-038` contain no impact rationale at all, while excellent ones
+("cosmetic CSS specificity bug"; "narrow input hardening on a path that already rejects the
+dangerous cases") sit here.
+
+**Re-grade pass: nothing moved, and that is the honest result** — the same outcome as the
+2026-08-04 pass. T-083 is `medium` ("meaningful quality/consistency win"), joining the 10 other
+`medium` rows; distribution is now **high 3 · medium 11 · low-medium 5 · low 5** (24 tickets).
+One candidate was considered and declined: **T-081** gains a second prospective customer for its
+gate table, since T-083's Item 2 checks *"a `##` section (and its non-emptiness)"* — its exact
+unit. Declined on the precedent set on 2026-08-04, which refused to credit prospective demand
+when downgrading T-056: **the same rule cuts both ways.** Recorded as a soft coupling in T-083's
+Q2 instead, with the sequencing question (T-081 is `depends-on: [T-080]`, an `L` refactor, so
+folding a ~25-line warning into it may cost more than it saves) left to refinement.
+
+**Standing caveat that applies to T-083 and was checked:** the pickup queue is READY, not TO DO.
+It survives because the 2026-08-03 pass scoped TO DO ordering to *"what gets **refined** next"*,
+and refinement-triage is precisely the activity T-083 serves — it changes what a ticket *says*,
+not how the board sorts.
