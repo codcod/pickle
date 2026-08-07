@@ -292,6 +292,42 @@ onboarding session) is unaffected — its premise is the post-`upgrade` board-st
 which this branch does not touch; the `project add` → `upgrade` sequence still produces it.
 **T-083** cites T-051 only as an example of outcome-first ticket prose. No ticket patch required.
 
+### Scoped re-review 2026-08-07 (`81dcfc5` + `cbf169c`)
+
+Scoped to the two rework commits and whether F2/F3 are genuinely fixed; `9e775f9` was not
+re-litigated. Audit again delegated to a fresh sub-agent, every finding re-verified by hand.
+
+**Verified green:** F3 is fully fixed, including the case the fix could plausibly have missed —
+`os.Stat` succeeds for a `.git` *file*, so a worktree/submodule child is treated as a repository
+by `noteIfStageable` and `checkChildren` alike; no state was found where the two disagree. F2 is
+fixed for `./x`, `x/`, `a//b` and nested `apps/frontend` (the anchored `/apps/frontend/` entry
+really does silence it); absolute paths are rejected earlier by `project add`. Both regression
+tests were independently re-derived as failing pre-fix, so the claim that they can fail is now
+confirmed by someone other than their author. All four gates green; acceptance test verbatim;
+`git diff --stat main...HEAD -- tickets/` empty, so the feature branch still carries no
+bookkeeping.
+
+| id | severity | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|
+| R1 | **blocking** | — | The F2 fix was applied at the render site but not at the gate, so a path that *cleans to* `"."` (`./`, `sub/..`) slips past the `p.Path == "."` string comparisons in both callers. pickle then calls **the repository root itself** a nested git repository and advises `add "/./"`, which git does not honour — the same un-silenceable advice F2 was raised for, one layer up. Reachable through the real CLI. | `./pk project add c ./` → `note: ./ is a nested git repository … add "/./"`; `pickle.toml` stores `path = "./"`; after `printf '/./\n' >> .gitignore`, `git check-ignore -q -- .` still exits 1 and doctor still reports `1 warning(s)` | Clean once at the gate rather than only at render: `path.Clean(p.Path) == "."` in `noteIfStageable` (`internal/cli/project.go`) and in `checkChildren` (`internal/doctor/doctor.go`). Fixing it in `Advice` alone would still leave the root mislabelled. |
+| R2 | non-blocking | fixed inline | A child whose directory name contains a gitignore metacharacter (`[`, `]`, `\`) yields an entry matching something other than itself. | `printf '/foo[1]/\n' > .gitignore; git check-ignore -q -- 'foo[1]'` → exit 1 | Recorded as a deliberate limit in `internal/vcs`'s package doc rather than escaped — the wrong escape would be worse than none. Done in `1bc612b`. |
+| R3 | non-blocking | fixed inline | The F7 caveat *I wrote in `81dcfc5`* understated its own bug: when the root sits inside another repo the advised entry is not merely in the wrong file, it is the wrong *pattern* — anchored at root (`/child/`) where the enclosing repo needs `/sub/child/`. | with root `outer/sub`, writing `/child/` in `outer/.gitignore` still warns; only `/sub/child/` silences it | Caveat rewritten to say the entry is mis-anchored and only indicative in that layout. Done in `1bc612b`. |
+| R4 | non-blocking | fixed inline | Also *self-inflicted in `81dcfc5`*: the reworded `Tracked` ok-line promised "— not stageable by accident", which is false for exactly the child F8 describes, and contradicted the comment immediately above it saying the package cannot tell the two apart. A fix for an over-claim that introduced a new one. | `ok: child "kid" is tracked by this repository (kid) — not stageable by accident`, yet `git add kid` then stages `A kid/b.txt` | Editorial clause dropped; the line now says what git reports and nothing more. Done in `1bc612b`. |
+| R5 | non-blocking | folded | `TestAdviceEntryActuallyIgnores` covers only three flat forms — which is why R1 survived a test written to pin the property. The table, not the technique, was too narrow. | `internal/vcs/vcs_test.go` table `{"child", "./child", "child/"}` | Folded into R1's rework scope: the table gains `./` (catches R1) and `apps/frontend`. |
+| R6 | non-blocking | fixed inline | Ragged short line mid-paragraph left by F6's rewrite. | `docs/user-manual/cli-reference.adoc:174-175` | Re-wrapped. Done in `1bc612b`. |
+
+**Disposition summary:** 6 findings — **1 blocking** (R1 → `5-rework/`); 5 non-blocking:
+4 fixed inline (R2, R3, R4, R6, all in `1bc612b`), 1 folded into R1 (R5), 0 noted, 0 new tickets.
+
+**Rework scope (and nothing else):** R1 — clean the path at the `"."` gate in both callers; plus
+R5's two extra rows in the advice test table.
+
+**Note on this cycle.** Three of the six findings (R3, R4, and R1 itself) are defects in the
+review-and-rework commits rather than in the original implementation — the corrections were
+sloppier than the code they corrected. R1 in particular is the first fix applied to the symptom
+(`"/./x/"` rendering) instead of the class (an uncleaned path reaching the gate), which is why a
+second, structurally identical bug survived it.
+
 ## History
 
 - 2026-07-27 — created (TO DO). source: idea — field finding from adding a second child-project to the `unity` workspace with pickle 0.1.0
@@ -300,3 +336,4 @@ which this branch does not touch; the `project add` → `upgrade` sequence still
 - 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-07 — IN REVIEW → REWORK: review: 2 blocking (F2 unusable advice for ./x paths, F3 non-repo child mislabelled)
 - 2026-08-07 — REWORK → IN REVIEW: rework: F2/F3 fixed, regression tests verified against pre-fix code
+- 2026-08-07 — IN REVIEW → REWORK: re-review: R1 blocking — path cleaning to '.' slips the gate, root mislabelled
