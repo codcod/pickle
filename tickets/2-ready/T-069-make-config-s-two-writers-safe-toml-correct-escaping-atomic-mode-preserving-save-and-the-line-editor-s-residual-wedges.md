@@ -170,7 +170,142 @@ impact breaks ties by id and this id is higher.
 
 ## Implementation Plan
 
-<!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->
+All line references re-verified against `main` at `022b857` (2026-08-07); nothing in
+`internal/config/config.go` moved since the ticket was filed at `545a4c5`.
+
+**Branch:** `feat/T-069-config-writers-safe` in the `pickle` repo (this repo, `.`), off `main`.
+
+**Prerequisites:** none — `depends-on: []`, no other in-flight ticket touches
+`internal/config/`.
+
+**Confirmed decisions** (user sign-off above):
+
+- **D-A.** `Config.Validate()` gains the invalid-UTF-8 reject; `AddProject` calls
+  `c.Validate()` after appending the new project (with defaults applied) and rolls the
+  append back on failure, so an invalid value never reaches `Save` from *any* caller
+  (`project add`, `install.go`'s `writeConfig`) — no `internal/cli` change needed. This also
+  makes `AddProject` reject an illegal `ticket_prefix`/WIP the same way, closing the same
+  reachability gap for those fields as a side effect.
+- **D-B.** The CRLF-insert bug is fixed with a one-line guard in `insertPayloadVersion`
+  (`usesCRLF(lines) && insertAt < len(lines)`), not a rewrite of `usesCRLF`.
+- **D-C.** One `tomlQuote` helper replaces all 10 `%q` call sites (8 in `Render`, 2 in the
+  payload-version rewrite/insert paths). It assumes valid UTF-8 (guaranteed upstream by D-A).
+- **D-D.** `writePreservingMode` gets an `fsync` before rename, an updated doc comment
+  stating the preserve/decline contract verbatim, and two portable regression tests
+  (hardlink severance, read-only-file rewrite) — no root- or xattr-dependent test.
+
+### Tasks
+
+1. **`tomlQuote` helper** (`internal/config/config.go`, new function placed just above
+   `Render`, ~line 264): a TOML basic-string quoter over `s`'s runes — `\` and `"` doubled,
+   `\b \t \n \f \r` for their control chars, `\u%04x` for every other rune `< 0x20` or
+   `== 0x7f`, every other rune written verbatim. Replace every `fmt.Fprintf(&b, "...= %q\n", …)`
+   call in `Render` (lines 273, 275, 282, 283, 288, 291, 292, 296) with `tomlQuote(...)`, and
+   replace `fmt.Sprintf("%q", version)` in `rewriteFoundKey` (line 635) and
+   `insertPayloadVersion` (line 649) the same way.
+2. **Reject invalid UTF-8 in `Validate`** (`internal/config/config.go:177`): import
+   `unicode/utf8`; inside the per-project loop add a case (alongside the existing empty-name /
+   duplicate / path / ticket-prefix / WIP cases) rejecting a project whose `Name`, `Path`,
+   `Build`, `Test`, `Lint`, `Docs`, `TicketPrefix`, `BranchPrefix` or `ReviewAddendum` is not
+   `utf8.ValidString`; add the same check for the top-level `PayloadVersion` and
+   `ReviewAddendum` before the loop. Error text names the project and field (Go's own `%q` on
+   an invalid-UTF-8 Go string is fine here — it never reaches the file, only stderr).
+3. **Wire the reject into `AddProject`** (`internal/config/config.go:230`): after
+   `c.Projects = append(c.Projects, p)`, call `c.Validate()`; on error, pop the just-appended
+   project back off (`c.Projects = c.Projects[:len(c.Projects)-1]`) and return the error
+   unchanged.
+4. **Atomic, mode-preserving `Save`** (`internal/config/config.go:308-315`): replace
+   `return os.WriteFile(path, []byte(c.Render()), 0o644)` with
+   `return writePreservingMode(path, []byte(c.Render()))`.
+5. **fsync before rename** (`internal/config/config.go`, inside `writePreservingMode`,
+   ~line 733): after the successful `tmp.Write(data)` and before `tmp.Close()`, call
+   `tmp.Sync()`; on error, close the temp file and return
+   `fmt.Errorf("%s: writing the update: %w", path, err)` (same shape as the existing write-error
+   return).
+6. **Rewrite `writePreservingMode`'s doc comment** to state the contract verbatim: *preserves
+   the permission bits and follows symlinks; does not preserve hardlink identity, ownership,
+   extended attributes, or mode bits outside `Perm()`* — plus a line noting the added `fsync`
+   closes the crash-durability gap (rename-atomic vs. crash-durable) while the declined items
+   stay declined (hardlinks, xattrs, ownership, setuid/setgid/sticky, silently rewriting a
+   `0444` file), each with the one-line reason already drafted in the ticket's Description
+   under "The contract, written down instead of re-found (D3)".
+7. **Escape-aware multi-line scan in `advance`** (`internal/config/config.go:502-527`): in the
+   `st.multilineDelim != ""` branch, keep the current `strings.Index` fast path only for the
+   literal delimiter (`'''`, no escapes in TOML); for the basic delimiter (`"""`) scan
+   byte-wise from `i`, treating `\` followed by another byte as an escaped pair to skip (a
+   trailing `\` at end-of-line is a line-continuation, not an escape, so just advance past it),
+   and testing `strings.HasPrefix` at each unescaped position for `"""`. Preserve the existing
+   behaviour for an *unescaped* `\` immediately before the delimiter (`\\"""` — an escaped
+   backslash — must still close the string; the byte-wise scan handles this because the two
+   backslashes are consumed as one escaped pair before the delimiter check runs).
+8. **Fix the CRLF-insert guard** (`internal/config/config.go:649`, `insertPayloadVersion`):
+   change `if usesCRLF(lines) {` to `if usesCRLF(lines) && insertAt < len(lines) {`. Leave
+   `usesCRLF` itself untouched.
+9. **Tests — escaping / round-trip** (`internal/config/config_test.go`): extend or add a
+   `TestRenderEscaping`-style table covering the Description's round-trip table verbatim —
+   `a\x01b`, tab, `\n`, `héllo→`, U+0085, `\x7f`, `a\x07b` (BEL), `a\x0bb` (VT) — asserting
+   `Render` output parses back via `toml.Decode` to the original string for each, including
+   through a full `Save`+`Load` round-trip for at least one case.
+10. **Tests — UTF-8 reject** (`internal/config/config_test.go`): a test constructing a project
+    `Name` with an invalid UTF-8 byte (e.g. `"u\xffb"` as a raw byte sequence, matching the
+    ticket's repro) and asserting `AddProject` returns an error *and* `c.Projects` is unchanged
+    in length (the rollback held) — this is the regression test for the "second input silently
+    renames a registered child" defect.
+11. **Tests — `Save` atomicity** (`internal/config/config_test.go`): add
+    `TestSaveFollowsSymlink` and `TestSaveUnwritableParentNamesTheRealFile`, mirroring
+    `TestSetPayloadVersionInPlaceFollowsSymlink` (`:691`) and
+    `TestSetPayloadVersionInPlaceUnwritableParentNamesTheRealFile` (`:727`) but calling
+    `(*Config).Save` instead.
+12. **Tests — `writePreservingMode` declined contract** (`internal/config/config_test.go`):
+    `TestWritePreservingModeSeversHardlink` — `os.Link` a second name to the target, call
+    `writePreservingMode`, assert the second name's `Stat().Sys()` `Nlink` dropped to 1 (skip
+    if the platform can't report `Nlink`); `TestWritePreservingModeRewritesReadOnlyFile` —
+    `os.Chmod(0o444)` the target, call `writePreservingMode`, assert it **succeeds** (documenting
+    the decline, not regressing it).
+13. **Tests — line-editor wedges**: add the two repros from the Description as new entries in
+    `payloadVersionFixtures` (`config_test.go:552`) — (a) the escaped-`\"""`-inside-a-multi-line-
+    string TOML from item 3(a), expecting `ok: true` and the payload_version line rewritten
+    without disturbing `[x]`; (b) `"\r\n#"` (and/or `"a = 1\r\n# tail"`) from item 3(b),
+    expecting `ok: true` with no dangling bare `\r`. Both are picked up automatically by
+    `FuzzSetPayloadVersion`'s seed corpus (`:664`) and the table-driven test that walks
+    `payloadVersionFixtures`; additionally copy the regenerated fuzz corpus entries `go test
+    -run FuzzSetPayloadVersion -fuzz FuzzSetPayloadVersion -fuzztime 30s ./internal/config/`
+    (or a shorter local run) may add under
+    `internal/config/testdata/fuzz/FuzzSetPayloadVersion/` into git.
+
+### Acceptance test
+
+```
+cd pickle-repo-root
+just build
+just test        # go test ./... — must include every test added above, green
+just lint
+```
+
+Plus the two manual reachability repros from the Description, run against the newly built
+binary in a throwaway dir (never the in-repo binary path):
+
+```
+D=$(mktemp -d) && cp pickle "$D/pk" && cd "$D" && ./pk install --project-name demo --project-path . -y
+./pk project add $'be\all' sub   # was: bricks pickle.toml — must now be rejected with an error, file untouched
+./pk project add $'u\xffb' sub   # was: silently renamed at exit 0 — must now be rejected with an error, file untouched
+./pk project list                 # must still work: pickle.toml was never corrupted
+```
+
+### Docs step
+
+No user-facing behaviour changes what a documented command is *supposed* to do (`project add`
+still adds a project; it now also refuses a value that could never round-trip) — no
+`docs/user-manual.adoc` update is required. `just docs-check` still runs as part of the
+acceptance test to confirm that holds.
+
+### Finish step
+
+Commit locally on `feat/T-069-config-writers-safe` (Conventional Commit, ticket id in brackets,
+e.g. `fix(config): TOML-correct escaping, atomic Save, line-editor escape/CRLF fixes (T-069)`).
+Do not push or open an MR without explicit user approval (child-project commit policy is
+publish-gated). Move the ticket with
+`pickle ticket move T-069 in-review --reason "acceptance green"` and hand back for review.
 
 ## Review
 
@@ -193,3 +328,4 @@ impact breaks ties by id and this id is higher.
   `:697`→`:727` unwritable parent, `:639`→`:664` `FuzzSetPayloadVersion`, `:527`→`:550`
   `payloadVersionFixtures`). No production code moved, so the plan's substance is unchanged; the
   “do not touch `internal/config` production code” split (D1) held in both directions
+- 2026-08-07 — TO DO → READY: plan complete
