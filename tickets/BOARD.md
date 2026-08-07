@@ -102,7 +102,7 @@ Last updated: 2026-08-07
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | yes — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted |
 | T-051 | surface the workspace-side consequences of registering a child-project | no — publish-gated |
-| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | no — publish-gated |
+| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | yes — merged to main (PR #21, 0918c1c); kept both commits (impl + review fixes), user-approved; branch not deleted |
 | T-053 | pickle serve — local web dashboard to visualize the board and its changes | yes — merged to main (PR #2, 8c33f5c), user-approved as an exception; squashed to one commit; branch deleted |
 | T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | yes — merged to main (PR #3, b70e238), user-approved as an exception; kept both |
 | T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | yes — merged to main (PR #14, 9a9af59) |

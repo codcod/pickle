@@ -343,3 +343,4 @@ committed on this base branch alongside this review, never on the feature branch
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
 - 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-07 — IN REVIEW → DONE: review clean — 4 non-blocking findings (3 fixed inline, 1 noted)
+- 2026-08-07 — merged to main (PR #21, 0918c1c); kept both commits (impl + review fixes), user-approved; branch not deleted
