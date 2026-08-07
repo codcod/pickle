@@ -111,3 +111,4 @@ publish only after explicit user approval (child_publish_gated).
 - 2026-08-08 — created (TO DO). source: pickle ticket new
 - 2026-08-08 — TO DO → READY: plan complete: root-caused, single-line fix, acceptance test defined
 - 2026-08-08 — READY → IN DEVELOPMENT: picked up
+- 2026-08-08 — IN DEVELOPMENT → IN REVIEW: acceptance green: YAML valid, build/test/lint/docs-check clean; live CI verification deferred to post-approval re-run (requires pushing the branch)
