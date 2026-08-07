@@ -58,6 +58,7 @@ Last updated: 2026-08-07
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | medium | medium | M | [T-080] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | medium | low-medium | S-M | [] |  |
+| T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | medium | medium | M | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
