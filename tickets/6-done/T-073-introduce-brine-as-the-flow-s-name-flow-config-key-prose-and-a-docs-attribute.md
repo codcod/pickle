@@ -324,3 +324,15 @@ and `just build`/`test`/`lint`/`docs-check` are green after them.
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
 - 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-07 — IN REVIEW → DONE: review PASS: 0 blocking, 6 non-blocking — 2 fixed inline (F2, F3), 2 folded (F4 -> T-066, F5 -> T-074), 2 noted (F1, F6)
+- 2026-08-07 — MERGED: feat/T-073-introduce-brine-name (squashed) → main (7b33876, #18), user-approved; branch deleted
+- 2026-08-07 — branch reconciliation: the feature branch was rebased onto the overarching
+  project's `main` before the squash, so its diff against `origin/main` picked up the four
+  not-yet-pushed ticket-bookkeeping commits (this ticket's own moves, plus the impact-sweep
+  patches to T-066/T-074/T-080/T-081) alongside the code — GitHub's squash-merge folded all
+  five into one commit (`7b33876`) rather than landing bookkeeping separately on the base
+  branch, the one thing rules §0 says never to let happen. No content was lost (the ticket
+  files' resulting text is byte-identical to what those commits already produced locally), so
+  local `main` was reset onto `origin/main` rather than re-applied by hand. Recorded here as
+  the factual cause, not a defect to route anywhere: `pickle`'s own commit-policy guard doesn't
+  yet stop a rebase from doing this (candidate scope for T-046 or a new finding, not fixed
+  here).
