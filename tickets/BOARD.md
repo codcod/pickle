@@ -38,6 +38,7 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -55,7 +56,6 @@ Last updated: 2026-08-07
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
-| T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | medium | low | S | [] |  |
 | T-074 | rename the installed skill directory to brine, with upgrade migration and dual-name doctor | medium | high | L | [T-073] |  |
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | medium | medium | M | [T-080] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
