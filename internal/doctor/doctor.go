@@ -18,6 +18,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/hook"
 	"github.com/codcod/pickle/internal/install"
+	"github.com/codcod/pickle/internal/vcs"
 )
 
 // Result is the outcome of a doctor run. Errors mean a broken install (the CLI
@@ -260,7 +261,9 @@ func checkHooks(root string, r *Result) {
 		// this package never spawns a process directly, and still only returns
 		// findings rather than printing or exiting. It does now *cause* an exec
 		// through hook.Probe, which is why that call is confined to this one
-		// branch — every other doctor check remains a pure filesystem read.
+		// branch. checkChildren below causes the only other exec, confined the
+		// same way behind internal/vcs (T-051) — every other doctor check
+		// remains a pure filesystem read.
 		if p := hook.Probe().Problem(); p != "" {
 			r.warnf("hooks: %s is installed and current, but %s", st.Path, p)
 			return
@@ -276,7 +279,13 @@ func checkHooks(root string, r *Result) {
 
 // checkChildren verifies every registered child path resolves to a git repo
 // (a .git entry — a directory for a normal clone, or a file for a worktree /
-// submodule).
+// submodule), then — for a child that is not the repository root itself,
+// however that path was spelled (see vcs.IsRepoRoot) — warns
+// when the overarching repo would still stage that path whole (T-051): until
+// a .gitignore entry (or a deliberate gitlink) exists, the window between a
+// child appearing and someone remembering to ignore it is a staging accident
+// waiting to happen. The single-repo default (the child *is* the repo) and an
+// already-tracked gitlink are both silent — see vcs.ChildState.
 func checkChildren(root string, cfg *config.Config, r *Result) {
 	for _, p := range cfg.Projects {
 		abs := filepath.Join(root, p.Path)
@@ -285,6 +294,27 @@ func checkChildren(root string, cfg *config.Config, r *Result) {
 			continue
 		}
 		r.ok(fmt.Sprintf("child %q is a git repository (%s)", p.Name, p.Path))
+
+		if vcs.IsRepoRoot(p.Path) {
+			continue
+		}
+		switch st := vcs.ChildState(root, p.Path); st {
+		case vcs.Stageable:
+			r.warnf("child %q: %s", p.Name, st.Advice(p.Path))
+		case vcs.Ignored:
+			r.ok(fmt.Sprintf("child %q is git-ignored (%s)", p.Name, p.Path))
+		case vcs.Tracked:
+			// "Tracked" covers a deliberate gitlink *and* a child whose
+			// contents were already committed as ordinary files, which this
+			// package cannot tell apart (see vcs's package doc) — so the line
+			// says what git reports and nothing more. It must not promise the
+			// child is safe: if the contents were committed as ordinary files,
+			// `git add <child>` still stages whatever is untracked under it.
+			r.ok(fmt.Sprintf("child %q is tracked by this repository (%s)", p.Name, p.Path))
+		case vcs.Unknown:
+			// no git on PATH, root not a repository, or an unexpected exit
+			// code — silent by design (vcs.State's zero value).
+		}
 	}
 }
 

@@ -411,6 +411,56 @@ func TestProjectAddRefreshesMarkerBlock(t *testing.T) {
 	}
 }
 
+// TestProjectAddNotesStageableChild (T-051): registering a child at a nested
+// path that is a real, unignored git repository prints a note naming it —
+// the same sentence `pickle doctor` warns with, and neither changes the exit
+// code. Once `.gitignore` covers the child, both the note and the doctor
+// warning disappear.
+func TestProjectAddNotesStageableChild(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t) // installs child "demo" at "."
+	gitInit(t, root, "main")
+
+	sub := filepath.Join(root, "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitInit(t, sub, "main")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "add", "web", "sub"}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "registered child-project \"web\"") {
+		t.Errorf("missing the registration confirmation line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "note:") || !strings.Contains(out, "/sub/") {
+		t.Errorf("expected a note: line naming /sub/, got:\n%s", out)
+	}
+
+	doctorOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
+			t.Fatalf("doctor = %d, want %d (a stageable child is a warning, not an error)", got, exitOK)
+		}
+	})
+	if !strings.Contains(doctorOut, "WARNING:") || !strings.Contains(doctorOut, "/sub/") {
+		t.Errorf("expected doctor to warn about /sub/, got:\n%s", doctorOut)
+	}
+
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("/sub/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	doctorOut = captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
+			t.Fatalf("doctor = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(doctorOut, "WARNING:") {
+		t.Errorf("expected no warning once .gitignore covers /sub/, got:\n%s", doctorOut)
+	}
+}
+
 // TestTicketNewSpawnedBy covers the --spawned-by flag end to end: the scaffold
 // it writes and the audit's verdict on it.
 func TestTicketNewSpawnedBy(t *testing.T) {
@@ -991,4 +1041,71 @@ func TestInstallHooksFlag(t *testing.T) {
 			t.Errorf("expected the second install to report the hook already current, got:\n%s", out)
 		}
 	})
+}
+
+// TestProjectAddSilentOnNonRepoChild (T-051 review F3): registering a plain
+// directory that is not a git repository must not call it a "nested git
+// repository". That state is doctor's error to report, and the two must not
+// contradict each other about the same child — the note exists precisely so
+// registration and the next doctor run speak with one voice.
+func TestProjectAddSilentOnNonRepoChild(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	// A plain directory: no .git inside it.
+	if err := os.MkdirAll(filepath.Join(root, "plain"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "add", "plain", "plain"}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(out, "note:") {
+		t.Errorf("a non-repo child must not get a nested-git-repository note, got:\n%s", out)
+	}
+
+	// ...and doctor is the one that speaks up, as an error.
+	doctorOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got == exitOK {
+			t.Error("doctor = 0, want non-zero for a child that is not a git repository")
+		}
+	})
+	if !strings.Contains(doctorOut, "is not a git repository") {
+		t.Errorf("expected doctor to report the non-repo child, got:\n%s", doctorOut)
+	}
+	if strings.Contains(doctorOut, "nested git repository") {
+		t.Errorf("doctor must not also call it a nested git repository, got:\n%s", doctorOut)
+	}
+}
+
+// TestProjectAddSilentOnRootSpelledDotSlash (T-051 review R1): a child
+// registered as "./" is the overarching repository itself, however it was
+// spelled. It must never be described as a nested git repository, and doctor
+// must not warn about it — the advised entry ("/./") is one git does not
+// honour, so such a warning could never be silenced by obeying it.
+func TestProjectAddSilentOnRootSpelledDotSlash(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "add", "same", "./"}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(out, "note:") {
+		t.Errorf("the repository root must not be called a nested git repository, got:\n%s", out)
+	}
+
+	doctorOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
+			t.Fatalf("doctor = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(doctorOut, "WARNING:") {
+		t.Errorf("doctor must not warn about the repo root registered as %q, got:\n%s", "./", doctorOut)
+	}
 }

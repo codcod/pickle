@@ -10,6 +10,19 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Added
 
+- **`pickle doctor` and `pickle project add` now warn when a registered child is
+  stageable** (T-051). Registering a second child-project at a nested path
+  (`pickle project add <name> <path>`, `path` other than `.`) leaves it as an
+  ordinary, untracked directory of the overarching repo until a `.gitignore`
+  entry (or an index entry, for a deliberate submodule/gitlink) says
+  otherwise — a staging accident waiting for whoever forgets that hand edit.
+  `project add` now names the missing entry right after registering, and
+  `pickle doctor` repeats the same check on every run, so a child that drifts
+  into this state later (an entry deleted, or a child registered before the
+  check existed) is still caught, as a warning (never an error — a deliberate
+  submodule/gitlink is reported as fine). pickle asks git directly
+  (`git check-ignore`, `git ls-files`) rather than parsing `.gitignore`, and,
+  as with every other file it does not own, never writes to it itself.
 - **`pickle hooks` — a pre-commit guard for ticket bookkeeping** (T-057). New verb
   `pickle hooks install [--force] | uninstall [--dry-run] | status | run pre-commit`, plus
   `pickle install --hooks`. The installed hook refuses a commit that stages `tickets/` paths

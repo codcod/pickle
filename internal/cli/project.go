@@ -12,6 +12,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/vcs"
 )
 
 // Child-project registry commands. The [[project]] array in pickle.toml is the
@@ -102,7 +103,33 @@ func runProjectAdd(args []string) int {
 	if err := refreshMarkers(cfg); err != nil {
 		return errf("%v", err)
 	}
+	noteIfStageable(cfg.Root(), p)
 	return exitOK
+}
+
+// noteIfStageable prints, as a plain `note:` line (never an error —
+// registration already succeeded), the same sentence `pickle doctor` would
+// warn with if the child p is a nested git repository this repository does
+// not yet ignore. Silent for the single-repo default (see vcs.IsRepoRoot) and for
+// every other vcs.State (already ignored, already tracked, or undecidable).
+// Shared by runProjectAdd and runInstall so the two moments a child first
+// appears never say it differently (T-051).
+func noteIfStageable(root string, p config.Project) {
+	if vcs.IsRepoRoot(p.Path) {
+		return
+	}
+	// Mirror doctor's guard: it reaches the vcs check only after confirming
+	// the child has a .git. Without the same gate here the two moments
+	// contradict each other — a plain directory would be called a "nested git
+	// repository" at registration and "not a git repository" by the very next
+	// doctor run (T-051 review F3). Registering a non-repo child is doctor's
+	// error to report, not this note's.
+	if _, err := os.Stat(filepath.Join(root, p.Path, ".git")); err != nil {
+		return
+	}
+	if st := vcs.ChildState(root, p.Path); st == vcs.Stageable {
+		fmt.Printf("note: %s\n", st.Advice(p.Path))
+	}
 }
 
 // refreshMarkers re-injects the AGENTS.md/CLAUDE.md marker block from cfg and

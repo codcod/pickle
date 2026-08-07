@@ -167,6 +167,16 @@ also re-inject the `AGENTS.md`/`CLAUDE.md` marker block immediately, the same
 way `install` and `upgrade` do (see below) — so the agent instructions never
 describe a registry state that no longer matches `pickle.toml`.
 
+When `<path>` is anything other than the repository root itself, `add` also
+checks whether *this* repository would still stage that nested child whole —
+that is, whether anything yet tells git to leave it alone: a `.gitignore`
+entry, or an index entry for a deliberate submodule/gitlink. If nothing does,
+`add` prints a `note:` line naming the entry to add. `pickle doctor` (below)
+repeats the same check on every run, so a child that drifts into this state
+later (an entry deleted, or a child registered before the check existed) is
+still caught. pickle never writes to `.gitignore` itself — see
+<<project-structure>>.
+
 [#cmd-upgrade]
 == `pickle upgrade`
 
@@ -250,6 +260,13 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   naming the incapable binary's path and version when it cannot
   (<<hooks-version-skew,version skew>>);
 * each registered child's `path` is a git repository;
+* a child registered at a path other than the repository root is either ignored by this
+  repository's git or already tracked (a deliberate submodule/gitlink) —
+  otherwise it is an ordinary stageable directory until someone remembers to
+  add it to `.gitignore`, and that gap is a *warning* naming the child and the
+  entry to add. A child at `.` (the single-repo default) is exempt — the child
+  *is* the repo, nothing to ignore. `doctor` only ever reports this; it never
+  writes to `.gitignore` itself;
 * the installed `payload_version` matches the binary — a mismatch is a
   *warning*, and `doctor` first checks whether `upgrade` could actually
   stamp the new version (a check that writes nothing). If it could, the
