@@ -331,6 +331,45 @@ inconsistency introduced. `just build && test && lint && docs-check` and `pickle
 all clean. **F1: resolved.** No other findings outstanding — **verdict: PASS**, 1 blocking found
 and fixed (F1), 0 non-blocking.
 
+---
+
+### Second review pass — independent (2026-08-07)
+
+Requested by the user after the pass above. That pass was run by the *implementer*, so this one
+was delegated to a reviewer with **no inherited context**, briefed only from the ticket and the
+diff — the independence the flow's own session-tier guidance asks for on severity calls. It
+re-derived the check's semantics empirically (synthetic repo, `update-ref` to move `origin/main`)
+rather than trusting the ticket's claims.
+
+**Independently confirmed:** the three-dot form is correct and, unlike `..`, does *not*
+false-positive when `origin/<base>` is **ahead** and the branch was never rebased; `--name-only`
+emits repo-root-relative paths, so `^tickets/` anchors correctly even when run from a
+subdirectory; decisions 1–4 honoured; decision 5 re-verified against `install.go:903-908`
+(`markerBlock()` already drops both existing §0 sub-bullets, so omitting a third is consistent);
+decision 6 re-verified across the docs tree.
+
+**Verdict: PASS — 0 blocking, 6 non-blocking**, five fixed inline and one noted.
+
+| id | severity | disposition | description | evidence | resolution |
+|---|---|---|---|---|---|
+| F2 | non-blocking | fixed inline | The check read a *cached* remote-tracking ref with no `git fetch`. Staleness biases to false **positives** (safe), but the prescribed repair then fails — `git push origin <base>` is rejected non-fast-forward and the prose gave no next move | `tickets-README.md:65-70`, `review-protocol.md:204` | Command is now `git fetch origin <base> && git diff --name-only origin/<base>...HEAD \| grep '^tickets/'` at all sites; §0 states why the fetch matters |
+| F3 | non-blocking | fixed inline | No escape hatch, unlike its own sibling bullet: the hook bullet exempts "the rare commit whose *product* is a file under `tickets/`", but the new bullet said flatly "any output means push `origin <base>` first" — wrong advice for exactly that ticket, where pushing the base cannot silence it | `tickets-README.md:64` vs `:70` | §0 now carries the same exception, and says pushing the base will not silence it |
+| F4 | non-blocking | fixed inline | Stated invariant ≠ what the check tests. "`origin/<base>` already contains everything the branch is based on" is the *cause*; the grep tests the *symptom*, and decision 2 deliberately chose the symptom. An unpushed base carrying only non-bookkeeping commits passes the grep while violating the stated invariant | `tickets-README.md:67-68` | Reworded to "the invariant is that **the MR carries no `tickets/` path**" |
+| F5 | non-blocking | fixed inline | `skill/SKILL.md:246` still stated the bare `finalize → push → create the MR` sequence. **The first pass cleared this as "correct compression"** — wrong by §5's causation test: this branch made that enumeration lag, the same shape ruled blocking as F1 in `TEMPLATE.md`, and SKILL.md is often the only payload file an agent loads | `skill/SKILL.md:246` | Half-clause added, cross-referencing §0 rather than restating it |
+| F6 | non-blocking | fixed inline | "verify the base is not behind" omits *behind what*, losing §0's precision at three restatement sites | `review-protocol.md:204,232`, `TEMPLATE.md:50,112` | All now read "the remote base is not behind your local base" |
+| F7 | non-blocking | noted | Decision 2's normative command included a trailing `&& echo "STOP: push origin <base> first"`, dropped at every site. A deviation from a confirmed decision, so recorded rather than left implicit — but applied **consistently**, and each site states the repair in prose, which reads better in documentation than a chained `echo`. No action | plan decision 2 vs all four sites | Noted; the prose repair supersedes the echo |
+
+Also raised and **declined**: that the check is vacuous for a child-project living in its own
+repo (no `tickets/` dir there). True, but §0's new bullet now closes with "this bites wherever
+the board and the code share a repository, which is the single-repo default above", which covers
+it without a separate row.
+
+**Disposition summary:** 6 non-blocking — **5 fixed inline** (F2–F6), **1 noted** (F7); 0 blocking,
+0 folded, 0 new tickets. All five inline fixes clear §5's bar ("prose this branch authored, or
+made false") and change no behaviour. `just build && test && lint && docs-check` and
+`pickle board audit` re-run clean after them; the acceptance test was re-run in its new
+`git fetch` form and still fires on the failure shape.
+
 **Step 2 — Implementation audit**
 
 - Task 1 (§0 sub-bullet): **met** — `skill/resources/tickets-README.md`, inserted immediately
@@ -423,3 +462,8 @@ scoped fix, then a scoped re-review of F1 only. 0 non-blocking findings.
 - 2026-08-07 — mechanical follow-up filed as **T-082** (`pre-push` hook refusing a feature-branch
   push whose range carries `tickets/` paths), per this ticket's Description item 4. Lineage only;
   T-072's prose stands on its own and T-082 does not gate it
+- 2026-08-07 — second, **independent** review pass (fresh-context reviewer, since the first pass
+  was run by the implementer): PASS, 0 blocking, 6 non-blocking — F2–F6 fixed inline (missing
+  `git fetch`; missing `tickets/`-product exception; invariant stated as cause not symptom;
+  `SKILL.md:246` lag the first pass wrongly cleared; "behind what" imprecision at three sites),
+  F7 noted (decision 2's `echo` clause dropped consistently). Stays in DONE — no blocking finding
