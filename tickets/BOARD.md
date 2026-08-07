@@ -20,11 +20,10 @@ Last updated: 2026-08-07
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-07
 
 | id | title | open findings |
 |---|---|---|
+| T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | 1 blocking (F1): TEMPLATE.md restates the pre-fix publish sequence at 2 sites, the seed text for every future ticket |
 
 ## READY (impact order, per child)
 
