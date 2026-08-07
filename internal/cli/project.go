@@ -118,6 +118,15 @@ func noteIfStageable(root string, p config.Project) {
 	if p.Path == "." {
 		return
 	}
+	// Mirror doctor's guard: it reaches the vcs check only after confirming
+	// the child has a .git. Without the same gate here the two moments
+	// contradict each other — a plain directory would be called a "nested git
+	// repository" at registration and "not a git repository" by the very next
+	// doctor run (T-051 review F3). Registering a non-repo child is doctor's
+	// error to report, not this note's.
+	if _, err := os.Stat(filepath.Join(root, p.Path, ".git")); err != nil {
+		return
+	}
 	if st := vcs.ChildState(root, p.Path); st == vcs.Stageable {
 		fmt.Printf("note: %s\n", st.Advice(p.Path))
 	}

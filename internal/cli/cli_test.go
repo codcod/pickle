@@ -1042,3 +1042,41 @@ func TestInstallHooksFlag(t *testing.T) {
 		}
 	})
 }
+
+// TestProjectAddSilentOnNonRepoChild (T-051 review F3): registering a plain
+// directory that is not a git repository must not call it a "nested git
+// repository". That state is doctor's error to report, and the two must not
+// contradict each other about the same child — the note exists precisely so
+// registration and the next doctor run speak with one voice.
+func TestProjectAddSilentOnNonRepoChild(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	// A plain directory: no .git inside it.
+	if err := os.MkdirAll(filepath.Join(root, "plain"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "add", "plain", "plain"}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(out, "note:") {
+		t.Errorf("a non-repo child must not get a nested-git-repository note, got:\n%s", out)
+	}
+
+	// ...and doctor is the one that speaks up, as an error.
+	doctorOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got == exitOK {
+			t.Error("doctor = 0, want non-zero for a child that is not a git repository")
+		}
+	})
+	if !strings.Contains(doctorOut, "is not a git repository") {
+		t.Errorf("expected doctor to report the non-repo child, got:\n%s", doctorOut)
+	}
+	if strings.Contains(doctorOut, "nested git repository") {
+		t.Errorf("doctor must not also call it a nested git repository, got:\n%s", doctorOut)
+	}
+}

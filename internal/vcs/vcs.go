@@ -35,6 +35,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -67,14 +68,21 @@ const (
 )
 
 // Advice renders the one sentence to show an operator when s is Stageable,
-// and "" for every other state. It is the single source of the wording so
+// and "" for every other state. relPath is normalised first, so the entry it
+// names is one git will actually honour. It is the single source of the wording so
 // `pickle doctor` and `pickle project add`/`install` can never drift apart —
 // each caller prepends its own context (e.g. `child "name": <advice>`).
 func (s State) Advice(relPath string) string {
 	if s != Stageable {
 		return ""
 	}
-	slash := strings.TrimSuffix(relPath, "/") + "/"
+	// Normalise before rendering. A child may be registered as "./x" or "x/",
+	// and an entry built from the raw string ("/./x/") is one git does not
+	// honour — advice that cannot silence the very warning it accompanies,
+	// which is the failure mode this package exists to avoid (T-051 review F2).
+	// path (not path/filepath) is right here: config paths are slash-form and
+	// so are gitignore patterns, on every platform.
+	slash := path.Clean(relPath) + "/"
 	return slash + " is a nested git repository that this repository does not ignore" +
 		" — add \"/" + slash + "\" to .gitignore so it is never staged"
 }

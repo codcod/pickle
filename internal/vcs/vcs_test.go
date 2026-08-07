@@ -113,3 +113,47 @@ func TestChildStateUnknownWhenNotARepo(t *testing.T) {
 		t.Fatalf("Advice(Unknown) = %q, want empty", adv)
 	}
 }
+
+// TestAdviceEntryActuallyIgnores (T-051 review F2) pins the property the
+// advice exists to deliver, rather than its spelling: take the .gitignore
+// entry Advice names, write exactly that, and the child must flip to Ignored.
+//
+// The regression it guards is a warning that cannot be silenced by obeying
+// it. A child registered as "./child" used to yield `/./child/`, a pattern
+// git does not honour, so doctor warned forever. Any path form a user can
+// type into `project add` must therefore round-trip.
+func TestAdviceEntryActuallyIgnores(t *testing.T) {
+	requireGit(t)
+	for _, relPath := range []string{"child", "./child", "child/"} {
+		t.Run(relPath, func(t *testing.T) {
+			root := t.TempDir()
+			gitInit(t, root)
+			if err := os.Mkdir(filepath.Join(root, "child"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			gitInit(t, filepath.Join(root, "child"))
+
+			st := ChildState(root, relPath)
+			if st != Stageable {
+				t.Fatalf("ChildState(%q) = %v, want Stageable", relPath, st)
+			}
+
+			// The entry is the text between the quotes in the sentence.
+			adv := st.Advice(relPath)
+			parts := strings.Split(adv, `"`)
+			if len(parts) < 2 {
+				t.Fatalf("Advice(%q) = %q, want a quoted .gitignore entry", relPath, adv)
+			}
+			entry := parts[1]
+
+			ignore := filepath.Join(root, ".gitignore")
+			if err := os.WriteFile(ignore, []byte(entry+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if got := ChildState(root, relPath); got != Ignored {
+				t.Errorf("after writing the advised entry %q to .gitignore, ChildState(%q) = %v, want Ignored\nadvice was: %s",
+					entry, relPath, got, adv)
+			}
+		})
+	}
+}
