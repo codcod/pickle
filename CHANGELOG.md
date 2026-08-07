@@ -8,8 +8,21 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-07
+
 ### Added
 
+- **`pickle board audit` now validates ticket frontmatter, status directories and
+  History-line shape** (T-040). Five checks land in `internal/audit`, the one component that
+  sees every ticket however it was authored: a duplicate frontmatter key (e.g. two `impact:`
+  lines) is now an error instead of silently last-wins; a ticket listing itself in `depends-on`
+  is now an error, mirroring the existing `spawned-by`/`family` self-reference guards; the
+  audit's required/optional key set is checked against `TEMPLATE.md` by a new test so the two
+  can no longer drift apart silently; all seven status directories are validated directly — a
+  missing one is an error, an empty one with no tracked `.gitkeep` is a warning; and a
+  status-transition or merge `## History` line over 400 runes now warns (free-form dated notes
+  and `created` lines are exempt, and the threshold was picked by measuring this repo's own 303
+  History entries).
 - **`pickle doctor` and `pickle project add` now warn when a registered child is
   stageable** (T-051). Registering a second child-project at a nested path
   (`pickle project add <name> <path>`, `path` other than `.`) leaves it as an
@@ -51,9 +64,40 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   review protocol also fixes the mirror-image hazard the split creates — a reviewer on a feature
   branch must read the ticket and board from the base branch (`git show <base>:tickets/…`),
   because a branch cut before the bookkeeping landed shows a stale ticket.
+- **A named flow: `flow` key and `pickle flow show|list`** (T-073). `pickle.toml` gains an
+  optional `flow` key (shape-validated, defaults to `"brine"`) naming the ticket-based flow
+  pickle installs — cheap to add now, and the seam a second flow would later select. `pickle
+  flow show` prints the configured flow (or the default when the key is absent), and `pickle
+  flow list` currently prints that one entry. Elsewhere the rename is prose-only: the flow is
+  now called **brine** throughout `skill/SKILL.md`, the review protocol, the
+  `AGENTS.md`/`CLAUDE.md` marker block, this repo's own self-hosted files, and the docs
+  (a new `:flow:` attribute). **Nothing on disk moves** — the installed skill directory, the
+  `.claude/skills/` symlink and `SKILL.md`'s own `name:` frontmatter still say `ticket-flow`,
+  so no existing install needs migrating.
 
 ### Changed
 
+- **`pickle upgrade` no longer refuses legal `pickle.toml` files it used to misdiagnose**
+  (T-026). The `payload_version` line scanner tracked no notion of being inside a multi-line
+  string or array, so a continuation line that merely looked like a table header (or began with
+  `[`) was read as ending the top-level scope — silently and permanently refusing to stamp four
+  legal shapes: a multi-line string containing a `[`-leading line, a `nan` value anywhere in the
+  file, the quoted spelling `"payload_version"`, and a multi-line array on the insert path. The
+  scanner now carries state (multi-line delimiter, bracket depth) across lines, and the
+  parse-back safety gate treats two `NaN`s as equal instead of reporting them as changed. Every
+  refusal that remains by design (the key's own value being multi-line or an array — pickle
+  never writes either) now names the line and the cause instead of a generic message, and
+  `pickle doctor` probes before recommending `pickle upgrade`, so it no longer sends the user to
+  a command that is going to fail.
+- **The `AGENTS.md`/`CLAUDE.md` marker block stays in step with `pickle.toml`, and drift from it
+  is now detected** (T-041). `pickle project add`/`pickle project remove` now re-inject the
+  marker block through one shared refresh path immediately after they mutate the config, so it
+  no longer keeps describing yesterday's set of children — previously invisible, and capable of
+  making an agent refuse legitimate work on a project it was never told about, or build with a
+  stale WIP limit or command. `pickle doctor` gained the other half: it now warns (never errors)
+  when the installed block differs from what today's `pickle.toml` would render, including a
+  block that predates a payload change, and the branch-name bullet it renders now honours each
+  child's configured `ticket_prefix`.
 - **The pre-commit shim bumps to `# pickle:hook v2`** (T-068). Its guard-absent branch now prints
   one stderr notice (`pickle: bookkeeping guard skipped (pickle not found on PATH)`) instead of
   degrading silently — the same reasoning that already made an unexpected exit code speak — and a
@@ -81,6 +125,17 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   clean end to end. `pickle upgrade` still never reads or writes anything under `tickets/`, and
   `pickle board sync --dry-run` is unaffected: it still reports layout-only drift as a pending
   change and exits non-zero.
+- **`pickle.toml`'s writers are now TOML-correct and crash-durable** (T-069). `Config.Render`
+  quoted every string field with Go's `%q`, which can emit escapes TOML has no equivalent for
+  (`\a`, `\v`) or a byte-for-byte encoding of invalid UTF-8 that TOML reads back as a
+  *different*, valid string. This was reachable end to end through `pickle project add`, whose
+  values pass straight from argv: one input could brick `pickle.toml` for every later command,
+  another could silently rename a registered child at exit `0`. Fixed with a `tomlQuote` helper
+  (TOML's own short escapes plus `\uXXXX`) at every call site, plus a validation gate rejecting
+  invalid UTF-8 before it ever reaches the file, with rollback. `Save` now fsyncs before its
+  rename (crash-durable, not merely atomic), and two narrower `pickle upgrade` line-editor bugs
+  — a multi-line string's escaped quote misread as ending the string, and a stray trailing `\r`
+  left when nothing followed an insertion point — are also fixed.
 
 ## [0.2.2] - 2026-07-29
 
@@ -254,7 +309,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/codcod/pickle/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/codcod/pickle/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/codcod/pickle/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/codcod/pickle/compare/v0.1.0...v0.2.0
