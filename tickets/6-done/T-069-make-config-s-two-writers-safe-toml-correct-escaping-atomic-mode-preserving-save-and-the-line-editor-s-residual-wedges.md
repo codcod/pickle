@@ -375,7 +375,7 @@ delimiter, literal `''''`, dotted and quoted keys, single-line inline tables.
 | F7 | non-blocking | noted | `Validate`'s new `badField != ""` case is the **last** arm of the switch (`config.go:216`), so an invalid-UTF-8 `path` or `ticket_prefix` reports the path/prefix error instead of the UTF-8 one. Only the message differs; the value is still refused. | `config.go:204-218`. | Cosmetic. |
 
 **Disposition summary:** 7 findings — 1 blocking (F1, → `5-rework/`); 6 non-blocking:
-3 *fixed inline* (F3, F4, F5 — F5 pending the human's go-ahead on the history rewrite),
+3 *fixed inline* (F3, F4, F5 — F5 resolved 2026-08-07, see below),
 3 *noted* (F2, F6, F7). No new tickets: none passed §5's promotion test, and F1 is a scoped fix
 on this branch rather than follow-up ground.
 
@@ -444,15 +444,26 @@ verified fixed; the ticket proceeds to `6-done/`. Running total across both pass
 
 ### Impact sweep (step 8)
 
-- **T-073** (`2-ready/` on the feature branch, `1-to-do/` on `main` — see F5) plans to emit the
-  new `flow` key with `` fmt.Fprintf(&b, "flow = %q\n", …) `` mirroring `ReviewAddendum`. T-069
-  removed every TOML-rendering `%q` from `Render`; the plan must say `tomlQuote(c.Flow)`, and
-  `flow` must join `Validate`'s UTF-8 check. **Patch pending** until F5 puts the READY plan on
-  `main` — patching the stale `1-to-do/` copy would be patching prose that is about to be
-  replaced.
+- **T-073** (`2-ready/`) plans to emit the new `flow` key with
+  `` fmt.Fprintf(&b, "flow = %q\n", …) `` mirroring `ReviewAddendum`. T-069 removed every
+  TOML-rendering `%q` from `Render`, so that instruction would have reintroduced the very
+  defect this ticket closed. **Patched** (2026-08-07, once F5 put the READY plan on `main`):
+  task 1 now says `tomlQuote(c.Flow)` and adds `flow` to `Validate`'s invalid-UTF-8 gate, with
+  a note that the `%q` inside task 1's own `fmt.Errorf` is fine — it formats an error message,
+  not file content. Recorded in T-073's History.
 - **T-013** item 7 (`runUpgrade`'s double load) — the API-shape question T-069 declined is
   untouched; still T-013's ground, no assumption invalidated.
 - No other non-terminal ticket references T-069 or `internal/config`.
+
+### F5 resolution (2026-08-07)
+
+User-approved history rewrite. `ab7161a` (T-073's READY plan) was cherry-picked onto `main` as
+`d606002`, then dropped from the feature branch with
+`git rebase --onto 92371e4 ab7161a feat/T-069-config-writers-safe`. The branch now carries only
+its three T-069 commits and `git diff main...feat/T-069-config-writers-safe -- tickets/` is
+empty, so the rule the finding cited — bookkeeping on the base branch, never on a feature
+branch — holds again in both directions. `pickle board audit` clean; T-073's 251-line plan
+intact in `2-ready/` on `main`.
 
 ## History
 

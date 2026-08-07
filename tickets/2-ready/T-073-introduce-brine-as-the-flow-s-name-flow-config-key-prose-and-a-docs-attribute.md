@@ -103,8 +103,14 @@ In `internal/config/config.go`:
 - In `Validate()`, reject an unknown value up front: `if c.Flow != "" && c.Flow != DefaultFlowName
   { return fmt.Errorf("pickle.toml: flow %q is not a known flow (legal: %s)", c.Flow,
   DefaultFlowName) }`.
-- In `Render()`, mirror the existing `ReviewAddendum` pattern: emit `flow = %q` right after the
-  `payload_version` line, only `if c.Flow != ""`.
+- In `Render()`, mirror the existing `ReviewAddendum` pattern: emit the `flow` key right after
+  the `payload_version` line, only `if c.Flow != ""`. **Quote it with `tomlQuote(c.Flow)`, not
+  `%q`** — T-069 replaced every TOML-rendering `%q` in this function (Go's `%q` emits `\a`,
+  `\v` and `\xNN`, none of which TOML accepts). The `fmt.Errorf("… flow %q …")` in `Validate()`
+  above is untouched by that rule: it formats an *error message*, never file content.
+- Since `flow` is a string field `Render()` quotes, add it to `Validate()`'s invalid-UTF-8
+  check alongside `payload_version` and `review_addendum` (T-069 added that gate so a value
+  that cannot round-trip never reaches the file).
 
 #### Task 2 — `pickle flow show` / `pickle flow list`
 
@@ -249,3 +255,8 @@ T-066 (close the CLI-surface documentation gaps) is the natural home for a follo
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
 - 2026-08-07 — TO DO → READY: plan complete: config key, CLI subcommand, doctor line, and the naming-only rename traced file-by-file across install.go, the skill payload, this repo's own self-hosted files, and docs
+- 2026-08-07 — patched by T-069's review impact sweep (step 8): T-069 removed every
+  TOML-rendering `%q` from `Config.Render()` in favour of a `tomlQuote` helper and added an
+  invalid-UTF-8 gate to `Validate()`. Task 1 said to emit `flow = %q`, which would have
+  reintroduced the defect T-069 closed; it now says `tomlQuote(c.Flow)` and adds `flow` to the
+  UTF-8 gate. No other assumption in the plan is affected — nothing else it touches moved
