@@ -44,6 +44,31 @@ mostly about lifting it rather than designing it:
 These are template-shaped (`template.HTML` fields, predicate methods), so they are not a wire
 format as they stand.
 
+### Open scope question: the `## Review` findings table (added 2026-08-07)
+
+`ticket show --json` as scoped above projects frontmatter, status, slug/path and **parsed
+History** — but nothing from the `## Review` section. That section holds the repo's largest
+structured dataset (**≈165 dispositioned findings across 36 done tickets**), in a table whose
+columns `TEMPLATE.md` already fixes: id, severity, disposition, description, evidence,
+suggestion. Every cross-ticket question anyone has actually asked of this corpus — the T-045
+spawn rate, the rework rate, the review yield — is a group-by over that table, and each was
+answered by hand-grepping markdown.
+
+**Refinement must decide, explicitly, whether the projection includes it.** Both answers are
+defensible and the ticket should not drift into one by omission:
+
+- **Include** — the findings table is the only part of a ticket that is *already* tabular, so it
+  is the cheapest high-value addition to the wire format, and it is what makes the projection a
+  measurement substrate rather than a status mirror.
+- **Exclude** — it is free-prose-heavy (`description`, `evidence` and `suggestion` are
+  sentences, not values), parsing it means a markdown-table reader that nothing else needs, and
+  malformed or absent tables are common (a `Disposition summary` line is present in only **23 of
+  36** done tickets).
+
+A middle option worth costing: project the **counts and the closed-vocabulary columns only**
+(id, severity, disposition, and the `class` column T-085 proposes), skipping the three prose
+columns. That answers every measurement question at a fraction of the parsing risk.
+
 ### Envelope and versioning
 
 The payload carries a **top-level envelope** with the emitting binary's version, so a consumer
@@ -75,6 +100,13 @@ writer (work area 4), which is what creates the hazard.
 - **T-052** — `board audit`'s verdict classification. If audit health is exposed as structured
   data, the "stale **or** hand-edited" conflation becomes a field a consumer reads, so the two
   tickets should agree on the vocabulary rather than inventing two.
+- **T-085** (per-ticket record aggregable) — **a second prospective consumer**, and the one that
+  motivates the findings-table scope question above. T-085 adds a `class` column to the findings
+  table so recurring defect kinds can be counted; counting them without this projection means
+  grepping markdown, which is exactly how the T-045 spawn rate was measured. Neither blocks the
+  other: T-085's fields are greppable by a human on day one, and this projection is useful
+  without them. Sequencing preference is T-085 first — it costs a column and settles whether the
+  data is worth a wire format at all.
 
 ### Honest scope of the benefit
 
@@ -89,6 +121,14 @@ What survives without it: pickle has **no machine-readable output at all**, and 
 area 1 would have to build this projection regardless. That is real but weaker than the case
 at filing time. Graded `low-medium` — enabling infrastructure with deferred, now less certain,
 payoff; it should not outrank tickets that fix measured field defects.
+
+**Second prospective consumer, and deliberately not a re-grade (2026-08-07).** T-085 wants this
+projection as a measurement substrate. It is *prospective* demand from a ticket that is itself
+unrefined, and the 2026-08-04 precedent — set when T-056 was downgraded, and applied again the
+same day to decline a T-081 bump — **refuses to credit prospective demand when grading**. The
+rule cuts both ways, so `low-medium` stands. What changes is the refinement question, not the
+grade: option (c) *"drop until a consumer is real"* is now weaker than it was, because a second
+independent use has appeared for the same projection.
 
 **Refinement must first decide whether this ticket should exist at all**, and specifically
 whether it stands alone or folds into T-056 work area 1 — the honest options are (a) refine as
@@ -123,3 +163,6 @@ default to (a) because the ticket is already on the board.
 - 2026-08-06 — patched by T-043's review impact sweep: T-043 landed, so the cli-test harness this
   ticket's acceptance test would have needed already exists — the note now says what to reuse
   instead of what to expect
+- 2026-08-07 — scope question added (the `## Review` findings table) and T-085 recorded as a
+  second prospective consumer; grade deliberately unchanged per the 2026-08-04 precedent against
+  crediting prospective demand

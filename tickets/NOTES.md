@@ -810,3 +810,71 @@ for Homebrew to catch up. No ticket — this is a stale binary, not a defect.
 also the design whose failures you will not notice. When one is installed, something other than
 the guard has to assert it is alive — which is precisely what T-068 built, and precisely what
 could not run here.
+
+## Self-improvement exploration (2026-08-07) — T-085 filed, two halves noted not filed
+
+Question from chat: *"how can pickle learn from itself — each implemented ticket is an
+opportunity to improve the process if the correct data is captured along the way."* The premise
+needed one correction, and the correction is the finding: **capture is not the gap.** brine
+already records dated transitions, a findings table with severity + disposition + evidence, and
+a merge line. What it cannot do is **aggregate or retrieve** any of it.
+
+**The measurements that establish that** (taken over `6-done/`, 36 tickets, all with a
+`## Review`):
+
+| signal | state |
+|---|---|
+| ≈**165** dispositioned findings | groupable by severity and disposition, and by nothing else |
+| rework rate | **9 of 36** took a blocking finding — never aggregated |
+| review yield | `Disposition summary` present in only **23 of 36** |
+| plan-defect rate | `plan amended inline` exists in **exactly one ticket** (T-049) |
+| drop corpus | 24 dropped, but ~19 are `absorbed into X` from the one 2026-07-26 epic merge — only ~5 are evidence-based drops |
+
+**The proof that retrieval, not capture, is the failure:** T-045, T-063 and T-064 each proposed
+new machinery while the data that would have settled them sat unread in this file (`:95-101`).
+
+**Filed: T-085** (`medium` / low / S-M) — four capture items batched as one theme per §5, each
+turning a prose field into a groupable one: a `class` column on the findings table, T-049's
+`plan amended inline` line promoted to a rule, `cost` actual-vs-estimate at review, and a
+provenance class on the `created … source:` line. It carries a **pre-registered criterion** in
+the T-045 style: after 8 further reviews, a class at ≥25% of non-blocking findings is promoted
+to a lint; a flat distribution (nothing above 15%) deletes the column and drops the direction.
+
+**Patched: T-065** — an explicit refinement question on whether the JSON projection includes the
+`## Review` findings table (History is already in its scope; the findings table is not), with a
+middle option to project only the closed-vocabulary columns. T-085 recorded as a second
+prospective consumer, and **deliberately not a re-grade**: the 2026-08-04 precedent refuses
+prospective demand, it was applied to decline a T-081 bump the same day it was set, and it cuts
+both ways.
+
+### Not filed, deliberately — record before re-proposing
+
+Both were in the original five-part proposal and both were cut on the same reasoning: the
+backlog holds 24 TO DO tickets with `2-ready/` empty, and filing work whose value T-085's
+measurement is supposed to establish is the inversion T-045 was dropped for.
+
+1. **Prior-art surfacing at filing** — `ticket new` printing keyword matches from `7-dropped/`,
+   non-gating, print-only. This is the *strongest* of the two: it is the only item on the list
+   with a **measured recurrence** (three instances — T-045, T-063, T-064) rather than a
+   hypothesis, and it is ~30 lines. It is held only because it is retrieval polish on a corpus
+   whose aggregation is not yet built. **File it on the third recurrence after T-085 lands, or
+   immediately if a fourth instance appears first.**
+2. **A disposition ladder for lessons** — `codified` / `ruled` / `noted` (default) / `dropped`,
+   mirroring §5's four finding dispositions, with the promotion target being *"a lesson that can
+   be checked mechanically becomes an audit check, not a paragraph"* and a **foreign-workspace
+   test** guarding `ruled` (would this help a project that is not pickle?). Held because it is a
+   rules paragraph with no mechanism, and this file's standing lesson is that this theme attracts
+   exactly that. Its one genuinely load-bearing idea — the foreign-workspace test as an
+   anti-overfitting guard on an n=36 self-hosted corpus — is worth more than the ladder around
+   it, and is recorded here for whoever next proposes generalising a self-host observation into
+   the shipped payload.
+
+### Rejected outright, so they are not re-proposed
+
+- **A metrics command, a retro command, or a dashboard.** T-045's measurement cost one `for`
+  loop. Build T-065 and let the queries be ad-hoc.
+- **Backfilling classes onto the existing 165 findings.** T-025 precedent — archaeology with no
+  consumer. All new capture is prospective only.
+- **A scheduled retro ceremony.** Run it as a pass, like the two `impact` recalibrations, not as
+  a feature.
+- **Anything touching ordering, ranking, scoring or gating.** T-045 / T-063 / T-064.
