@@ -20,11 +20,10 @@ Last updated: 2026-08-07
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | [] |
 
 ## REWORK
 
@@ -109,6 +108,7 @@ Last updated: 2026-08-07
 | T-059 | family: group tickets under an umbrella ticket id for curated pickup order | yes — merged to main (#7) |
 | T-061 | Board child-project filter buttons in the serve dashboard | yes — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed |
 | T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives |
+| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | no — publish-gated |
 
 ## DROPPED
 
