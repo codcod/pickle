@@ -13,10 +13,11 @@ Last updated: 2026-08-07
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 

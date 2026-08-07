@@ -338,3 +338,4 @@ run `pickle upgrade`.
   would game the grade, and it leads READY regardless. Complexity `low` / cost `S` hold:
   decisions 5–6 removed the two things that could have grown it
 - 2026-08-07 — TO DO → READY: plan complete: 6 confirmed decisions, 3 tasks with exact insertion points, acceptance test executed during refinement
+- 2026-08-07 — READY → IN DEVELOPMENT: picked up
