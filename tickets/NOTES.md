@@ -763,3 +763,50 @@ folding a ~25-line warning into it may cost more than it saves) left to refineme
 It survives because the 2026-08-03 pass scoped TO DO ordering to *"what gets **refined** next"*,
 and refinement-triage is precisely the activity T-083 serves — it changes what a ticket *says*,
 not how the board sorts.
+
+## Field finding (2026-08-07) — the bookkeeping guard was inert, and doctor's accepted noise hid it
+
+Observed while committing T-083's bookkeeping on `main`. The commit itself was correct (three
+paths, all under `tickets/`, on the base branch), so nothing was mis-committed — but the guard
+that was supposed to check it never ran.
+
+**The chain, all verified:**
+
+1. `pickle.toml:9` stamps `payload_version = "v0.2.2-54-g92154e5"` — the workspace was last
+   upgraded by a **local build**, 54 commits past the release.
+2. That upgrade (`fda096b`, *"refresh hook shim v1->v2"*) installed **shim v2**, whose line 9 is
+   `pickle hooks run pre-commit`.
+3. The `PATH` binary is Homebrew **0.2.2**, which has no `hooks` subcommand — it exists only in
+   the source tree (`internal/cli/cli.go:56`, `internal/cli/hooks.go`).
+4. The shim degraded exactly as designed — `pickle: unknown command "hooks"`, then
+   `bookkeeping guard skipped (hooks run exited 2)`, `exit 0`. **Inert on every commit in this
+   clone**, silently, since `fda096b`.
+
+**The part that is new, and the reason this is written down.** T-046's History already recorded
+the same 0.2.2 skew on 2026-08-06 and predicted T-068's new inert-hook warning would "fire for
+real" here. It does not fire at all. `pickle doctor` reported `0 error(s), 1 warning(s)`, and the
+single warning was the `payload version … differs` line. **T-068's probe and its `checkHooks`
+inert branch are shipped in the binary the user does not have** — so the diagnostic for "your
+`PATH` pickle is too old" is itself gated behind having a new enough `PATH` pickle. That is a
+bootstrap floor on the whole probe design, not a gap in its logic, and no change to `Probe()`
+can reach a binary that lacks `Probe()`. The remedies are shim-side (the shim *is* refreshed by
+`upgrade`, so it could version-check) or release-side. Noted on **T-071** with an explicit
+instruction not to absorb it silently.
+
+**Second-order finding, and the one with a grade attached.** `AGENTS.md` designates the
+`payload version … differs` warning as *accepted self-host noise*. On this incident it was the
+**only** thing `doctor` said, while a guard sat inert behind it. Accepted noise is not free: it
+is the channel real diagnostics arrive on. **T-046 re-graded `low` → `low-medium`** on that
+basis — an *observed* incident, so the 2026-08-04 precedent against crediting prospective demand
+does not apply (it was applied, correctly, to decline a T-081 re-grade the same day). Only one
+notch: the blast radius is this repo alone, since an ordinary workspace has an installed skill
+copy and a matching stamp and never sees the noise. Distribution is now
+**high 3 · medium 11 · low-medium 6 · low 4** (24 tickets).
+
+**Operational fix, for the record:** `just build && cp pickle "$(command -v pickle)"`, or wait
+for Homebrew to catch up. No ticket — this is a stale binary, not a defect.
+
+**The standing lesson this reinforces:** a guard that fails open is the right design, and it is
+also the design whose failures you will not notice. When one is installed, something other than
+the guard has to assert it is alive — which is precisely what T-068 built, and precisely what
+could not run here.

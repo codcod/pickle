@@ -4,7 +4,7 @@ title: make doctor and upgrade self-host-aware (skill symlink detection, payload
 project: pickle
 depends-on: []
 spawned-by: [T-044]
-impact: low
+impact: low-medium
 complexity: low
 cost: S
 ---
@@ -80,3 +80,16 @@ T-026 (upgrade refuses legal pickle.toml) — sequence, don't run concurrently.
   joins the standing self-host `doctor` noise this ticket exists to triage — decide explicitly
   whether it is in scope. `internal/hook` also gained `probe.go`, which is the *only* new
   `os/exec` site and stays behind that package
+- 2026-08-07 — **impact `low` → `low-medium`**, on an observed incident rather than argument. A
+  `docs(tickets)` commit on `main` printed ``pickle: unknown command "hooks"`` followed by
+  `bookkeeping guard skipped (hooks run exited 2)`: shim v2 (installed by the local build that
+  stamped `payload_version = v0.2.2-54-g92154e5`) calls `pickle hooks run`, and the `PATH` binary
+  is Homebrew 0.2.2, which predates the subcommand — so the guard is **inert on every commit in
+  this clone**. `pickle doctor` then reported `0 error(s), 1 warning(s)`, and that one warning was
+  the `payload version … differs` line `AGENTS.md` designates as *accepted self-host noise*. The
+  noise this ticket exists to triage is therefore not cosmetic: it is the channel a real
+  diagnostic arrives on, and it masked one. That moves the ticket off the `narrow/cosmetic` floor
+  (rules §3) — but only one notch, because the blast radius is still this repo alone: an ordinary
+  workspace has an installed skill copy and a matching stamp, so it never sees the noise.
+  **Not folded in:** the general half of the incident — a diagnostic that only ships in the binary
+  you do not have — is `PATH`-skew, not self-host, and is noted on T-071 instead

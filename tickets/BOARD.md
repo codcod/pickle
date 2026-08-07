@@ -60,13 +60,13 @@ Last updated: 2026-08-07
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | medium | low-medium | S-M | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
+| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
-| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low | low | S | [] |  |
 

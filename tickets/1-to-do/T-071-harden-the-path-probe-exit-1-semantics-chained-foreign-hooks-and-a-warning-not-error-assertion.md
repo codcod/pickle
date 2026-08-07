@@ -100,3 +100,16 @@ assertion closes it.
   was reproduced with the shipped binary: `TMPDIR` inside a pickle project on a `feat/` branch
   with staged `tickets/` makes `doctor` declare a *working* guard inert. Graded low-medium/low/S:
   one function plus its tests, and item 2 may legitimately resolve to a single docs sentence
+- 2026-08-07 — **noted, not folded in — a fourth probe-reach gap, of a kind this ticket cannot
+  fix: the diagnostic ships only in the binary you do not have.** Observed on `main` while
+  committing bookkeeping: shim v2 calls `pickle hooks run`, the `PATH` binary is Homebrew 0.2.2
+  which predates the `hooks` subcommand, and the shim degraded exactly as designed — warn, `exit
+  0`, guard inert on every commit. T-068's `checkHooks` inert-warning and `internal/hook.Probe()`
+  would both diagnose this precisely, and **neither runs**, because they live in the binary the
+  user does not have on `PATH`; `pickle doctor` (0.2.2) reported `0 error(s), 1 warning(s)` and
+  said nothing about the hook. So the probe's reach has a bootstrap floor: it cannot warn a user
+  whose `pickle` predates the probe. Recorded here because R3 is the adjacent finding, but it is
+  **not in this ticket's scope** — no change to `Probe()` reaches a binary that lacks it. The only
+  real remedies are shim-side (have the shim version-check, since *it* is refreshed by `upgrade`)
+  or release-side, and both are bigger than "harden the probe". Do not silently absorb it;
+  refinement should either scope it out explicitly or spawn it
