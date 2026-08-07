@@ -46,6 +46,7 @@ type Row struct {
 	Status string // status display name, e.g. "TO DO"
 	Child  string // child sub-group, e.g. "pickle" ("" if listed outside any sub-group)
 	ID     string // "T-001"
+	Line   string // the raw, trimmed row line as it appears — opaque text, never parsed further
 }
 
 var rowRE = regexp.MustCompile(`^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|`)
@@ -60,7 +61,14 @@ func Parse(path string) ([]Row, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ParseText(string(data)), nil
+}
 
+// ParseText is Parse's underlying scan over an in-memory string, so a freshly
+// rendered board (which never touches disk) can be parsed the same way as one
+// read from BOARD.md — the one caller today is Compare, comparing a render
+// against the file without a temp file in between.
+func ParseText(text string) []Row {
 	// Status names longest-first so a prefix name can't shadow a longer one.
 	names := make([]string, len(ticket.Statuses))
 	for i, s := range ticket.Statuses {
@@ -70,7 +78,7 @@ func Parse(path string) ([]Row, error) {
 
 	var rows []Row
 	status, child := "", ""
-	for _, line := range strings.Split(string(data), "\n") {
+	for _, line := range strings.Split(text, "\n") {
 		switch {
 		case strings.HasPrefix(line, "## "):
 			heading := strings.ToUpper(strings.TrimSpace(line[3:]))
@@ -88,12 +96,13 @@ func Parse(path string) ([]Row, error) {
 			if status == "" {
 				continue
 			}
-			if m := rowRE.FindStringSubmatch(strings.TrimSpace(line)); m != nil && m[1] != "T-NNN" {
-				rows = append(rows, Row{Status: status, Child: child, ID: m[1]})
+			trimmed := strings.TrimSpace(line)
+			if m := rowRE.FindStringSubmatch(trimmed); m != nil && m[1] != "T-NNN" {
+				rows = append(rows, Row{Status: status, Child: child, ID: m[1], Line: trimmed})
 			}
 		}
 	}
-	return rows, nil
+	return rows
 }
 
 // SectionColumns is the ordered column list for a status section's table. It
@@ -373,6 +382,75 @@ func NormalizeLastUpdated(text string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// Drift classifies how a board on disk (current) differs from a fresh render
+// (fresh) — see Compare.
+type Drift int
+
+const (
+	// DriftNone: current and fresh agree (aside from the `Last updated:` date).
+	DriftNone Drift = iota
+	// DriftLayout: every ticket row is identical (same status section, same
+	// child sub-group, same rendered cells) between current and fresh — only
+	// generated scaffolding around the rows differs: the preamble, the
+	// per-child WIP-limit lines, a `### <child>` sub-heading or its `(n/limit)`
+	// count, an empty child table, row order within a section, or plain
+	// spacing. Nothing here misinforms about which ticket is where, so this is
+	// advisory (a warning), not a rule violation.
+	DriftLayout
+	// DriftRows: at least one ticket row disagrees — added, removed, moved to
+	// a different status section or child sub-group, or its rendered cell text
+	// changed. The board is telling a reader something the tickets do not
+	// support, so this stays an error.
+	DriftRows
+)
+
+// rowKey joins a Row's section, child sub-group and rendered line into one
+// comparison key. \x00 cannot appear in a rendered cell (sanitizeCell strips
+// newlines and pipes are substituted, but a NUL byte is never produced by any
+// ticket field pickle accepts), so it cannot collide across the three parts.
+func rowKey(r Row) string {
+	return r.Status + "\x00" + r.Child + "\x00" + r.Line
+}
+
+// Compare classifies the drift between a board's current text and a fresh
+// render of the same tree (current, fresh — same argument order as a diff).
+// It never parses a cell back into ticket data (T-044 decision 9): both sides
+// are reduced to ParseText's opaque row lines, keyed by (status, child, raw
+// line) as a multiset — row *order* is deliberately not part of the key, so a
+// renderer change that only reorders identical rows (e.g. a new sort rule)
+// counts as layout drift, not row drift; see decision 4. A key present a
+// different number of times on either side (a duplicated or missing row) is
+// still caught, because the counts must match too.
+//
+// This is the one invariant `pickle board audit` enforces on BOARD.md: if
+// every rendered ticket row still matches, the file is stale only in its
+// generated layout (DriftLayout, a warning) — if any row disagrees, the file
+// is telling a reader something the tickets do not support (DriftRows, an
+// error). The distinction is about *harm*, not cause: nothing here can tell
+// a hand-edit apart from a renderer change, and it does not try to.
+func Compare(current, fresh string) Drift {
+	if NormalizeLastUpdated(current) == NormalizeLastUpdated(fresh) {
+		return DriftNone
+	}
+	curCounts := map[string]int{}
+	for _, r := range ParseText(current) {
+		curCounts[rowKey(r)]++
+	}
+	freshCounts := map[string]int{}
+	for _, r := range ParseText(fresh) {
+		freshCounts[rowKey(r)]++
+	}
+	if len(curCounts) != len(freshCounts) {
+		return DriftRows
+	}
+	for k, n := range curCounts {
+		if freshCounts[k] != n {
+			return DriftRows
+		}
+	}
+	return DriftLayout
 }
 
 // Regenerate renders the board from the ticket tree under root and writes it —

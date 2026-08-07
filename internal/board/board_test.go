@@ -420,6 +420,132 @@ const sampleBoard = `# Board
 - T-001 → T-002
 `
 
+// driftName is Drift's string form for readable test failure messages;
+// Drift has no Stringer of its own (it is an internal classification, never
+// printed as itself — audit.go translates it into the two message strings).
+func driftName(d Drift) string {
+	switch d {
+	case DriftNone:
+		return "DriftNone"
+	case DriftLayout:
+		return "DriftLayout"
+	case DriftRows:
+		return "DriftRows"
+	default:
+		return fmt.Sprintf("Drift(%d)", d)
+	}
+}
+
+func TestCompare(t *testing.T) {
+	root := t.TempDir()
+	mkTicket(t, root, "1-to-do", "T-001", "alpha", ticketBody("T-001", "Alpha", "high", created))
+	mkTicket(t, root, "1-to-do", "T-002", "beta", ticketBody("T-002", "Beta", "medium", created))
+	tickets := loadTree(t, root)
+	fresh := Render(tickets, testCfg(), "2026-07-26")
+
+	twoProjectCfg := &config.Config{Projects: []config.Project{
+		{Name: "demo", Path: ".", WIPInDevelopment: 1, WIPInReview: 1},
+		{Name: "web", Path: "web", WIPInDevelopment: 1, WIPInReview: 1},
+	}}
+	higherWIPCfg := &config.Config{Projects: []config.Project{
+		{Name: "demo", Path: ".", WIPInDevelopment: 1, WIPInReview: 2},
+	}}
+
+	// swapRows exchanges the two given (distinct, single-line) substrings —
+	// used to reorder two row lines within the same section without touching
+	// their text, so the only difference from fresh is row order.
+	swapRows := func(text, a, b string) string {
+		const placeholder = "\x00SWAP\x00"
+		text = strings.Replace(text, a, placeholder, 1)
+		text = strings.Replace(text, b, a, 1)
+		return strings.Replace(text, placeholder, b, 1)
+	}
+
+	rowAlpha := "| T-001 | Alpha | high | medium | M | [] |  |"
+	rowBeta := "| T-002 | Beta | medium | medium | M | [] |  |"
+
+	longTitle := strings.Repeat("x", 200)
+	longRoot := t.TempDir()
+	mkTicket(t, longRoot, "1-to-do", "T-005", "long", ticketBody("T-005", longTitle, "high", created))
+	longFresh := Render(loadTree(t, longRoot), testCfg(), "2026-07-26") // cell capped at render time (T-049)
+	uncappedRow := "| T-005 | " + longTitle + " | high | medium | M | [] |  |"
+	cappedRow := "| T-005 | " + strings.Repeat("x", maxCellRunes-1) + "… | high | medium | M | [] |  |"
+	if !strings.Contains(longFresh, cappedRow) {
+		t.Fatalf("fixture assumption broken: expected a capped row like %q in:\n%s", cappedRow, longFresh)
+	}
+
+	for _, tc := range []struct {
+		name          string
+		current, want string
+		wantDrift     Drift
+	}{
+		{"identical text", fresh, fresh, DriftNone},
+		{
+			name:      "date-only difference",
+			current:   strings.Replace(fresh, "Last updated: 2026-07-26", "Last updated: 2020-01-01", 1),
+			wantDrift: DriftNone,
+		},
+		{
+			name:      "a second registered child adds sections (same tickets)",
+			current:   Render(tickets, testCfg(), "2026-07-26"),
+			want:      Render(tickets, twoProjectCfg, "2026-07-26"),
+			wantDrift: DriftLayout,
+		},
+		{
+			name:      "a hand-bumped WIP limit changes only the preamble/sub-heading",
+			current:   Render(tickets, testCfg(), "2026-07-26"),
+			want:      Render(tickets, higherWIPCfg, "2026-07-26"),
+			wantDrift: DriftLayout,
+		},
+		{
+			name:      "rows reordered within a section",
+			current:   swapRows(fresh, rowAlpha, rowBeta),
+			want:      fresh,
+			wantDrift: DriftLayout,
+		},
+		{
+			name:      "a ghost row is added",
+			current:   strings.Replace(fresh, rowAlpha, rowAlpha+"\n| T-999 | ghost | low | low | S | [] |  |", 1),
+			want:      fresh,
+			wantDrift: DriftRows,
+		},
+		{
+			name:      "a row is deleted",
+			current:   strings.Replace(fresh, rowAlpha+"\n", "", 1),
+			want:      fresh,
+			wantDrift: DriftRows,
+		},
+		{
+			name:      "a cell's text changed (title)",
+			current:   strings.Replace(fresh, "| T-001 | Alpha |", "| T-001 | Alpha Renamed |", 1),
+			want:      fresh,
+			wantDrift: DriftRows,
+		},
+		{
+			name:      "a cell longer than the cap, from before the cap existed (T-049)",
+			current:   strings.Replace(longFresh, cappedRow, uncappedRow, 1),
+			want:      longFresh,
+			wantDrift: DriftRows,
+		},
+		{
+			name:      "a row moved to another status section",
+			current:   strings.Replace(fresh, rowAlpha+"\n", "", 1),
+			want:      strings.Replace(fresh, "## DONE\n\n### demo\n\n| id | title | merged |\n|---|---|---|\n", "## DONE\n\n### demo\n\n| id | title | merged |\n|---|---|---|\n"+rowAlpha+"\n", 1),
+			wantDrift: DriftRows,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			want := tc.want
+			if want == "" {
+				want = fresh
+			}
+			if got := Compare(tc.current, want); got != tc.wantDrift {
+				t.Errorf("Compare() = %s, want %s", driftName(got), driftName(tc.wantDrift))
+			}
+		})
+	}
+}
+
 func TestParse(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "BOARD.md")
@@ -433,6 +559,9 @@ func TestParse(t *testing.T) {
 	if len(rows) != 3 {
 		t.Fatalf("expected 3 rows (placeholder + dependency-chain bullets excluded), got %d: %+v", len(rows), rows)
 	}
+	// Line carries the raw row text (T-052), so it is checked separately below
+	// (non-empty and containing the id) rather than folded into want — a literal
+	// copy of sampleBoard's row text here would just restate the fixture.
 	want := map[string]Row{
 		"T-002": {Status: "IN DEVELOPMENT", Child: "pickle", ID: "T-002"},
 		"T-003": {Status: "TO DO", Child: "pickle", ID: "T-003"},
@@ -444,8 +573,11 @@ func TestParse(t *testing.T) {
 			t.Errorf("unexpected row %+v", r)
 			continue
 		}
-		if r != w {
+		if r.Status != w.Status || r.Child != w.Child || r.ID != w.ID {
 			t.Errorf("row %s = %+v, want %+v", r.ID, r, w)
+		}
+		if !strings.HasPrefix(r.Line, "| "+r.ID) {
+			t.Errorf("row %s Line = %q, want it to start with %q", r.ID, r.Line, "| "+r.ID)
 		}
 	}
 }

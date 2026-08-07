@@ -178,17 +178,32 @@ func TestAudit(t *testing.T) {
 			mk(t, root, "tickets/1-to-do/RICK-001-foo.md", ticketFile("RICK-001", "pickle", "[]", "high", "TO DO"))
 			renderBoard(t, root)
 		}, wantErr: true, substr: `id prefix "RICK" does not match project "pickle"`},
-		// The board is a generated artifact: the one board invariant is that it
-		// matches a fresh render (D6). Any hand-edit — a stray row, a moved row, a
-		// deleted section — collapses into the same single staleness error.
+		// The board is a generated artifact (T-044 D6). Two tiers (T-052): a row
+		// disagreeing with the ticket files — a stray row, a moved row, a deleted
+		// section — is an error; a fresh render's *rows* all matching, with only
+		// generated scaffolding stale, is a warning.
 		{name: "stale board (hand-edited row)", mutate: func(t *testing.T, root string) {
 			b, _ := os.ReadFile(filepath.Join(root, "tickets/BOARD.md"))
 			mk(t, root, "tickets/BOARD.md", strings.Replace(string(b),
 				"| T-001 |", "| T-999 | ghost | low | low | S | [] |\n| T-001 |", 1))
-		}, wantErr: true, substr: "stale or hand-edited"},
+		}, wantErr: true, substr: "BOARD.md does not match the ticket files"},
 		{name: "stale board (ticket changed, board not regenerated)", mutate: func(t *testing.T, root string) {
 			mk(t, root, "tickets/2-ready/T-002-bar.md", ticketFile("T-002", "pickle", "[]", "high", "READY"))
-		}, wantErr: true, substr: "stale or hand-edited"},
+		}, wantErr: true, substr: "BOARD.md does not match the ticket files"},
+		// Registering a second child changes the board's generated shape (a new
+		// `### <child>` section + WIP line per status) without any existing row
+		// disagreeing — exactly the T-052 field report (project add, then upgrade).
+		{name: "stale board (layout only — new registered child, no tickets touched)", mutate: func(t *testing.T, root string) {
+			cfg := loadCfg(t, root)
+			if err := cfg.AddProject(config.Project{Name: "web", Path: ".", WIPInDevelopment: 1, WIPInReview: 1}); err != nil {
+				t.Fatal(err)
+			}
+			if err := cfg.Save(""); err != nil {
+				t.Fatal(err)
+			}
+			// BOARD.md is deliberately left as writeGood rendered it (single child) —
+			// the new project's own section is what's missing, not any ticket row.
+		}, wantWarn: true, warnSubstr: "BOARD.md is out of date in its generated layout only"},
 		{name: "missing board", mutate: func(t *testing.T, root string) {
 			if err := os.Remove(filepath.Join(root, "tickets/BOARD.md")); err != nil {
 				t.Fatal(err)

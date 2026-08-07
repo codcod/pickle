@@ -165,7 +165,15 @@ Manages the registry of connected child-projects in `pickle.toml` (see
 comments in the file do not survive that re-render (see <<configuration>>). Both
 also re-inject the `AGENTS.md`/`CLAUDE.md` marker block immediately, the same
 way `install` and `upgrade` do (see below) — so the agent instructions never
-describe a registry state that no longer matches `pickle.toml`.
+describe a registry state that no longer matches `pickle.toml`. Both also
+*regenerate `tickets/BOARD.md`* immediately, printing `+ tickets/BOARD.md`: the
+registered-child list is itself a board-rendering input (every status heading
+gains or loses a per-child `### <child>` section and WIP line), so without this
+the very next `pickle board audit` or `pickle upgrade` would report the board's
+layout stale for a registry change that just happened (<<cmd-board-audit>>). A
+failed regeneration (a ticket file with a load problem) never fails the
+registration, already saved by then — it prints a `note:` pointing at
+`pickle board sync` instead.
 
 When `<path>` is anything other than the repository root itself, `add` also
 checks whether *this* repository would still stage that nested child whole —
@@ -199,7 +207,9 @@ followed and overwritten.
 
 Idempotent: re-running at the current version still refreshes the payload and
 marker block (so drift is corrected) and reports `already at <version>`
-instead of failing. A post-upgrade `board audit` self-check must pass.
+instead of failing. A post-upgrade `board audit` self-check must find *no
+errors* — a warning (e.g. the board's generated layout being stale, see
+<<cmd-board-audit>>) is printed but does not fail the upgrade.
 
 Upgrade will not cost you hand-written content in `pickle.toml`: stamping a
 new version rewrites *only* the `payload_version` line, leaves every other
@@ -501,9 +511,20 @@ summary) when any invariant fails:
   and then silently self-blocks at pickup, since it can never reach
   `6-done/`), and every `spawned-by:` target exists without a ticket citing
   itself — lineage is checked for existence but *never gates* anything;
-* `BOARD.md` matches a fresh render of the ticket files — the board is a
-  *generated artifact*, so any hand-edit or staleness is exactly one error:
-  `BOARD.md is stale or hand-edited — run pickle board sync`;
+* `BOARD.md`'s ticket rows match a fresh render of the ticket files — the
+  board is a *generated artifact*, checked in two tiers: if every rendered
+  ticket row (its status section, child sub-group, and cell text) still
+  matches, but the file's *generated layout* around those rows is out of
+  date — the preamble, a per-child WIP-limit line, a `### <child>`
+  sub-heading or its `(n/limit)` count, an empty child table, row order —
+  that is a *warning*: `BOARD.md is out of date in its generated layout only
+  (every ticket row matches) — run pickle board sync`. If any row itself
+  disagrees — added, removed, moved to another section or child, or its cell
+  text changed — that is an *error*: `BOARD.md does not match the ticket
+  files (rows differ) — run pickle board sync`. Both name the same fix; only
+  the severity differs, because nothing can tell a hand-edit apart from a
+  routine consequence of a registry or renderer change — only whether the
+  file still tells the truth about the tickets;
 * *per-child* WIP limits (`wip_in_development`/`wip_in_review`) hold;
 * each ticket's last History transition matches its directory;
 * nothing is in `3-in-development/` with a dependency not yet in `6-done/`
@@ -529,9 +550,11 @@ existed therefore report `frontmatter missing "spawned-by"` until you backfill
 them — add `spawned-by: []` under each ticket's `depends-on:` line (a one-line
 mechanical edit per file).
 
-The 120-rune cell cap (see <<cmd-board-sync>>) has the same shape: a board
-rendered before the cap existed that holds a longer cell reports `BOARD.md is
-stale or hand-edited` until you run `pickle board sync` once.
+The 120-rune cell cap (see <<cmd-board-sync>>) has the same shape, and stays
+an *error*, not a warning: a board rendered before the cap existed holds a
+cell longer than a fresh render would produce, which is a row disagreeing —
+`BOARD.md does not match the ticket files (rows differ)` — until you run
+`pickle board sync` once.
 
 The status-directory check has the same upgrade-visible shape too: a project
 cloned before its `.gitkeep` files were committed (git does not track empty
@@ -572,8 +595,8 @@ Everything on the board is derived:
   a title cannot corrupt the table and an over-long value cannot make a whole
   status table unreadable. The cap is a *rendering* bound: the ticket file keeps
   the full text, and it stays the source of truth. If your board has a longer
-  cell from before the cap existed, `board audit` reports the board stale until
-  you run `pickle board sync` once.
+  cell from before the cap existed, `board audit` reports it as a row-level
+  error (<<cmd-board-audit>>) until you run `pickle board sync` once.
 
 A board differing from a fresh render only in the `Last updated:` date is in
 sync — no write. `--dry-run` reports the drift, writes nothing, and *exits

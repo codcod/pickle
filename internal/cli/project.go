@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/ticket"
@@ -103,8 +104,27 @@ func runProjectAdd(args []string) int {
 	if err := refreshMarkers(cfg); err != nil {
 		return errf("%v", err)
 	}
+	regenerateBoard(cfg)
 	noteIfStageable(cfg.Root(), p)
 	return exitOK
+}
+
+// regenerateBoard re-renders tickets/BOARD.md from cfg and the ticket tree,
+// printing the same `  + <path>` idiom install/upgrade use. The registered
+// child-project list is a board.Render input (each status section gains or
+// loses a `### <child>` sub-group and WIP line per child), so `project add`
+// and `project remove` refresh the board the same moment they refresh the
+// marker block via refreshMarkers — both are derived from the one registry
+// write. A failure here (tickets with load problems) never fails the
+// registration, which is already saved: it prints a note and leaves
+// `pickle board sync` as the next step, the same restraint refreshMarkers
+// documents for its own failure mode.
+func regenerateBoard(cfg *config.Config) {
+	if err := board.Regenerate(cfg.Root(), cfg); err != nil {
+		fmt.Printf("note: could not regenerate the board (%v) — run pickle board sync\n", err)
+		return
+	}
+	fmt.Println("  + tickets/BOARD.md")
 }
 
 // noteIfStageable prints, as a plain `note:` line (never an error —
@@ -194,6 +214,7 @@ func runProjectRemove(args []string) int {
 	if err := refreshMarkers(cfg); err != nil {
 		return errf("%v", err)
 	}
+	regenerateBoard(cfg)
 	return exitOK
 }
 
