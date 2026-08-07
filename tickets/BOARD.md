@@ -57,6 +57,7 @@ Last updated: 2026-08-07
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
 | T-074 | rename the installed skill directory to brine, with upgrade migration and dual-name doctor | medium | high | L | [T-073] |  |
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | medium | medium | M | [T-080] |  |
+| T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |

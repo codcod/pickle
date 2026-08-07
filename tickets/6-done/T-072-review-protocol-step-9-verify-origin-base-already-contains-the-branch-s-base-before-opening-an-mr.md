@@ -108,7 +108,8 @@ session had no safety net at all, and it argues for the operator habit in item 6
    destination); it gets the ref and remote SHA on stdin, so it can compute the range exactly
    rather than guessing; and it needs the same fail-open semantics as the v2 `pre-commit` shim.
    A `pickle board audit`-style publish check (`pickle publish-check`?) remains the other shape.
-   Either is materially bigger than a protocol line and needs its own ticket: refinement still
+   Either is materially bigger than a protocol line and needs its own ticket — **filed as T-082**
+   (`pre-push` shape; the `publish-check` alternative is an open question there): refinement still
    **scopes this one to the prose**, but should now record the mechanical follow-up as
    **recommended** rather than merely "worth considering" — four occurrences is the promotion
    test answering itself.
@@ -419,3 +420,6 @@ scoped fix, then a scoped re-review of F1 only. 0 non-blocking findings.
 - 2026-08-07 — IN REVIEW → REWORK: 1 blocking (F1): TEMPLATE.md restates the pre-fix publish sequence at 2 sites, the seed text for every future ticket
 - 2026-08-07 — REWORK → IN REVIEW: F1 fixed: TEMPLATE.md carries the base check at both publish sites
 - 2026-08-07 — IN REVIEW → DONE: PASS: F1 blocking (TEMPLATE.md coverage gap) fixed and re-verified; 0 non-blocking; impact sweep found nothing to patch
+- 2026-08-07 — mechanical follow-up filed as **T-082** (`pre-push` hook refusing a feature-branch
+  push whose range carries `tickets/` paths), per this ticket's Description item 4. Lineage only;
+  T-072's prose stands on its own and T-082 does not gate it
