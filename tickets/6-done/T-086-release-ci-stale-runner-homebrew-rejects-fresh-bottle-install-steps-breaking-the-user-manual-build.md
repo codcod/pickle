@@ -104,7 +104,46 @@ publish only after explicit user approval (child_publish_gated).
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit (step 4a) — no user-facing surface; `RELEASING.md` unchanged and still accurate
+- [x] Docs-readability pass (step 4b) — conscious skip: no `.adoc`/`.md` prose changed
+- [x] Findings recorded below (step 5)
+- [x] Ticket moved (step 6)
+- [x] Other references updated (step 7) — none reference T-086
+- [x] Impact sweep (step 8) — no ticket in `1-to-do/`/`2-ready/` depends on or references T-086
+- [x] Summary + commit message presented for approval (step 9)
+
+**Implementation audit.** Task 1 done exactly as planned: `.github/workflows/release.yml`'s
+"Build user manual (PDF + EPUB)" step gained one `brew update --quiet` line, right after the
+`brew shellenv` eval and before the existing 3-attempt install retry loop, with a comment
+explaining why it is a different fix from that loop's transient-broken-pipe handling.
+Acceptance test re-run on `feat/T-086-stale-runner-homebrew-install-steps` (rebased on this
+ticket's own bookkeeping commit, `main` at `1cb0bf9`):
+1. YAML valid (`ruby -ryaml -e "YAML.load_file(...)"`) — **met**.
+2. `just build`, `just test`, `just lint`, `just docs-check` all clean — **met**.
+3. Live re-run of the `release` workflow against the stale-runner failure mode — **deferred**:
+   this step requires pushing the branch (`workflow_dispatch` needs the workflow file on a
+   remote ref), which is gated behind the project's publish-approval policy
+   (`child_publish_gated = true`). Recorded as a **non-blocking** finding below rather than
+   silently skipped, since it is real evidence this ticket cannot produce itself.
+
+**Quality/consistency audit.** The fix is minimal and additive (11 lines, one file, no
+behaviour change to the retry loop, the `continue-on-error` soft-fail contract, or the quiet
+env vars). The new comment correctly distinguishes this failure mode (a Homebrew-version /
+install-step-DSL mismatch) from the pre-existing one the retry loop targets (a transient
+broken pipe), so a future reader is not tempted to fold them into one mechanism. No
+docs/prose touched, so no consistency risk there.
+
+| id | severity | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|
+| F1 | non-blocking | note-and-closed | Live confirmation that `brew update --quiet` actually clears the observed `unknown install step: remove` failure can only happen inside the real GH Actions runner image, which this review cannot reach without publish approval. | acceptance test item 3 above | After the human approves publishing, re-run `gh workflow run release.yml --ref feat/T-086-stale-runner-homebrew-install-steps -f tag=v0.3.0` once the branch is pushed, and confirm the manual attaches to the existing `v0.3.0` release before merging — cheap, reversible, and backfills the asset `v0.3.0` shipped without. |
+
+**Disposition summary:** 1 non-blocking finding, note-and-closed (F1). 0 blocking. No ticket
+spawned — F1 is a verification step for this ticket itself, not a new defect.
+
+**Verdict: PASS.** No blocking findings — T-086 proceeds to `tickets/6-done/`.
 
 ## History
 
@@ -112,3 +151,4 @@ publish only after explicit user approval (child_publish_gated).
 - 2026-08-08 — TO DO → READY: plan complete: root-caused, single-line fix, acceptance test defined
 - 2026-08-08 — READY → IN DEVELOPMENT: picked up
 - 2026-08-08 — IN DEVELOPMENT → IN REVIEW: acceptance green: YAML valid, build/test/lint/docs-check clean; live CI verification deferred to post-approval re-run (requires pushing the branch)
+- 2026-08-08 — IN REVIEW → DONE: review PASS: 0 blocking, 1 non-blocking (F1, note-and-closed — live CI confirmation deferred to post-approval re-run)

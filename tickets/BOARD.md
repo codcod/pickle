@@ -20,11 +20,10 @@ Last updated: 2026-08-08
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | [] |
 
 ## REWORK
 
@@ -114,6 +113,7 @@ Last updated: 2026-08-08
 | T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | yes — MERGED: feat/T-069-config-writers-safe → main (152fea8, #17, squash), user-approved |
 | T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | yes — merged to main (PR #19, 236d859), squashed |
 | T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | yes — MERGED: feat/T-073-introduce-brine-name (squashed) → main (7b33876, #18), user-approved; branch deleted |
+| T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | no — publish-gated |
 
 ## DROPPED
 
