@@ -20,8 +20,8 @@ only one command rewrites a file you already own:
   so it only happens to a hand-edited file — and a file that does not parse
   to begin with (for example, a duplicated key). And because the editor is a
   bounded scanner rather than a full TOML parser, a sufficiently exotic file
-  can still defeat it (a multi-line string that escapes its own closing
-  delimiter, say). None of that can cost you content: the result is always
+  can still defeat it (an inline table `{ … }` written across several lines,
+  say). None of that can cost you content: the result is always
   parsed and compared against the original before anything is written, so
   whenever the editor cannot do the job `upgrade` *refuses and changes
   nothing* and tells you to set the version by hand, naming the offending

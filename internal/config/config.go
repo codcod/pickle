@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/BurntSushi/toml"
 )
@@ -173,8 +174,20 @@ func (c *Config) applyDefaults(md toml.MetaData) {
 	}
 }
 
-// Validate checks the invariants (unique non-empty names, resolvable paths, WIP >= 1).
+// Validate checks the invariants (unique non-empty names, resolvable paths, WIP >= 1,
+// and that every string field is valid UTF-8). The UTF-8 check exists because Render
+// has to quote every one of these fields as a TOML string: a value that isn't valid
+// UTF-8 either fails to round-trip at all or round-trips as something silently
+// different, and Validate is the one place that can refuse it before it ever reaches
+// the file (AddProject calls this after appending, so `pickle project add` cannot
+// write a value that cannot come back out the way it went in).
 func (c *Config) Validate() error {
+	if !utf8.ValidString(c.PayloadVersion) {
+		return errors.New("pickle.toml: payload_version is not valid UTF-8")
+	}
+	if !utf8.ValidString(c.ReviewAddendum) {
+		return errors.New("pickle.toml: review_addendum is not valid UTF-8")
+	}
 	if len(c.Projects) == 0 {
 		return errors.New("pickle.toml: at least one [[project]] (child-project) is required")
 	}
@@ -187,6 +200,7 @@ func (c *Config) Validate() error {
 	root := c.Root()
 	for i := range c.Projects {
 		p := &c.Projects[i]
+		badField := invalidUTF8Field(p)
 		switch {
 		case strings.TrimSpace(p.Name) == "":
 			return fmt.Errorf("pickle.toml: [[project]] #%d has an empty name", i+1)
@@ -198,6 +212,8 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("pickle.toml: project %q ticket_prefix %q is illegal (want %s)", p.Name, p.Prefix(), ticketPrefixRE)
 		case p.WIPInDevelopment < 1 || p.WIPInReview < 1:
 			return fmt.Errorf("pickle.toml: project %q WIP limits must be >= 1", p.Name)
+		case badField != "":
+			return fmt.Errorf("pickle.toml: project %q field %s is not valid UTF-8", p.Name, badField)
 		}
 		if pfx := p.Prefix(); pfx != DefaultTicketPrefix {
 			if seenPrefix[pfx] {
@@ -226,7 +242,32 @@ func (c *Config) Project(name string) (*Project, bool) {
 	return nil, false
 }
 
-// AddProject appends a child after applying defaults; errors on duplicate/empty name.
+// invalidUTF8Field returns the name of the first field of p that is not valid UTF-8,
+// or "" if every field is. Render quotes each of these as a TOML string, so this is
+// the set Validate has to check.
+func invalidUTF8Field(p *Project) string {
+	for _, f := range []struct{ name, value string }{
+		{"name", p.Name},
+		{"path", p.Path},
+		{"build", p.Build},
+		{"test", p.Test},
+		{"lint", p.Lint},
+		{"docs", p.Docs},
+		{"ticket_prefix", p.TicketPrefix},
+		{"branch_prefix", p.BranchPrefix},
+		{"review_addendum", p.ReviewAddendum},
+	} {
+		if !utf8.ValidString(f.value) {
+			return f.name
+		}
+	}
+	return ""
+}
+
+// AddProject appends a child after applying defaults; errors on duplicate/empty name,
+// or if the resulting config would fail Validate (e.g. a field that is not valid
+// UTF-8, or an illegal ticket_prefix) — the append is rolled back in that case, so an
+// invalid value is never left in c.Projects for a caller to Save.
 func (c *Config) AddProject(p Project) error {
 	if strings.TrimSpace(p.Name) == "" {
 		return errors.New("project name is required")
@@ -247,6 +288,10 @@ func (c *Config) AddProject(p Project) error {
 		p.WIPInReview = DefaultWIPInReview
 	}
 	c.Projects = append(c.Projects, p)
+	if err := c.Validate(); err != nil {
+		c.Projects = c.Projects[:len(c.Projects)-1]
+		return err
+	}
 	return nil
 }
 
@@ -261,6 +306,45 @@ func (c *Config) RemoveProject(name string) error {
 	return fmt.Errorf("project %q is not registered", name)
 }
 
+// tomlQuote renders s as a TOML basic string. Go's %q is the wrong tool for this:
+// it escapes a control character or an invalid-UTF-8 byte the Go way (\a, \v,
+// \xNN), and TOML has no such escapes — \a and \v don't exist at any TOML version,
+// and \xNN is a *decoder* extension (TOML 1.1, github.com/BurntSushi/toml v1.6.0)
+// meant for a value that was already a legal escape, not a way to mask a byte that
+// was never valid UTF-8 to begin with. tomlQuote instead uses TOML's own short
+// escapes where one exists and \uXXXX otherwise, and assumes s is already valid
+// UTF-8 — Validate rejects anything else before it can reach here.
+func tomlQuote(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '"':
+			b.WriteString(`\"`)
+		case '\b':
+			b.WriteString(`\b`)
+		case '\t':
+			b.WriteString(`\t`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\f':
+			b.WriteString(`\f`)
+		case '\r':
+			b.WriteString(`\r`)
+		default:
+			if r < 0x20 || r == 0x7f {
+				fmt.Fprintf(&b, `\u%04x`, r)
+			} else {
+				b.WriteRune(r)
+			}
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
 // Render produces the canonical pickle.toml text.
 func (c *Config) Render() string {
 	var b strings.Builder
@@ -270,36 +354,37 @@ func (c *Config) Render() string {
 	b.WriteString("# line comes back as payload_version = \"value\" (any inline comment kept), so\n")
 	b.WriteString("# its own alignment and quoting style do not. `pickle project add|remove`\n")
 	b.WriteString("# re-render this file to the canonical layout below and drop comments entirely.\n\n")
-	fmt.Fprintf(&b, "payload_version = %q\n", c.PayloadVersion)
+	fmt.Fprintf(&b, "payload_version = %s\n", tomlQuote(c.PayloadVersion))
 	if c.ReviewAddendum != "" {
-		fmt.Fprintf(&b, "review_addendum = %q\n", c.ReviewAddendum)
+		fmt.Fprintf(&b, "review_addendum = %s\n", tomlQuote(c.ReviewAddendum))
 	}
 	b.WriteString("\n[commit]\n")
 	fmt.Fprintf(&b, "overarching_auto = %t\n", c.Commit.OverarchingAuto)
 	fmt.Fprintf(&b, "child_publish_gated = %t\n", c.Commit.ChildPublishGated)
 	for _, p := range c.Projects {
 		b.WriteString("\n[[project]]\n")
-		fmt.Fprintf(&b, "name = %q\n", p.Name)
-		fmt.Fprintf(&b, "path = %q\n", p.Path)
+		fmt.Fprintf(&b, "name = %s\n", tomlQuote(p.Name))
+		fmt.Fprintf(&b, "path = %s\n", tomlQuote(p.Path))
 		for _, kv := range []struct {
 			k, v string
 		}{{"build", p.Build}, {"test", p.Test}, {"lint", p.Lint}, {"docs", p.Docs}} {
 			if kv.v != "" {
-				fmt.Fprintf(&b, "%s = %q\n", kv.k, kv.v)
+				fmt.Fprintf(&b, "%s = %s\n", kv.k, tomlQuote(kv.v))
 			}
 		}
-		fmt.Fprintf(&b, "ticket_prefix = %q\n", p.Prefix())
-		fmt.Fprintf(&b, "branch_prefix = %q\n", p.BranchPrefix)
+		fmt.Fprintf(&b, "ticket_prefix = %s\n", tomlQuote(p.Prefix()))
+		fmt.Fprintf(&b, "branch_prefix = %s\n", tomlQuote(p.BranchPrefix))
 		fmt.Fprintf(&b, "wip_in_development = %d\n", p.WIPInDevelopment)
 		fmt.Fprintf(&b, "wip_in_review = %d\n", p.WIPInReview)
 		if p.ReviewAddendum != "" {
-			fmt.Fprintf(&b, "review_addendum = %q\n", p.ReviewAddendum)
+			fmt.Fprintf(&b, "review_addendum = %s\n", tomlQuote(p.ReviewAddendum))
 		}
 	}
 	return b.String()
 }
 
-// Save writes the canonical render to path (or the loaded path if empty).
+// Save writes the canonical render to path (or the loaded path if empty), atomically
+// and preserving the file's existing permission bits (see writePreservingMode).
 //
 // This drops comments and any hand-tuned layout, so it is only for the commands
 // that change the file's structure (project add|remove) and for creating the
@@ -312,7 +397,7 @@ func (c *Config) Save(path string) error {
 	if path == "" {
 		return errors.New("no path to save config to")
 	}
-	return os.WriteFile(path, []byte(c.Render()), 0o644)
+	return writePreservingMode(path, []byte(c.Render()))
 }
 
 const payloadVersionKey = "payload_version"
@@ -503,11 +588,44 @@ func advance(line string, st *scanState) {
 	i, n := 0, len(line)
 	for i < n {
 		if st.multilineDelim != "" {
-			idx := strings.Index(line[i:], st.multilineDelim)
-			if idx < 0 {
+			if st.multilineDelim == "'''" {
+				// A literal string has no escapes at all, so the delimiter can
+				// never be masked by one: a plain substring search is exact.
+				idx := strings.Index(line[i:], st.multilineDelim)
+				if idx < 0 {
+					return // the rest of the line is string content
+				}
+				i += idx + len(st.multilineDelim)
+				st.multilineDelim = ""
+				continue
+			}
+			// A basic multi-line string does have escapes, so `\` + the next
+			// byte must be skipped before testing for the closing delimiter —
+			// otherwise an escaped `"` inside the string (e.g. `\"""`, an
+			// escaped quote followed by two more) is misread as opening the
+			// three-quote delimiter one byte early. A `\` as the line's very
+			// last byte is a line-continuation, not an escape (there is no next
+			// byte on this line to pair it with), so it does not consume
+			// anything here; an *escaped* backslash immediately before the
+			// delimiter (`\\"""`) is consumed as its own pair first and so
+			// still lets the real delimiter close the string.
+			j := i
+			closed := false
+			for j < n {
+				if line[j] == '\\' && j+1 < n {
+					j += 2
+					continue
+				}
+				if strings.HasPrefix(line[j:], st.multilineDelim) {
+					closed = true
+					break
+				}
+				j++
+			}
+			if !closed {
 				return // the rest of the line is string content
 			}
-			i += idx + len(st.multilineDelim)
+			i = j + len(st.multilineDelim)
 			st.multilineDelim = ""
 			continue
 		}
@@ -632,7 +750,7 @@ func rewriteFoundKey(lines []string, i int, raw, line string, indent, eqOffset i
 		return "", fmt.Errorf("line %d: payload_version's value is an array; rewriting it as a single line could leave the file unparseable — set it by hand", i+1)
 	}
 	end := valueEnd(line, start)
-	lines[i] = line[:indent] + payloadVersionKey + " = " + fmt.Sprintf("%q", version) + line[end:]
+	lines[i] = line[:indent] + payloadVersionKey + " = " + tomlQuote(version) + line[end:]
 	if raw != line {
 		lines[i] += "\r"
 	}
@@ -646,8 +764,14 @@ func insertPayloadVersion(lines []string, insertAt int, version string) (string,
 	for insertAt > 0 && strings.TrimSpace(lines[insertAt-1]) == "" {
 		insertAt--
 	}
-	entry := payloadVersionKey + " = " + fmt.Sprintf("%q", version)
-	if usesCRLF(lines) {
+	entry := payloadVersionKey + " = " + tomlQuote(version)
+	// Only match the file's CRLF style when another line actually follows the
+	// insert point: appending \r to what becomes the file's last line adds a
+	// bare trailing \r with no \n after it, which the parse-back gate then
+	// refuses as unparseable (a file whose last line was never newline-
+	// terminated to begin with, e.g. "\r\n#", still has nothing to be
+	// consistent with at that point).
+	if usesCRLF(lines) && insertAt < len(lines) {
 		entry += "\r" // match the file rather than leaving one lone LF line
 	}
 	lines = append(lines[:insertAt], append([]string{entry}, lines[insertAt:]...)...)
@@ -695,7 +819,9 @@ func valueEnd(line string, i int) int {
 	return len(line)
 }
 
-// writePreservingMode replaces path atomically, keeping its current permissions.
+// writePreservingMode replaces an existing path atomically, keeping its
+// current permissions; creating a new path instead respects the umask, the
+// same as os.WriteFile (see the note below on why the two cases differ).
 //
 // A symlinked config is followed rather than replaced: renaming onto the link
 // would turn it into a regular file and leave the real target stale, which is
@@ -706,14 +832,44 @@ func valueEnd(line string, i int) int {
 // the throwaway temp file. The three shapes measured in practice: an
 // unwritable parent directory (CreateTemp), and a file the rename cannot
 // replace under either an ACL deny-delete or `chflags uchg` (Rename).
+//
+// The contract (T-069 D3), stated once so it does not have to be re-found: this
+// function preserves the permission bits and follows symlinks; it fsyncs the
+// temp file before renaming, so the failure window narrows from "rename is
+// atomic" to "rename is atomic *and* crash-durable" — without the fsync, a
+// crash between write and the filesystem's own writeback could still leave a
+// zero-length file behind the rename. It does **not** preserve: hardlink
+// identity (`os.Rename` severs a hardlink — `nlink` drops from 2 to 1, and the
+// other name is stranded at the old contents); ownership (the temp file
+// inherits the *directory's* group, not the original file's); extended
+// attributes (Finder tags, Spotlight comments, quarantine state, and any other
+// xattr); or mode bits outside `Perm()` (setuid/setgid/sticky, e.g. `2644` →
+// `0644`). It also does not refuse a read-only (`0444`) file — create-temp +
+// rename needs only a writable directory, where `os.WriteFile` used to fail on
+// the file's own permissions. Every one of these was verified real during
+// T-018's re-review; none is reachable through normal use, and the fix cost is
+// disproportionate to the risk, so they stay declined rather than silently
+// re-litigated by a future reader.
+//
+// When path does not exist yet, there is no mode to preserve and nothing
+// there yet for a partial write to corrupt, so this takes the plain,
+// umask-respecting path instead (T-069 rework, finding F1): os.Chmod is not
+// umask-filtered the way os.WriteFile's own perm argument is, so hard-coding
+// a mode for the create-temp+rename path would make file *creation* ignore
+// the umask — the exact defect class this function exists to close on
+// existing files, reintroduced at creation time.
 func writePreservingMode(path string, data []byte) error {
 	if resolved, err := filepath.EvalSymlinks(path); err == nil {
 		path = resolved
 	}
-	mode := os.FileMode(0o644)
-	if fi, err := os.Stat(path); err == nil {
-		mode = fi.Mode().Perm()
+	fi, statErr := os.Stat(path)
+	if statErr != nil {
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			return fmt.Errorf("%s: could not create the file (is the directory writable?): %w", path, err)
+		}
+		return nil
 	}
+	mode := fi.Mode().Perm()
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".*")
 	if err != nil {
@@ -723,6 +879,10 @@ func writePreservingMode(path string, data []byte) error {
 	name := tmp.Name()
 	defer func() { _ = os.Remove(name) }() // no-op once the rename succeeds
 	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("%s: writing the update: %w", path, err)
+	}
+	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("%s: writing the update: %w", path, err)
 	}

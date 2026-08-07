@@ -1,11 +1,11 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -210,6 +210,149 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+// TestRenderEscaping pins tomlQuote's round-trip table against the exact
+// shapes T-069 measured %q getting wrong: control bytes with a TOML short
+// escape, ones without (BEL, VT), a DEL byte, and ordinary multibyte text.
+// Each must render as a legal TOML basic string that decodes back to the
+// original Go string, byte for byte.
+func TestRenderEscaping(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+	}{
+		{"control byte 0x01", "a\x01b"},
+		{"tab", "a\tb"},
+		{"newline", "a\nb"},
+		{"multibyte text", "h\u00e9llo\u2192"},
+		{"NEL u0085", "a\u0085b"},
+		{"DEL 0x7f", "a\x7fb"},
+		{"BEL 0x07 (no TOML equivalent; %q emitted \\a)", "a\x07b"},
+		{"VT 0x0b (no TOML equivalent; %q emitted \\v)", "a\x0bb"},
+		{"backspace", "a\bb"},
+		{"form feed", "a\fb"},
+		{"carriage return", "a\rb"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			quoted := tomlQuote(c.value)
+			var probe map[string]any
+			if _, err := toml.Decode("v = "+quoted+"\n", &probe); err != nil {
+				t.Fatalf("tomlQuote(%q) = %s, which does not parse as TOML: %v", c.value, quoted, err)
+			}
+			got, _ := probe["v"].(string)
+			if got != c.value {
+				t.Errorf("round-trip mismatch: got %q, want %q (rendered %s)", got, c.value, quoted)
+			}
+		})
+	}
+}
+
+// TestSaveEscapingRoundTrip exercises the same shapes through the full
+// AddProject -> Save -> Load path (a project name carrying a tab and a BEL
+// byte), not just tomlQuote in isolation.
+func TestSaveEscapingRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	name := "a\tb\x07c" // tab + BEL: %q's \a rendering of the BEL byte used to be invalid TOML.
+	if err := c.AddProject(Project{Name: name, Path: "sub"}); err != nil {
+		t.Fatalf("AddProject: %v", err)
+	}
+	if err := c.Save(""); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	c2, err := Load(path)
+	if err != nil {
+		t.Fatalf("reload after escaping round-trip: %v", err)
+	}
+	if _, ok := c2.Project(name); !ok {
+		t.Errorf("project name did not round-trip through Save/Load; got %+v", c2.Projects)
+	}
+}
+
+// TestSaveFollowsSymlink is Save's counterpart to
+// TestSetPayloadVersionInPlaceFollowsSymlink: since T-069, Save also goes
+// through writePreservingMode, so it must not turn a symlinked pickle.toml
+// into a regular file either.
+func TestSaveFollowsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	realDir := filepath.Join(dir, "real")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	target := writeCfg(t, realDir, oneProject)
+	link := filepath.Join(dir, FileName)
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	c, err := Load(link)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c.PayloadVersion = "7.7.7"
+	if err := c.Save(""); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	fi, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		t.Error("the symlink was replaced by a regular file")
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), `payload_version = "7.7.7"`) {
+		t.Errorf("the symlink target kept the old version:\n%s", got)
+	}
+}
+
+// TestSaveUnwritableParentNamesTheRealFile is Save's counterpart to
+// TestSetPayloadVersionInPlaceUnwritableParentNamesTheRealFile: it now shares
+// writePreservingMode, so it must report the same actionable, real-path-first
+// failure (T-026 D5) rather than os.WriteFile's bare errno.
+func TestSaveUnwritableParentNamesTheRealFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: directory permissions are not enforced")
+	}
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) // let t.TempDir clean up
+
+	err = c.Save("")
+	if err == nil {
+		t.Fatal("expected a failure writing into a read-only directory")
+	}
+	msg := err.Error()
+	wantPath := path
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		wantPath = resolved
+	}
+	if !strings.HasPrefix(msg, wantPath+":") {
+		t.Errorf("error does not lead with the real file %q: %v", wantPath, err)
+	}
+	if !strings.Contains(msg, "writable") {
+		t.Errorf("error gives no actionable cause: %v", err)
+	}
+}
+
 func TestFind(t *testing.T) {
 	dir := t.TempDir()
 	writeCfg(t, dir, oneProject)
@@ -256,6 +399,58 @@ func TestAddRemove(t *testing.T) {
 	}
 	if _, ok := c.Project("web"); ok {
 		t.Error("web still present after remove")
+	}
+}
+
+// TestValidateRejectsInvalidUTF8AtTopLevel covers the same UTF-8 check for the
+// two top-level string fields Render also quotes, alongside the per-project
+// coverage in TestAddProjectRejectsInvalidUTF8.
+func TestValidateRejectsInvalidUTF8AtTopLevel(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	base, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	c := *base
+	c.PayloadVersion = "u\xffb"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "payload_version") {
+		t.Errorf("payload_version: Validate() = %v, want a payload_version UTF-8 error", err)
+	}
+
+	c = *base
+	c.ReviewAddendum = "u\xffb"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "review_addendum") {
+		t.Errorf("review_addendum: Validate() = %v, want a review_addendum UTF-8 error", err)
+	}
+}
+
+// TestAddProjectRejectsInvalidUTF8 pins the ticket's second reachability repro
+// (`pk project add $'u\xffb' sub`): a name that is not valid UTF-8 used to be
+// written to pickle.toml as-is and silently mutate on the next load (%q's
+// \xff escaping reads back as a *different*, valid string). AddProject must
+// now refuse it outright, and leave the registry exactly as it was — not with
+// a half-appended project sitting behind the error.
+func TestAddProjectRejectsInvalidUTF8(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	before := len(c.Projects)
+	badName := "u\xffb" // the ticket's exact repro: not valid UTF-8.
+	if err := c.AddProject(Project{Name: badName, Path: "."}); err == nil {
+		t.Fatal("expected AddProject to reject a name that is not valid UTF-8")
+	} else if !strings.Contains(err.Error(), "UTF-8") {
+		t.Errorf("error does not mention UTF-8: %v", err)
+	}
+	if len(c.Projects) != before {
+		t.Errorf("AddProject left a partial append behind: %d projects, want %d", len(c.Projects), before)
+	}
+	if _, ok := c.Project(badName); ok {
+		t.Error("the invalid project is still registered after the rejected AddProject")
 	}
 }
 
@@ -501,8 +696,14 @@ func checkPayloadVersionInvariant(t *testing.T, in, version string) bool {
 		t.Errorf("byte-order mark was added or dropped:\n%q", out)
 	}
 	// Line endings are content too: a CRLF file must not come back with one
-	// lone LF line where the key was rewritten.
-	if crlfLines(in) && !crlfLines(out) {
+	// lone LF line where the key was rewritten. This is only asserted when the
+	// input's own last line was itself newline-terminated: an input whose last
+	// line never had a terminator at all (T-069 3(b)) establishes no CRLF style
+	// for that line to preserve, and the fix's own contract is "stop refusing",
+	// not "invent a line ending the file never had" — see
+	// TestSetPayloadVersionCRLFUnterminatedLastLine for that shape pinned
+	// directly instead.
+	if crlfLines(in) && strings.HasSuffix(in, "\n") && !crlfLines(out) {
 		t.Errorf("CRLF line endings were not preserved:\n%q", out)
 	}
 
@@ -610,11 +811,35 @@ var payloadVersionFixtures = []struct {
 	// A '[' inside a single-line string must not be counted as a bracket or
 	// mistaken for a table header.
 	{"table-looking text inside a single-line string", "note = \"[not a header]\"\npayload_version = \"v1\"\n", true, ""},
+	// A literal ('''-delimited) multi-line string has no escapes at all, unlike
+	// its basic ("""-delimited) counterpart above — this exercises that this
+	// separate code path also keeps scanning across lines rather than
+	// misreading the table-looking line inside it as a header.
+	{"table-looking line inside a literal multi-line string", "note = '''\n[not a header]\n'''\npayload_version = \"v1\"\n", true, ""},
 
 	// Shapes the line scanner cannot read correctly. It must refuse, not guess.
 	{"multi-line value on the key itself", "payload_version = \"\"\"\nv1\n\"\"\"\n", false, "multi-line string; set it by hand"},
 	{"array value with a space", "payload_version = [\"a\", \"b\"]\n", false, "unparseable"},
 	{"already duplicated key", "payload_version = \"a\"\npayload_version = \"b\"\n", false, "does not parse"},
+
+	// T-069 3(a): an escaped `\"""` inside a multi-line basic string used to be
+	// misread as the closing delimiter one byte early, so the `[x]` line after
+	// it was taken for a table header and payload_version got inserted inside
+	// the string instead of rewritten at top level.
+	{"escaped triple-quote inside a multi-line string", `note = """
+a \""" b
+[x]
+"""
+payload_version = "v1"
+`, true, ""},
+	// T-069 3(b): a CRLF file whose last line is never newline-terminated used
+	// to have a bare trailing \r appended to the inserted key (nothing follows
+	// it to be consistent with), which the parse-back gate then refused as
+	// unparseable control-character content. See also
+	// TestSetPayloadVersionCRLFUnterminatedLastLine, which pins the exact byte
+	// shape of the original defect directly.
+	{"crlf, unterminated last line", "\r\n#", true, ""},
+	{"crlf, unterminated last line with a real key", "a = 1\r\n# tail", true, ""},
 }
 
 func TestSetPayloadVersionInvariant(t *testing.T) {
@@ -674,7 +899,7 @@ func FuzzSetPayloadVersion(f *testing.F) {
 		// A version string that cannot survive a TOML round-trip (control
 		// characters, invalid UTF-8) is out of scope in the same way.
 		var probe map[string]any
-		rt := payloadVersionKey + " = " + fmt.Sprintf("%q", version) + "\n"
+		rt := payloadVersionKey + " = " + tomlQuote(version) + "\n"
 		if _, err := toml.Decode(rt, &probe); err != nil {
 			return
 		}
@@ -756,6 +981,195 @@ func TestSetPayloadVersionInPlaceUnwritableParentNamesTheRealFile(t *testing.T) 
 	}
 	if !strings.Contains(msg, "writable") {
 		t.Errorf("error gives no actionable cause: %v", err)
+	}
+}
+
+// hardlinkCount returns fi's link count, or 0 if the platform's os.FileInfo
+// does not expose one (e.g. Windows), in which case the caller should skip
+// rather than assert anything.
+func hardlinkCount(t *testing.T, fi os.FileInfo) uint64 {
+	t.Helper()
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0
+	}
+	return uint64(st.Nlink)
+}
+
+// TestWritePreservingModeSeversHardlink pins one of T-069 D3's documented and
+// declined behaviours instead of leaving it to be re-found: os.Rename cannot
+// preserve a hardlink's identity, so a second name pointing at the same inode
+// is left behind at the old contents once the first is atomically replaced.
+func TestWritePreservingModeSeversHardlink(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	other := filepath.Join(dir, "other-name.toml")
+	if err := os.Link(path, other); err != nil {
+		t.Skipf("hardlinks unavailable: %v", err)
+	}
+
+	if err := writePreservingMode(path, []byte("updated content\n")); err != nil {
+		t.Fatalf("writePreservingMode: %v", err)
+	}
+
+	fi, err := os.Stat(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nlink := hardlinkCount(t, fi); nlink == 0 {
+		t.Skip("platform does not report a usable link count")
+	} else if nlink != 1 {
+		t.Errorf("other-name.toml nlink = %d, want 1 (severed from the renamed-over path)", nlink)
+	}
+	got, err := os.ReadFile(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) == "updated content\n" {
+		t.Error("the second hardlinked name picked up the update; writePreservingMode is documented to sever hardlinks, not share them")
+	}
+}
+
+// TestWritePreservingModeRewritesReadOnlyFile pins the other declined
+// behaviour: create-temp-then-rename only needs a writable *directory*, so a
+// read-only (0444) file is rewritten anyway — unlike the os.WriteFile it
+// replaced, which would have failed on the file's own permission bit. This
+// documents the decline (a successful rewrite), not a regression.
+func TestWritePreservingModeRewritesReadOnlyFile(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	if err := os.Chmod(path, 0o444); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := writePreservingMode(path, []byte("updated\n")); err != nil {
+		t.Fatalf("writePreservingMode: %v (expected to succeed even though the file is read-only)", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "updated\n" {
+		t.Errorf("content = %q, want %q", got, "updated\n")
+	}
+}
+
+// TestWritePreservingModeCreateRespectsUmask pins the T-069 rework fix
+// (finding F1): when the target does not exist yet, writePreservingMode must
+// not hard-code a mode via Chmod (which ignores the umask) the way it does
+// for an existing file's rename-over path — it must behave like plain
+// os.WriteFile(path, data, 0o644) and let the umask narrow that, exactly as
+// pickle install's other generated files do.
+func TestWritePreservingModeCreateRespectsUmask(t *testing.T) {
+	old := syscall.Umask(0o077)
+	defer syscall.Umask(old)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "new.toml")
+	if err := writePreservingMode(path, []byte("x\n")); err != nil {
+		t.Fatalf("writePreservingMode: %v", err)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o600 {
+		t.Errorf("file mode = %o, want 600 (umask 077 applied to the requested 0644)", got)
+	}
+}
+
+// TestWritePreservingModeRewriteIgnoresUmask is
+// TestWritePreservingModeCreateRespectsUmask's counterpart for the *existing*
+// path: once a file is there, its own mode is preserved regardless of the
+// umask in effect at rewrite time — the umask only ever governs creation.
+func TestWritePreservingModeRewriteIgnoresUmask(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	if err := os.Chmod(path, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	old := syscall.Umask(0o077)
+	defer syscall.Umask(old)
+
+	if err := writePreservingMode(path, []byte("updated\n")); err != nil {
+		t.Fatalf("writePreservingMode: %v", err)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o640 {
+		t.Errorf("file mode = %o, want 640 (preserved despite umask 077 at rewrite time)", got)
+	}
+}
+
+// TestSaveCreatesNewConfigRespectingUmask is Save's own regression test for
+// F1, exercised through the caller shape install.go's writeConfig uses
+// (Save on a path that does not exist yet), not just writePreservingMode in
+// isolation.
+func TestSaveCreatesNewConfigRespectingUmask(t *testing.T) {
+	old := syscall.Umask(0o077)
+	defer syscall.Umask(old)
+
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	c := &Config{}
+	if err := c.AddProject(Project{Name: "demo", Path: "sub"}); err != nil {
+		t.Fatalf("AddProject: %v", err)
+	}
+	path := filepath.Join(dir, FileName)
+	if err := c.Save(path); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o600 {
+		t.Errorf("new pickle.toml mode = %o, want 600 (umask 077 applied), matching every other file pickle install creates", got)
+	}
+}
+
+// TestSetPayloadVersionCRLFUnterminatedLastLine pins T-069 3(b): a CRLF file
+// whose last line was never newline-terminated used to be misjudged as fully
+// CRLF by usesCRLF, so insertPayloadVersion appended a trailing \r to what
+// became the file's own last line — a bare \r with no \n after it, which the
+// parse-back gate then refused as unparseable. It must now succeed instead.
+//
+// This is deliberately not folded into payloadVersionFixtures /
+// checkPayloadVersionInvariant: that shared check also insists a CRLF input
+// comes back fully CRLF, which this pathological input cannot promise — its
+// last line was never terminated at all, so there is nothing already-CRLF for
+// the newly-terminated line to match. The ticket's fix is "stop refusing", not
+// "invent a line ending the file never had".
+func TestSetPayloadVersionCRLFUnterminatedLastLine(t *testing.T) {
+	cases := []string{
+		"\r\n#",
+		"a = 1\r\n# tail",
+	}
+	for _, in := range cases {
+		t.Run(in, func(t *testing.T) {
+			out, err := setPayloadVersion(in, "9.9.9")
+			if err != nil {
+				t.Fatalf("setPayloadVersion(%q): %v", in, err)
+			}
+			tree, err := decodeTree(out)
+			if err != nil {
+				t.Fatalf("result does not parse: %v\n%q", err, out)
+			}
+			if got, _ := tree[payloadVersionKey].(string); got != "9.9.9" {
+				t.Errorf("payload_version = %q, want 9.9.9\n%q", got, out)
+			}
+			// No bare, unpaired \r anywhere in the output — the exact defect this
+			// fix removes.
+			for i := 0; i < len(out); i++ {
+				if out[i] == '\r' && (i+1 >= len(out) || out[i+1] != '\n') {
+					t.Errorf("unpaired \\r at byte %d:\n%q", i, out)
+				}
+			}
+		})
 	}
 }
 
