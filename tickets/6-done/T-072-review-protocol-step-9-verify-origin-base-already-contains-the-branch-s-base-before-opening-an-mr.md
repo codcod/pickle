@@ -467,3 +467,9 @@ scoped fix, then a scoped re-review of F1 only. 0 non-blocking findings.
   `git fetch`; missing `tickets/`-product exception; invariant stated as cause not symptom;
   `SKILL.md:246` lag the first pass wrongly cleared; "behind what" imprecision at three sites),
   F7 noted (decision 2's `echo` clause dropped consistently). Stays in DONE — no blocking finding
+- 2026-08-07 — merged to main (PR #19, 236d859), squashed
+- 2026-08-07 — the squash carried 4 payload files and **zero `tickets/` paths** — the first
+  publish since T-073 to satisfy the check this ticket ships, and it was published under that
+  check: `main` was confirmed equal to `origin/main` before the rebase (the precondition whose
+  absence caused T-073), and the range was re-verified after the rebase, after the squash, and
+  again before the push
