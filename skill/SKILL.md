@@ -243,7 +243,8 @@ child). In short:
    approve without providing changes, the ticket **stays wherever step 3 already moved it**
    (`6-done/` or `5-rework/`) — do not move it back to `4-in-review/` — and you record the
    pending-publish state in its `## History` instead. Only after approval: finalize the branch
-   (squash or keep history), push, and **create the merge request** in that child's repo, per
+   (squash or keep history), verify the remote base is not behind (`origin/<base>...HEAD` must
+   carry no `tickets/` path — rules §0), push, and **create the merge request** in that child's repo, per
    the project's configured commit policy (default: never push a child or open an MR without
    approval); **merging is always the human's**.
 5. Overarching-repo bookkeeping (ticket edits, moves, board) is committed per the project's

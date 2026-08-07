@@ -47,7 +47,10 @@ crash-safety and diffable rework rounds). Publish only per the project's commit 
 (default: never push the child-project or open a merge request without explicit user
 approval): end with a summary and a suggested commit message (see Finish, below); once the
 user approves, finalize the branch (squash to the approved commit or keep the history — the
-user chooses), push, and open the merge request — **merging is always the human's.**
+user chooses). **Before pushing, verify the remote base is not behind your local base** —
+`git fetch origin <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must
+print nothing, or push `origin <base>` first (rules §0 explains why) — then push and open the
+merge request — **merging is always the human's.**
 
 > **Project configuration wins.** The branch name above uses the flow's default prefixes
 > (`feat/`, `T`); the commit policy stated is also a default. The project's `AGENTS.md` /
@@ -106,8 +109,10 @@ user-facing surface.>
 5. Commit locally on the ticket branch. Publish only per the project's commit policy
    (default: do **not** push or open a merge request without user approval). Present the
    commit message; only after approval finalize the branch (squash or keep history — the user
-   chooses), push, and open the merge request (merging is always the human's). Hand back to
-   the user.
+   chooses). Before pushing, verify the remote base is not behind your local base — `git fetch
+   origin <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must print
+   nothing, or push `origin <base>` first (rules §0) — then push and open the merge request
+   (merging is always the human's). Hand back to the user.
 
 ## Review
 
