@@ -291,3 +291,4 @@ See Task 6 — user-facing in three places (manual, shipped skill/rules payload,
 - 2026-08-05 — refined: the Description's open question is answered *no as posed, yes as re-framed* — the cause of a divergence is not computable, the harm is, so the verdict splits on whether the rendered ticket rows still match (error) or only the generated layout is stale (warning). Cost re-graded S → S-M for the added `project add`/`remove` board regeneration.
 - 2026-08-07 — TO DO → READY: plan complete
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
+- 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
