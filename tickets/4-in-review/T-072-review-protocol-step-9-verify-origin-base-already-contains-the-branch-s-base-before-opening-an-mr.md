@@ -339,3 +339,4 @@ run `pickle upgrade`.
   decisions 5–6 removed the two things that could have grown it
 - 2026-08-07 — TO DO → READY: plan complete: 6 confirmed decisions, 3 tasks with exact insertion points, acceptance test executed during refinement
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
+- 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green: synthetic repro fires on unpushed-base shape, silent after repair; build/test/lint/docs-check/board-audit clean
