@@ -110,12 +110,12 @@ func runProjectAdd(args []string) int {
 // noteIfStageable prints, as a plain `note:` line (never an error —
 // registration already succeeded), the same sentence `pickle doctor` would
 // warn with if the child p is a nested git repository this repository does
-// not yet ignore. Silent for the single-repo default (p.Path == ".") and for
+// not yet ignore. Silent for the single-repo default (see vcs.IsRepoRoot) and for
 // every other vcs.State (already ignored, already tracked, or undecidable).
 // Shared by runProjectAdd and runInstall so the two moments a child first
 // appears never say it differently (T-051).
 func noteIfStageable(root string, p config.Project) {
-	if p.Path == "." {
+	if vcs.IsRepoRoot(p.Path) {
 		return
 	}
 	// Mirror doctor's guard: it reaches the vcs check only after confirming

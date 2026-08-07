@@ -294,7 +294,7 @@ func checkChildren(root string, cfg *config.Config, r *Result) {
 		}
 		r.ok(fmt.Sprintf("child %q is a git repository (%s)", p.Name, p.Path))
 
-		if p.Path == "." {
+		if vcs.IsRepoRoot(p.Path) {
 			continue
 		}
 		switch st := vcs.ChildState(root, p.Path); st {

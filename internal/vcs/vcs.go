@@ -96,6 +96,19 @@ func (s State) Advice(relPath string) string {
 		" — add \"/" + slash + "\" to .gitignore so it is never staged"
 }
 
+// IsRepoRoot reports whether relPath denotes the overarching repository
+// itself rather than a nested child — the single-repo default, however it was
+// spelled when the child was registered (".", "./", "sub/..").
+//
+// It exists because the callers used to compare the raw string against ".",
+// so a child registered as "./" slipped the gate and the repository root was
+// reported as a nested git repository that ought to be gitignored, advising
+// an entry ("/./") git does not honour (T-051 review R1). Both callers ask
+// this one question instead, so the answer cannot drift between them.
+func IsRepoRoot(relPath string) bool {
+	return path.Clean(relPath) == "."
+}
+
 // ChildState answers whether the repository rooted at root would stage
 // relPath (a registered child's path) as an ordinary file/directory.
 //

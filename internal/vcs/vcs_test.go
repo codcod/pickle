@@ -3,6 +3,7 @@ package vcs
 import (
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -124,14 +125,20 @@ func TestChildStateUnknownWhenNotARepo(t *testing.T) {
 // type into `project add` must therefore round-trip.
 func TestAdviceEntryActuallyIgnores(t *testing.T) {
 	requireGit(t)
-	for _, relPath := range []string{"child", "./child", "child/"} {
+	// The nested form is here because the first version of this table held
+	// only flat paths, and a second bug of the very same shape survived it
+	// (T-051 review R1/R5). The root-denoting forms are *not* here: for those
+	// the correct behaviour is to never reach advice at all, which is
+	// TestIsRepoRoot's job, not a round-trip this test could assert.
+	for _, relPath := range []string{"child", "./child", "child/", "apps/frontend"} {
 		t.Run(relPath, func(t *testing.T) {
 			root := t.TempDir()
 			gitInit(t, root)
-			if err := os.Mkdir(filepath.Join(root, "child"), 0o755); err != nil {
+			childDir := filepath.Join(root, filepath.FromSlash(path.Clean(relPath)))
+			if err := os.MkdirAll(childDir, 0o755); err != nil {
 				t.Fatal(err)
 			}
-			gitInit(t, filepath.Join(root, "child"))
+			gitInit(t, childDir)
 
 			st := ChildState(root, relPath)
 			if st != Stageable {
@@ -155,5 +162,25 @@ func TestAdviceEntryActuallyIgnores(t *testing.T) {
 					entry, relPath, got, adv)
 			}
 		})
+	}
+}
+
+// TestIsRepoRoot (T-051 review R1) pins the gate that keeps the overarching
+// repository from being reported as a nested child of itself. The raw-string
+// comparison it replaced accepted "." only, so a child registered as "./"
+// reached the stageable check and the repo root was told to gitignore itself.
+func TestIsRepoRoot(t *testing.T) {
+	roots := []string{".", "./", "sub/..", "./.", "a/../"}
+	children := []string{"child", "./child", "child/", "apps/frontend", "..", "../sibling"}
+
+	for _, p := range roots {
+		if !IsRepoRoot(p) {
+			t.Errorf("IsRepoRoot(%q) = false, want true (denotes the repo itself)", p)
+		}
+	}
+	for _, p := range children {
+		if IsRepoRoot(p) {
+			t.Errorf("IsRepoRoot(%q) = true, want false (not the repo root)", p)
+		}
 	}
 }

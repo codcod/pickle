@@ -1080,3 +1080,32 @@ func TestProjectAddSilentOnNonRepoChild(t *testing.T) {
 		t.Errorf("doctor must not also call it a nested git repository, got:\n%s", doctorOut)
 	}
 }
+
+// TestProjectAddSilentOnRootSpelledDotSlash (T-051 review R1): a child
+// registered as "./" is the overarching repository itself, however it was
+// spelled. It must never be described as a nested git repository, and doctor
+// must not warn about it — the advised entry ("/./") is one git does not
+// honour, so such a warning could never be silenced by obeying it.
+func TestProjectAddSilentOnRootSpelledDotSlash(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"project", "add", "same", "./"}); got != exitOK {
+			t.Fatalf("project add = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(out, "note:") {
+		t.Errorf("the repository root must not be called a nested git repository, got:\n%s", out)
+	}
+
+	doctorOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
+			t.Fatalf("doctor = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(doctorOut, "WARNING:") {
+		t.Errorf("doctor must not warn about the repo root registered as %q, got:\n%s", "./", doctorOut)
+	}
+}
