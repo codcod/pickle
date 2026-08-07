@@ -15,6 +15,19 @@
 // to its own file for exactly the reason internal/hook's package doc gives —
 // keeping the dependency out of the packages that must stay testable in a
 // plain temp dir (board audit, ticket loading).
+//
+// Two limits of asking git this way, both accepted (T-051 review, F7/F8):
+//
+//   - The question is answered by whichever repository git discovers from
+//     root. If root is not itself a repository but sits inside one, that is
+//     the *enclosing* repo, and the root-anchored entry Advice suggests names
+//     that repo's .gitignore rather than one at root.
+//   - Tracked is inferred from `ls-files` matching anything under the path, so
+//     a child whose contents were already committed as ordinary files reads
+//     Tracked exactly like a deliberate gitlink. The check therefore prevents
+//     the staging accident but goes quiet once it has already happened —
+//     reporting it would need a gitlink-vs-blob distinction this package does
+//     not draw.
 package vcs
 
 import (

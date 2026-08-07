@@ -303,7 +303,11 @@ func checkChildren(root string, cfg *config.Config, r *Result) {
 		case vcs.Ignored:
 			r.ok(fmt.Sprintf("child %q is git-ignored (%s)", p.Name, p.Path))
 		case vcs.Tracked:
-			r.ok(fmt.Sprintf("child %q is already tracked (%s) — presumed a deliberate gitlink/submodule", p.Name, p.Path))
+			// "Tracked" covers a deliberate gitlink *and* a child whose
+			// contents were already committed as ordinary files, which this
+			// package cannot tell apart (see vcs's package doc) — so the line
+			// says what git reports, not which of the two it is.
+			r.ok(fmt.Sprintf("child %q is tracked by this repository (%s) — not stageable by accident", p.Name, p.Path))
 		case vcs.Unknown:
 			// no git on PATH, root not a repository, or an unexpected exit
 			// code — silent by design (vcs.State's zero value).
