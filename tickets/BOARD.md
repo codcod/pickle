@@ -13,10 +13,11 @@ Last updated: 2026-08-07
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | high | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 

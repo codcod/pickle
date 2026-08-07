@@ -268,3 +268,4 @@ T-066 (close the CLI-surface documentation gaps) is the natural home for a follo
   board updated to reflect the merge. 1 non-blocking (Task 7 missed a naming-prose hit at
   `cli-reference.adoc:573` under `pickle serve`) — fixed inline, added to Task 7's replacement
   list. No other assumption changed
+- 2026-08-07 — READY → IN DEVELOPMENT: picked up
