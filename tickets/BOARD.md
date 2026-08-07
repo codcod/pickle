@@ -38,6 +38,7 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | high | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -45,7 +46,6 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | high | low | M | [] |  |
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-076 | consume rick status --json as an artifact-state source | high | medium | M | [] | T-075 |
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
