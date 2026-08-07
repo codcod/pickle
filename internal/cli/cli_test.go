@@ -463,9 +463,9 @@ func TestProjectAddRegeneratesBoard(t *testing.T) {
 // TestUpgradeWarnsOnLayoutOnlyBoardDrift (T-052): a board that is stale only in
 // its generated layout (here, a hand-edited WIP limit in pickle.toml, the same
 // class of divergence a registry change produces) must not fail `pickle
-// upgrade` — it prints the warning and still exits 0. Contrast
-// TestUpgradeFailsOnBoardDrift-style row divergence, which stays an error
-// (covered at the audit level by internal/audit's own test table).
+// upgrade` — it prints the warning and still exits 0. Row divergence stays an
+// error either way (unchanged by this ticket) and is covered at the audit
+// level by internal/audit's own test table, not duplicated here.
 func TestUpgradeWarnsOnLayoutOnlyBoardDrift(t *testing.T) {
 	root := newProject(t) // installs child "demo" at ".", board already in sync
 

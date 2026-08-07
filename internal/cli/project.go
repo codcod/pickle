@@ -110,12 +110,14 @@ func runProjectAdd(args []string) int {
 }
 
 // regenerateBoard re-renders tickets/BOARD.md from cfg and the ticket tree,
-// printing the same `  + <path>` idiom install/upgrade use. The registered
-// child-project list is a board.Render input (each status section gains or
-// loses a `### <child>` sub-group and WIP line per child), so `project add`
-// and `project remove` refresh the board the same moment they refresh the
-// marker block via refreshMarkers — both are derived from the one registry
-// write. A failure here (tickets with load problems) never fails the
+// printing the `  + <path>` line install/upgrade use for a created artifact
+// — unconditionally, since board.Regenerate always writes and reports no
+// changed/unchanged signal (unlike sync.Sync, it does not diff first). The
+// registered child-project list is a board.Render input (each status section
+// gains or loses a `### <child>` sub-group and WIP line per child), so
+// `project add` and `project remove` refresh the board the same moment they
+// refresh the marker block via refreshMarkers — both are derived from the one
+// registry write. A failure here (tickets with load problems) never fails the
 // registration, which is already saved: it prints a note and leaves
 // `pickle board sync` as the next step, the same restraint refreshMarkers
 // documents for its own failure mode.

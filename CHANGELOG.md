@@ -54,6 +54,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Changed
 
+- **The pre-commit shim bumps to `# pickle:hook v2`** (T-068). Its guard-absent branch now prints
+  one stderr notice (`pickle: bookkeeping guard skipped (pickle not found on PATH)`) instead of
+  degrading silently — the same reasoning that already made an unexpected exit code speak — and a
+  cosmetic doubled `#` in the v1 marker line is fixed. `pickle upgrade` refreshes an owned v1 shim
+  in place; the fail-open contract is unchanged (exit `1` still means a violation, and only that).
+- **An unrecognised top-level command answers in one line** (T-068), pointing at `pickle help`,
+  instead of printing the full usage text ahead of it. `pickle` with no arguments still prints the
+  whole usage summary.
 - **`pickle board audit` (and hence `pickle upgrade`'s post-check) no longer errors on a board
   that is merely out of date in its generated layout** (T-052). The documented onboarding
   sequence — `pickle project add <name> <path>` then `pickle upgrade` — used to end in
@@ -73,14 +81,6 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   clean end to end. `pickle upgrade` still never reads or writes anything under `tickets/`, and
   `pickle board sync --dry-run` is unaffected: it still reports layout-only drift as a pending
   change and exits non-zero.
-- **The pre-commit shim bumps to `# pickle:hook v2`** (T-068). Its guard-absent branch now prints
-  one stderr notice (`pickle: bookkeeping guard skipped (pickle not found on PATH)`) instead of
-  degrading silently — the same reasoning that already made an unexpected exit code speak — and a
-  cosmetic doubled `#` in the v1 marker line is fixed. `pickle upgrade` refreshes an owned v1 shim
-  in place; the fail-open contract is unchanged (exit `1` still means a violation, and only that).
-- **An unrecognised top-level command answers in one line** (T-068), pointing at `pickle help`,
-  instead of printing the full usage text ahead of it. `pickle` with no arguments still prints the
-  whole usage summary.
 
 ## [0.2.2] - 2026-07-29
 

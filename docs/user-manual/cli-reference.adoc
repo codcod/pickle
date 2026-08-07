@@ -166,12 +166,12 @@ comments in the file do not survive that re-render (see <<configuration>>). Both
 also re-inject the `AGENTS.md`/`CLAUDE.md` marker block immediately, the same
 way `install` and `upgrade` do (see below) — so the agent instructions never
 describe a registry state that no longer matches `pickle.toml`. Both also
-*regenerate `tickets/BOARD.md`* immediately, printing `+ tickets/BOARD.md`: the
-registered-child list is itself a board-rendering input (every status heading
-gains or loses a per-child `### <child>` section and WIP line), so without this
+*regenerate `tickets/BOARD.md`* immediately, printing `+ tickets/BOARD.md`. The
+registered-child list is itself a board-rendering input: every status heading
+gains or loses a per-child `### <child>` section and WIP line. Without this,
 the very next `pickle board audit` or `pickle upgrade` would report the board's
-layout stale for a registry change that just happened (<<cmd-board-audit>>). A
-failed regeneration (a ticket file with a load problem) never fails the
+layout as stale for a registry change that just happened (<<cmd-board-audit>>).
+A failed regeneration (a ticket file with a load problem) never fails the
 registration, already saved by then — it prints a `note:` pointing at
 `pickle board sync` instead.
 
