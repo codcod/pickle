@@ -62,6 +62,17 @@ referenced, not copied.
     `tickets/` paths while HEAD is a feature branch. Hooks live in `.git/` and are never cloned,
     so it is once per clone. `git commit --no-verify` bypasses it for the rare commit whose
     *product* is a file under `tickets/`.
+  - **The hook runs only at commit time, so it cannot catch the same failure at publish time.**
+    Bookkeeping committed correctly on the base branch can still leak into a feature branch's MR
+    if the remote base is behind your local base when you rebase onto it or open the MR. The
+    invariant is that **the MR carries no `tickets/` path**. Check with `git fetch origin <base>
+    && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` (three-dot: the merge-base
+    form forges use to compute an MR diff — `..` answers a different question and will mislead;
+    the fetch matters because a stale remote-tracking ref makes the check fire on a base that is
+    in fact already pushed). Any output means push `origin <base>` first — unless the branch's
+    own product is a file under `tickets/`, the same exception the hook bullet above carves out,
+    in which case pushing the base will not silence it and you publish deliberately. This bites
+    wherever the board and the code share a repository, which is the single-repo default above.
   - The mirror-image hazard, for readers: a feature branch cut *before* the bookkeeping landed
     on the base branch shows a **stale ticket** in its worktree. Read the ticket and the board
     from the base branch (`git show <base>:tickets/…`), not from the branch under review.
