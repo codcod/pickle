@@ -409,3 +409,4 @@ needed four.
 - 2026-08-07 — IN REVIEW → REWORK: re-review: R1 blocking — path cleaning to '.' slips the gate, root mislabelled
 - 2026-08-07 — REWORK → IN REVIEW: rework 2: R1 fixed via vcs.IsRepoRoot gate, R5 folded
 - 2026-08-07 — IN REVIEW → DONE: review: 0 blocking after 3 cycles; 3 fixed inline (N1-N3)
+- 2026-08-07 — merged to main (PR #20, ee1086e); kept full history (6 commits across 3 review cycles); branch deleted
