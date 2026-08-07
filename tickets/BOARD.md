@@ -20,10 +20,11 @@ Last updated: 2026-08-07
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-051 | surface the workspace-side consequences of registering a child-project | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-07
 
 | id | title | open findings |
 |---|---|---|
-| T-051 | surface the workspace-side consequences of registering a child-project | re-review: R1 blocking — path cleaning to '.' slips the gate, root mislabelled |
 
 ## READY (impact order, per child)
 

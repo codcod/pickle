@@ -328,6 +328,37 @@ sloppier than the code they corrected. R1 in particular is the first fix applied
 (`"/./x/"` rendering) instead of the class (an uncleaned path reaching the gate), which is why a
 second, structurally identical bug survived it.
 
+### Rework 2 — 2026-08-07 (`87b1b65`)
+
+R1 fixed; R5 folded in. Nothing else touched.
+
+| id | fix | test that pins it |
+|---|---|---|
+| R1 | The gate is now a single predicate, `vcs.IsRepoRoot(relPath)` (`path.Clean(relPath) == "."`), asked by **both** `noteIfStageable` and `checkChildren` instead of each comparing the raw string. Cleaning inside `Advice` alone would have left the root mislabelled — the defect was the gate, not the rendering. | `TestIsRepoRoot` (`internal/vcs/vcs_test.go`) over `.`, `./`, `sub/..`, `./.`, `a/../` and the negative cases; `TestProjectAddSilentOnRootSpelledDotSlash` (`internal/cli/cli_test.go`) pins it end to end — no `note:` at registration, no doctor warning. |
+| R5 | The advice round-trip table gains the nested form `apps/frontend`. | `TestAdviceEntryActuallyIgnores` |
+
+**Deviation from the review's literal suggestion, deliberate.** R5 proposed adding `./` to
+`TestAdviceEntryActuallyIgnores`. That row would have encoded the wrong expectation: for a
+root-denoting path the correct behaviour is *never to reach advice at all*, not to render advice
+that round-trips. Putting it in the advice table would have demanded a usable `.gitignore` entry
+for the repository root, which does not exist. The case is covered at the gate instead
+(`TestIsRepoRoot` plus the CLI test), and the table comment now says why root forms are absent.
+
+Both new tests were **verified against the pre-fix gate**: restoring the raw `relPath == "."`
+comparison fails `TestIsRepoRoot` on all four non-canonical spellings and fails
+`TestProjectAddSilentOnRootSpelledDotSlash` with the original symptom, `note: ./ is a nested git
+repository … add "/./"` plus the matching doctor `WARNING`.
+
+**Considered and rejected:** normalising `path` at registration so `pickle.toml` stores `.`
+rather than `./`. It is the deepest fix, but it changes what is written to the config file and
+every other consumer of `p.Path` would inherit the change — too wide for a rework scoped to one
+finding. `IsRepoRoot` makes the callers correct regardless of how the path was spelled, and a
+normalise-on-write change remains available later without contradicting it.
+
+Re-verified end to end: `./` registers with no note and doctor reports `0 error(s),
+0 warning(s)`; the original acceptance test still reproduces verbatim; `./dot` still advises
+`/dot/`. All four gates green.
+
 ## History
 
 - 2026-07-27 — created (TO DO). source: idea — field finding from adding a second child-project to the `unity` workspace with pickle 0.1.0
@@ -337,3 +368,4 @@ second, structurally identical bug survived it.
 - 2026-08-07 — IN REVIEW → REWORK: review: 2 blocking (F2 unusable advice for ./x paths, F3 non-repo child mislabelled)
 - 2026-08-07 — REWORK → IN REVIEW: rework: F2/F3 fixed, regression tests verified against pre-fix code
 - 2026-08-07 — IN REVIEW → REWORK: re-review: R1 blocking — path cleaning to '.' slips the gate, root mislabelled
+- 2026-08-07 — REWORK → IN REVIEW: rework 2: R1 fixed via vcs.IsRepoRoot gate, R5 folded
