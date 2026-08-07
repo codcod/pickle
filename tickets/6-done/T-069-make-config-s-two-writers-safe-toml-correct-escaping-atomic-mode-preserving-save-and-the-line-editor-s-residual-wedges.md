@@ -489,3 +489,4 @@ intact in `2-ready/` on `main`.
 - 2026-08-07 — IN REVIEW → REWORK: review: 1 blocking (F1 — Save now ignores the umask when creating pickle.toml); 6 non-blocking (3 fixed inline, 3 noted)
 - 2026-08-07 — REWORK → IN REVIEW: F1 fixed: writePreservingMode no longer ignores the umask on creation
 - 2026-08-07 — IN REVIEW → DONE: scoped re-review: F1 verified fixed (umask honoured on create, mode still preserved on rewrite); 1 new non-blocking finding F8, noted
+- 2026-08-07 — MERGED: feat/T-069-config-writers-safe → main (152fea8, #17, squash), user-approved

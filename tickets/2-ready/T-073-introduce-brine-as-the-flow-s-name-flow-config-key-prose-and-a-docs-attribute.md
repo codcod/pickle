@@ -176,12 +176,14 @@ In `internal/install/install.go`:
 - Replace **naming** occurrences only (never a literal path) with `{flow}`, in exactly these
   spots: `docs/README.adoc:26`, `docs/user-manual/configuration.adoc:60`,
   `docs/user-manual/quickstart.adoc:34`, `docs/user-manual/your-first-project.adoc:21`,
-  `docs/user-manual/concepts/the-flow.adoc:6` and `:43`. Example:
+  `docs/user-manual/concepts/the-flow.adoc:6` and `:43`, and
+  `docs/user-manual/cli-reference.adoc:573` ("Starts a local, read-only web view of the ticket
+  flow" → "...of the {flow} flow", under `pickle serve`). Example:
   `docs/user-manual/configuration.adoc:60` — "The shipped ticket-flow skill
   (\`.agents/skills/ticket-flow/\`)" → "The shipped {flow} skill (\`.agents/skills/ticket-flow/\`)".
-- Every hit in `docs/user-manual/cli-reference.adoc` and
+- Every other hit in `docs/user-manual/cli-reference.adoc` and every hit in
   `docs/user-manual/concepts/project-structure.adoc` is a literal path or an ASCII tree
-  diagram entry (confirmed by inspection) — **do not touch either file**.
+  diagram entry (confirmed by inspection) — **do not touch anything else in either file**.
 
 #### Task 8 — tests
 
@@ -260,3 +262,9 @@ T-066 (close the CLI-surface documentation gaps) is the natural home for a follo
   invalid-UTF-8 gate to `Validate()`. Task 1 said to emit `flow = %q`, which would have
   reintroduced the defect T-069 closed; it now says `tomlQuote(c.Flow)` and adds `flow` to the
   UTF-8 gate. No other assumption in the plan is affected — nothing else it touches moved
+- 2026-08-07 — applicability gate on pickup: 1 blocking (Task 1 assumed T-069's `tomlQuote`/
+  UTF-8 gate were on `main`; T-069 was DONE but unmerged — publish-gated) — resolved when the
+  user merged `feat/T-069-config-writers-safe` → main (152fea8, #17); T-069's ticket and the
+  board updated to reflect the merge. 1 non-blocking (Task 7 missed a naming-prose hit at
+  `cli-reference.adoc:573` under `pickle serve`) — fixed inline, added to Task 7's replacement
+  list. No other assumption changed
