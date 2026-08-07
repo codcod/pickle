@@ -283,7 +283,57 @@ See Task 6 — user-facing in three places (manual, shipped skill/rules payload,
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass on the ticket's changed `.adoc`/`.md` files (step 4b) — one
+      applicable suggestion (on prose this ticket authored) applied; the rest were on
+      pre-existing text outside this ticket's scope, left alone
+- [x] Findings recorded below with severity **and** disposition; disposition summary present (step 5)
+- [x] Ticket moved to `tickets/6-done/`; `## History` appended (step 6)
+- [x] Other references updated — T-065's stale soft-coupling note patched (step 7/8)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message presented for approval; remote-base check before push; next-ticket suggestion (step 9)
+
+**Implementation audit (step 2).** Re-ran `just build && just test && just lint && just docs-check`
+— all green. Re-ran the ticket's full acceptance transcript end to end in a throwaway install
+(self-modify policy): (1) `project add` → `upgrade` → `board audit` — silent, `0 error(s), 0
+warning(s)`, exit 0; (2) a hand-bumped `wip_in_review` — `WARNING: BOARD.md is out of date in
+its generated layout only (every ticket row matches)` from both `board audit` and `upgrade`,
+exit 0 in both, cleared by `board sync`; (3) an appended ghost row — `ERROR: BOARD.md does not
+match the ticket files (rows differ)`, exit 1. Every task (1–6) verified present and matching
+the plan's exact shapes (`board.Compare`/`ParseText`/`Row.Line`, the audit's two-tier switch,
+`WARNING:` printing in both `runInstall` and `runUpgrade`, board regeneration in both `project
+add` and `project remove`, the full test list, and all six doc-update bullets). All **met**.
+
+**Quality / consistency / docs audits (steps 3–4a).** Code is idiomatic and consistent with the
+package's existing style (`Compare` sits next to `NormalizeLastUpdated`, mirrors `sync.Sync`'s
+comment conventions). `Compare` documents why row order is ignored and why it never parses
+cells back into data. Test coverage is thorough: a 9-case `TestCompare` table, two new audit
+cases (a layout-only warning alongside the two reworded row-divergence errors), two end-to-end
+CLI tests. Docs coverage is complete (manual, shipped skill payload, changelog) and a
+whole-tree grep for the retired `"stale or hand-edited"` string found only correctly-preserved
+historical references (three done tickets' own records, this ticket's own Description quoting
+the original bug report, and the 0.1.0 changelog migration note the plan explicitly left
+alone) plus the new changelog entry's own before/after quoting. `just docs-check` green.
+
+| id | severity | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|
+| F1 | non-blocking | fixed inline | A doc comment on `TestUpgradeWarnsOnLayoutOnlyBoardDrift` named a sibling test, `TestUpgradeFailsOnBoardDrift`, that does not exist anywhere in the tree — a dead reference this branch authored. | `internal/cli/cli_test.go`, the comment above the test func | Reworded to describe the row-divergence behaviour in prose instead of naming a nonexistent test. |
+| F2 | non-blocking | fixed inline | `regenerateBoard`'s doc comment claimed it prints the "same `+/=` idiom" as `refreshMarkers`, but `board.Regenerate` always writes unconditionally and reports no changed/unchanged signal — the function only ever emits `+`, never `=`. | `internal/cli/project.go`, `regenerateBoard` | Comment corrected to state the actual (unconditional) behaviour and why, rather than claiming a parity that isn't implemented. |
+| F3 | non-blocking | noted | `board.rowKey` joins `Status`/`Child`/`Line` with a `\x00` separator on the stated assumption that a NUL byte cannot appear in any of the three. True for every reachable CLI path (argv cannot carry a NUL; project names come only from `pickle project add <name>`, a C-string), but not enforced by `config.Validate` — a hand-edited `pickle.toml` using TOML's `\u0000` escape in a project name would defeat the separator and could misclassify `DriftRows` as `DriftLayout` or vice versa. | `internal/board/board.go`, `rowKey` | Purely theoretical (unreachable via any command pickle ships) and low-harm (a classification mistake, not data loss or a crash); a real fix (a struct-keyed map instead of a joined string) is a behaviour change, so it doesn't meet the fixed-inline bar, and it fails the promotion test for a new ticket. Recorded here for a later reviewer to promote if a reachable path ever appears. |
+| F4 | non-blocking | fixed inline | The new `CHANGELOG.md` entry was inserted at the *top* of `[Unreleased]`'s `### Changed` list, ahead of the existing T-068 entries — out of the file's established convention (every other section's entries are appended in landing order, e.g. `### Added`'s T-051 → T-057 → T-068 → T-057). | `CHANGELOG.md`, `[Unreleased]` → `### Changed` | Moved to the end of the `### Changed` list, after the T-068 entries. |
+
+**Disposition summary:** 4 findings, 0 blocking. 3 fixed inline (F1, F2, F4); 1 noted (F3).
+
+**Impact sweep (step 8).** Re-read every non-terminal ticket citing T-052. **T-083** cites it
+only in a survey table (ticket-opening-style counts) — no assumption to correct. **T-065**
+(`1-to-do/`, JSON read projection) recorded a soft coupling assuming T-052's "stale **or**
+hand-edited" conflation was still an open vocabulary question a future JSON field would need to
+resolve; T-052 already resolved it (`board.Drift`: `DriftNone`/`DriftLayout`/`DriftRows`). Patched
+T-065's coupling note to point at the resolved vocabulary instead, with a History line —
+committed on this base branch alongside this review, never on the feature branch.
 
 ## History
 
@@ -292,3 +342,4 @@ See Task 6 — user-facing in three places (manual, shipped skill/rules payload,
 - 2026-08-07 — TO DO → READY: plan complete
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
 - 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-07 — IN REVIEW → DONE: review clean — 4 non-blocking findings (3 fixed inline, 1 noted)

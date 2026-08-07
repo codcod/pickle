@@ -97,9 +97,11 @@ writer (work area 4), which is what creates the hazard.
   covers, so a `board json`/`ticket json` verb arrives with a harness already in place
   (`capture(t, …)` for stdout/stderr, `newProject(t)` for a throwaway install, and the
   `runProject*`/`runTicketNew`/`runBoardAudit` cli-level tests as the pattern to copy).
-- **T-052** — `board audit`'s verdict classification. If audit health is exposed as structured
-  data, the "stale **or** hand-edited" conflation becomes a field a consumer reads, so the two
-  tickets should agree on the vocabulary rather than inventing two.
+- **T-052** — **done**, and it already resolved the vocabulary this bullet used to flag as
+  open: `board audit`'s old single "stale **or** hand-edited" conflation is now `board.Drift`
+  (`DriftNone`/`DriftLayout`/`DriftRows`), surfaced as a warning (layout-only) or an error (rows
+  differ). If audit health is exposed as structured data here, reuse that vocabulary (or its
+  two-tier shape) as the field's values rather than inventing a third naming.
 - **T-085** (per-ticket record aggregable) — **a second prospective consumer**, and the one that
   motivates the findings-table scope question above. T-085 adds a `class` column to the findings
   table so recurring defect kinds can be counted; counting them without this projection means
@@ -166,3 +168,7 @@ default to (a) because the ticket is already on the board.
 - 2026-08-07 — scope question added (the `## Review` findings table) and T-085 recorded as a
   second prospective consumer; grade deliberately unchanged per the 2026-08-04 precedent against
   crediting prospective demand
+- 2026-08-07 — patched by T-052's review impact sweep: T-052 landed, resolving the vocabulary
+  question this ticket's T-052 soft-coupling note had left open (`board.Drift` —
+  `DriftNone`/`DriftLayout`/`DriftRows` — replaces the old single "stale or hand-edited"
+  conflation); the note now says what to reuse instead of what to agree on
