@@ -329,3 +329,4 @@ publish-gated). Move the ticket with
   `payloadVersionFixtures`). No production code moved, so the plan's substance is unchanged; the
   “do not touch `internal/config` production code” split (D1) held in both directions
 - 2026-08-07 — TO DO → READY: plan complete
+- 2026-08-07 — READY → IN DEVELOPMENT: picked up
