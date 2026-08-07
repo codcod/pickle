@@ -94,8 +94,9 @@ WIP limits, and an optional per-child review addendum. Defaults:
 - **Priority.** `impact` / `complexity` / `cost` frontmatter; the board orders each child's
   TO DO/READY group deterministically from it (impact descending, ties by id).
 - **Dependencies (may cross children).** `depends-on:` frontmatter. A ticket may not enter
-  `3-in-development/` while any dependency is not in `6-done/` **and merged to the base of its
-  own child's repo** (done ≠ merged; the human merges, and may lag — see rules §3).
+  `3-in-development/` while any dependency is not in `6-done/` **and its feature branch merged
+  to the base of the dependency's target child-project's repo** (done ≠ merged; the human
+  merges, and may lag — see rules §3).
 - **Lineage (may cross children).** `spawned-by:` frontmatter — the ticket(s) this one was born
   from (review finding, board audit, refinement split). Same wire format as `depends-on:` and
   the exact opposite in behaviour: **provenance only, it gates nothing**, so never overload
@@ -131,12 +132,14 @@ When asked to turn an idea, finding, or request into a ticket:
    not file a duplicate** — extend or cross-reference the existing ticket and tell the user
    which ticket absorbed it. If the overlap is partial, ask the user whether to merge or split.
 3. **Author** the ticket: run `pickle ticket new "<title>" --project <name>` to allocate the
-   next `T-NNN` (max across *all* status dirs + 1), scaffold from `resources/TEMPLATE.md` into
-   `1-to-do/` with `project:` set, and regenerate the board. When the
+   next id for the child's `ticket_prefix` (`max(existing ids sharing that prefix across *all*
+   status dirs) + 1` — the counter is per-prefix, not global), scaffold from
+   `resources/TEMPLATE.md` into `1-to-do/` with `project:` set, and regenerate the board. When the
    ticket is born from another one, add `--spawned-by "T-NNN[,T-MMM]"`. The title must be a
    single line and the ids must be `T-NNN`, or the command rejects the invocation and writes
-   nothing — put multi-line context in the Description, not the title. Then fill in the
-   Description prose.
+   nothing — put multi-line context in the Description, not the title. If the command rejects,
+   fix the offending argument (collapse the title to a single line; correct any malformed id)
+   and retry before proceeding. Then fill in the Description prose.
 4. **Grade it** (impact / complexity / cost) **against the existing backlog** — re-grade
    neighbours if the comparison shifts them.
 5. Note any soft couplings (including cross-child ones) in the Description; hard `depends-on:`
@@ -172,9 +175,9 @@ When asked to implement ticket T-NNN:
 
 1. **Read the ticket in full.** It must be in `2-ready/` — if not, stop and tell the user why.
 2. **Validate dependencies:** every `depends-on:` ticket is in `6-done/` **and merged to the
-   base of its own child's repo** (check the board's `merged` column / the dependency's
-   History; if unmerged, stop and ask the human to merge first). **Validate WIP** for the
-   target child. Stop and report if not satisfied.
+   base of its target child-project's repo** (check the board's `merged` column / the
+   dependency's History; if unmerged, stop and ask the human to merge first). **Validate WIP**
+   for the target child. Stop and report if not satisfied.
 3. **Applicability gate — re-verify the plan is still worth executing, before any move or
    branch.** Run on every pickup, unconditionally:
    - **Spawn a fresh sub-agent** for the audit — free of the implementer's sunk-cost bias.
@@ -183,13 +186,19 @@ When asked to implement ticket T-NNN:
    - **Scope the mandate to the ticket's own assumptions plus the board delta since it went
      READY.** For each assumption, confirm it is still **true**, **required**, and **worth it**.
    - The agent returns a **findings list classified like a review** — severity *and* disposition
-     per the rules §5. **Present it and get approval on the routing:** clean → proceed; plan
-     invalidated → move back to `2-ready/`/`1-to-do/` and re-refine; assumption proven wrong at
-     filing and no longer worth it → **drop** (`7-dropped/` is a legal target from `2-ready/`,
-     with a reason); otherwise disposition each finding, defaulting to note-and-close. An
-     amendment to the plan being picked up takes the inline disposition (edit the plan, record it
-     in the ticket's History); adjacent work earns a ticket only by passing §5's promotion test,
-     batched by theme.
+     per the rules §5. **Present it and get approval on the routing**, taking the first case
+     below that applies:
+     1. No findings → proceed to step 4.
+     2. A blocking finding invalidates the plan → stay in `2-ready/` and re-refine it, or move
+        to `1-to-do/` if it needs re-description; stop and tell the user.
+     3. A blocking finding shows the original assumption was wrong at filing and the feature is
+        no longer worth it → `pickle ticket move T-NNN dropped --reason "<reason>"` (a legal
+        target from `2-ready/`), with user confirmation.
+     4. Only non-blocking findings remain → disposition each per the rules §5 (default:
+        note-and-close); proceed to step 4.
+   - An amendment to the plan being picked up takes the inline disposition (edit the plan, record
+     it in the ticket's History); adjacent work earns a ticket only by passing §5's promotion
+     test, batched by theme.
 4. **Move** the ticket: `pickle ticket move T-NNN in-development --reason "picked up"`.
 5. **Create the feature branch** `feat/T-NNN-<slug>` **inside the target child-project's repo**
    (from the agreed base, default `main`).
@@ -229,10 +238,14 @@ child). In short:
 2. Findings go into the ticket's own `## Review` section — no separate file.
 3. On a concluding verdict, **move the ticket** (`pickle ticket move …`).
 4. **Present the child-project commit message** (and merge-request attributes) **to the user
-   for approval**. Only after approval: finalize the branch (squash or keep history), push, and
-   **create the merge request** in that child's repo, per the project's configured commit policy
-   (default: never push a child or open an MR without approval); **merging is always the
-   human's**.
+   for approval**. If the user requests changes to the commit message or MR attributes,
+   incorporate them and re-present for approval before proceeding; if the user declines to
+   approve without providing changes, the ticket **stays wherever step 3 already moved it**
+   (`6-done/` or `5-rework/`) — do not move it back to `4-in-review/` — and you record the
+   pending-publish state in its `## History` instead. Only after approval: finalize the branch
+   (squash or keep history), push, and **create the merge request** in that child's repo, per
+   the project's configured commit policy (default: never push a child or open an MR without
+   approval); **merging is always the human's**.
 5. Overarching-repo bookkeeping (ticket edits, moves, board) is committed per the project's
    commit policy (may be automated, explicit pathspecs only).
 
