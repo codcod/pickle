@@ -13,10 +13,11 @@ Last updated: 2026-08-07
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S-M | [] |  |
 
 ## TO DO (impact order, per child)
 
