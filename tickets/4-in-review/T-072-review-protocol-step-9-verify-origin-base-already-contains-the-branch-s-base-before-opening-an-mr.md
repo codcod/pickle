@@ -407,3 +407,4 @@ scoped fix, then a scoped re-review of F1 only. 0 non-blocking findings.
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
 - 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green: synthetic repro fires on unpushed-base shape, silent after repair; build/test/lint/docs-check/board-audit clean
 - 2026-08-07 — IN REVIEW → REWORK: 1 blocking (F1): TEMPLATE.md restates the pre-fix publish sequence at 2 sites, the seed text for every future ticket
+- 2026-08-07 — REWORK → IN REVIEW: F1 fixed: TEMPLATE.md carries the base check at both publish sites
