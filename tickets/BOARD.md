@@ -59,6 +59,7 @@ Last updated: 2026-08-08
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | medium | low-medium | S-M | [] |  |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
+| T-087 | release CI: snowball setup's bundle install can't find the bundle executable after a fresh Homebrew ruby install | medium | low-medium | S-M | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
