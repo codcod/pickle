@@ -261,6 +261,32 @@ untracked (not 128, the code that would have silently broken the feature).
 branch authored, both ship a false statement to the user today, and neither is eligible for
 `fixed inline` because both change behaviour rather than prose.
 
+### Rework 2026-08-07 (`cbf169c`)
+
+Both blocking findings fixed on the same branch; nothing else touched.
+
+| id | fix | test that pins it |
+|---|---|---|
+| F2 | `State.Advice` now `path.Clean`s `relPath` before rendering, so `./x` and `x/` both render `x/` and the entry `"/x/"`. `path`, not `path/filepath`: config paths and gitignore patterns are slash-form on every platform. | `TestAdviceEntryActuallyIgnores` (`internal/vcs/vcs_test.go`) — asserts the **property**, not the spelling: it writes the advised entry into `.gitignore` and requires the child to flip to `Ignored`, for `child`, `./child` and `child/`. |
+| F3 | `noteIfStageable` now mirrors doctor's guard — `os.Stat(<root>/<path>/.git)` and return early when absent — so a non-repo child is doctor's error to report and nothing else claims it is a nested git repository. | `TestProjectAddSilentOnNonRepoChild` (`internal/cli/cli_test.go`) — no `note:` at registration, and doctor still errors, without the contradictory wording. |
+
+Both regression tests were **verified against the pre-fix code**: reverting F2's one-liner fails
+`TestAdviceEntryActuallyIgnores/./child` with `after writing the advised entry "/./child/" to
+.gitignore, ChildState("./child") = 3, want Ignored`, and dropping F3's guard fails
+`TestProjectAddSilentOnNonRepoChild` on the stray `note:`. A regression test that cannot fail
+would have been the wrong deliverable here.
+
+Re-verified end to end in a throwaway dir: the original acceptance test is unchanged
+(`0 error(s), 1 warning(s)` → `0 error(s), 0 warning(s)` after the advised entry, `ok: … is
+git-ignored` under `-v`); `./dot` now advises `/dot/`, which silences the warning; a plain
+directory registers with no note and is reported only by doctor, as an error. All four gates
+green.
+
+**Not done, deliberately:** F4/F5/F9 keep their `noted` disposition — rework scope is the
+blocking findings only. F4's `install --path` test was flagged in the review as something the
+rework could pick up "if it touches those lines anyway"; it did not — the F3 guard sits in
+`noteIfStageable`, not at the install call site — so it stays noted rather than smuggled in.
+
 **Impact sweep (step 8):** no ticket lists T-051 in `depends-on:`. **T-052** (soft-coupled, same
 onboarding session) is unaffected — its premise is the post-`upgrade` board-staleness verdict,
 which this branch does not touch; the `project add` → `upgrade` sequence still produces it.
@@ -273,3 +299,4 @@ which this branch does not touch; the `project add` → `upgrade` sequence still
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
 - 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-07 — IN REVIEW → REWORK: review: 2 blocking (F2 unusable advice for ./x paths, F3 non-repo child mislabelled)
+- 2026-08-07 — REWORK → IN REVIEW: rework: F2/F3 fixed, regression tests verified against pre-fix code
