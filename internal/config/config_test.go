@@ -402,6 +402,73 @@ func TestAddRemove(t *testing.T) {
 	}
 }
 
+// TestFlowNameDefault (T-073): FlowName() falls back to DefaultFlowName
+// ("brine") when pickle.toml has no flow key, the same pattern
+// Project.Prefix() already uses for ticket_prefix.
+func TestFlowNameDefault(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.Flow != "" {
+		t.Fatalf("Flow = %q, want empty (unset in fixture)", c.Flow)
+	}
+	if got := c.FlowName(); got != DefaultFlowName {
+		t.Errorf("FlowName() = %q, want %q", got, DefaultFlowName)
+	}
+}
+
+// TestFlowRoundTrips (T-073): an explicit flow = "brine" survives Save/Load,
+// and Render only emits the key when it is set (mirroring ReviewAddendum).
+func TestFlowRoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c.Flow = "brine"
+	if err := c.Save(""); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	rendered, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if !strings.Contains(string(rendered), `flow = "brine"`) {
+		t.Errorf("rendered pickle.toml does not contain flow = \"brine\":\n%s", rendered)
+	}
+	c2, err := Load(path)
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if c2.Flow != "brine" || c2.FlowName() != "brine" {
+		t.Errorf("Flow = %q, FlowName() = %q after round-trip, want %q both", c2.Flow, c2.FlowName(), "brine")
+	}
+}
+
+// TestValidateRejectsUnknownFlow (T-073): only "brine" is legal today — no
+// second flow exists, so an unrecognised value is refused rather than
+// silently accepted as a typo or a name nothing implements.
+func TestValidateRejectsUnknownFlow(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c.Flow = "v-model"
+	err = c.Validate()
+	if err == nil {
+		t.Fatal("Validate() = nil, want an error rejecting an unknown flow")
+	}
+	if !strings.Contains(err.Error(), "v-model") || !strings.Contains(err.Error(), DefaultFlowName) {
+		t.Errorf("Validate() error = %v, want it to name both the rejected value and the one legal flow", err)
+	}
+}
+
 // TestValidateRejectsInvalidUTF8AtTopLevel covers the same UTF-8 check for the
 // two top-level string fields Render also quotes, alongside the per-project
 // coverage in TestAddProjectRejectsInvalidUTF8.
@@ -423,6 +490,12 @@ func TestValidateRejectsInvalidUTF8AtTopLevel(t *testing.T) {
 	c.ReviewAddendum = "u\xffb"
 	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "review_addendum") {
 		t.Errorf("review_addendum: Validate() = %v, want a review_addendum UTF-8 error", err)
+	}
+
+	c = *base
+	c.Flow = "u\xffb"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "flow") {
+		t.Errorf("flow: Validate() = %v, want a flow UTF-8 error", err)
 	}
 }
 

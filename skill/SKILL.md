@@ -3,10 +3,10 @@ name: ticket-flow
 description: Operate a ticket-based, board-driven feature flow (installed by the `pickle` CLI) across one or more connected child-projects. Use when asked to "make it a ticket", "refine ticket T-NNN" (make it ready), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses. One markdown ticket per feature; a ticket's status is the directory it lives in; each ticket targets one registered child-project via `project:` frontmatter; a generated BOARD.md is the live index (never hand-edited; prose goes in tickets/NOTES.md); reviews classify findings by severity (blocking vs non-blocking) and then disposition each non-blocking one, defaulting to note-and-close; publishing a child-project follows the project's configured commit policy (defaulting to explicit user approval).
 ---
 
-# Ticket flow
+# Brine
 
-A lightweight, repo-native feature flow. Every change to a project flows through **one
-artifact: a ticket** — a markdown file whose **status is the directory it lives in**, that
+**Brine** is a lightweight, repo-native feature flow. Every change to a project flows through
+**one artifact: a ticket** — a markdown file whose **status is the directory it lives in**, that
 **targets one child-project** (`project:` frontmatter), carrying an append-only history. A
 **generated** `BOARD.md` is the live index — rendered from the ticket files, never edited by
 hand; hand-written planning notes live in `tickets/NOTES.md`.
@@ -35,7 +35,7 @@ hand-written planning prose lives in `tickets/NOTES.md` (created by `pickle inst
 
 ## When to use
 
-- **"Install / scaffold the ticket flow"** → run `pickle install` (then `pickle project add`
+- **"Install / scaffold brine"** → run `pickle install` (then `pickle project add`
   for further children); see *Install & register*.
 - **"Make it a ticket" / "file a ticket"** → *Procedure: make it a ticket*.
 - **"Refine ticket T-NNN" / "make it ready"** → *Procedure: refine a ticket*.

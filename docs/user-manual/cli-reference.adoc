@@ -570,7 +570,7 @@ runs `board audit` as a self-check.
 pickle serve [--addr|-a host:port]
 ----
 
-Starts a *local, read-only* web view of the ticket flow and runs until you stop
+Starts a *local, read-only* web view of the {flow} flow and runs until you stop
 it with kbd:[Ctrl+C]. Default address `127.0.0.1:8745`; `--addr` (`-a`)
 overrides it.
 

@@ -1,5 +1,5 @@
 // OpenCode config for developing `pickle` (see AGENTS.md). It operates the
-// self-hosted ticket flow — read AGENTS.md first; it is the source of truth for
+// self-hosted brine flow — read AGENTS.md first; it is the source of truth for
 // the flow, the commit policy, and the board rule. See .opencode/README.md for
 // setup. This config is for developing pickle; it is never part of the flow
 // pickle ships (the embedded `skill/` payload).

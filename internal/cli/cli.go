@@ -57,6 +57,8 @@ func Run(payload fs.FS, version string, args []string) int {
 		return runHooks(args[1:])
 	case "project":
 		return runProject(args[1:])
+	case "flow":
+		return runFlow(args[1:])
 	case "ticket":
 		return runTicket(args[1:])
 	case "board":
@@ -93,6 +95,8 @@ Setup commands:
   project add <name> <path>   Register another connected child-project.
   project list                List registered child-projects.
   project remove <name>       Unregister a child-project (refused if it has live tickets).
+  flow show                   Print the configured flow name.
+  flow list                   List available flow names (exactly one, today).
   upgrade                 Refresh the installed skill payload + marker block to this
                           binary's version (never touches tickets).
   doctor                  Verify install integrity (skill, symlinks, markers, child paths).

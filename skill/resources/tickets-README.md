@@ -16,7 +16,7 @@ case.
 
 ```
 tickets/
-├── README.md              ← short pointer to the ticket-flow skill (these rules live in the skill)
+├── README.md              ← short pointer to the brine skill (these rules live in the skill)
 ├── BOARD.md               ← the generated index — never hand-edited; see §6
 ├── NOTES.md               ← hand-written planning notes (the board cannot carry them)
 ├── 1-to-do/               ← TO DO           — captured, needs exploration/refinement
@@ -34,7 +34,7 @@ directories are **flat** — tickets are **not** split into per-child subdirecto
 child-project is its `project:` frontmatter field, and the board (§6) groups by child. The
 project's `tickets/` holds **instance data only** (the tickets, the generated board, the
 notes); this rules
-document, the ticket template, and the review protocol live in the ticket-flow skill and are
+document, the ticket template, and the review protocol live in the brine skill and are
 referenced, not copied.
 
 ## 0. Child-projects (the multi-project model)

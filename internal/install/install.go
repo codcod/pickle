@@ -874,14 +874,14 @@ func MarkerBlock(cfg *config.Config) string {
 			"  user asks, and always with **explicit pathspecs**"
 	}
 
-	return "## Ticket flow (start here)\n" +
+	return "## Brine (start here)\n" +
 		"\n" +
 		"**Start at [`tickets/BOARD.md`](tickets/BOARD.md)** — the generated index of every ticket by\n" +
 		"status. No feature is built directly from a chat message or a raw idea — work enters only as a\n" +
 		"ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it\n" +
 		"earns a **disposition** (rules §5), and most are resolved without a new ticket.\n" +
 		"\n" +
-		"- The flow engine is the **ticket-flow skill** at `.agents/skills/ticket-flow/`. It holds\n" +
+		"- The flow engine is the **brine skill** at `.agents/skills/ticket-flow/`. It holds\n" +
 		"  the rules (`resources/tickets-README.md`), the ticket template\n" +
 		"  (`resources/TEMPLATE.md`), and the review protocol\n" +
 		"  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/ticket-flow`.\n" +
@@ -925,7 +925,7 @@ const ticketsReadme = "# `tickets/` — the ticket-based feature flow\n\n" +
 	"  never edit it by hand.\n" +
 	"- **Hand-written planning notes live in [`NOTES.md`](NOTES.md)** — the board cannot\n" +
 	"  carry them.\n" +
-	"- **The rules, ticket template, and review protocol live in the ticket-flow skill:**\n" +
+	"- **The rules, ticket template, and review protocol live in the brine skill:**\n" +
 	"  - rules: `.agents/skills/ticket-flow/resources/tickets-README.md` (so `§N` references\n" +
 	"    resolve there)\n" +
 	"  - template: `.agents/skills/ticket-flow/resources/TEMPLATE.md`\n" +

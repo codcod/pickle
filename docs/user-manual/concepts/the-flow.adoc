@@ -3,7 +3,7 @@
 
 {product} installs and operates a *ticket-based, board-driven feature flow*.
 This page is the flow in one sitting; the pages after it go deeper. The
-*normative* rules live in the ticket-flow skill installed into your project
+*normative* rules live in the {flow} skill installed into your project
 (`{skill-dir}/resources/tickets-README.md`, cited here as §0–§8) — this manual
 summarises them and the skill wins on any disagreement.
 
@@ -40,7 +40,7 @@ It renders from the ticket files, exactly as the board does, and writes nothing.
 The tool's design principle is to split the two:
 
 * *Judgment* — what a ticket says, how it is graded, refined, reviewed — lives
-  in the embedded ticket-flow *skill* plus the project's `AGENTS.md`. {product}
+  in the embedded {flow} *skill* plus the project's `AGENTS.md`. {product}
   ships it as content for your coding agent and never automates it.
 * *Mechanics* — scaffold directories, allocate the next `T-NNN`, move a ticket
   file + append History + regenerate the board atomically, audit the

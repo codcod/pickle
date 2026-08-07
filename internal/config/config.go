@@ -56,14 +56,30 @@ const (
 	DefaultChildPublishGated = true
 )
 
+// DefaultFlowName is the flow's name when the overarching pickle.toml has no
+// explicit flow key. It is also, today, the only legal value: no second flow
+// exists yet (see FlowName and Validate).
+const DefaultFlowName = "brine"
+
 // Config is the whole pickle.toml.
 type Config struct {
 	PayloadVersion string       `toml:"payload_version"`
 	ReviewAddendum string       `toml:"review_addendum,omitempty"`
+	Flow           string       `toml:"flow,omitempty"`
 	Commit         CommitPolicy `toml:"commit"`
 	Projects       []Project    `toml:"project"`
 
 	path string // where this config was loaded from (not serialised)
+}
+
+// FlowName is the effective name of the flow this project runs: the
+// configured flow key, or DefaultFlowName ("brine") when unset. Callers use
+// this rather than reading Flow directly, the same pattern as Project.Prefix.
+func (c *Config) FlowName() string {
+	if c.Flow == "" {
+		return DefaultFlowName
+	}
+	return c.Flow
 }
 
 // CommitPolicy is the overarching commit policy.
@@ -187,6 +203,12 @@ func (c *Config) Validate() error {
 	}
 	if !utf8.ValidString(c.ReviewAddendum) {
 		return errors.New("pickle.toml: review_addendum is not valid UTF-8")
+	}
+	if !utf8.ValidString(c.Flow) {
+		return errors.New("pickle.toml: flow is not valid UTF-8")
+	}
+	if c.Flow != "" && c.Flow != DefaultFlowName {
+		return fmt.Errorf("pickle.toml: flow %q is not a known flow (legal: %s)", c.Flow, DefaultFlowName)
 	}
 	if len(c.Projects) == 0 {
 		return errors.New("pickle.toml: at least one [[project]] (child-project) is required")
@@ -357,6 +379,9 @@ func (c *Config) Render() string {
 	fmt.Fprintf(&b, "payload_version = %s\n", tomlQuote(c.PayloadVersion))
 	if c.ReviewAddendum != "" {
 		fmt.Fprintf(&b, "review_addendum = %s\n", tomlQuote(c.ReviewAddendum))
+	}
+	if c.Flow != "" {
+		fmt.Fprintf(&b, "flow = %s\n", tomlQuote(c.Flow))
 	}
 	b.WriteString("\n[commit]\n")
 	fmt.Fprintf(&b, "overarching_auto = %t\n", c.Commit.OverarchingAuto)

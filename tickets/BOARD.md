@@ -38,7 +38,6 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | high | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -108,7 +107,8 @@ Last updated: 2026-08-07
 | T-059 | family: group tickets under an umbrella ticket id for curated pickup order | yes — merged to main (#7) |
 | T-061 | Board child-project filter buttons in the serve dashboard | yes — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed |
 | T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives |
-| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | no — publish-gated |
+| T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | yes — MERGED: feat/T-069-config-writers-safe → main (152fea8, #17, squash), user-approved |
+| T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | no — publish-gated |
 
 ## DROPPED
 

@@ -62,3 +62,16 @@ cheaper than merging them.
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
+- 2026-08-07 — patched by T-073's review impact sweep (step 8). T-073 shipped, so the prose half
+  of the rename is **done**: the `flow` config key (default `"brine"`), `pickle flow show|list`,
+  a `doctor` passed-line, and the name in `SKILL.md`, `tickets-README.md`, `MarkerBlock()`, this
+  repo's own `AGENTS.md`/`pickle.toml`/`README.md`, and the manual (via a `:flow:` attribute).
+  Two consequences for this ticket: (1) the in-repo occurrence count in the Description is now
+  lower than the "~85" it cites — re-count at refinement rather than trusting it; (2) T-073's
+  review folded finding **F5** in here — `agents/opencode/opencode.jsonc:3,4,42`,
+  `agents/pi/extensions/*.ts`, `.pi/extensions/docs-readability.ts:49` and the Go package
+  comments in `main.go:2`, `assets.go:7`, `internal/install/install.go:1` still say "ticket
+  flow"/"ticket-flow skill". They were deliberately left alone because `agents/**` is
+  byte-compared by `doctor`, so renaming them without this ticket's upgrade path would raise a
+  drift warning in every already-installed project. This ticket already lists those scaffolds in
+  its scope; the Go comments are the new part
