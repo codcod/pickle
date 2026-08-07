@@ -13,10 +13,11 @@ Last updated: 2026-08-07
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-051 | surface the workspace-side consequences of registering a child-project | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 

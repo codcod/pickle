@@ -222,3 +222,4 @@ feat(doctor): warn when a registered child is not gitignored (T-051)
 
 - 2026-07-27 — created (TO DO). source: idea — field finding from adding a second child-project to the `unity` workspace with pickle 0.1.0
 - 2026-08-07 — TO DO → READY: plan complete
+- 2026-08-07 — READY → IN DEVELOPMENT: picked up
