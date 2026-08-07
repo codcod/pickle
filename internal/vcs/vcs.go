@@ -23,13 +23,18 @@
 //     the *enclosing* repo — and then the advice is not merely written in the
 //     wrong file but is the wrong pattern: Advice anchors the entry at root
 //     ("/child/"), while the enclosing repo needs it anchored at its own
-//     toplevel ("/sub/child/"). pickle cannot render a usable entry for that
-//     layout, so treat the suggestion as indicative there.
+//     toplevel ("/sub/child/"). A usable entry does exist — it needs the
+//     prefix `git rev-parse --show-prefix` reports — but this package does not
+//     compute it, so treat the suggestion as indicative in that layout.
 //   - The entry is rendered literally, so a child whose directory name
-//     contains a gitignore metacharacter (`[`, `]`, `\`, `*`, `?`) yields a
-//     pattern that matches something other than itself — `/foo[1]/` does not
-//     match `foo[1]`. Escaping is left undone deliberately: such names are
-//     vanishingly rare and the wrong escape would be worse than none.
+//     contains a gitignore metacharacter misfires, in one of two directions:
+//     a bracket expression matches something *other* than the child
+//     (`/foo[1]/` does not match `foo[1]`, leaving the warning unsilenced),
+//     while `*` and `?` match *more* than the child (`/foo*/` ignores `foo*`
+//     but also every sibling starting `foo`, which is the worse of the two
+//     because it silently over-ignores). Escaping is left undone
+//     deliberately: such names are vanishingly rare and a wrong escape would
+//     be worse than none.
 //   - Tracked is inferred from `ls-files` matching anything under the path, so
 //     a child whose contents were already committed as ordinary files reads
 //     Tracked exactly like a deliberate gitlink — and such a child is *not*

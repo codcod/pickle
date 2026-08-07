@@ -279,12 +279,13 @@ func checkHooks(root string, r *Result) {
 
 // checkChildren verifies every registered child path resolves to a git repo
 // (a .git entry — a directory for a normal clone, or a file for a worktree /
-// submodule), then — for a child registered at a path other than "." — warns
+// submodule), then — for a child that is not the repository root itself,
+// however that path was spelled (see vcs.IsRepoRoot) — warns
 // when the overarching repo would still stage that path whole (T-051): until
 // a .gitignore entry (or a deliberate gitlink) exists, the window between a
 // child appearing and someone remembering to ignore it is a staging accident
-// waiting to happen. The single-repo default (path ".", the child *is* the
-// repo) and an already-tracked gitlink are both silent — see vcs.ChildState.
+// waiting to happen. The single-repo default (the child *is* the repo) and an
+// already-tracked gitlink are both silent — see vcs.ChildState.
 func checkChildren(root string, cfg *config.Config, r *Result) {
 	for _, p := range cfg.Projects {
 		abs := filepath.Join(root, p.Path)
