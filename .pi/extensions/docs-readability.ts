@@ -43,7 +43,7 @@ import { join, resolve } from "node:path";
 
 // Reviewer model, reached via your `pi` /login provider. Override with env vars.
 const PROVIDER = process.env.DOCS_READABILITY_PROVIDER ?? "github-copilot";
-const MODEL = process.env.DOCS_READABILITY_MODEL ?? "gpt-5.4";
+const MODEL = process.env.DOCS_READABILITY_MODEL ?? "gemini-2.5-pro";
 
 // Canonical reviewer prompt — SHARED with the opencode docs-readability agent;
 // shipped with the installed ticket-flow skill.
