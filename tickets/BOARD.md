@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## IN DEVELOPMENT
 
@@ -45,12 +45,21 @@ Last updated: 2026-08-06
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | high | low | M | [] |  |
+| T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
+| T-076 | consume rick status --json as an artifact-state source | high | medium | M | [] | T-075 |
+| T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
+| T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
+| T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | high | high | L | [] |  |
 | T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | medium-high | medium | M | [] |  |
 | T-051 | surface the workspace-side consequences of registering a child-project | medium | medium | S-M | [] |  |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | medium | low | S | [] |  |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
 | T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | medium | low | S | [] |  |
+| T-074 | rename the installed skill directory to brine, with upgrade migration and dual-name doctor | medium | high | L | [T-073] |  |
+| T-081 | gate table as data: per-state required-artifact preconditions, audited | medium | medium | M | [T-080] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |

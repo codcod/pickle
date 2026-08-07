@@ -676,3 +676,52 @@ anchoring at the pathspec start plus `../` climbs. Pickle's shipped guard cannot
 the explicit-pathspec rule (`-A` / `.` / `commit -a`) and the publish gate. The deny-list is a
 `unity` invention. The anchoring lesson is carried in T-051's Description in case that ticket
 grows such a guard.
+
+## Rick interop — the asks that live upstream (2026-08-07)
+
+Filed T-075 (umbrella) + T-076/T-077/T-078/T-079 for pickle↔`rick` interoperability. Three
+things the design wants are **rick's to build, not pickle's**, and they cannot be tickets on
+this board: every ticket must target a registered child-project (`audit.go` validates
+`project:` against the registry), and `rick` — a separate product in a separate GitLab repo —
+should not be registered as one. Registering it would put another team's roadmap under this
+board's WIP limits and audit invariants, which is exactly the coupling the interop design
+avoids. So they are recorded here:
+
+1. **`rick check artifact <path>`** — a deterministic, exit-coded artifact validator. The
+   highest-value ask: it turns T-079's "reimplement rick's schemas in pickle" into "shell
+   out". rick already has the muscle — `tools/framework-lint` does frontmatter and structure
+   linting over the framework tree; the same idea pointed at `docs/specs/**` artifacts would
+   do it. Today those schemas exist only as prose for an LLM in
+   `framework/skills/ai-sdlc/artifacts/*/SKILL.md` ("Required Structure and section order",
+   "Validation Checklist"), so no non-Claude tool can check them.
+2. **An `Amend` verb in the shared approval gate.** `_shared/approval-gate.response.md`
+   offers `[A]pprove` / `[R]evise` / `[D]iscard`, and instructs that any other response is
+   answered and then the same three options re-presented. A human who edited the artifact
+   out-of-band has no path through that gate — the flow cannot acknowledge an amendment it
+   did not make. T-079 works around this with a paste-to-revalidate handoff.
+3. **Actually write `.ai-sdlc/vmodelsessions/current-phase.json`.** The marker file is
+   declared at `sdlc-cli/internal/status/workflow.go` with exactly the schema an external
+   tool needs (`Phase`, `Awaiting`, `Step`, `TotalSteps`) — and *nothing in rick writes it*;
+   only a test does. Its own comments call it "the normal case until Step 17 ships". If rick
+   wrote it, pickle could distinguish "session parked at a gate, safe to edit" from "session
+   actively writing", which is the missing arbitration in T-079. Costs rick almost nothing.
+
+**Not asked for: a shared state file, a shared lock, or a shared config.** The interop seam
+is deliberately two read-only contracts — `rick status --json` (versioned, additive-only,
+`schemaVersion = 2`) and the filesystem path `docs/specs/<KEY>/`, which lines up with pickle
+ids for free via `ticket_prefix` (T-058). Anything that requires both tools to agree on a
+mutable file is a coupling neither project should accept.
+
+**Also not filed: `brine-v`.** The three enablers (T-073 `flow` key, T-080 lifecycle as data,
+T-081 gate table as data) are filed; the second flow itself is not, and should not be until
+they land *and* someone asks for it. Filing it now would recreate the checkbox-pluralism
+failure the review of this idea warned about — options that cannot be maintained are worse
+than options never shipped, and this repo self-hosts brine, so any sibling flow is
+undogfooded by construction.
+
+**Adjacent, deliberately out of scope: `pickle verify`.** The single best mechanic in rick is
+its verification record bound to *both* HEAD and a worktree digest
+(`sdlc-cli/internal/checks/verification.go`), which makes a green build record go stale the
+moment the tree moves. brine's "acceptance tests pass" is an honour system by comparison.
+This is pure mechanics — pickle's half of the `DESIGN.md` §2 split — and independent of the
+naming, interop and brine-v tracks. Worth a ticket if someone wants it; not filed with them.
