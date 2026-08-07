@@ -152,3 +152,16 @@ spawned — F1 is a verification step for this ticket itself, not a new defect.
 - 2026-08-08 — READY → IN DEVELOPMENT: picked up
 - 2026-08-08 — IN DEVELOPMENT → IN REVIEW: acceptance green: YAML valid, build/test/lint/docs-check clean; live CI verification deferred to post-approval re-run (requires pushing the branch)
 - 2026-08-08 — IN REVIEW → DONE: review PASS: 0 blocking, 1 non-blocking (F1, note-and-closed — live CI confirmation deferred to post-approval re-run)
+- 2026-08-08 — F1 actioned post-approval: `gh workflow run release.yml --ref
+  feat/T-086-stale-runner-homebrew-install-steps -f tag=v0.3.0`
+  (run 31222772467/job 93010687635). **This ticket's own fix is confirmed**: the run got
+  cleanly past `unknown install step: remove` this time, pouring every dependency including
+  `ruby` without error — the defect described in this ticket's Description does not recur.
+  The manual still did not attach, for two reasons unrelated to this ticket's fix: (1) a
+  newly-surfaced, distinct failure one step later — `snowball setup`'s `bundle install` can't
+  find a `bundle` executable on `PATH` — filed as T-087 (spawned-by this ticket); (2)
+  goreleaser's own step then hit `422 already_exists` re-uploading binaries/checksums that
+  had already published successfully on the real, first `v0.3.0` run — an artifact of
+  re-running the full pipeline against an already-fully-published tag, not a defect; it will
+  not recur on a fresh tag push. `v0.3.0`'s 5 original assets are unaffected (verified via
+  `gh release view v0.3.0 --json assets`).
