@@ -49,6 +49,17 @@ jobs:
           HOMEBREW_NO_COLOR: 1
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          # The runner image's preinstalled Homebrew is a point-in-time snapshot and
+          # can lag behind homebrew-core's bottle metadata. When it does, a bottle
+          # built with a newer install-step DSL (observed: `ruby`'s post-install
+          # step "remove") makes that stale `brew` abort with "unknown install step"
+          # instead of installing it -- a Homebrew-version mismatch, not a transient
+          # network blip, so the retry loop below alone never recovers from it.
+          # `brew update` (unlike `install`/`upgrade`) always fetches regardless of
+          # HOMEBREW_NO_AUTO_UPDATE, which only suppresses the *implicit* update those
+          # two commands would otherwise trigger -- so this still gets the quiet,
+          # broken-pipe-free installs below.
+          brew update --quiet
           # Fully qualify the formula: a bare `snowball` resolves to
           # homebrew/core's stemmer of the same name, not our tap's tool.
           # Retry the install: it occasionally dies with a transient broken
