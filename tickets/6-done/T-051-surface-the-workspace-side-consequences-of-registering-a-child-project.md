@@ -359,6 +359,45 @@ Re-verified end to end: `./` registers with no note and doctor reports `0 error(
 0 warning(s)`; the original acceptance test still reproduces verbatim; `./dot` still advises
 `/dot/`. All four gates green.
 
+### Scoped re-review 3 — 2026-08-07 (`1bc612b` + `87b1b65`) — PASS
+
+Scoped to the cycle-2 correction commits. Audit again delegated to a fresh sub-agent, findings
+re-verified by hand. **0 blocking.**
+
+**Verified green:** R1 is fixed at the class level — `vcs.IsRepoRoot` is used by *both* gates and
+a repo-wide grep found no third raw `== "."` comparison on a project path. Crucially, the
+reviewer checked the question I had not: whether any *other* consumer of `p.Path` is vulnerable
+to the `./` spelling. None is — every other `cfg.Projects` loop keys on `p.Name`, and the
+remaining `p.Path` uses go through `filepath.Join`, which normalises. An empty path is
+unreachable (`Validate` rejects it) and would fail safe. Absolute paths are rejected at
+`project add`; a hand-edited one yields git 128 → `Unknown` → silent. Both new tests were
+independently re-derived as failing pre-fix. R2, R3, R4, R6 confirmed by running git rather than
+by reading the prose. Acceptance test verbatim; all gates green; no bookkeeping on the branch.
+
+The R5 deviation was explicitly judged **sound rather than a dodge**: no `.gitignore` entry can
+ignore the repository root, so a root row in an advice *round-trip* table would have had to
+assert an impossible property.
+
+| id | severity | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|
+| N1 | non-blocking | fixed inline | The metacharacter caveat added in `1bc612b` lumped `*`/`?` together with `[`/`]`, but they misfire in *opposite* directions: a bracket entry fails to match the child (warning unsilenced), while `/foo*/` matches the child **and every sibling starting `foo`** — silently over-ignoring, the worse of the two, and undocumented. | dir `foo*` with `/foo*/`: `check-ignore -q -- 'foo*'` → 0 **and** `check-ignore -q -- foobar` → 0 | Both directions now described, with the over-ignoring case named as the worse. Done in `59e2f64`. |
+| N2 | non-blocking | fixed inline | Same caveat block: "pickle **cannot** render a usable entry for that layout" is a false capability claim — precisely the class R3 and R4 were raised for, committed while fixing R3 and R4. A usable entry exists; pickle simply does not compute the prefix. | `/sub/child/` in the enclosing `.gitignore` silences it (exit 0); `git -C sub rev-parse --show-prefix` → `sub/` | Reworded to "does not compute", naming `--show-prefix`. Done in `59e2f64`. |
+| N3 | non-blocking | fixed inline | After R1 the exemption is "any path that cleans to `.`", but `checkChildren`'s doc comment and two lines of the manual still said "a path other than `.`" — the code had outgrown its description. | `doctor.go:281-288`, `cli-reference.adoc:171,264` | Both now say "the repository root itself". Done in `59e2f64` (paragraph re-wrapped again, since the longer phrase re-raggedized R6's fix). |
+
+**Disposition summary:** 3 findings — 0 blocking; 3 non-blocking, all fixed inline (`59e2f64`);
+0 noted, 0 folded, 0 new tickets.
+
+**Reviewer's judgement on whether to continue:** explicitly *not* churning. The R1 fix addressed
+the class rather than the symptom and held against every spelling reachable through the real
+CLI; N1–N3 are wording, and none would mislead an operator into a wrong action.
+
+**Cycle tally, for the record.** Three review cycles: 2 blocking findings in cycle 1 (F2, F3),
+1 in cycle 2 (R1), 0 in cycle 3. Six of the eighteen findings were defects in *correction*
+commits rather than in the original implementation — twice in prose asserting a capability the
+code did not have, which is why cycle 3 verified every factual claim by running git instead of
+reading. The original implementation (`9e775f9`) needed two behavioural fixes; the reviews of it
+needed four.
+
 ## History
 
 - 2026-07-27 — created (TO DO). source: idea — field finding from adding a second child-project to the `unity` workspace with pickle 0.1.0
@@ -369,3 +408,4 @@ Re-verified end to end: `./` registers with no note and doctor reports `0 error(
 - 2026-08-07 — REWORK → IN REVIEW: rework: F2/F3 fixed, regression tests verified against pre-fix code
 - 2026-08-07 — IN REVIEW → REWORK: re-review: R1 blocking — path cleaning to '.' slips the gate, root mislabelled
 - 2026-08-07 — REWORK → IN REVIEW: rework 2: R1 fixed via vcs.IsRepoRoot gate, R5 folded
+- 2026-08-07 — IN REVIEW → DONE: review: 0 blocking after 3 cycles; 3 fixed inline (N1-N3)
