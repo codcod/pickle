@@ -330,3 +330,5 @@ publish-gated). Move the ticket with
   “do not touch `internal/config` production code” split (D1) held in both directions
 - 2026-08-07 — TO DO → READY: plan complete
 - 2026-08-07 — READY → IN DEVELOPMENT: picked up
+- 2026-08-07 — IN DEVELOPMENT → IN REVIEW: acceptance green; all 13 plan tasks done, coverage
+  85.6% → 87.6%, committed locally on `feat/T-069-config-writers-safe` (not pushed)

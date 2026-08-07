@@ -13,18 +13,18 @@ Last updated: 2026-08-07
 
 ## IN DEVELOPMENT
 
+### pickle (0/1)
+
+| id | title | depends-on |
+|---|---|---|
+
+## IN REVIEW
+
 ### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
 | T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | [] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | depends-on |
-|---|---|---|
 
 ## REWORK
 
