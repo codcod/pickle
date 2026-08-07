@@ -32,6 +32,15 @@ Swept by comparing every `fs.String/Bool` flag in `internal/cli/*.go` against th
   `--lint`, `--docs`** (`internal/cli/project.go`) — the manual documents only
   `--ticket-prefix` and then says per-child keys *"can then be set in `pickle.toml`"*
   (`cli-reference.adoc:140-142`), which reads as *there are no flags for these*. There are.
+- **`pickle flow show|list`** (`internal/cli/flow.go`, shipped by T-073) — a whole command with
+  no section in the manual: no `[#cmd-flow]`, no Overview-table row, and no mention of the
+  `flow` key it reads in `docs/user-manual/configuration.adoc`'s `pickle.toml` reference.
+  `usage()` lists it, so `pickle help` and the manual disagree — the same defect shape as
+  `--family` above. Added by T-073's review (finding F4, disposition `folded`), which its own
+  Docs-update section pre-authorised: it judged the omission out of scope for a rename ticket
+  and named this ticket as the home. Note the shipped value is currently constrained to
+  `"brine"` by `Config.Validate()`, so document it as the one legal value rather than as an
+  open-ended setting.
 
 ### 2. A dropped command cited as the mechanism, in the payload every project installs
 
@@ -101,3 +110,8 @@ globs inside backticks while it is open.
   the unconstrained-bold swallow at the `.pi/extensions/*.ts` glob that mangles the doctor bullet in
   the rendered PDF/EPUB. T-057 added a `[#cmd-hooks]` section to this file (self-contained, per its
   own gate finding F10) plus an Overview-table row — re-verify line references at refinement
+- 2026-08-07 — patched by T-073's review impact sweep (step 8): absorbed T-073's finding **F4**
+  (disposition `folded`) — `pickle flow show|list` shipped with no manual coverage at all, now
+  listed as a third bullet under item 1. T-073 also renamed prose across six `.adoc` files and
+  added a `:flow:` attribute to `docs/attributes.adoc`, so **every line reference in this ticket
+  must be re-verified at refinement** rather than trusted

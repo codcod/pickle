@@ -63,3 +63,11 @@ selected by; T-081 is the natural follow-on and depends on this; the dropped T-0
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
+- 2026-08-07 — patched by T-073's review impact sweep (step 8): the seam this ticket is written
+  against now **exists**. T-073 shipped `flow` in `pickle.toml` with
+  `config.DefaultFlowName = "brine"`, a `Config.FlowName()` accessor, and a `Validate()` that
+  **rejects any value other than `"brine"`** (`internal/config/config.go`). That last part is the
+  load-bearing detail for this ticket: introducing a second flow definition means relaxing that
+  check, so plan it as an edit to `Validate()` rather than assuming the key already accepts an
+  arbitrary name. `pickle flow list` also exists and prints exactly one entry today — it is the
+  natural place to enumerate definitions once they are data. No assumption is invalidated

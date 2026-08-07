@@ -60,3 +60,7 @@ completeness gate here does not close that, and should not pretend to.
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
+- 2026-08-07 — patched by T-073's review impact sweep (step 8): T-073 shipped the `flow` key this
+  ticket's "a second flow" argument depends on (`config.DefaultFlowName`, `Config.FlowName()`,
+  `pickle flow show|list`). Note that `Validate()` currently accepts **only** `"brine"`, so the
+  second-flow story here and in T-080 starts by relaxing that check. Nothing else changed
