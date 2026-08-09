@@ -18,10 +18,11 @@ After this ships, a bookkeeping commit (a ticket's state change) is written in i
 ## Description
 
 Measured on this repo's own history (2026-08-07 audit; re-verified 2026-08-09 during refinement
-— the ratio holds, only the absolute counts moved as history grew): as of commit `2422eb8`, 162
-of 268 commits are overarching bookkeeping (ticket/board mutations), and virtually all of them
-carry the scope `(tickets)` — `docs(tickets): …`, `chore(tickets): …`. Checked against the real
-diffs: the scope is *accurate* (160 of 162 touch only `tickets/`), so it isn't a mislabeling bug.
+and again at pickup — the ratio holds, only the absolute counts moved as history grew): as of
+commit `afc2a19`, 164 of 270 commits are overarching bookkeeping (ticket/board mutations), and
+virtually all of them carry the scope `(tickets)` — `docs(tickets): …`, `chore(tickets): …`.
+Checked against the real diffs: the scope is *accurate* (162 of 164 touch only `tickets/`), so
+it isn't a mislabeling bug.
 (Re-derive with `git log --oneline | wc -l` for the total, `git log --format=%s | grep -c
 '(tickets)'` for the scoped count, and a per-commit `git show --name-only` walk for the
 touches-only-`tickets/` count.) It's a category-fit problem:
