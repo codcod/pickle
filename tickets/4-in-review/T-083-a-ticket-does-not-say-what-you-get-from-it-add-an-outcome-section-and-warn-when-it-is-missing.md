@@ -434,6 +434,30 @@ inline* (N2, N3, N4, N5), 1 *folded* into T-080 (N6), 1 *noted* (N1). No new tic
 **Rework scope (B1 only):** make the shipped placeholder and the shipped claims agree, and add
 the regression test that pins them together. Nothing else on this branch is in scope.
 
+#### Rework pass 1 (2026-08-09) — B1 fixed
+
+Commit `668bbd4` on `feat/T-083-outcome-section`. B1 only; nothing else touched.
+
+- **What was fixed.** `skill/resources/TEMPLATE.md`'s `## Outcome` placeholder is now the
+  HTML-comment form the plan's Task 3 specified (`<!-- … -->`), matching `Scaffold`. The
+  placeholder now also says *why* this one section departs from the `<…>` form the other
+  sections use — so a future editor "tidying" it back into house style reads the reason first.
+  The **first** of B1's two options was taken deliberately: the alternative (teaching
+  `OutcomeMissing` to treat a lone `<…>` span as empty) would amend confirmed Decision 5
+  ("empty once HTML comments are stripped"), which the rework pass may not do on its own.
+- **Regression test.** `TestTemplateAndScaffoldOutcomePlaceholdersAreFlagged`
+  (`internal/ticket/ticket_test.go`) asserts `OutcomeMissing` flags **both** authoring entry
+  points — `TEMPLATE.md`'s placeholder and `Scaffold`'s. It fails on the pre-fix tree (verified
+  against the old placeholder), so the two forms cannot drift apart again. It sits beside
+  `TestScaffoldSectionsMatchTemplate`, the section-set drift guard it complements.
+- **The four claims are now true**: `TEMPLATE.md` ("or still this placeholder"),
+  `tickets-README.md §7`, `docs/user-manual/cli-reference.adoc` (`#cmd-board-audit`), and the
+  `CHANGELOG.md` entry.
+- **Verification.** `just build` ✅ · `just test` ✅ · `just lint` ✅ · `just docs-check` ✅ ·
+  `./pickle board audit` → 87 tickets, 0 errors, 0 warnings ✅. Manual: in a throwaway install,
+  a ticket whose body was authored from `TEMPLATE.md` with the placeholder untouched now
+  produces the `## Outcome is missing …` warning — the exact case that audited silent before.
+
 **N-A (audit note, not a finding).** Acceptance step 5 ("before Task 5's backfill, every open
 ticket produces exactly one new warning") could not be re-run verbatim, because the backfill is
 already on `main`. It was verified equivalently: the unit fixtures in `audit_test.go` cover
@@ -468,3 +492,4 @@ separate Review table, since the ticket has not shipped yet:
   triage — or if the sections are being filled with restated titles — drop the audit check and
   revert to a lead-sentence convention. A future reviewer checks the feature against this.
 - 2026-08-09 — IN REVIEW → REWORK: review 1: B1 blocking — TEMPLATE.md's Outcome placeholder is not the form the check detects, while four shipped statements say it is
+- 2026-08-09 — REWORK → IN REVIEW: B1 fixed: TEMPLATE.md placeholder is now HTML-comment form + drift-guard test
