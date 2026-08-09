@@ -329,13 +329,14 @@ never `-A`/`.`.
 3. `just lint` — `go vet ./...` clean, `gofmt -l .` empty.
 4. `just docs-check` — `snowball check` clean after the docs update (Docs update, below).
 5. Manual: `./pickle board audit` on this repo, on the feature branch, **before** Task 5's
-   backfill — confirm every one of the 25 `1-to-do/` tickets (this one now excepted once its
-   own Outcome exists) produces exactly one new `Outcome is missing` warning and zero new
-   errors; confirm no `6-done/`/`7-dropped/` ticket produces one.
+   backfill — confirm every one of the 24 tickets in `1-to-do/`, plus T-083 itself (now in
+   `2-ready/`, pending its own Outcome), produces exactly one new `Outcome is missing` warning
+   and zero new errors; confirm no `6-done/`/`7-dropped/` ticket produces one.
 6. Manual, after Task 5 lands on `main` and is merged into the branch's view (or re-run on
    `main` directly): `./pickle board audit` reports **zero** `Outcome is missing` warnings
-   across `1-to-do/` (`2-ready/`–`5-rework/` are empty on this repo today, so nothing to check
-   there, but the code path is exercised by the audit_test.go fixtures from Task 2).
+   across `1-to-do/` and `2-ready/` (`3-in-development/`–`5-rework/` are empty on this repo
+   today, so nothing to check there, but the code path is exercised by the audit_test.go
+   fixtures from Task 2).
 
 ### Docs update (mandatory — user-facing)
 
@@ -386,6 +387,18 @@ never `-A`/`.`.
 
 <!-- empty until IN REVIEW -->
 
+**Pickup applicability gate (2026-08-07).** Fresh sub-agent audit, no blocking findings. Four
+non-blocking, all cosmetic line/count drift since filing — dispositioned here per rules §5
+(this is a pickup gate, not a review, but the same table/vocabulary applies) rather than in a
+separate Review table, since the ticket has not shipped yet:
+
+| id | finding | disposition |
+|---|---|---|
+| F1 | plan said "25 open tickets"; `1-to-do/` holds 24 today, T-083 itself (the 25th) sits in `2-ready/` | fixed inline — acceptance test wording corrected above |
+| F2 | Task 2's `audit.go:~172` citation sits at the boundary of two per-ticket loops (frontmatter/grade at :72, History at :175); intent (end of the first loop) is recoverable from context | noted |
+| F3 | `TestScaffoldSectionsMatchTemplate` cited at `ticket_test.go:511` is its doc comment; the func itself is :512 | noted |
+| F4 | `tickets.adoc`'s `== Body` heading cited at `:80` is actually `:78` | noted |
+
 ## History
 
 - 2026-08-07 — created (TO DO). source: chat — a proposed "Decision Inputs" ticket section was
@@ -393,3 +406,4 @@ never `-A`/`.`.
   mechanism rather than outcome, and that the two impact recalibrations wrote 11 usable
   one-line justifications into NOTES.md tables instead of into the tickets
 - 2026-08-09 — TO DO → READY: plan complete
+- 2026-08-09 — READY → IN DEVELOPMENT: picked up
