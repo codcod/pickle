@@ -8,6 +8,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-09
+
 ### Added
 
 - **Every ticket now carries a `## Outcome` section, and `pickle board audit` warns when it's
@@ -29,6 +31,13 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Fixed
 
+- **The release workflow's Homebrew install could fail on a stale runner image** (T-086).
+  `ubuntu-latest`'s preinstalled Homebrew is a point-in-time snapshot; when homebrew-core ships a
+  bottle using a newer post-install-step DSL than that snapshot understands (observed: `node`'s
+  `"remove"` step), the stale `brew` aborts with `unknown install step: remove` — a
+  version-mismatch failure the existing 3-attempt retry loop (written for transient broken-pipe
+  downloads) can never clear, since all three attempts fail identically. The "Build user manual"
+  step now runs `brew update --quiet` once before that retry loop.
 - **The release workflow's user-manual build (PDF/EPUB) had been failing invisibly since
   `v0.2.2`** (T-087): `v0.2.2` and `v0.3.0` both shipped with no manual attached, each for a
   different toolchain reason. The build step's deliberate soft-fail (a broken manual must not
@@ -337,7 +346,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/codcod/pickle/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/codcod/pickle/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/codcod/pickle/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/codcod/pickle/compare/v0.2.0...v0.2.1
