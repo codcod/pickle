@@ -38,6 +38,7 @@ Last updated: 2026-08-09
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -56,7 +57,6 @@ Last updated: 2026-08-09
 | T-074 | rename the installed skill directory to brine, with upgrade migration and dual-name doctor | medium | high | L | [T-073] |  |
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | medium | medium | M | [T-080] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
-| T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
 | T-087 | release CI: snowball setup's bundle install can't find the bundle executable after a fresh Homebrew ruby install | medium | low-medium | S-M | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
