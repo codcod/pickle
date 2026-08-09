@@ -124,7 +124,9 @@ dated lines in the ticket's **History** section, in the form
 human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>[, <commit>])` — the
 commit reference (short SHA, and a full commit link where the remote resolves to a known
 hosting URL) is recommended alongside the MR ref so the line traces straight to what shipped,
-but is not a machine-checked shape). Moving a ticket =
+but is not a machine-checked shape. Keep the short SHA even when you add the link: the board's
+`merged` cell is capped at 120 runes (§6), which a full commit URL can exceed, and the SHA is
+what still reads there — the ticket file keeps the whole line either way). Moving a ticket =
 move the file + one appended History line; the board regenerates from the result (§6).
 `pickle board audit` warns when a transition or merge line runs well past what
 "one-clause" implies — move the analysis into the Description or `tickets/NOTES.md` instead;

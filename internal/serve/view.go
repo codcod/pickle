@@ -242,7 +242,17 @@ const urlTrailingPunct = ")].,;:"
 // urlRE is already escaped by the time it is reused as the anchor's visible text
 // and its href — the href is safe from injection for the same reason the escaped
 // text is: any `"`, `<` or `&` in the original URL has already become an entity
-// reference, which cannot break out of the `href="…"` attribute it sits in.
+// reference, and an attribute's delimiters are fixed by the tokenizer *before*
+// character references are decoded, so a decoded quote cannot reopen attribute
+// parsing. `javascript:`/`data:` never match urlRE at all.
+//
+// Escaping before matching does cost fidelity, and the trim below runs on that
+// escaped text: a URL whose tail is an entity (`…/a<` → `…/a&lt;`) can lose the
+// `;` that terminates it, mangling the rendered URL — visibly wrong, but still
+// not a breach, per the ordering argument above. Commit URLs, the convention this
+// serves (T-089), carry no HTML-special characters, so the golden path is exact;
+// hardening the ordering (and the sharp edges around empty hosts and adjacent
+// URLs) is T-090.
 func linkifyURLs(s string) template.HTML {
 	escaped := template.HTMLEscapeString(s)
 	out := urlRE.ReplaceAllStringFunc(escaped, func(m string) string {
@@ -253,7 +263,7 @@ func linkifyURLs(s string) template.HTML {
 		suffix := m[len(trimmed):]
 		return `<a href="` + trimmed + `" rel="noopener" target="_blank">` + trimmed + `</a>` + suffix
 	})
-	return template.HTML(out) //nolint:gosec // out is escaped text with only <a href="<escaped-url>"> added around an already-escaped substring
+	return template.HTML(out) //nolint:gosec // every byte of out is HTMLEscapeString output plus literal anchor markup; see the escaping note above for why the trim cannot breach the attribute
 }
 
 // Event is one dated History line, tagged with the ticket it came from.
