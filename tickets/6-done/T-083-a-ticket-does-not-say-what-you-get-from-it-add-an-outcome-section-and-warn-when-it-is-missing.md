@@ -526,3 +526,4 @@ separate Review table, since the ticket has not shipped yet:
 - 2026-08-09 — published (approved): branch squashed to one commit `d9abb1b`, rebased onto
   `main` and pushed; PR https://github.com/codcod/pickle/pull/23 opened against `main`.
   Merging is the human's — add the `merged to main (#23)` line here after merging
+- 2026-08-09 — merged to main (#23)
