@@ -294,3 +294,4 @@ user reads to understand the flow's commit conventions.
 - 2026-08-07 — created (TO DO). source: pickle ticket new
 - 2026-08-09 — TO DO → READY: plan complete
 - 2026-08-09 — READY → IN DEVELOPMENT: picked up
+- 2026-08-09 — IN DEVELOPMENT → IN REVIEW: acceptance green
