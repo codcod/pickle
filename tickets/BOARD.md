@@ -38,6 +38,7 @@ Last updated: 2026-08-09
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-089 | Record a commit reference alongside the merge History line | medium | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -63,7 +64,6 @@ Last updated: 2026-08-09
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
-| T-089 | Record a commit reference alongside the merge History line | low-medium | low | S-M | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
