@@ -1,0 +1,71 @@
+name: manual-smoke
+
+# Exercises the user-manual toolchain (snowball: ruby/bundler, node, mermaid-cli, Chrome)
+# without cutting a release (T-087). release.yml's own "Build user manual" step is
+# continue-on-error, so it fails silently by design — this workflow's whole job is to fail
+# loudly instead, and it is the only way to test .github/scripts/build-manual.sh short of a
+# tagged release.
+#
+# Two ways to run it:
+#   - push (path-filtered): fires automatically whenever the script, this workflow, the docs,
+#     or the snowball config change, on any branch — including before this workflow exists on
+#     the default branch (workflow_dispatch alone would not: GitHub only allows dispatching a
+#     workflow that already lives on the default branch).
+#   - workflow_dispatch, optionally with `ref`: renders a *different* ref's docs (e.g. an
+#     older tag, to backfill a release that shipped without its manual) using *this* ref's
+#     script. See RELEASING.md "Backfilling an older release's manual".
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - 'snowball.yaml'
+      - '.github/scripts/build-manual.sh'
+      - '.github/workflows/manual-smoke.yml'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag/ref whose docs to render (default: this workflow''s own ref)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      # The workflow's own ref: this is where build-manual.sh comes from, always.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # snowball.yaml sets revision.from: git-describe
+
+      # Only when a different ref was requested: check its docs out into src/ so the script
+      # renders *its* snowball.yaml/docs while still using this ref's script (decision 4 —
+      # backfilling never re-checks-out the script itself from the old ref, which predates it).
+      - uses: actions/checkout@v7
+        if: ${{ inputs.ref != '' }}
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          path: src
+
+      # The script sets its own HOMEBREW_* defaults (tap trust, quiet output) — they are not
+      # repeated here, so they exist in exactly one place alongside their rationale.
+      # `ref` goes through env rather than a ${{ }} expansion in the script body: interpolating
+      # a workflow input straight into `run:` is the standard Actions script-injection hole.
+      - name: Build user manual (PDF + EPUB)
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          src_dir=.
+          if [ -n "$REF" ]; then
+            src_dir=src
+          fi
+          .github/scripts/build-manual.sh "$src_dir" "$RUNNER_TEMP/manual"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pickle-user-manual
+          path: |
+            ${{ runner.temp }}/manual/pickle-user-manual.pdf
+            ${{ runner.temp }}/manual/pickle-user-manual.epub
