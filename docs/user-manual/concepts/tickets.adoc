@@ -77,13 +77,19 @@ requires asking the human first.
 
 == Body
 
-Four sections, always in this order (the template is the authoring guide):
+Five sections, always in this order (the template is the authoring guide):
 
-1. `## Description` — the current spec, in prose; kept up to date as
+1. `## Outcome` — 1–3 sentences, in user-observable terms: what changes when
+   this ships. Descriptive, not evaluative — it states no worth claim and
+   gates nothing. `pickle board audit` warns (never errors, never blocks a
+   move) when a non-terminal ticket's Outcome is absent, empty, or still the
+   template placeholder; `6-done/` and `7-dropped/` are permanent archives and
+   are never checked.
+2. `## Description` — the current spec, in prose; kept up to date as
    understanding evolves.
-2. `## Implementation Plan` — empty until refined; once READY it is the
+3. `## Implementation Plan` — empty until refined; once READY it is the
    executable prompt an implementer runs top-to-bottom (see <<lifecycle>>).
-3. `## Review` — empty until reviewed; findings land here, never in a separate
+4. `## Review` — empty until reviewed; findings land here, never in a separate
    file.
-4. `## History` — append-only, dated, newest last: every status transition
+5. `## History` — append-only, dated, newest last: every status transition
    (`OLD → NEW: reason`), the creation source, and the human's merge record.

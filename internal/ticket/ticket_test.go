@@ -527,6 +527,75 @@ func TestScaffoldSectionsMatchTemplate(t *testing.T) {
 	}
 }
 
+// TestTemplateAndScaffoldOutcomePlaceholdersAreFlagged is the second drift
+// guard for T-083's check: both authoring entry points ship an Outcome
+// placeholder, and OutcomeMissing must flag *both*, or the promise made by
+// TEMPLATE.md, tickets-README.md §7, cli-reference.adoc and the CHANGELOG —
+// "absent, empty, or still the template placeholder" — is false for whichever
+// one drifts. It caught exactly that: a TEMPLATE.md placeholder written in the
+// `<…>` form the other sections use, which the HTML-comment strip cannot see
+// (review 1, finding B1).
+func TestTemplateAndScaffoldOutcomePlaceholdersAreFlagged(t *testing.T) {
+	tmplPath := filepath.Join("..", "..", "skill", "resources", "TEMPLATE.md")
+	data, err := os.ReadFile(tmplPath)
+	if err != nil {
+		t.Skipf("TEMPLATE.md not found: %v", err)
+	}
+	if !OutcomeMissing(string(data)) {
+		body, _ := SectionBody(string(data), "Outcome")
+		t.Errorf("TEMPLATE.md's own ## Outcome placeholder is not flagged as missing; "+
+			"write it as an HTML comment so the check sees through it. Body was:\n%s", body)
+	}
+	if !OutcomeMissing(Scaffold("T-001", "x", "pickle", "high", "medium", "M", nil, "")) {
+		t.Errorf("Scaffold's ## Outcome placeholder is not flagged as missing")
+	}
+}
+
+func TestSectionBody(t *testing.T) {
+	text := "# T-001 — x\n\n## Outcome\n\nAfter this ships, readers can tell at a glance.\n\n## Description\n\nsome spec\n"
+	body, found := SectionBody(text, "Outcome")
+	if !found || body != "After this ships, readers can tell at a glance." {
+		t.Errorf("SectionBody(Outcome) = %q, %v", body, found)
+	}
+	body, found = SectionBody(text, "Description")
+	if !found || body != "some spec" {
+		t.Errorf("SectionBody(Description) = %q, %v", body, found)
+	}
+	_, found = SectionBody(text, "Review")
+	if found {
+		t.Errorf("SectionBody(Review) found = true, want false (no such section)")
+	}
+
+	// A section present but with an empty body (last section, EOF).
+	empty := "## Description\n\n## Review\n\n"
+	body, found = SectionBody(empty, "Review")
+	if !found || body != "" {
+		t.Errorf("SectionBody(Review) on trailing empty section = %q, %v, want \"\", true", body, found)
+	}
+}
+
+func TestOutcomeMissing(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{"absent", "## Description\n\nspec\n", true},
+		{"placeholder comment only", "## Outcome\n\n<!-- TODO: 1-3 sentences -->\n\n## Description\n", true},
+		{"whitespace only", "## Outcome\n\n   \n\n## Description\n", true},
+		{"multiline placeholder comment", "## Outcome\n\n<!-- TODO:\nmulti-line\nplaceholder -->\n\n## Description\n", true},
+		{"real prose", "## Outcome\n\nAfter this ships, X can Y.\n\n## Description\n", false},
+		{"prose alongside a stale comment", "## Outcome\n\nAfter this ships, X can Y. <!-- note -->\n\n## Description\n", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := OutcomeMissing(c.text); got != c.want {
+				t.Errorf("OutcomeMissing(%q) = %v, want %v", c.text, got, c.want)
+			}
+		})
+	}
+}
+
 func TestLoadAllBadFilename(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "tickets", "1-to-do")

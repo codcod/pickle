@@ -8,6 +8,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **Every ticket now carries a `## Outcome` section, and `pickle board audit` warns when it's
+  missing** (T-083). The section sits above `## Description` and states, in 1–3
+  user-observable sentences, what changes when the ticket ships — descriptive, not
+  evaluative; it makes no worth claim and gates nothing. `board audit` reports a *warning*
+  (never an error, never a block on `ticket move`) when a non-terminal ticket's (`1-to-do/`
+  through `5-rework/`) Outcome is absent, empty, or still the `TEMPLATE.md` placeholder;
+  `6-done/` and `7-dropped/` are permanent archives and are never checked.
+
 ## [0.3.0] - 2026-08-07
 
 ### Added

@@ -15,6 +15,18 @@ cost: S|M|L|XL               # implementation effort — see tickets/README.md �
 
 # T-NNN — <title>
 
+## Outcome
+
+<!-- 1–3 sentences, in user-observable terms: "After this ships, <who> can <do/see what>."
+Descriptive, not evaluative — state what changes, not whether it was worth it (that
+judgement belongs to grading, not this section). Worked example: "After this ships, you
+can decide whether a TO DO ticket is worth refining by reading its first two lines,
+instead of reconstructing the payoff from a mechanism narrative." Checked by
+`pickle board audit` as a warning (never a gate) when absent, empty, or still this
+placeholder — see tickets/README.md §7. This one placeholder is an HTML comment, not
+the `<…>` form the other sections use, precisely so leaving it in place trips that
+warning: the check strips HTML comments and asks whether anything is left. -->
+
 ## Description
 
 <The current spec of the feature, in prose. Kept up to date as understanding evolves —
