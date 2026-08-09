@@ -896,7 +896,9 @@ func MarkerBlock(cfg *config.Config) string {
 		"  frontmatter (`pickle project list`). Registered child-projects: " + children + "." +
 		commandsBullet + "\n" +
 		"- **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of\n" +
-		"  the subject** (e.g. `feat(cli): add board audit (T-2)`). Branch per child:" + branches.String() + "\n" +
+		"  the subject** (e.g. `feat(cli): add board audit (T-2)`) for child-project code. Ticket/board\n" +
+		"  bookkeeping uses its own `board: T-NNN <verb phrase>` form instead — grammar and scope in\n" +
+		"  the rules §0. Branch per child:" + branches.String() + "\n" +
 		"- **WIP limits** (per child):" + wip.String() + "\n" +
 		"- **Commit policy.** " + childPolicy + "\n" +
 		"  " + overarching + " (`git add <paths>`, never `git add -A`/`.`).\n" +

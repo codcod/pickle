@@ -44,7 +44,9 @@ a complete, self-contained prompt (§4):
    verbatim.
 6. *Docs update* — which docs, or "no user-facing surface".
 7. *Finish* — summary + a suggested Conventional Commit message (ticket id in
-   brackets at the end of the subject).
+   brackets at the end of the subject). For a root-path child, WIP commits are first tidied into
+   atomic ones. The merge then defaults to preserving them (rebase/keep-history) rather than
+   squashing — see <<project-structure>>.
 
 == Pickup gates
 

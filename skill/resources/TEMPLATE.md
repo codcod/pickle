@@ -57,9 +57,11 @@ git checkout -b feat/T-NNN-<slug>
 Do all work on this branch, committing locally as you go (WIP commits are encouraged —
 crash-safety and diffable rework rounds). Publish only per the project's commit policy
 (default: never push the child-project or open a merge request without explicit user
-approval): end with a summary and a suggested commit message (see Finish, below); once the
-user approves, finalize the branch (squash to the approved commit or keep the history — the
-user chooses). **Before pushing, verify the remote base is not behind your local base** —
+approval): end with a summary and a suggested commit message (see Finish, below), tidying WIP
+commits into atomic ones first for a root-path child (`path = "."`, tickets/README.md §0); once
+the user approves, finalize the branch (squash to the approved commit, or — the root-path
+default — keep the tidied history; the user chooses at approval time).
+**Before pushing, verify the remote base is not behind your local base** —
 `git fetch origin <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must
 print nothing, or push `origin <base>` first (rules §0 explains why) — then push and open the
 merge request — **merging is always the human's.**
@@ -118,10 +120,16 @@ user-facing surface.>
    <body — what and why>
    ```
 
-5. Commit locally on the ticket branch. Publish only per the project's commit policy
+5. **Tidy up before presenting** — for a root-path child (`path = "."`, tickets/README.md §0),
+   interactive-rebase the branch's WIP commits into a small number of atomic, correctly
+   typed/scoped commits before presenting them: this is what replaces squash-on-merge as the
+   default for that case. A child at a nested path can skip this step (squash still applies
+   there).
+6. Commit locally on the ticket branch. Publish only per the project's commit policy
    (default: do **not** push or open a merge request without user approval). Present the
-   commit message; only after approval finalize the branch (squash or keep history — the user
-   chooses). Before pushing, verify the remote base is not behind your local base — `git fetch
+   commit message; only after approval finalize the branch (squash, or — the root-path default
+   above — keep the tidied history; the user chooses at approval time). Before pushing, verify
+   the remote base is not behind your local base — `git fetch
    origin <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must print
    nothing, or push `origin <base>` first (rules §0) — then push and open the merge request
    (merging is always the human's). Hand back to the user.

@@ -199,8 +199,11 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
   is appended in brackets at the end of the subject line, e.g. `(T-42)`), plus body — **and the
   merge-request attributes** (title, description, target branch) **to the user for approval**.
   Local WIP commits on the ticket branch are fine at any time — the approval gate governs
-  **publishing**. Only after the user approves all attributes, finalize the branch (squash to
-  the single approved commit, or keep the history — the user chooses at approval time).
+  **publishing**. For a root-path child (`path = "."`, tickets/README.md §0), tidy the WIP
+  commits into a small number of atomic, correctly typed/scoped commits before presenting them,
+  and default to keeping that history on merge rather than squashing. Only after the user
+  approves all attributes, finalize the branch (squash to the single approved commit, or — the
+  root-path default above — keep the tidied history; the user chooses at approval time).
   **Before pushing, verify the remote base is not behind your local base**: `git fetch origin
   <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must print nothing
   (§0 explains the three-dot choice, the fetch, and the failure this catches). Any output means
@@ -210,7 +213,9 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
   request without approval); **merging is always the human's.**
 - **Overarching project** (tickets, board, bookkeeping): commit per the project's commit
   policy — may be automated, always with **explicit pathspecs** (`git add <paths>`, never
-  `git add -A`/`.`) so deliberately-untracked material is never swept in.
+  `git add -A`/`.`) so deliberately-untracked material is never swept in. A commit that only
+  changes ticket/board state takes the `board: T-NNN <verb phrase>` form rather than a
+  Conventional Commit — grammar and scope in the rules §0.
 - **Suggest the next ticket**: the next item in `BOARD.md`'s READY section (impact order,
   respecting `depends-on:` and per-child WIP limits), whether its prerequisite gate is
   satisfied — **explicitly stating whether the human must merge the just-reviewed branch first**

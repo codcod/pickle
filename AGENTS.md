@@ -51,7 +51,9 @@ earns a **disposition** (rules §5), and most are resolved without a new ticket.
 - **Commands** (each child's, from `pickle.toml`):
   - `pickle`: build `just build` · test `just test` · lint `just lint` · docs `just docs-check`
 - **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of
-  the subject** (e.g. `feat(cli): add board audit (T-2)`). Branch per child:
+  the subject** (e.g. `feat(cli): add board audit (T-2)`) for child-project code. Ticket/board
+  bookkeeping uses its own `board: T-NNN <verb phrase>` form instead — grammar and scope in
+  the rules §0. Branch per child:
   - `pickle`: `feat/T-NNN-<slug>`
 - **WIP limits** (per child):
   - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
