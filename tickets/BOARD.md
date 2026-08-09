@@ -115,7 +115,7 @@ Last updated: 2026-08-09
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
-| T-087 | release CI: make the user-manual build visible and testable without cutting a release | no — publish-gated |
+| T-087 | release CI: make the user-manual build visible and testable without cutting a release | yes — merged to main (PR #25, 084ff7e) |
 
 ## DROPPED
 

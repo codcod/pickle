@@ -379,3 +379,17 @@ ticket by theme (F8, F9 → **T-088**), 2 noted (F10, F11). No finding required 
   and `-f ref=v0.2.2`, then `gh release upload <tag> pickle-user-manual-<version>.{pdf,epub}` for
   each, restoring the two releases' missing assets (plan Finish step 5). Both releases were
   re-confirmed asset-less during the review.
+- 2026-08-09 — merged to main (PR #25, 084ff7e)
+- 2026-08-09 — note on the above: squash-merged rather than the root-path keep-history default
+  (rules §0) — the human's call at merge time, recorded so the three atomic commits' absence from
+  `main` is not read later as a tidy-up that never happened.
+- 2026-08-09 — **pending action above: done.** `manual-smoke` dispatched against both tags and
+  green — [v0.3.0: run 31328204542](https://github.com/codcod/pickle/actions/runs/31328204542),
+  [v0.2.2: run 31328212070](https://github.com/codcod/pickle/actions/runs/31328212070) — and
+  their artifacts uploaded, so all three releases from v0.2.1 on now carry
+  `pickle-user-manual-<version>.{pdf,epub}` (verified with `gh release view --json assets`).
+  Both runs took the `src_dir=src` branch, which is the first end-to-end exercise of the
+  `workflow_dispatch` + `ref` path — and therefore of review finding F5's `env: REF:` fix.
+  Noted while backfilling: a rebuilt manual carries no version marker of its own (`dc:date` is
+  the build date, not the tag's), so the asset filename is the only version signal. Harmless
+  here; recorded in case a later ticket wants the revision stamped into the document.
