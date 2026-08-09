@@ -348,6 +348,47 @@ All four commands re-run clean on the fix commit: `just build` ✓ · `just test
 `TestSelfHostMarkerBlockIsCurrent`, `TestMarkerBlockGolden`, `TestPayloadDispositionVocabulary`,
 `TestPayloadDefersToProjectConfig`) · `just lint` ✓ · `just docs-check` ✓.
 
+---
+
+### Scoped re-review (2026-08-09)
+
+Scope per the protocol: verify the findings above are resolved; no re-audit from scratch.
+Verification was cross-checked by an independent sub-agent (the rework's author reviewing their
+own fix carries the same bias the applicability gate spawns a fresh agent to avoid).
+
+**Findings F1–F9 — all resolved.** F1's blanket rule is gone (carve-out at
+`install.go:898-901`, golden regenerated, `AGENTS.md` mirrored, `TestSelfHostMarkerBlockIsCurrent`
+passes). F2's scope test is now an **allow-set** — walked through every case an agent hits
+(ticket file only; `BOARD.md` only; ticket + `BOARD.md`; `NOTES.md` only; ticket + `NOTES.md`;
+ticket + `pickle.toml`; `tickets/*/.gitkeep`) and each yields exactly one answer, including the
+`tickets/NOTES.md` case that broke the original rule. F3–F6 and F9 are present and mutually
+coherent; the grammar is still defined in exactly one place (`tickets-README.md` §0) with the
+other surfaces carrying only a shape-reminder plus a pointer. Scope discipline held: `04010c5`
+touches 8 files, each traceable to a listed finding. F7 fixed forward (`e986e0a`, `c64e249` both
+use `board:`). F8 remains deliberately deferred to the Finish tidy-up.
+
+**Two new findings, introduced by the fix pass itself — both fixed inline in `324bffd`:**
+
+| id | severity | disposition | finding | evidence | resolution |
+|---|---|---|---|---|---|
+| N1 | non-blocking | fixed inline | The F1 carve-out's cross-reference **dead-ended**: it read "see ‘Where commits land’ below", but that bullet covers only *which branch* bookkeeping lands on — no `board:` mention, no grammar, no scope rule, no pointer onward. In the one surface `SKILL.md` declares authoritative, an agent following it learned nothing about scope. `SKILL.md`'s own carve-out cited "rules §0" correctly, making this an internal inconsistency. | `markerblock.golden:26-27` pointing at `:38-43` | Re-pointed at "the rules §0", matching the block's existing `(rules §5)` idiom; golden regenerated; `AGENTS.md` hand-mirrored. |
+| N2 | non-blocking | fixed inline | **Decision 7's premise was unfulfilled.** It asserted the format "lives in step 9's prose (which the reviewer already reads when composing messages)" — but step 9's Overarching-project bullet, the operative moment a reviewer writes the bookkeeping commit, never mentioned `board:`. Missed by the first review too. | `review-protocol.md:214-216` (pre-fix) | Added one clause naming the form and citing the rules §0. The reviewer-facing checklist stays untouched, per decision 6. |
+
+Both qualify for `fixed inline` on the rules §5 bar: N1 is prose **this branch authored**, N2 is
+prose **this branch made false**; neither changes behaviour, and neither would plausibly be
+scheduled as its own ticket. Fixing them here avoided a rework round for two clauses.
+
+**Disposition summary (re-review):** 2 new findings, both non-blocking, both `fixed inline`
+(N1, N2). No blocking findings. No follow-up ticket spawned.
+
+**Gates after the inline fixes** (`324bffd`): `just build` ✓ · `just test` ✓ · `just lint` ✓ ·
+`just docs-check` ✓.
+
+**Verdict: DONE.** The convention is internally consistent across all six surfaces that state it
+(rules §0 as the single definition; `SKILL.md`, `TEMPLATE.md`, `review-protocol.md`, the marker
+block/`AGENTS.md`, and the user manual as referrers), and every pointer now resolves to real
+content.
+
 **Impact sweep (step 8):** no ticket in `1-to-do/` or `2-ready/` references T-084, and none lists
 it in `depends-on:`. One observation, not a finding: T-082's Description argues from "a
 squash-merge folds bookkeeping". Under this ticket's rebase default that mechanism changes shape
@@ -363,3 +404,4 @@ now — T-084 is unmerged and its convention may still shift in rework.
 - 2026-08-09 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-09 — IN REVIEW → REWORK: 2 blocking: marker block states a blanket commit format (decision 7 false premise); scope rule self-contradicts on tickets/NOTES.md
 - 2026-08-09 — REWORK → IN REVIEW: findings fixed
+- 2026-08-09 — IN REVIEW → DONE: re-review clean; F1-F9 resolved, 2 new non-blocking fixed inline

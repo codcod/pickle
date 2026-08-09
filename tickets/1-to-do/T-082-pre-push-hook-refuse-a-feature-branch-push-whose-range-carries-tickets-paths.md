@@ -19,7 +19,11 @@ After this ships, a `git push` whose range still carries a `tickets/` path on a 
 
 Rules §0 splits every change in two — code on the child's feature branch, ticket and board
 bookkeeping on the base branch — because a squash-merge of a branch carrying bookkeeping folds or
-drops it and leaves `BOARD.md` disagreeing with the tickets it indexes. T-057 shipped a
+drops it and leaves `BOARD.md` disagreeing with the tickets it indexes. (T-084 note: for a
+root-path child the default merge is now rebase/keep-history, under which the same bookkeeping is
+*preserved* rather than folded — landing on the base as out-of-order commits instead of
+vanishing. The hazard and this ticket's fix are unchanged; only the folding half of the rationale
+above is specific to squash.) T-057 shipped a
 `pre-commit` hook enforcing it at **commit** time. T-072 established that the same failure also
 arrives at **publish** time, where that hook is structurally blind, and closed it **in prose**
 (§0, review-protocol step 9, and `TEMPLATE.md`).
@@ -117,3 +121,6 @@ repair. It would equally have caught T-068's.
   `internal/hook`, `internal/cli` and `doctor` plus a `ShimVersion` bump, against T-072's
   prose-only scope. Passes the promotion test on frequency alone: four occurrences, one of which
   shipped
+- 2026-08-09 — T-084's review impact sweep: noted in the Description that the rebase/keep-history
+  default for a root-path child changes the failure's *shape* (preserved, not folded) without
+  changing this ticket's scope or its three-dot `origin/<base>...HEAD` check.
