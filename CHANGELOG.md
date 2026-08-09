@@ -27,6 +27,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   a Finish-step tidy-up (interactive rebase into atomic, correctly typed/scoped commits)
   before the sequence is presented for approval.
 
+### Fixed
+
+- **The release workflow's user-manual build (PDF/EPUB) had been failing invisibly since
+  `v0.2.2`** (T-087): `v0.2.2` and `v0.3.0` both shipped with no manual attached, each for a
+  different toolchain reason. The build step's deliberate soft-fail (a broken manual must not
+  block publishing the binaries) exited silently on a miss, so nobody noticed. A missing manual
+  is now annotated on the release run, and the toolchain (`.github/scripts/build-manual.sh`) can
+  be exercised from a new `manual-smoke` workflow without cutting a release.
+
 ## [0.3.0] - 2026-08-07
 
 ### Added

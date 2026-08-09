@@ -33,44 +33,16 @@ jobs:
       # (wiping dist/), and it also refuses to run against a dirty tree — an
       # untracked manual/ dir in the repo root would trip its dirty check.
       # Soft-fail: a broken manual must not block publishing the binaries.
-      # Homebrew ships preinstalled on the ubuntu runner but is no longer on
-      # PATH by default, so load its shellenv first.
+      # The toolchain steps (Homebrew shellenv, snowball install, the bundler
+      # shim, diagnostics) live in .github/scripts/build-manual.sh (T-087) —
+      # shared with manual-smoke.yml, which is how this step gets exercised
+      # without cutting a release. The HOMEBREW_* settings this step used to
+      # carry (tap trust, quiet output) are defaults inside that script now,
+      # so they live in one place with their rationale. See it for the
+      # step-by-step reasoning.
       - name: Build user manual (PDF + EPUB)
         continue-on-error: true
-        env:
-          # codcod/tap is our own tap. Homebrew's Tap-Trust gate otherwise
-          # refuses to install from it in CI ("the following taps are not
-          # trusted"), leaving snowball uninstalled (command not found).
-          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
-          # Quiet brew's progress/hint chatter. Its terminal-width probing is
-          # what triggers the intermittent "Broken pipe" failures on CI.
-          HOMEBREW_NO_AUTO_UPDATE: 1
-          HOMEBREW_NO_ENV_HINTS: 1
-          HOMEBREW_NO_COLOR: 1
-        run: |
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          # The runner image's preinstalled Homebrew is a point-in-time snapshot and
-          # can lag behind homebrew-core's bottle metadata. When it does, a bottle
-          # built with a newer install-step DSL (observed: `ruby`'s post-install
-          # step "remove") makes that stale `brew` abort with "unknown install step"
-          # instead of installing it -- a Homebrew-version mismatch, not a transient
-          # network blip, so the retry loop below alone never recovers from it.
-          # `brew update` (unlike `install`/`upgrade`) always fetches regardless of
-          # HOMEBREW_NO_AUTO_UPDATE, which only suppresses the *implicit* update those
-          # two commands would otherwise trigger -- so this still gets the quiet,
-          # broken-pipe-free installs below.
-          brew update --quiet
-          # Fully qualify the formula: a bare `snowball` resolves to
-          # homebrew/core's stemmer of the same name, not our tap's tool.
-          # Retry the install: it occasionally dies with a transient broken
-          # pipe mid-download.
-          for attempt in 1 2 3; do
-            brew install codcod/tap/snowball && break
-            echo "brew install failed (attempt $attempt); retrying..."
-            sleep 5
-          done
-          snowball setup
-          snowball build -o "$RUNNER_TEMP/manual"
+        run: .github/scripts/build-manual.sh . "$RUNNER_TEMP/manual"
       - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
@@ -105,7 +77,17 @@ jobs:
             existing+=("$dst")
           done
           if [ ${#existing[@]} -eq 0 ]; then
-            echo "No user manual built; skipping attach."
+            # A soft-failed build previously exited 0 here with nothing more than this log
+            # line, which is how v0.2.2 and v0.3.0 both shipped with no manual attached and
+            # nobody noticed for ten days (T-087). Annotate loudly instead, still exit 0 —
+            # the soft-fail contract itself (RELEASING.md) is unchanged.
+            echo "::warning::Release $TAG has no user manual attached — the build step failed;" \
+              "see its log for the actual cause."
+            {
+              echo "### ⚠️ No user manual attached to $TAG"
+              echo "The 'Build user manual (PDF + EPUB)' step failed (soft-fail: this does not"
+              echo "block the release). See that step's log for the cause."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           gh release upload "$TAG" "${existing[@]}" --clobber
