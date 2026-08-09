@@ -389,6 +389,12 @@ scheduled as its own ticket. Fixing them here avoided a rework round for two cla
 block/`AGENTS.md`, and the user manual as referrers), and every pointer now resolves to real
 content.
 
+**Post-merge note.** PR #24 was merged as a **merge commit preserving both commits
+individually** rather than squashing — the keep-history default this ticket introduced for a
+root-path child, exercised on the very branch that introduced it. `git log --oneline
+--invert-grep --grep '^board:'` on `main` now recovers the granular product history the
+Description argued for, which the old squash default made impossible.
+
 **Impact sweep (step 8):** no ticket in `1-to-do/` or `2-ready/` references T-084, and none lists
 it in `depends-on:`. One observation, not a finding: T-082's Description argues from "a
 squash-merge folds bookkeeping". Under this ticket's rebase default that mechanism changes shape
@@ -405,3 +411,5 @@ now — T-084 is unmerged and its convention may still shift in rework.
 - 2026-08-09 — IN REVIEW → REWORK: 2 blocking: marker block states a blanket commit format (decision 7 false premise); scope rule self-contradicts on tickets/NOTES.md
 - 2026-08-09 — REWORK → IN REVIEW: findings fixed
 - 2026-08-09 — IN REVIEW → DONE: re-review clean; F1-F9 resolved, 2 new non-blocking fixed inline
+- 2026-08-09 — published: branch tidied to 2 commits, pushed; PR #24 opened against main.
+- 2026-08-09 — merged to main (PR #24, 6d70fb3)
