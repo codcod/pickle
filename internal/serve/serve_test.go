@@ -63,6 +63,10 @@ cost: M
 
 # %s — %s
 
+## Outcome
+
+Fixture ticket; exercises serve rendering only, not T-083's check.
+
 ## Description
 
 %s

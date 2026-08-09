@@ -432,9 +432,11 @@ pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V
 
 Allocates the next id for the target child's prefix — `<PREFIX>-NNN`, where
 `<PREFIX>` is the child's `ticket_prefix` (default `T`) and `NNN` is
-`max(existing ids sharing that prefix) + 1` — writes a clean, audit-passing
+`max(existing ids sharing that prefix) + 1` — writes a clean, error-free
 scaffold to `tickets/1-to-do/<PREFIX>-NNN-<slug>.md`
-(filled frontmatter + the standard section skeleton), and regenerates
+(filled frontmatter + the standard section skeleton; its `## Outcome`
+placeholder is the one thing `board audit` warns about until you fill it in,
+<<cmd-board-audit>>), and regenerates
 `BOARD.md` (the row lands under the child's `### <child>` sub-group in the
 TO DO section, in impact order). `--project` must name a registered child;
 grades default to `medium`/`medium`/`M` and must be legal. The `<title>` may
@@ -540,7 +542,14 @@ summary) when any invariant fails:
   so an outlier — a paragraph of pipeline detail pasted onto one dated line —
   is flagged and should move into the Description or `tickets/NOTES.md`.
   `created` lines and other free-form dated notes carry no such shape and are
-  exempt, however long.
+  exempt, however long;
+* a non-terminal ticket's `## Outcome` section is present and says something
+  (a *warning*): absent, empty, or still the `TEMPLATE.md` placeholder all
+  trigger it. Checked only in `1-to-do/` … `5-rework/` — `6-done/` and
+  `7-dropped/` are permanent archives and are never flagged, however old the
+  ticket. The check is structural (section present and non-empty once HTML
+  comments are stripped), never a prose-quality judgement, and never blocks
+  `ticket move`.
 
 [NOTE]
 ====

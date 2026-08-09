@@ -550,6 +550,59 @@ func SectionHeadings(text string) []string {
 	return out
 }
 
+// SectionBody returns the trimmed body text of the top-level ("## <heading>")
+// section named heading, and whether that section exists at all. Matching is
+// exact and case-sensitive, mirroring SectionHeadings; the walk is the same
+// line-prefix scan, so a "## <heading>"-looking line inside a fenced code
+// block would be misread the same way SectionHeadings already would be — a
+// pre-existing, shared limitation, not a new one. Unlike SectionHeadings
+// (which only lists names), this reads content, for callers that must judge
+// whether a section is *empty* (T-083's Outcome-presence check) rather than
+// merely present.
+func SectionBody(text, heading string) (body string, found bool) {
+	lines := strings.Split(text, "\n")
+	start := -1
+	for i, line := range lines {
+		if strings.HasPrefix(line, "## ") && strings.TrimSpace(line[3:]) == heading {
+			start = i + 1
+			found = true
+			break
+		}
+	}
+	if !found {
+		return "", false
+	}
+	end := len(lines)
+	for i := start; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], "## ") {
+			end = i
+			break
+		}
+	}
+	return strings.TrimSpace(strings.Join(lines[start:end], "\n")), true
+}
+
+// htmlCommentRE strips an HTML comment span (the TEMPLATE.md placeholder
+// form, e.g. "<!-- TODO: ... -->") when judging whether a section's body is
+// substantive. (?s) makes "." match newlines, since a placeholder comment may
+// wrap onto its own line.
+var htmlCommentRE = regexp.MustCompile(`(?s)<!--.*?-->`)
+
+// OutcomeMissing reports whether text's "## Outcome" section is absent, or its
+// body is empty once HTML comments (the TEMPLATE.md placeholder form) are
+// stripped and the remainder is trimmed of whitespace (T-083). It is
+// deliberately structural, not a prose-quality heuristic: presence-and-not-
+// placeholder is mechanical and has no judgement in it. Used by board audit
+// as a warning only — never a gate on ticket move, and never joining
+// requiredKeys (Outcome is a body section, not frontmatter).
+func OutcomeMissing(text string) bool {
+	body, found := SectionBody(text, "Outcome")
+	if !found {
+		return true
+	}
+	return strings.TrimSpace(htmlCommentRE.ReplaceAllString(body, "")) == ""
+}
+
 // renderIDList renders a ticket-id slice in frontmatter form: "[]" when empty,
 // "[T-018, T-019]" otherwise — the inverse of ParseDepends.
 //
@@ -565,8 +618,11 @@ func renderIDList(ids []string) string {
 
 // Scaffold renders a fresh, canonical TO DO ticket: filled frontmatter, heading,
 // and the standard section skeleton (mirroring TEMPLATE.md's section set). The
-// full TEMPLATE.md remains the authoring guide; this is the minimal, audit-clean
-// starting point `pickle ticket new` writes.
+// full TEMPLATE.md remains the authoring guide; this is the minimal,
+// error-free starting point `pickle ticket new` writes. "Error-free", not
+// warning-free: the `## Outcome` placeholder below is deliberately one that
+// `board audit` flags (T-083), so a scaffolded ticket nudges its author to say
+// what the feature buys until they do.
 //
 // spawnedBy is the ticket's lineage (nil for none) — provenance only; it never
 // gates anything. family is the umbrella ticket id (a single id, same child, "" for
@@ -592,6 +648,10 @@ cost: %s
 ---
 
 # %s — %s
+
+## Outcome
+
+<!-- TODO: 1-3 sentences, in user-observable terms: what changes when this ships. -->
 
 ## Description
 

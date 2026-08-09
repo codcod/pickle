@@ -174,7 +174,9 @@ All other transitions are forward-only, as diagrammed.
   collapse it to a single value. Priority order is **not** encoded in filenames — the board
   (§6) renders TO DO/READY by descending impact within each child's group, ties by id.
   **Assess every new ticket against the existing backlog** before filing it, and re-grade the
-  board.
+  board. When a grade changes on re-assessment, write the one-line reason into the ticket's own
+  `## Outcome` or Description — not only into a `NOTES.md` triage table, which a later reader
+  of the ticket alone never sees (T-083).
 - **Dependencies (may cross child-projects).** Hard dependencies go in `depends-on:` frontmatter
   (a list of `T-NNN` ids, which may target any child). **Transition guard:** a ticket may not
   enter `3-in-development/` while any `depends-on` target is not in `6-done/` **with its feature
@@ -334,9 +336,13 @@ violation, not a judgement call. `pickle board audit` counts WIP per child.
 
 Author every new ticket from the skill's `resources/TEMPLATE.md` (projects keep no local
 copy): frontmatter (id, title, **project**, depends-on, spawned-by, grading) +
-`## Description` (current spec) + `## Implementation Plan` (empty until refined; the
-READY-gated executable prompt) + `## Review` (empty until reviewed) + `## History`
-(append-only, dated, newest last).
+`## Outcome` (1–3 sentences, in user-observable terms: what changes when this ships —
+descriptive, not evaluative; it states no worth claim and gates nothing) + `## Description`
+(current spec) + `## Implementation Plan` (empty until refined; the READY-gated executable
+prompt) + `## Review` (empty until reviewed) + `## History` (append-only, dated, newest last).
+`pickle board audit` warns — never errors, never gates a move — when a non-terminal ticket's
+`## Outcome` is absent, empty, or still the template placeholder (T-083); `6-done/` and
+`7-dropped/` are permanent archives and are never checked.
 
 ## 8. How work enters the project (the only pipeline)
 

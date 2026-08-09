@@ -38,9 +38,26 @@ cost: M
 
 # %s
 
+## Outcome
+
+Fixture ticket; exercises the audit only.
+
 ## History
 - 2026-07-23 — created (%s). source: test
 `, id, id, project, depends, impact, id, hist)
+}
+
+// withoutOutcome strips the fixture's default ## Outcome section entirely —
+// used to exercise the T-083 presence check without touching any other field.
+func withoutOutcome(body string) string {
+	return strings.Replace(body, "## Outcome\n\nFixture ticket; exercises the audit only.\n\n", "", 1)
+}
+
+// withPlaceholderOutcome replaces the fixture's real Outcome sentence with an
+// HTML-comment placeholder — the same "section present but says nothing" shape
+// TEMPLATE.md ships, which OutcomeMissing must also flag.
+func withPlaceholderOutcome(body string) string {
+	return strings.Replace(body, "Fixture ticket; exercises the audit only.", "<!-- TODO: fill in -->", 1)
 }
 
 // historyTemplate is ticketFile's sibling for cases that need a hand-built
@@ -60,6 +77,10 @@ cost: M
 ---
 
 # %[1]s
+
+## Outcome
+
+Fixture ticket; exercises the audit only.
 
 ## History
 %[4]s
@@ -288,6 +309,40 @@ func TestAudit(t *testing.T) {
 		{name: "in-dev spawned-by parent not done", mutate: func(t *testing.T, root string) {
 			mk(t, root, "tickets/3-in-development/T-002-bar.md",
 				withSpawnedBy(ticketFile("T-002", "pickle", "[]", "high", "IN DEVELOPMENT"), "[T-001]"))
+			renderBoard(t, root)
+		}},
+
+		// --- ## Outcome presence (T-083): a warning only, scoped to non-terminal dirs ---
+		{name: "missing outcome warns", mutate: func(t *testing.T, root string) {
+			mk(t, root, "tickets/1-to-do/T-001-foo.md",
+				withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "TO DO")))
+		}, wantWarn: true, warnSubstr: "## Outcome is missing"},
+		{name: "placeholder outcome warns", mutate: func(t *testing.T, root string) {
+			mk(t, root, "tickets/1-to-do/T-001-foo.md",
+				withPlaceholderOutcome(ticketFile("T-001", "pickle", "[]", "high", "TO DO")))
+		}, wantWarn: true, warnSubstr: "## Outcome is missing"},
+		{name: "missing outcome in rework ticket warns (non-terminal, not just to-do)", mutate: func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			mk(t, root, "tickets/5-rework/T-001-foo.md",
+				withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "REWORK")))
+			renderBoard(t, root)
+		}, wantWarn: true, warnSubstr: "## Outcome is missing"},
+		{name: "missing outcome in done ticket stays clean (terminal dirs exempt)", mutate: func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			mk(t, root, "tickets/6-done/T-001-foo.md",
+				withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DONE")))
+			renderBoard(t, root)
+		}},
+		{name: "missing outcome in dropped ticket stays clean (terminal dirs exempt)", mutate: func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			mk(t, root, "tickets/7-dropped/T-001-foo.md",
+				withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DROPPED")))
 			renderBoard(t, root)
 		}},
 

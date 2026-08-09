@@ -139,7 +139,8 @@ When asked to turn an idea, finding, or request into a ticket:
    single line and the ids must be `T-NNN`, or the command rejects the invocation and writes
    nothing — put multi-line context in the Description, not the title. If the command rejects,
    fix the offending argument (collapse the title to a single line; correct any malformed id)
-   and retry before proceeding. Then fill in the Description prose.
+   and retry before proceeding. Then fill in the `## Outcome` (1–3 sentences, in
+   user-observable terms: what changes when this ships) and the Description prose.
 4. **Grade it** (impact / complexity / cost) **against the existing backlog** — re-grade
    neighbours if the comparison shifts them.
 5. Note any soft couplings (including cross-child ones) in the Description; hard `depends-on:`
@@ -155,7 +156,9 @@ When asked to refine ticket T-NNN (or "make it ready"):
 1. The ticket is normally in `1-to-do/`. Read it in full, including `## History`.
 2. **Re-verify the Description against the current target child-project** — the ticket may
    predate changes that invalidated its assumptions (paths, names, shipped behaviour). Update
-   the Description first; it is the spec.
+   the Description first; it is the spec. Tighten `## Outcome` alongside it — refinement is
+   when "what you get" is best known, and `pickle board audit` will keep warning until it is
+   more than a placeholder.
 3. **Surface open decisions to the user** — anything ambiguous the plan must pin down.
 4. **Write the Implementation Plan** against the READY gate (rules §4): feature branch (in the
    child's repo), prerequisite gate, confirmed decisions, concrete tasks with exact paths,
@@ -268,9 +271,10 @@ targets exist and none is the ticket itself; `spawned-by:` targets exist and no 
 itself (but lineage never gates); all seven status directories exist (a missing one is an
 error, an empty one with no `.gitkeep` a warning); per-child WIP limits hold; each ticket's
 last History transition matches its directory (and an over-long transition/merge line warns);
-and in-development tickets have all dependencies done (warning if a done dependency has no
-`merged` History line). Fix every error it reports — an error is a broken invariant, not a
-judgement call.
+in-development tickets have all dependencies done (warning if a done dependency has no
+`merged` History line); and a non-terminal ticket's `## Outcome` section is present and not a
+placeholder (a warning only, never a gate — `6-done/`/`7-dropped/` are exempt, T-083). Fix
+every error it reports — an error is a broken invariant, not a judgement call.
 
 ## Notes
 

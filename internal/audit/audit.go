@@ -146,6 +146,19 @@ func Audit(root string, cfg *config.Config) Result {
 				r.errf("%s: family %s is itself a family member (families do not nest)", ref, fam)
 			}
 		}
+		// Outcome presence (T-083) — a WARNING, never an error, and this is a hard
+		// constraint, not a style preference: an error here would make ticket move,
+		// board sync, install and upgrade all fail for every ticket that predates
+		// the section. Scoped to the five non-terminal directories only — 6-done/
+		// and 7-dropped/ are permanent, immutable archives (rules §3); flagging them
+		// would add one permanent warning per archived ticket for a record nobody
+		// is about to act on. Structural check only (SectionBody.OutcomeMissing) —
+		// no prose heuristic, and deliberately NOT in requiredKeys (Outcome is a
+		// body section, not frontmatter; see T-045's migration-break precedent).
+		if t.Dir != "6-done" && t.Dir != "7-dropped" && ticket.OutcomeMissing(t.Text) {
+			r.warnf("%s: ## Outcome is missing, empty, or still a placeholder — say what changes "+
+				"when this ships, in user-observable terms", ref)
+		}
 	}
 
 	// Board staleness check (T-044 D6, two-tiered by T-052). The board is a
