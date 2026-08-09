@@ -54,10 +54,43 @@ referenced, not copied.
   bookkeeping commit into the code commit, or drops it, and the board then indexes tickets whose
   recorded status disagrees with where the files are. It applies to every move a ticket makes,
   including the ones a *review* performs.
+  - **Bookkeeping commits use their own `board:` form, not Conventional Commits.** A
+    bookkeeping commit is a ticket's state transition, not a product change, so forcing it
+    through Conventional Commits' `type(scope)` grammar either produces an uninformative scope
+    (`tickets`, always) or an artificial one picked by whichever directory happened to be
+    touched — either way it misdescribes what the commit actually is. Instead: `board: T-NNN[,
+    T-MMM …] <verb phrase>`, where `<verb phrase>` is a short present-tense clause naming what
+    happened to the ticket — for example `board: T-084 ready → in development` or `board: T-057,
+    T-072 note the shared origin-base invariant`. The ticket id leads the subject — it *is* the
+    subject of a bookkeeping commit, unlike a code commit where an id is a trailing
+    cross-reference. Phrase a state move with an arrow (`picked up → in development`); phrase a
+    content-only edit (no move) as a plain clause; list every id touched in one sitting,
+    comma-separated. **Scope:** this format applies only to a commit whose staged paths are
+    limited to ticket files (a `tickets/<status-dir>/*.md`) and `tickets/BOARD.md` — not merely
+    "somewhere under `tickets/`", since `tickets/NOTES.md` is also under `tickets/` but is
+    hand-written planning prose, not ticket/board state, and keeps ordinary Conventional
+    Commits. A commit that also touches `pickle.toml` or this document is likewise not a pure
+    ticket-state change and keeps ordinary Conventional Commits.
+  - **Fold only when adjacent.** A content-only annotation (no board move) folds — by amending
+    it (`git commit --amend`) — into an *adjacent* `board:` commit for the same ticket:
+    "adjacent" means the immediately preceding bookkeeping commit for that ticket, made in the
+    same sitting (no branch switch, and no distinct trigger invocation —
+    pickup/review/rework/re-review — since it landed). Otherwise the annotation stays its own
+    commit. Never fold across a branch switch or a distinct trigger invocation — collapsing
+    those would reintroduce the exact uncommitted-bookkeeping-crosses-a-branch-switch hazard the
+    pre-commit hook (below) and the origin-base check (below, and `review-protocol.md` step 9)
+    exist to prevent.
   - In the **single-repo default** (`path = "."`, one child at the overarching root) the code and
     the board share one repository and one branch namespace, which is exactly what makes the
     split easy to violate by accident — nothing about `git add tickets` looks wrong on a feature
-    branch.
+    branch. Because that history also carries the child's own commits, prefer preserving them on
+    merge (rebase, or a keep-history merge) over squashing there — squashing flattens whatever
+    `feat`/`fix`/`ci`/`test` structure the branch had into one commit, discarding exactly the
+    granularity the `board:` form above exists to keep clean of. A child registered at a nested
+    path is unaffected: squashing there does not cost the same thing, since that child's history
+    isn't sharing a log with bookkeeping. This is operator guidance — no `pickle.toml` key reads
+    or enforces it; see §4 item 7 and the ticket template's Finish step for the resulting
+    tidy-up-before-approval obligation.
   - `pickle hooks install` enforces it locally: a `pre-commit` hook that refuses staged
     `tickets/` paths while HEAD is a feature branch. Hooks live in `.git/` and are never cloned,
     so it is once per clone. `git commit --no-verify` bypasses it for the rare commit whose
@@ -249,7 +282,10 @@ every item below:
    with the ticket id appended in brackets at the end of the subject line. `<scope>` is
    optional — per the Conventional Commits spec, omit it entirely (don't default to a
    placeholder like `all`) when the change is genuinely broad and has no single scope; it must
-   never be the ticket id itself.
+   never be the ticket id itself. For a root-path child (`path = "."`), the tidy-up happens
+   before that summary is presented: interactive-rebase the branch's WIP commits into a small
+   number of atomic, correctly typed/scoped commits, then default to preserving them on merge
+   (rebase or keep-history, not squash — §0) rather than squashing to the single message above.
 
 Until all seven hold, the ticket stays in `1-to-do/`.
 

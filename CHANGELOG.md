@@ -18,6 +18,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   through `5-rework/`) Outcome is absent, empty, or still the `TEMPLATE.md` placeholder;
   `6-done/` and `7-dropped/` are permanent archives and are never checked.
 
+### Changed
+
+- **Bookkeeping commits (ticket/board state changes) use their own `board: T-NNN <verb
+  phrase>` form instead of Conventional Commits** (T-084), scoped to commits whose staged
+  paths are limited to ticket files and `BOARD.md`. A root-path child (`path = "."`) now
+  defaults to preserving commits on merge (rebase or keep-history) instead of squashing, with
+  a Finish-step tidy-up (interactive rebase into atomic, correctly typed/scoped commits)
+  before the sequence is presented for approval.
+
 ## [0.3.0] - 2026-08-07
 
 ### Added

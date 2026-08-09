@@ -67,12 +67,16 @@ WIP limits, and an optional per-child review addendum. Defaults:
   frontmatter); its requirements, tasks, paths, and acceptance tests describe **that child's
   repo**.
 - **Branch & commit** — `feat/T-NNN-<slug>` cut inside the target child's repo; Conventional
-  Commits with the ticket id appended in brackets at the end of the subject.
+  Commits with the ticket id appended in brackets at the end of the subject, for child-project
+  code. Ticket/board bookkeeping uses its own `board: T-NNN <verb phrase>` form instead (rules
+  §0) — never restated here, see the rules for the exact grammar.
 - **Commit policy** — child-projects are publish-gated (no push/MR without approval; approval →
-  finalize + push + open MR; the human merges). The overarching project's bookkeeping (tickets,
-  board, docs) may be committed automatically, always with explicit pathspecs, and **on the base
-  branch — never on a feature branch** (rules §0): a squash-merge would fold or drop it and leave
-  the board disagreeing with the tickets. `pickle hooks install` enforces this locally, per clone.
+  finalize + push + open MR; the human merges; a root-path child (`path = "."`) tidies WIP
+  commits into atomic ones first and defaults to keeping that history over squashing — rules
+  §0). The overarching project's bookkeeping (tickets, board, docs) may be committed
+  automatically, always with explicit pathspecs, and **on the base branch — never on a feature
+  branch** (rules §0): a squash-merge would fold or drop it and leave the board disagreeing with
+  the tickets. `pickle hooks install` enforces this locally, per clone.
 - **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced **per child**.
 
 > **Project configuration wins.** The bullets above state the flow's defaults, once.
@@ -245,8 +249,10 @@ child). In short:
    incorporate them and re-present for approval before proceeding; if the user declines to
    approve without providing changes, the ticket **stays wherever step 3 already moved it**
    (`6-done/` or `5-rework/`) — do not move it back to `4-in-review/` — and you record the
-   pending-publish state in its `## History` instead. Only after approval: finalize the branch
-   (squash or keep history), verify the remote base is not behind (`origin/<base>...HEAD` must
+   pending-publish state in its `## History` instead. For a root-path child (rules §0), tidy the
+   WIP commits into atomic ones before presenting them. Only after approval: finalize the branch
+   (squash, or — the root-path default — keep the tidied history), verify the remote base is not
+   behind (`origin/<base>...HEAD` must
    carry no `tickets/` path — rules §0), push, and **create the merge request** in that child's repo, per
    the project's configured commit policy (default: never push a child or open an MR without
    approval); **merging is always the human's**.

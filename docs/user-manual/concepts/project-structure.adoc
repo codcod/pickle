@@ -120,6 +120,12 @@ regenerate:
 git checkout --ours tickets/BOARD.md && pickle board sync
 ----
 
+A commit that only changes ticket/board state (a ticket file, `BOARD.md`) uses its own compact
+form instead of Conventional Commits — `board: T-NNN <verb phrase>` — since a ticket-state
+change isn't a product change; see the ticket-flow skill's `tickets-README.md` §0 for the exact
+grammar. This applies to every project, with any number of children, not only the single-repo
+case below.
+
 == The root child — one repo in both roles
 
 `pickle install` registers the first child itself: `--project` defaults to the
@@ -161,6 +167,11 @@ What that changes in practice:
   default, the agent commits locally but does not push without your
   approval — and because there is only one repo, that gate covers the
   bookkeeping commits too.
+* Merging the child's feature branch defaults to **preserving commits**
+  (rebase or keep-history) rather than squashing. Here, squashing would
+  flatten the product's own `feat`/`fix`/`ci` structure into one commit
+  sharing a log with bookkeeping. The Finish step tidies WIP commits into a
+  small number of atomic ones before presenting them for approval.
 
 Adding a second child later needs no rework: `pickle project add <name>
 <path>` registers it, the root child stays exactly as it is, and the board
