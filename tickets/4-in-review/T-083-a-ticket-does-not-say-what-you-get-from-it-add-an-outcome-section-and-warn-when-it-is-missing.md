@@ -409,3 +409,4 @@ separate Review table, since the ticket has not shipped yet:
   one-line justifications into NOTES.md tables instead of into the tickets
 - 2026-08-09 — TO DO → READY: plan complete
 - 2026-08-09 — READY → IN DEVELOPMENT: picked up
+- 2026-08-09 — IN DEVELOPMENT → IN REVIEW: acceptance green
