@@ -523,3 +523,6 @@ separate Review table, since the ticket has not shipped yet:
 - 2026-08-09 — IN REVIEW → REWORK: review 1: B1 blocking — TEMPLATE.md's Outcome placeholder is not the form the check detects, while four shipped statements say it is
 - 2026-08-09 — REWORK → IN REVIEW: B1 fixed: TEMPLATE.md placeholder is now HTML-comment form + drift-guard test
 - 2026-08-09 — IN REVIEW → DONE: re-review clean: B1 resolved; review 1's 6 non-blocking findings stand (4 fixed inline, 1 folded into T-080, 1 noted); no new tickets spawned
+- 2026-08-09 — published (approved): branch squashed to one commit `d9abb1b`, rebased onto
+  `main` and pushed; PR https://github.com/codcod/pickle/pull/23 opened against `main`.
+  Merging is the human's — add the `merged to main (#23)` line here after merging
