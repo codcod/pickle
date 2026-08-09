@@ -132,9 +132,17 @@ ones before presenting them, and prefer keeping that history over squashing — 
 ### Confirmed design decisions (do not deviate without asking)
 
 1. **The root fix stays upstream (SNOW-002).** pickle carries the bundler workaround only as an
-   explicitly **temporary shim**, commented with its removal condition (a snowball release whose
-   `setup` bootstraps bundler) and a pointer to SNOW-002. Do not attempt a "proper" bundler
-   resolution here.
+   explicitly **temporary shim**, commented with its removal condition — a snowball release
+   whose `setup` bootstraps bundler **and makes it resolvable on the caller's `PATH`, not merely
+   inside `Setup()`'s own subprocess env** (SNOW-002's sketch may only do the latter, in which
+   case Decision 8's `bundle --version` pre-check still needs this shim even after SNOW-002
+   ships) — and a pointer to SNOW-002. Do not attempt a "proper" bundler resolution here. Note:
+   "SNOW-002 implemented in parallel" does not shorten this — `codcod/tap/snowball` is a
+   Homebrew tap formula pinned to one tagged release (still 0.2.1); nothing changes what
+   `brew install` resolves until a new snowball tag is cut, released, and the tap formula is
+   bumped, none of which is scheduled here. Task 1 step 5's shim is already naturally
+   idempotent against that eventual fix: once `bundle` resolves on its own, its "if not found"
+   branch short-circuits to a no-op.
 2. **One source of truth for the toolchain steps:** a new `.github/scripts/build-manual.sh`,
    called by both workflows. No duplicated YAML block — that block has been edited five times
    already and must not exist twice.
@@ -291,3 +299,9 @@ to pass.
   hypotheses in the original Description are disproven (`ruby` is not keg-only; the Linux bottle
   does ship `bin/bundle`); the evidence table in the Description replaces them.
 - 2026-08-09 — TO DO → READY: plan complete
+- 2026-08-09 — applicability gate (pickup, "assuming SNOW-002 in parallel"): 0 blocking; amended
+  Decision 1's shim-removal condition inline (a tap-formula bump is a separate, unscheduled step
+  from SNOW-002 landing in snowball's repo, and SNOW-002's sketch may only fix bundler inside
+  `Setup()`'s own subprocess env, not the caller's PATH) — 3 other findings noted, no plan/task
+  change otherwise. Proceeding to IN DEVELOPMENT.
+- 2026-08-09 — READY → IN DEVELOPMENT: picked up
