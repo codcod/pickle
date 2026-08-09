@@ -293,6 +293,64 @@ func TestActivityPage(t *testing.T) {
 	}
 }
 
+// TestMergeLineLinkification: T-089. A URL in a merge History line renders as a
+// clickable anchor on the board, the ticket page, and the activity timeline —
+// the three views that render History text as a plain, auto-escaped string
+// rather than through the markdown renderer (which already autolinks via
+// goldmark's GFM Linkify extension, covered by TestTicketPage's body assertions).
+func TestMergeLineLinkification(t *testing.T) {
+	root := newTree(t,
+		fixture{dir: "6-done", id: "T-001", title: "shipped with a link", impact: "medium",
+			history: []string{
+				"- 2026-07-18 — created (TO DO). source: test",
+				"- 2026-07-25 — IN REVIEW → DONE: review clean",
+				"- 2026-07-26 — merged to main (MR !1, https://example.com/commit/abc123)",
+			}},
+	)
+	h := newHandler(t, root)
+	want := `<a href="https://example.com/commit/abc123" rel="noopener" target="_blank">https://example.com/commit/abc123</a>`
+	for _, path := range []string{"/", "/t/T-001", "/activity"} {
+		body := get(t, h, path).Body.String()
+		if !strings.Contains(body, want) {
+			t.Errorf("%s did not linkify the merge line's URL:\n%s", path, body)
+		}
+	}
+}
+
+// TestMergeLineWithoutURLStaysPlain guards against linkifyURLs inventing an
+// anchor where the plan never asked for one: a merge line with no URL (this
+// repo's own convention today, and the pre-T-089 default) must render exactly
+// as before — still escaped, no stray <a>.
+func TestMergeLineWithoutURLStaysPlain(t *testing.T) {
+	h := newHandler(t, standardTree(t))
+	for _, path := range []string{"/", "/t/T-005", "/activity"} {
+		body := get(t, h, path).Body.String()
+		if !strings.Contains(body, "merged to main (abc1234)") {
+			t.Errorf("%s: merge line without a URL should render unchanged", path)
+		}
+		if strings.Contains(body, `href="abc1234"`) {
+			t.Errorf("%s: linkified a bare commit hash, not a URL", path)
+		}
+	}
+}
+
+// TestLinkifyURLsEscapesSurroundingText guards against linkifyURLs weakening
+// TestEscapingIsTheTemplatesJob's guarantee: markup next to a URL in the same
+// free-text line must still come out escaped, and trailing punctuation right
+// after a URL must not be pulled into its href.
+func TestLinkifyURLsEscapesSurroundingText(t *testing.T) {
+	got := linkifyURLs(`<script>alert(1)</script> merged to main (MR !1, https://example.com/x/y),`)
+	if strings.Contains(string(got), "<script>alert(1)</script>") {
+		t.Errorf("linkifyURLs left raw markup unescaped: %s", got)
+	}
+	if !strings.Contains(string(got), "&lt;script&gt;") {
+		t.Errorf("linkifyURLs did not escape surrounding text: %s", got)
+	}
+	if !strings.Contains(string(got), `<a href="https://example.com/x/y" rel="noopener" target="_blank">https://example.com/x/y</a>),`) {
+		t.Errorf("linkifyURLs pulled trailing punctuation into the href, or mis-rendered the anchor: %s", got)
+	}
+}
+
 func TestFragmentsMatchPagesAndAreNotWholeDocuments(t *testing.T) {
 	h := newHandler(t, standardTree(t))
 	for _, tc := range []struct{ frag, page string }{

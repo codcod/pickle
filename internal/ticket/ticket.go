@@ -426,7 +426,7 @@ func LastHistoryReason(text string) string {
 }
 
 // MergeLine returns the text of the newest merge History line ("merged to main
-// (abc1234)" from "- 2026-07-23 — merged to main (abc1234)"), or "" when the
+// (MR !12, abc1234)" from "- 2026-07-23 — merged to main (MR !12, abc1234)"), or "" when the
 // History records no merge. The board renderer derives the DONE `merged` cell
 // from this (D3), so HasMergeLine and the cell can never disagree.
 func MergeLine(text string) string {

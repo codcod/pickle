@@ -146,13 +146,15 @@ re-review, and the id of any ticket a finding was spawned into or absorbed by.>
 
 <!-- append-only; newest last. One line per status transition, dated YYYY-MM-DD, in the form
      `OLD → NEW: one-clause reason`. The first line is `created (TO DO). source: …`; a human
-     merge is recorded as `merged to <base> (<MR ref>)`. Examples:
+     merge is recorded as `merged to <base> (<MR ref>[, <commit>])` — a commit reference (short
+     SHA, and a full commit link where the remote resolves to a known hosting URL) is
+     recommended alongside the MR ref so the line traces straight to what shipped. Examples:
      - 2026-07-13 — TO DO → READY: implementation plan complete
      - 2026-07-14 — READY → IN DEVELOPMENT: picked up, branch feat/T-NNN-<slug>
      - 2026-07-15 — IN DEVELOPMENT → IN REVIEW: acceptance test green
      - 2026-07-16 — IN REVIEW → DONE: review clean; 6 non-blocking, all dispositioned
        (3 fixed in review, 2 absorbed by T-KKK, 1 → T-MMM)
-     - 2026-07-17 — merged to main (MR !12)
+     - 2026-07-17 — merged to main (MR !12, a1b2c3d)
 -->
 
 - YYYY-MM-DD — created (TO DO). source: <chat | review of T-xxx | audit | idea>

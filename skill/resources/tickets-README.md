@@ -121,7 +121,10 @@ A ticket's status **is the directory it lives in**. There is **no `status:` fiel
 ticket body** — a second source of truth would drift. Status transitions are recorded only as
 dated lines in the ticket's **History** section, in the form
 `YYYY-MM-DD — OLD → NEW: one-clause reason` (first line: `created (TO DO). source: …`; a
-human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>)`). Moving a ticket =
+human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>[, <commit>])` — the
+commit reference (short SHA, and a full commit link where the remote resolves to a known
+hosting URL) is recommended alongside the MR ref so the line traces straight to what shipped,
+but is not a machine-checked shape). Moving a ticket =
 move the file + one appended History line; the board regenerates from the result (§6).
 `pickle board audit` warns when a transition or merge line runs well past what
 "one-clause" implies — move the analysis into the Description or `tickets/NOTES.md` instead;
@@ -216,8 +219,9 @@ All other transitions are forward-only, as diagrammed.
   branch merged to the base of _its own_ child-project's repo**. DONE records the review
   verdict; **merging is the human's and may lag** — a dependency is satisfied only once its code
   is actually on the base a new `feat/` branch would fork from **in the child it targets**. When
-  the human reports a merge, append a dated `merged to <base>` History line to the done ticket
-  (the board's `merged` cell renders from that line) and run `pickle board sync`. Soft couplings (nice-to-know, not blocking) are
+  the human reports a merge, append a dated `merged to <base>` History line (ideally with a
+  commit reference alongside the MR ref, per §1) to the done ticket — the board's `merged` cell
+  renders from that line — and run `pickle board sync`. Soft couplings (nice-to-know, not blocking) are
   narrative cross-references in the Description — never `depends-on`. Creating a genuine new hard
   dependency between two independent tickets requires asking the human first.
 - **Lineage (`spawned-by`).** Provenance goes in `spawned-by:` frontmatter — the ticket(s) this

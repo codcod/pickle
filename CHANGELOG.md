@@ -8,6 +8,19 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Changed
+
+- **The merge History line can now carry a commit reference, and `pickle serve` renders it as
+  a clickable link** (T-089). `merged to <base> (<MR ref>)` stays free text — no new parser, no
+  new ticket field — but `tickets/README.md`, `TEMPLATE.md` and the user manual now recommend
+  appending a commit reference alongside the MR ref (a short SHA, and a full commit link where
+  the remote resolves to a known hosting URL), e.g. `merged to main (MR !12, a1b2c3d)`. A bare
+  URL in a ticket's `## Description`/body already rendered as a clickable link on the ticket
+  page (goldmark's GFM `Linkify` extension); the board's `merged` cell, the ticket page's
+  `merged` summary line, and the activity timeline's per-entry text did not, since those render
+  as plain escaped strings rather than through the markdown renderer — a new `linkify` template
+  helper closes that gap in all three.
+
 ## [0.4.0] - 2026-08-09
 
 ### Added

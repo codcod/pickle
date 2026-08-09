@@ -44,7 +44,7 @@
         {{if .DependsOn}}<span class="edge">depends on {{template "idlist" .DependsOn}}</span>{{end}}
         {{if .SpawnedBy}}<span class="edge muted">from {{template "idlist" .SpawnedBy}}</span>{{end}}
         {{if .Family}}<span class="edge muted">family <a href="/t/{{.Family}}">{{.Family}}</a></span>{{end}}
-        {{if .Merged}}<span class="merged">{{.Merged}}</span>{{end}}
+        {{if .Merged}}<span class="merged">{{linkify .Merged}}</span>{{end}}
         {{if and .Reason (not .Merged)}}<span class="reason">{{.Reason}}</span>{{end}}
       </li>
       {{end}}

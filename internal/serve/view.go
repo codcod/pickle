@@ -3,6 +3,7 @@ package serve
 import (
 	"html/template"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -215,6 +216,44 @@ func contains(ids []string, id string) bool {
 		}
 	}
 	return false
+}
+
+// urlRE matches a bare http(s) URL run (no whitespace). It deliberately over-matches
+// trailing punctuation a human would type right after a URL in free text — a MR ref's
+// closing paren, a trailing comma — linkifyURLs trims that back off rather than
+// teaching the pattern a lookahead Go's regexp package doesn't support.
+var urlRE = regexp.MustCompile(`https?://\S+`)
+
+// urlTrailingPunct is trimmed off the end of a urlRE match before it becomes an href:
+// exactly the characters a human's surrounding prose puts right after a pasted URL
+// (a MR ref's closing paren, a trailing comma or full stop).
+const urlTrailingPunct = ")].,;:"
+
+// linkifyURLs HTML-escapes s and wraps any bare http(s) URL in a clickable anchor.
+// It exists because the merge History line's own convention (T-089) is free text
+// rendered as a plain, auto-escaped string in three serve views (the board's
+// "merged" cell, the ticket page's "merged" summary line, and the activity
+// timeline's per-entry text) — unlike a ticket's `## Description`/body, which
+// already gets a free clickable link from goldmark's GFM Linkify extension
+// (markdown.go). This is the one place that gap is closed, so every caller shares
+// it instead of each growing its own escape-then-wrap logic.
+//
+// s is escaped with template.HTMLEscapeString first, so the URL text captured by
+// urlRE is already escaped by the time it is reused as the anchor's visible text
+// and its href — the href is safe from injection for the same reason the escaped
+// text is: any `"`, `<` or `&` in the original URL has already become an entity
+// reference, which cannot break out of the `href="…"` attribute it sits in.
+func linkifyURLs(s string) template.HTML {
+	escaped := template.HTMLEscapeString(s)
+	out := urlRE.ReplaceAllStringFunc(escaped, func(m string) string {
+		trimmed := strings.TrimRight(m, urlTrailingPunct)
+		if trimmed == "" {
+			return m
+		}
+		suffix := m[len(trimmed):]
+		return `<a href="` + trimmed + `" rel="noopener" target="_blank">` + trimmed + `</a>` + suffix
+	})
+	return template.HTML(out) //nolint:gosec // out is escaped text with only <a href="<escaped-url>"> added around an already-escaped substring
 }
 
 // Event is one dated History line, tagged with the ticket it came from.
