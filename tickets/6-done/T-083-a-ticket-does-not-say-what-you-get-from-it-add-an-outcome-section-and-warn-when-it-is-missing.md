@@ -464,6 +464,35 @@ already on `main`. It was verified equivalently: the unit fixtures in `audit_tes
 absent / placeholder / non-terminal / terminal cases, and a throwaway install reproduces the
 one-warning-per-unfilled-ticket behaviour end to end.
 
+### Review 2 (2026-08-09, scoped re-review) — verdict: DONE
+
+Scope: **B1 only** (rules §5 — a scoped re-review verifies the listed findings, it does not
+re-audit the feature). The six non-blocking findings from review 1 keep the dispositions
+recorded above; none was reopened.
+
+- **B1 — resolved.** `TEMPLATE.md`'s `## Outcome` placeholder is the HTML-comment form
+  (`skill/resources/TEMPLATE.md:19-28`), so the check the ticket ships now sees it. Verified
+  three ways, not just by reading the diff:
+  1. `TestTemplateAndScaffoldOutcomePlaceholdersAreFlagged` **fails on the pre-fix tree** —
+     re-checked by restoring `80d5464`'s `TEMPLATE.md` and re-running the test (FAIL), then
+     restoring the fix (ok). A guard that cannot fail is not a guard.
+  2. `pickle install` into a throwaway directory ships the corrected placeholder in the
+     **installed** payload (`.agents/skills/ticket-flow/resources/TEMPLATE.md`), so the fix
+     reaches every workspace, not only this repo's source tree.
+  3. A ticket whose body is authored from `TEMPLATE.md` with the placeholder untouched now
+     raises the `## Outcome is missing …` warning — the case that audited silent before.
+- **Scope discipline:** the rework commit (`668bbd4`) touches exactly two files
+  (`skill/resources/TEMPLATE.md`, `internal/ticket/ticket_test.go`) — no unrelated work rode
+  along.
+- **Decision 5 preserved.** The fix was made in the template, not in `OutcomeMissing`, so
+  "missing = absent, or empty once HTML comments are stripped" still describes the shipped
+  check exactly; the form-agnostic alternative stays available as a future plan amendment.
+- **Commands re-run:** `just build` ✅ · `just test` ✅ · `just lint` ✅ · `just docs-check` ✅ ·
+  `./pickle board audit` → 87 tickets, 0 errors, 0 warnings ✅.
+
+No new findings. Ticket → `6-done/`; publishing awaits the human's approval of the commit
+message and MR attributes (step 9).
+
 ### Pickup applicability gate
 
 **Pickup applicability gate (2026-08-07).** Fresh sub-agent audit, no blocking findings. Four
@@ -493,3 +522,4 @@ separate Review table, since the ticket has not shipped yet:
   revert to a lead-sentence convention. A future reviewer checks the feature against this.
 - 2026-08-09 — IN REVIEW → REWORK: review 1: B1 blocking — TEMPLATE.md's Outcome placeholder is not the form the check detects, while four shipped statements say it is
 - 2026-08-09 — REWORK → IN REVIEW: B1 fixed: TEMPLATE.md placeholder is now HTML-comment form + drift-guard test
+- 2026-08-09 — IN REVIEW → DONE: re-review clean: B1 resolved; review 1's 6 non-blocking findings stand (4 fixed inline, 1 folded into T-080, 1 noted); no new tickets spawned
