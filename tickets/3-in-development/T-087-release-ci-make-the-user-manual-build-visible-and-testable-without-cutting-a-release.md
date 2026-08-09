@@ -304,4 +304,11 @@ to pass.
   from SNOW-002 landing in snowball's repo, and SNOW-002's sketch may only fix bundler inside
   `Setup()`'s own subprocess env, not the caller's PATH) — 3 other findings noted, no plan/task
   change otherwise. Proceeding to IN DEVELOPMENT.
+- 2026-08-09 — acceptance test green: items 1–4 pass locally (shellcheck, YAML, build/test/
+  lint/docs-check, and a local end-to-end run producing both manual files); item 5 (CI,
+  `manual-smoke` run 31318708209) is green — its diagnostics confirm the fresh-runner `bundle`
+  miss this ticket targets was real (`MISS Bundler`, `type: bundle: not found`) and that the
+  temporary shim bootstraps it to a completed build. PR #25 opened against `main`
+  (feat/T-087-manual-build-visible-and-testable, 3 commits, kept unsquashed per the root-path
+  default).
 - 2026-08-09 — READY → IN DEVELOPMENT: picked up
