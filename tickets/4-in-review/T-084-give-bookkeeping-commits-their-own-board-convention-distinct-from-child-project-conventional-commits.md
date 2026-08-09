@@ -330,6 +330,24 @@ promotion test ("would this actually be scheduled?") as separate work.
 they are the same drift in adjacent surfaces, and splitting them across two passes would leave
 the payload half-consistent twice.
 
+**Rework fix pass (2026-08-09), commit `04010c5` on the same branch:**
+
+| id | resolution |
+|---|---|
+| F1 | Added a carve-out to `MarkerBlock()`'s "Branch & commit" bullet in `internal/install/install.go` ("… for child-project code. Ticket/board bookkeeping uses its own `board: T-NNN <verb phrase>` form instead—see 'Where commits land' below"); regenerated `internal/install/testdata/markerblock.golden`; hand-mirrored the identical wording into this repo's own `AGENTS.md` in the same commit, per the self-modify policy. `TestSelfHostMarkerBlockIsCurrent` and `TestMarkerBlockGolden` both pass. |
+| F2 | Restated the scope test in `tickets-README.md` §0 by file set ("limited to ticket files … and `tickets/BOARD.md`") instead of by directory, and named `tickets/NOTES.md` explicitly as excluded despite being under `tickets/`. |
+| F3 | `skill/SKILL.md`'s "Branch & commit" default now carries the same carve-out; its "Commit policy" bullet and step-4 Finish text both name the root-path tidy-up/keep-history default. |
+| F4 | Moved the `board:` mention out of `project-structure.adoc`'s root-child-only list into the universal "The board: generated, and still committed" section, with a note that it applies to every project regardless of child count; the merge-strategy bullet (genuinely root-specific) stayed in the root-child list. |
+| F5 | `TEMPLATE.md`'s branch section (the first "finalize the branch…" clause, previously unedited) now states the root-path keep-history default alongside squash, matching the Finish section. |
+| F6 | Added a worked example (`board: T-084 ready → in development`) and a second example for a multi-id, content-only case; defined "adjacent" (immediately preceding bookkeeping commit for the ticket, same sitting) and named `git commit --amend` as the fold mechanism. |
+| F7 | No code change — disposition was already `noted`; fixed forward (this review's own bookkeeping commit, and this rework's, both use `board:`). |
+| F8 | Deferred to the Finish tidy-up when this ticket is re-reviewed and finalized: the branch's commits will be tidied into atomic, correctly scoped commits before the final message is presented, per decision 5/F8's own suggestion. |
+| F9 | Added a `### Changed` entry to `CHANGELOG.md`'s `[Unreleased]` section. |
+
+All four commands re-run clean on the fix commit: `just build` ✓ · `just test` ✓ (including
+`TestSelfHostMarkerBlockIsCurrent`, `TestMarkerBlockGolden`, `TestPayloadDispositionVocabulary`,
+`TestPayloadDefersToProjectConfig`) · `just lint` ✓ · `just docs-check` ✓.
+
 **Impact sweep (step 8):** no ticket in `1-to-do/` or `2-ready/` references T-084, and none lists
 it in `depends-on:`. One observation, not a finding: T-082's Description argues from "a
 squash-merge folds bookkeeping". Under this ticket's rebase default that mechanism changes shape
@@ -344,3 +362,4 @@ now — T-084 is unmerged and its convention may still shift in rework.
 - 2026-08-09 — READY → IN DEVELOPMENT: picked up
 - 2026-08-09 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-09 — IN REVIEW → REWORK: 2 blocking: marker block states a blanket commit format (decision 7 false premise); scope rule self-contradicts on tickets/NOTES.md
+- 2026-08-09 — REWORK → IN REVIEW: findings fixed

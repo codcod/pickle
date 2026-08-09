@@ -20,10 +20,11 @@ Last updated: 2026-08-09
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-09
 
 | id | title | open findings |
 |---|---|---|
-| T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | 2 blocking: marker block states a blanket commit format (decision 7 false premise); scope rule self-contradicts on tick… |
 
 ## READY (impact order, per child)
 
