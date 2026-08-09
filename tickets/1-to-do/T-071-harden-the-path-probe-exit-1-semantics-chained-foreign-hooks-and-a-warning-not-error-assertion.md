@@ -11,6 +11,10 @@ cost: S
 
 # T-071 — harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion
 
+## Outcome
+
+After this ships, `hooks status`/`doctor` no longer misreads a probe's exit code 1 as "the guard can't run" when it actually proves the guard ran and found a violation, and the probe's two remaining edge cases (chained foreign hooks, the warning-not-error assertion) are closed the same way.
+
 ## Description
 
 T-068 shipped `internal/hook.Probe()` — the check that stops `hooks status`/`doctor` reporting a

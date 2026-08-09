@@ -11,6 +11,10 @@ cost: S
 
 # T-046 — make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise)
 
+## Outcome
+
+After this ships, this self-hosting repo's own `pickle doctor` stops printing a permanent, unactionable payload-version warning, because doctor and the version stamp both know `.agents/skills/ticket-flow` is a symlink to the payload source here, not an installed copy.
+
 ## Description
 
 In a **self-hosting** repo (this one), `.agents/skills/ticket-flow` is a **symlink** to the

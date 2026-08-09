@@ -11,6 +11,10 @@ cost: XL
 
 # T-075 — interoperate with rick: pickle owns the queue, rick owns per-ticket execution
 
+## Outcome
+
+After this ships, a ticket that also has work happening in rick shows that connection from brine's own board and `serve`, without brine re-implementing rick's phase gates or rick running brine's queue — each system keeps doing only the half it already does well.
+
 ## Description
 
 **Umbrella ticket.** Members: T-076, T-077, T-078, T-079 (via `family:`). It carries the

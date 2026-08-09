@@ -11,6 +11,10 @@ cost: S
 
 # T-066 — close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in the shipped rules
 
+## Outcome
+
+After this ships, every flag `pickle`'s CLI actually accepts (e.g. `ticket new --family`) is documented in `docs/user-manual/cli-reference.adoc`, and the shipped rules no longer describe a `renumber` command that isn't there.
+
 ## Description
 
 Spawned by the **T-019** review (findings N3 and N5), batched by theme: **shipped text that

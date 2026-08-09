@@ -11,6 +11,10 @@ cost: S
 
 # T-067 — docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline
 
+## Outcome
+
+After this ships, `just docs-check` fails the build when the manual contains a dead cross-reference, instead of silently rendering past it the way it does today.
+
 ## Description
 
 `just docs-check` (`snowball check`, `justfile:23-24`) renders the manual and discards the

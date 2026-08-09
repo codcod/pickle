@@ -11,6 +11,10 @@ cost: L
 
 # T-074 — rename the installed skill directory to brine, with upgrade migration and dual-name doctor
 
+## Outcome
+
+After this ships, a project that runs `pickle upgrade` gets its installed skill migrated from `.agents/skills/ticket-flow` to `.agents/skills/brine` (the Claude Code symlink, the skill's own name and the marker-block prose along with it), with `doctor` still recognising the old name during the transition.
+
 ## Description
 
 The expensive half of the rename T-073 starts: moving the name from prose onto disk, so the

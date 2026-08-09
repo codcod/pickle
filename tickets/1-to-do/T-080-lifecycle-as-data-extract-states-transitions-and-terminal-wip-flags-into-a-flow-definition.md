@@ -11,6 +11,10 @@ cost: L
 
 # T-080 — lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition
 
+## Outcome
+
+After this ships, brine's states, transitions and WIP rules live in one declarative flow definition instead of being re-typed as string literals across five Go packages, so adding or renaming a status means editing one file instead of finding every copy.
+
 ## Description
 
 brine's lifecycle is currently spelled out as Go literals in five packages. The seven status

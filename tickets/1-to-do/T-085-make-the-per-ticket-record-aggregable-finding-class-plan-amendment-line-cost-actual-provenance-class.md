@@ -11,6 +11,10 @@ cost: S-M
 
 # T-085 — make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class
 
+## Outcome
+
+After this ships, the question "what does brine keep getting wrong?" is answered by counting, not by reading 36 tickets: each review records which kind of defect a finding was, each implementation records whether the plan it executed was wrong, and each ticket records what its estimate cost in reality.
+
 ## Description
 
 **Outcome.** After this ships, the question *"what does brine keep getting wrong?"* is answered

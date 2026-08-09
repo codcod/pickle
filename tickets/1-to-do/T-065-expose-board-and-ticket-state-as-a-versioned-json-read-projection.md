@@ -11,6 +11,10 @@ cost: M
 
 # T-065 — expose board and ticket state as a versioned JSON read projection
 
+## Outcome
+
+After this ships, `pickle board state --json` and `pickle ticket show <id> --json` give any external tool (an agent extension, a CI step, a git hook) a versioned, machine-readable view of board and ticket state, instead of it having to scrape prose or re-implement brine's own grading/WIP/audit rules.
+
 ## Description
 
 `pickle` has **no machine-readable output at all** — `rg 'encoding/json' internal/` returns

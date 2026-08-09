@@ -11,6 +11,10 @@ cost: S
 
 # T-038 — tighten ticket new's title contract: Unicode line terminators and length cap
 
+## Outcome
+
+After this ships, `pickle ticket new` rejects a title containing a Unicode line terminator or an implausibly long string, the same way it already rejects `\n`/`\r` — closing the two gaps the T-030 review found without changing behaviour on any title that was already accepted.
+
 ## Description
 
 **T-030** closed the newline-injection hole in `pickle ticket new` by rejecting titles containing

@@ -11,6 +11,10 @@ cost: M
 
 # T-082 — pre-push hook: refuse a feature-branch push whose range carries tickets/ paths
 
+## Outcome
+
+After this ships, a `git push` whose range still carries a `tickets/` path on a feature branch is refused before it reaches the remote, closing the one gap the existing pre-commit hook and the origin-base prose check both leave open at publish time.
+
 ## Description
 
 Rules §0 splits every change in two — code on the child's feature branch, ticket and board

@@ -12,6 +12,10 @@ cost: M
 
 # T-076 — consume rick status --json as an artifact-state source
 
+## Outcome
+
+After this ships, pickle can tell, for a given ticket, which rick artifacts exist and which are awaiting human approval — read from rick's own versioned `rick status --json` contract, never re-derived by scanning disk.
+
 ## Description
 
 The first member of T-075: teach pickle to learn, for a given ticket, which rick artifacts

@@ -11,15 +11,17 @@ cost: M
 
 # T-083 — a ticket does not say what you get from it: add an Outcome section and warn when it is missing
 
+## Outcome
+
+After this ships, you can decide whether a TO DO ticket is worth refining by reading its first
+two lines, instead of reconstructing the payoff from a mechanism narrative written for whoever
+files it. Every ticket states, up front and in user-observable terms, what changes when it
+lands — and `board audit` tells you which tickets still do not.
+
 ## Description
 
-**Outcome.** After this ships, you can decide whether a TO DO ticket is worth refining by
-reading its first two lines, instead of reconstructing the payoff from a mechanism narrative
-written for whoever files it. Every ticket states, up front and in user-observable terms, what
-changes when it lands — and `board audit` tells you which tickets still do not.
-
-*(That paragraph is the feature, written in its own format. The rest of this Description is
-evidence and options, per the house style.)*
+*(This Description is evidence and options, per the house style — the Outcome above is the
+feature itself.)*
 
 ### The problem, measured
 

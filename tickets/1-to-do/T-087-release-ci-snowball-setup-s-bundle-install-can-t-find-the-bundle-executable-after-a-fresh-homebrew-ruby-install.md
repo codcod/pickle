@@ -11,6 +11,10 @@ cost: S-M
 
 # T-087 — release CI: snowball setup's bundle install can't find the bundle executable after a fresh Homebrew ruby install
 
+## Outcome
+
+After this ships, the release workflow's `snowball setup` step finds a `bundle` executable on `$PATH` after a fresh Homebrew Ruby install, instead of failing with "executable file not found in $PATH" right after Ruby itself installed cleanly.
+
 ## Description
 
 Surfaced verifying T-086's fix live: `gh workflow run release.yml --ref

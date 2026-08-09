@@ -11,6 +11,10 @@ cost: S
 
 # T-070 — route MergeLine through HistoryEntries so every ## History reader shares one section walk
 
+## Outcome
+
+After this ships, `MergeLine` reads a ticket's `## History` through the same shared section walk every other History reader already uses, so a merge line with a folded continuation line is parsed correctly and a future change to that walk can't silently miss this fourth caller.
+
 ## Description
 
 Filed by the **T-043 review** (finding R2, disposition `new ticket`). T-043 routed

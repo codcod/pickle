@@ -11,6 +11,10 @@ cost: S
 
 # T-042 — collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root)
 
+## Outcome
+
+After this ships, a dry-run install preview names the same outcome the real run produces for the skill directory, and every test that needs the repo root resolves it through one CWD-independent helper instead of separately-maintained relative-path guesses.
+
 ## Description
 
 **Epic — merged from T-015, T-017 and T-032 by the 2026-07-26 board triage.** All three are in

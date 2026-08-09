@@ -12,6 +12,10 @@ cost: L
 
 # T-079 — amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard
 
+## Outcome
+
+After this ships, a human can edit a rick artifact directly in `pickle serve` before approving it — the edit content-addressed and lifecycle-guarded, so an edited artifact can never be mistaken for one the agent itself produced and validated.
+
 ## Description
 
 The ambitious member of T-075, and the one that has to be careful: let a human **edit** a

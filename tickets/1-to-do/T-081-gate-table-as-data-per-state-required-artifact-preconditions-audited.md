@@ -11,6 +11,10 @@ cost: M
 
 # T-081 — gate table as data: per-state required-artifact preconditions, audited
 
+## Outcome
+
+After this ships, `board audit` (and `ticket move`) can mechanically check that a ticket entering a state — e.g. READY — actually has the sections that state's gate requires, instead of relying on an agent's prose judgement that nothing verifies.
+
 ## Description
 
 brine has exactly one entry gate — the READY gate — and it is **prose**: rules §4 lists seven

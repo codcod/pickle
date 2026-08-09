@@ -11,6 +11,10 @@ cost: S
 
 # T-013 — install polish (marker spacing, summary labels, cli tests, --agent)
 
+## Outcome
+
+After this ships, a re-run of `pickle install`/`upgrade` reports honestly whether each file was created or left untouched, the help text stops claiming agent autodetection that doesn't exist, and the marker-spacing/coverage gaps the T-004/T-006/T-018 reviews found are closed.
+
 ## Description
 
 Non-blocking follow-ups surfaced by the T-004 review. `pickle install` (T-004) works and is

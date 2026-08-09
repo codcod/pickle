@@ -12,6 +12,10 @@ cost: M
 
 # T-077 — show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule
 
+## Outcome
+
+After this ships, a human can read a rick artifact rendered as markdown on a ticket's `pickle serve` page, with its approval status visible from the board, instead of reviewing a 400-line solution design in a terminal scrollback before approving it.
+
 ## Description
 
 The reading surface, and the reason the whole family is worth building: reviewing a

@@ -11,6 +11,10 @@ cost: M
 
 # T-084 — give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits
 
+## Outcome
+
+After this ships, a bookkeeping commit (a ticket's state change) is written in its own `board: T-NNN <verb phrase>` form instead of being forced through Conventional Commits' `type(scope)` grammar, and this repo's own `pickle` child stops squash-merging its feature branches so its `git log` reads as cleanly as a standalone product repo's would.
+
 ## Description
 
 Measured on this repo's own history (2026-08-07 audit): 188 of 301 commits are overarching

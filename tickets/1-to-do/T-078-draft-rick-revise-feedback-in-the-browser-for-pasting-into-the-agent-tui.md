@@ -12,6 +12,10 @@ cost: S
 
 # T-078 — draft rick Revise feedback in the browser for pasting into the agent TUI
 
+## Outcome
+
+After this ships, a human reading a rick artifact in `pickle serve` can draft their `[R]evise` feedback in a text box right there and copy it into the agent TUI, instead of composing it blind in a terminal prompt.
+
 ## Description
 
 A small ticket that completes the read-side of T-075 without taking on any of its risk.

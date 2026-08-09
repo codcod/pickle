@@ -11,6 +11,10 @@ cost: S
 
 # T-050 — pi guardrail: make the staging gate a confirm, not a hard block
 
+## Outcome
+
+After this ships, the pi guardrail's staging-discipline rule prompts for confirmation instead of hard-blocking, so a command that merely mentions `git add -A` in its own text (e.g. inside a documentation heredoc) is no longer refused outright.
+
 ## Description
 
 The shipped pi guardrail (`agents/pi/extensions/pickle-guardrails.ts`, embedded payload per

@@ -11,6 +11,10 @@ cost: S
 
 # T-055 — serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full)
 
+## Outcome
+
+After this ships, a child-project's WIP badge on the `pickle serve` board page actually turns `--warn` and bold once its count reaches the configured limit, matching what the health banner's copy of the same badge already does correctly.
+
 ## Description
 
 On the `pickle serve` board page, a child-project whose WIP count has reached its limit is

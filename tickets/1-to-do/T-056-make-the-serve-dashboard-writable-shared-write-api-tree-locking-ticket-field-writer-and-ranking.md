@@ -11,6 +11,10 @@ cost: XL
 
 # T-056 — make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking
 
+## Outcome
+
+After this ships, `pickle serve` can safely accept a second, concurrent writer — edits from the browser, manual ranking — without corrupting the ticket tree, because the write layer's one-writer assumptions (locking, atomicity, field-level writes) have been closed first.
+
 ## Description
 
 `pickle serve` (T-053) ships as a **read-only** view of the board, and that is not a
