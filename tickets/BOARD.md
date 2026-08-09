@@ -20,11 +20,10 @@ Last updated: 2026-08-09
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-087 | release CI: make the user-manual build visible and testable without cutting a release | [] |
 
 ## REWORK
 
@@ -68,6 +67,7 @@ Last updated: 2026-08-09
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low | low | S | [] |  |
+| T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | low | low | S | [] |  |
 
 ## DONE
 
@@ -115,6 +115,7 @@ Last updated: 2026-08-09
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
+| T-087 | release CI: make the user-manual build visible and testable without cutting a release | no — publish-gated |
 
 ## DROPPED
 
