@@ -13,10 +13,11 @@ Last updated: 2026-08-09
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-089 | Record a commit reference alongside the merge History line | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-09
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-089 | Record a commit reference alongside the merge History line | medium | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 

@@ -214,3 +214,4 @@ so this clears the user-facing bar the way T-054/T-057 did).
 - 2026-08-09 — created (TO DO). source: chat — commit-id/changelog-line idea challenged;
   scoped down to enriching the merge History line only, CHANGELOG-copy half dropped
 - 2026-08-09 — TO DO → READY: implementation plan complete
+- 2026-08-09 — READY → IN DEVELOPMENT: picked up
