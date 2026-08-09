@@ -4,7 +4,7 @@ title: route MergeLine through HistoryEntries so every ## History reader shares 
 project: pickle
 depends-on: []
 spawned-by: [T-043]
-impact: low
+impact: low-medium
 complexity: low
 cost: S
 ---
@@ -75,11 +75,22 @@ source of truth" for the `## History` readers.
 They are the same theme — the `## History` reader family sharing one path — and they touch the same
 twenty lines of `internal/ticket/ticket.go`. Splitting them would mean two reviews of one function.
 
-**Impact is `low` deliberately.** A conventional merge line (`merged to main (abc1234)`) is far too
-short to wrap, so no ticket in the tree is affected today and `HasMergeLine`'s gate verdict is
-unchanged either way (a truncated line is still non-empty). The value is the collapse to one walk,
-plus removing the one reader that can still disagree with the other three. A `board audit` /
-`board sync` before-and-after on the real tree is the guard, exactly as T-043 D8 used it.
+**Impact was `low` deliberately, and T-089 raised it to `low-medium`.** The original reasoning: a
+conventional merge line (`merged to main (abc1234)`) is far too short to wrap, so no ticket in the
+tree is affected today and `HasMergeLine`'s gate verdict is unchanged either way (a truncated line
+is still non-empty). The value was the collapse to one walk, plus removing the one reader that can
+still disagree with the other three.
+
+T-089 invalidated the "far too short to wrap" premise: the merge line's recommended form now
+carries a commit reference including a full commit URL, which measures ~113–125 runes before the
+board's `yes — ` prefix (GitHub ~113, GitLab subgroup paths ~123). That is past the width tickets
+in this tree wrap prose at, so a human following the current convention is now *likely* to wrap a
+merge line across two physical lines — the exact input this ticket fixes, and one that today
+silently truncates the board's `merged` cell. The defect is no longer hypothetical, which is the
+whole of the re-grade; scope, complexity and cost are unchanged.
+
+A `board audit` / `board sync` before-and-after on the real tree is the guard, exactly as T-043 D8
+used it — and a wrapped merge line in the recommended T-089 form is now the obvious fixture to add.
 
 ### Not in scope
 
@@ -109,3 +120,6 @@ plus removing the one reader that can still disagree with the other three. A `bo
   `folded`) — a transition's target is frozen on the entry's first physical line while its reason
   is read from the folded text, and nothing checks that the two came from the same arrow. Same
   theme, same twenty lines, so it is an item here rather than a second ticket
+- 2026-08-09 — impact low → low-medium; T-089's review impact sweep invalidated the "a merge line
+  is far too short to wrap" premise — the recommended form now includes a full commit URL, so the
+  wrapped-line defect this ticket fixes is reachable in normal use
