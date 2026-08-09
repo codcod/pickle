@@ -38,6 +38,7 @@ Last updated: 2026-08-09
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-087 | release CI: make the user-manual build visible and testable without cutting a release | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -57,7 +58,6 @@ Last updated: 2026-08-09
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | medium | medium | M | [T-080] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
-| T-087 | release CI: snowball setup's bundle install can't find the bundle executable after a fresh Homebrew ruby install | medium | low-medium | S-M | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
@@ -114,7 +114,7 @@ Last updated: 2026-08-09
 | T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | yes — MERGED: feat/T-073-introduce-brine-name (squashed) → main (7b33876, #18), user-approved; branch deleted |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
-| T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | no — publish-gated |
+| T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
 
 ## DROPPED
 

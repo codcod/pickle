@@ -165,3 +165,7 @@ spawned — F1 is a verification step for this ticket itself, not a new defect.
   re-running the full pipeline against an already-fully-published tag, not a defect; it will
   not recur on a fresh tag push. `v0.3.0`'s 5 original assets are unaffected (verified via
   `gh release view v0.3.0 --json assets`).
+- 2026-08-08 — merged to main (PR #22, bd508be)
+- 2026-08-09 — F1's follow-up re-scoped: the newly-surfaced `bundle` failure is snowball's, not
+  this fix's; T-087 now carries pickle's share of it (visibility + a test loop) and the root
+  cause is SNOW-002 on the `unity` workspace's board.
