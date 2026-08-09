@@ -17,13 +17,8 @@ After this ships, the question "what does brine keep getting wrong?" is answered
 
 ## Description
 
-**Outcome.** After this ships, the question *"what does brine keep getting wrong?"* is answered
-by counting, not by reading 36 tickets. Each review records **which kind** of defect each finding
-was, each implementation records **whether the plan it executed was wrong**, and each ticket
-records **what its estimate cost in reality** — so a recurring class can be promoted to a
-`board audit` lint instead of being re-discovered by every reviewer.
-
-*(Outcome-first per T-083's finding, which this ticket would otherwise violate.)*
+The point of the three records above (see `## Outcome`): a recurring defect class can be
+promoted to a `board audit` lint instead of being re-discovered by every reviewer.
 
 ### The problem, measured
 

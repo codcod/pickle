@@ -53,6 +53,13 @@ Soft coupling: T-064 (dropped — "no merit gate between filing and pickup") arg
 adjacent point that brine's gates test plan *completeness*, not worth; a mechanical
 completeness gate here does not close that, and should not pretend to.
 
+Soft coupling: **T-083** (shipped) already added one hand-rolled section precondition —
+`board audit` warns when a non-terminal ticket's `## Outcome` is absent, empty, or a
+placeholder (`internal/audit/audit.go`, `ticket.OutcomeMissing`). It is deliberately a
+warning and lives outside any gate table; this ticket's table is where it should end up as
+data, so fold that check in rather than leaving a second, parallel mechanism behind. The
+coupling stays soft, as T-083's Decision 2 recorded (added by the T-083 review, finding N3).
+
 ## Implementation Plan
 
 <!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->

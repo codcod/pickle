@@ -20,11 +20,10 @@ Last updated: 2026-08-09
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-09
 
 | id | title | open findings |
 |---|---|---|
+| T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | review 1: B1 blocking — TEMPLATE.md's Outcome placeholder is not the form the check detects, while four shipped stateme… |
 
 ## READY (impact order, per child)
 
