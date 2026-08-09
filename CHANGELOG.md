@@ -8,6 +8,28 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle serve` now renders a URL in a merge or History line as a clickable link** (T-089).
+  A bare URL in a ticket's `## Description`/body already linked itself on the ticket page
+  (goldmark's GFM `Linkify` extension), but the board's `merged` cell, the ticket page's
+  `merged` summary line, and the activity timeline's per-entry text did not — those three
+  render as plain, escaped strings rather than through the markdown renderer. A new `linkify`
+  template helper closes that gap in all three, HTML-escaping the text and wrapping any bare
+  `http(s)` URL in an anchor. The board's `merged` cell is still capped at 120 runes, so a long
+  commit URL can be clipped there; the ticket page and the timeline show it in full.
+
+### Changed
+
+- **The merge History line can now carry a commit reference** (T-089).
+  `merged to <base> (<MR ref>)` stays free text — no new parser, no new ticket field — but the
+  flow's rules and ticket template (the `ticket-flow` skill payload) and the user manual now
+  recommend appending a commit reference alongside the MR ref: a short SHA, and a full commit
+  link where the remote resolves to a known hosting URL, e.g.
+  `merged to main (MR !12, a1b2c3d, https://github.com/org/repo/commit/a1b2c3d…)`. Keep the
+  short SHA even when adding the link — it is what still reads in the board's capped `merged`
+  cell.
+
 ## [0.4.0] - 2026-08-09
 
 ### Added

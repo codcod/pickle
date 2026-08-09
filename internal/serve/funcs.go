@@ -18,4 +18,7 @@ var funcs = template.FuncMap{
 		}
 		return s
 	},
+	// linkify wraps a bare http(s) URL in s in a clickable anchor; the logic lives
+	// in view.go's linkifyURLs (T-089), tested there without a template.
+	"linkify": linkifyURLs,
 }

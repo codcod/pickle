@@ -105,7 +105,9 @@ and the agent presents the commit message and merge request for your approval.
 Merging is always the human's. After you merge, record it: append a dated
 `merged to <base> (<MR ref>)` History line to the done ticket and run
 `pickle board sync` — the board's `merged` cell renders from that line, and
-dependent tickets become pickable.
+dependent tickets become pickable. Add a commit reference alongside the MR ref (a short SHA,
+and a full commit link where the remote resolves to a known hosting URL) so the line traces
+straight to what shipped.
 
 == The rhythm
 

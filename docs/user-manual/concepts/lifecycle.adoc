@@ -96,4 +96,9 @@ DONE records the review verdict. *Merging is always the human's* and may lag —
 a dependency counts as satisfied only once its code is actually on the base a
 new branch would fork from. When you merge, append a dated
 `merged to <base> (<MR ref>)` History line to the done ticket and run
-`pickle board sync`.
+`pickle board sync`. Add a commit reference alongside the MR ref (a short SHA, and a full
+commit link where the remote resolves to a known hosting URL) so the line traces straight to
+what shipped. Keep the short SHA even when you add the link: the board's `merged` cell is
+capped at 120 runes, which a full commit URL can exceed, so the SHA is what still reads there
+— the ticket file keeps the whole line, and `pickle serve` renders it in full, as a clickable
+link.

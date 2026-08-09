@@ -24,7 +24,7 @@
   <li class="event">
     <time>{{.Date}}</time>
     <a class="tid" href="/t/{{.ID}}">{{.ID}}</a>
-    <span class="event-text">{{.Text}}</span>
+    <span class="event-text">{{linkify .Text}}</span>
     <span class="event-meta">{{.Title}} · {{.Project}}</span>
   </li>
   {{end}}

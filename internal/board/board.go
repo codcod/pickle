@@ -131,10 +131,17 @@ var cellBreakRE = regexp.MustCompile(`[\r\n]+`)
 // with a paragraph-long merge History line produced a ~1,900-rune DONE cell).
 // It is a render-time bound only — the ticket file keeps the full text, which
 // stays the single source of truth (T-044 decision 3) — and it is deliberately
-// a constant, not configuration. 120 was chosen against the real corpus: the
-// longest cell in this repo's board was 117 runes, so nothing legitimate is
-// clipped, while a full `yes — MERGED: feat/… → main (<sha>)` cell survives
-// intact (T-049).
+// a constant, not configuration. 120 was chosen against the real corpus of the
+// time: the longest cell in this repo's board was 117 runes, and a full
+// `yes — MERGED: feat/… → main (<sha>)` cell survived intact (T-049).
+//
+// That headroom no longer covers every recommended merge line. T-089 recommends a
+// commit *link* alongside the MR ref, and the full form reaches the cap exactly
+// (GitHub, 120) or exceeds it (GitLab subgroup paths, 122 — clipped with an
+// ellipsis, so the board shows a dead URL). This is working as designed rather
+// than a defect: the ticket file keeps the whole line, and `pickle serve` renders
+// it uncapped and linkified. The short SHA is what reliably survives here, which
+// is why the rules recommend it *alongside* — not instead of — the link.
 const maxCellRunes = 120
 
 // sanitizeCell is the single one-way choke point every rendered cell passes
