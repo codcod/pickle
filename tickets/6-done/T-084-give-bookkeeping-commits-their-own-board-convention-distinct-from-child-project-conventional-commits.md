@@ -391,9 +391,16 @@ content.
 
 **Post-merge note.** PR #24 was merged as a **merge commit preserving both commits
 individually** rather than squashing — the keep-history default this ticket introduced for a
-root-path child, exercised on the very branch that introduced it. `git log --oneline
---invert-grep --grep '^board:'` on `main` now recovers the granular product history the
-Description argued for, which the old squash default made impossible.
+root-path child, exercised on the very branch that introduced it. The granular product history
+the Description argued for is now recoverable on `main`, which the old squash default made
+impossible.
+
+One correction to the Description's illustrative command: `git log --invert-grep --grep
+'^board:'` does **not** cleanly separate the two categories, because `--grep` matches the whole
+message and `^` anchors per line — so a product commit whose *body* wraps a line beginning
+"board:" is misclassified (`38f45bd` is a real instance). Filter on the subject instead:
+`git log --format='%s' | grep -v '^board:'`. The command was illustrative prose in this ticket
+only; it is not part of the shipped payload or docs, so nothing user-facing repeats the mistake.
 
 **Impact sweep (step 8):** no ticket in `1-to-do/` or `2-ready/` references T-084, and none lists
 it in `depends-on:`. One observation, not a finding: T-082's Description argues from "a
