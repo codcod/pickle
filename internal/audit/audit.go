@@ -14,6 +14,7 @@ import (
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -52,8 +53,9 @@ const maxHistoryEntryRunes = 400
 // registered-child and per-child WIP checks.
 func Audit(root string, cfg *config.Config) Result {
 	var r Result
-	auditStatusDirs(&r, root)
-	tickets, issues := ticket.LoadAll(root)
+	def := flow.ForName(cfg.FlowName())
+	auditStatusDirs(&r, def, root)
+	tickets, issues := ticket.LoadAll(def, root)
 	r.Errors = append(r.Errors, issues...)
 	r.NumTickets = len(tickets)
 
@@ -155,7 +157,7 @@ func Audit(root string, cfg *config.Config) Result {
 		// is about to act on. Structural check only (SectionBody.OutcomeMissing) —
 		// no prose heuristic, and deliberately NOT in requiredKeys (Outcome is a
 		// body section, not frontmatter; see T-045's migration-break precedent).
-		if t.Dir != "6-done" && t.Dir != "7-dropped" && ticket.OutcomeMissing(t.Text) {
+		if st, ok := def.ByDir(t.Dir); ok && !st.Terminal && ticket.OutcomeMissing(t.Text) {
 			r.warnf("%s: ## Outcome is missing, empty, or still a placeholder — say what changes "+
 				"when this ships, in user-observable terms", ref)
 		}
@@ -172,7 +174,7 @@ func Audit(root string, cfg *config.Config) Result {
 	if data, err := os.ReadFile(boardPath); err != nil {
 		r.errf("BOARD.md: %v", err)
 	} else {
-		switch board.Compare(string(data), board.Render(tickets, cfg, "")) {
+		switch board.Compare(def, string(data), board.Render(def, tickets, cfg, "")) {
 		case board.DriftRows:
 			r.errf("BOARD.md does not match the ticket files (rows differ) — run pickle board sync")
 		case board.DriftLayout:
@@ -181,14 +183,14 @@ func Audit(root string, cfg *config.Config) Result {
 	}
 
 	// Per-child WIP limits.
-	auditWIP(&r, tickets, cfg)
+	auditWIP(&r, def, tickets, cfg)
 
 	// History ↔ directory, plus the over-long-entry warning (T-040 D4/D5) —
 	// folded into this loop so the tickets are not walked a third time.
 	for _, t := range tickets {
 		ref := t.Dir + "/" + filepath.Base(t.Path)
-		st, _ := ticket.StatusByDir(t.Dir)
-		switch got := ticket.LastHistoryStatus(t.Text); got {
+		st, _ := def.ByDir(t.Dir)
+		switch got := ticket.LastHistoryStatus(def, t.Text); got {
 		case "":
 			r.warnf("%s: no parseable status line in ## History", ref)
 		case st.Name:
@@ -198,7 +200,7 @@ func Audit(root string, cfg *config.Config) Result {
 		// Only the two TEMPLATE-prescribed forms (a status transition, a merge
 		// note) carry a shape to violate. `created` lines and free-form dated
 		// notes are exempt — see maxHistoryEntryRunes.
-		for _, e := range ticket.HistoryEntries(t.Text) {
+		for _, e := range ticket.HistoryEntries(def, t.Text) {
 			if e.Kind != ticket.HistoryTransition && e.Kind != ticket.HistoryMerged {
 				continue
 			}
@@ -211,22 +213,26 @@ func Audit(root string, cfg *config.Config) Result {
 		}
 	}
 
-	// In-development dependency gate. depends-on only: spawned-by parents are
-	// intentionally absent here — lineage never gates a pickup.
-	for _, t := range tickets {
-		if t.Dir != "3-in-development" {
-			continue
-		}
-		ref := t.Dir + "/" + filepath.Base(t.Path)
-		for _, dep := range t.DependsOn {
-			dt, ok := byID[dep]
-			if !ok {
-				continue // already reported
+	// In-development dependency gate: applies to whichever state is keyed by
+	// config.WIPKeyInDevelopment (for brine, IN DEVELOPMENT) — the same state
+	// internal/move gates pickup into. depends-on only: spawned-by parents
+	// are intentionally absent here — lineage never gates a pickup.
+	if pickup, ok := def.StateByWIPKey(config.WIPKeyInDevelopment); ok {
+		for _, t := range tickets {
+			if t.Dir != pickup.Dir {
+				continue
 			}
-			if dt.Dir != "6-done" {
-				r.errf("%s: in development but dependency %s is in %s", ref, dep, dt.Dir)
-			} else if !ticket.HasMergeLine(dt.Text) {
-				r.warnf("%s: dependency %s is DONE but has no 'MERGED' History line — confirm the human merged it in its own child", ref, dep)
+			ref := t.Dir + "/" + filepath.Base(t.Path)
+			for _, dep := range t.DependsOn {
+				dt, ok := byID[dep]
+				if !ok {
+					continue // already reported
+				}
+				if dt.Dir != def.DependencySatisfied().Dir {
+					r.errf("%s: in development but dependency %s is in %s", ref, dep, dt.Dir)
+				} else if !ticket.HasMergeLine(def, dt.Text) {
+					r.warnf("%s: dependency %s is DONE but has no 'MERGED' History line — confirm the human merged it in its own child", ref, dep)
+				}
 			}
 		}
 	}
@@ -240,24 +246,27 @@ func Audit(root string, cfg *config.Config) Result {
 // board.WIPCounts — the same counter behind the board's `(n/limit)` sub-headings
 // and the dashboard's badges — so a limit cannot look breached in one view and
 // satisfied in another.
-func auditWIP(r *Result, tickets []*ticket.Ticket, cfg *config.Config) {
-	counts := board.WIPCounts(tickets)
+func auditWIP(r *Result, def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config) {
+	counts := board.WIPCounts(def, tickets)
 	children := make([]string, 0, len(counts))
 	for p := range counts {
 		children = append(children, p)
 	}
 	sort.Strings(children)
+	wipStates := def.WIPStates()
 	for _, p := range children {
-		c := counts[p]
 		cp, ok := cfg.Project(p)
 		if !ok {
 			continue // unregistered project already reported per-ticket
 		}
-		if c.InDevelopment > cp.WIPInDevelopment {
-			r.errf("WIP: child %q has %d tickets in 3-in-development (limit %d)", p, c.InDevelopment, cp.WIPInDevelopment)
-		}
-		if c.InReview > cp.WIPInReview {
-			r.errf("WIP: child %q has %d tickets in 4-in-review (limit %d)", p, c.InReview, cp.WIPInReview)
+		for _, s := range wipStates {
+			limit, ok := cp.WIPLimitFor(s.WIPKey)
+			if !ok {
+				continue
+			}
+			if n := counts[p][s.Dir]; n > limit {
+				r.errf("WIP: child %q has %d tickets in %s (limit %d)", p, n, s.Dir, limit)
+			}
 		}
 	}
 }
@@ -272,8 +281,8 @@ func auditWIP(r *Result, tickets []*ticket.Ticket, cfg *config.Config) {
 // empty and carries no `.gitkeep` is only a warning — not yet a broken
 // invariant, but the exact predictor of the same defect on the next fresh clone
 // (git does not track empty directories).
-func auditStatusDirs(r *Result, root string) {
-	for _, s := range ticket.Statuses {
+func auditStatusDirs(r *Result, def *flow.Definition, root string) {
+	for _, s := range def.States() {
 		dir := filepath.Join(root, "tickets", s.Dir)
 		entries, err := os.ReadDir(dir)
 		if err != nil {
