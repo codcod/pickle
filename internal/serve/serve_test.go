@@ -308,7 +308,7 @@ func TestMergeLineLinkification(t *testing.T) {
 			}},
 	)
 	h := newHandler(t, root)
-	want := `<a href="https://example.com/commit/abc123" rel="noopener" target="_blank">https://example.com/commit/abc123</a>`
+	want := `<a href="https://example.com/commit/abc123" rel="noopener noreferrer" target="_blank">https://example.com/commit/abc123</a>`
 	for _, path := range []string{"/", "/t/T-001", "/activity"} {
 		body := get(t, h, path).Body.String()
 		if !strings.Contains(body, want) {
@@ -346,8 +346,50 @@ func TestLinkifyURLsEscapesSurroundingText(t *testing.T) {
 	if !strings.Contains(string(got), "&lt;script&gt;") {
 		t.Errorf("linkifyURLs did not escape surrounding text: %s", got)
 	}
-	if !strings.Contains(string(got), `<a href="https://example.com/x/y" rel="noopener" target="_blank">https://example.com/x/y</a>),`) {
+	if !strings.Contains(string(got), `<a href="https://example.com/x/y" rel="noopener noreferrer" target="_blank">https://example.com/x/y</a>),`) {
 		t.Errorf("linkifyURLs pulled trailing punctuation into the href, or mis-rendered the anchor: %s", got)
+	}
+}
+
+// TestLinkifyURLsHardenedEdgeCases: T-090. Each case guards one sharp edge
+// found in T-089's review (F1, F3, F4, F5) — an entity in a URL's tail, a
+// host-less URL, two adjacent URLs, and the ordinary single-URL case that must
+// keep working once the matching algorithm changes to fix the other three.
+func TestLinkifyURLsHardenedEdgeCases(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, want string
+	}{
+		{
+			name: "ampersand inside URL escapes in both href and text",
+			in:   `https://x.com/a&b`,
+			want: `<a href="https://x.com/a&amp;b" rel="noopener noreferrer" target="_blank">https://x.com/a&amp;b</a>`,
+		},
+		{
+			name: "entity tail keeps its terminating semicolon",
+			in:   `https://x.com/<script>`,
+			want: `<a href="https://x.com/&lt;script&gt;" rel="noopener noreferrer" target="_blank">https://x.com/&lt;script&gt;</a>`,
+		},
+		{
+			name: "host-less URL is not linkified",
+			in:   `https://).`,
+			want: `https://).`,
+		},
+		{
+			name: "adjacent URLs do not collapse into one anchor",
+			in:   `https://a.com/1,https://b.com/2`,
+			want: `<a href="https://a.com/1" rel="noopener noreferrer" target="_blank">https://a.com/1</a>,<a href="https://b.com/2" rel="noopener noreferrer" target="_blank">https://b.com/2</a>`,
+		},
+		{
+			name: "ordinary single URL still links",
+			in:   `https://a.com`,
+			want: `<a href="https://a.com" rel="noopener noreferrer" target="_blank">https://a.com</a>`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := string(linkifyURLs(tc.in)); got != tc.want {
+				t.Errorf("linkifyURLs(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
 	}
 }
 
