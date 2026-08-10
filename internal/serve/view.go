@@ -263,9 +263,15 @@ func linkifyURLs(s string) template.HTML {
 		if i+1 < len(starts) {
 			limit = starts[i+1][0]
 		}
-		end := start
-		for end < limit && !unicode.IsSpace(rune(s[end])) {
-			end++
+		// strings.IndexFunc decodes each rune before testing it, unlike
+		// widening a single byte to a rune (T-090's review, finding F1): the
+		// naive `rune(s[i])` scan stopped mid-rune on any UTF-8 continuation
+		// byte that happens to satisfy unicode.IsSpace (0x85, 0xA0), truncating
+		// the href and emitting invalid UTF-8 for any URL containing e.g. à,
+		// Š, Р or a literal NBSP.
+		end := limit
+		if idx := strings.IndexFunc(s[start:limit], unicode.IsSpace); idx >= 0 {
+			end = start + idx
 		}
 
 		trimmed := strings.TrimRight(s[start:end], urlTrailingPunct)

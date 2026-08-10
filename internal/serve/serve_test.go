@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
@@ -385,10 +386,30 @@ func TestLinkifyURLsHardenedEdgeCases(t *testing.T) {
 			in:   `https://a.com`,
 			want: `<a href="https://a.com" rel="noopener noreferrer" target="_blank">https://a.com</a>`,
 		},
+		{
+			// F1 (review rework): a byte-widened unicode.IsSpace check stopped
+			// the run scan mid-rune on any UTF-8 continuation byte satisfying
+			// IsSpace (0x85, 0xA0), truncating the href and emitting invalid
+			// UTF-8. à encodes to C3 A0; A0 alone would have split it.
+			name: "multi-byte rune in the host survives intact",
+			in:   `https://x.com/à/commit`,
+			want: `<a href="https://x.com/à/commit" rel="noopener noreferrer" target="_blank">https://x.com/à/commit</a>`,
+		},
+		{
+			// A literal NBSP (U+00A0, bytes C2 A0) must still delimit a run —
+			// the fix must decode runes, not merely stop treating A0 as space.
+			name: "NBSP after a URL still terminates the run",
+			in:   "https://x.com/a\u00a0tail",
+			want: `<a href="https://x.com/a" rel="noopener noreferrer" target="_blank">https://x.com/a</a>` + "\u00a0tail",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := string(linkifyURLs(tc.in)); got != tc.want {
+			got := string(linkifyURLs(tc.in))
+			if got != tc.want {
 				t.Errorf("linkifyURLs(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+			if !utf8.ValidString(got) {
+				t.Errorf("linkifyURLs(%q) produced invalid UTF-8: %q", tc.in, got)
 			}
 		})
 	}
