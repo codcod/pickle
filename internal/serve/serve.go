@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -125,7 +126,8 @@ type handler struct {
 // dashboard. The audit banner reports them, because audit.Audit re-runs the same
 // load and lists each one.
 func (h *handler) load() []*ticket.Ticket {
-	tickets, _ := ticket.LoadAll(h.opts.Root)
+	def := flow.ForName(h.opts.Cfg.FlowName())
+	tickets, _ := ticket.LoadAll(def, h.opts.Root)
 	return tickets
 }
 
@@ -147,10 +149,11 @@ func (h *handler) render(w http.ResponseWriter, name string, data page) {
 // newPage assembles the shared parts of every page: the header label and the
 // health banner.
 func (h *handler) newPage(title string, tickets []*ticket.Ticket) page {
+	def := flow.ForName(h.opts.Cfg.FlowName())
 	return page{
 		Title:   title,
 		Project: projectName(h.opts.Root),
-		Health:  buildHealth(h.opts.Root, tickets, h.opts.Cfg),
+		Health:  buildHealth(def, h.opts.Root, tickets, h.opts.Cfg),
 	}
 }
 
@@ -163,14 +166,14 @@ func (h *handler) board(w http.ResponseWriter, r *http.Request) {
 	}
 	tickets := h.load()
 	p := h.newPage("Board", tickets)
-	p.Board = buildBoard(tickets, h.opts.Cfg)
+	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg)
 	h.render(w, "board.html", p)
 }
 
 func (h *handler) activity(w http.ResponseWriter, _ *http.Request) {
 	tickets := h.load()
 	p := h.newPage("Activity", tickets)
-	p.Activity = buildActivity(tickets)
+	p.Activity = buildActivity(flow.ForName(h.opts.Cfg.FlowName()), tickets)
 	h.render(w, "activity.html", p)
 }
 
@@ -181,7 +184,7 @@ func (h *handler) ticket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tickets := h.load()
-	view, ok := buildTicket(tickets, id)
+	view, ok := buildTicket(flow.ForName(h.opts.Cfg.FlowName()), tickets, id)
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -196,13 +199,13 @@ func (h *handler) ticket(w http.ResponseWriter, r *http.Request) {
 func (h *handler) boardFragment(w http.ResponseWriter, _ *http.Request) {
 	tickets := h.load()
 	p := h.newPage("Board", tickets)
-	p.Board = buildBoard(tickets, h.opts.Cfg)
+	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg)
 	h.render(w, "board-fragment", p)
 }
 
 func (h *handler) activityFragment(w http.ResponseWriter, _ *http.Request) {
 	tickets := h.load()
 	p := h.newPage("Activity", tickets)
-	p.Activity = buildActivity(tickets)
+	p.Activity = buildActivity(flow.ForName(h.opts.Cfg.FlowName()), tickets)
 	h.render(w, "activity-fragment", p)
 }
