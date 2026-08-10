@@ -61,6 +61,18 @@ const (
 // exists yet (see FlowName and Validate).
 const DefaultFlowName = "brine"
 
+// WIPKeyInDevelopment and WIPKeyInReview name the two pickle.toml keys a WIP
+// limit is configured under. They must equal Project's own `wip_in_development`
+// / `wip_in_review` struct tags below — Go has no way to derive a constant
+// from a struct tag, so the two are kept in sync by hand; a flow definition
+// (internal/flow) names a WIP-limited state's key with one of these two
+// strings, and Project.WIPLimitFor is the only place that key is resolved to
+// a number.
+const (
+	WIPKeyInDevelopment = "wip_in_development"
+	WIPKeyInReview      = "wip_in_review"
+)
+
 // Config is the whole pickle.toml.
 type Config struct {
 	PayloadVersion string       `toml:"payload_version"`
@@ -113,6 +125,23 @@ func (p *Project) Prefix() string {
 		return DefaultTicketPrefix
 	}
 	return p.TicketPrefix
+}
+
+// WIPLimitFor resolves a flow state's WIPKey (WIPKeyInDevelopment or
+// WIPKeyInReview) to this project's configured limit. Any other key —
+// including "" for a state that is not WIP-limited — returns (0, false).
+// This is the only place a WIP key is resolved to a number: internal/move,
+// internal/audit, internal/board and internal/serve all call it rather than
+// switching on the key themselves.
+func (p *Project) WIPLimitFor(key string) (int, bool) {
+	switch key {
+	case WIPKeyInDevelopment:
+		return p.WIPInDevelopment, true
+	case WIPKeyInReview:
+		return p.WIPInReview, true
+	default:
+		return 0, false
+	}
 }
 
 // Find returns the path to the nearest pickle.toml at or above startDir.
