@@ -20,10 +20,11 @@ Last updated: 2026-08-10
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-10
 
 | id | title | open findings |
 |---|---|---|
-| T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | review: 3 blocking (B1 mandatory CHANGELOG entry never written; B2 ByToken test deleted under a false 'moved' comment; … |
 
 ## READY (impact order, per child)
 
