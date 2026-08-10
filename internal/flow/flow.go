@@ -330,7 +330,6 @@ func New(spec Spec) (*Definition, error) {
 
 	allowed := make(map[string][]Transition, len(spec.States))
 	seenPair := make(map[[2]string]bool, len(spec.Transitions))
-	reached := map[string]bool{spec.Initial: true}
 	for _, t := range spec.Transitions {
 		from, fromOK := byDir[t.From]
 		if !fromOK {
@@ -352,12 +351,37 @@ func New(spec Spec) (*Definition, error) {
 		}
 		seenPair[pair] = true
 		allowed[t.From] = append(allowed[t.From], t)
-		reached[t.To] = true
+	}
+
+	// Reachability is a real graph search from Initial over allowed
+	// transitions -- not an incoming-edge test. Marking t.To reached for every
+	// transition regardless of whether t.From is itself reachable would let a
+	// disconnected island (states that only reach each other, never Initial)
+	// pass silently; BFS is what actually proves "reachable from Initial".
+	reached := map[string]bool{spec.Initial: true}
+	queue := []string{spec.Initial}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, t := range allowed[cur] {
+			if !reached[t.To] {
+				reached[t.To] = true
+				queue = append(queue, t.To)
+			}
+		}
 	}
 	for _, s := range spec.States {
 		if !reached[s.Dir] {
 			return nil, fmt.Errorf("flow %q: state %q is unreachable from Initial %q",
 				spec.Name, s.Dir, spec.Initial)
+		}
+		// Converse of the "transition starts from terminal state" check above:
+		// a non-terminal state with no outgoing transitions is a dead end
+		// nothing can ever leave, which legalTargets would then mislabel
+		// "(none -- terminal status)" for a status that isn't terminal.
+		if !s.Terminal && len(allowed[s.Dir]) == 0 {
+			return nil, fmt.Errorf("flow %q: state %q is not terminal but has no outgoing transitions",
+				spec.Name, s.Dir)
 		}
 	}
 
