@@ -259,3 +259,4 @@ every other ticket's finish step, expecting it green with no diff.
 - 2026-08-09 — created (TO DO). source: review of T-089 — six non-blocking findings on
   `linkifyURLs` batched by theme (F1, F3, F4, F5, F6, F7 in T-089's Review table)
 - 2026-08-10 — TO DO → READY: plan complete
+- 2026-08-10 — READY → IN DEVELOPMENT: picked up
