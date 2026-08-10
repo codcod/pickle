@@ -624,3 +624,4 @@ substantive defect it hid"), **1 noted** (N12). **0 new tickets.**
 - 2026-08-10 — IN REVIEW → REWORK: review: 3 blocking (B1 mandatory CHANGELOG entry never written; B2 ByToken test deleted under a false 'moved' comment; B3 reachability validation is an incoming-edge test); 9 non-blocking (4 fixed inline, 1 folded, 4 noted)
 - 2026-08-10 — REWORK → IN REVIEW: rework: B1 CHANGELOG entry added; B2 ByToken/ByDir/ByName coverage ported; B3 reachability is now a real BFS and non-terminal dead ends are rejected — back for scoped re-review
 - 2026-08-10 — IN REVIEW → DONE: scoped re-review: B1/B2/B3 all resolved and mutation-verified; 3 new non-blocking (N10/N11 fixed inline, N12 noted); 0 blocking remain, 0 tickets spawned
+- 2026-08-10 — merged to main (PR #28, e214ee3, https://github.com/codcod/pickle/commit/e214ee3); merge commit, 15 commits kept
