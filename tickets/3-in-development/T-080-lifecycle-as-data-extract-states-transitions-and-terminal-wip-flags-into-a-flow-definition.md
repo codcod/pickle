@@ -466,3 +466,4 @@ project-authored flow is still not supported (`flow = "brine"` remains the only 
   `cli/ticket.go`'s hard-coded `1-to-do`, board's impact-order name test). Scope confirmed as a
   single ticket (no independently schedulable split) and grade unchanged (high/high/L)
 - 2026-08-10 — TO DO → READY: plan complete
+- 2026-08-10 — READY → IN DEVELOPMENT: picked up

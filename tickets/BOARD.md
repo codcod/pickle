@@ -13,10 +13,11 @@ Last updated: 2026-08-10
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-10
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | high | high | L | [] |  |
 
 ## TO DO (impact order, per child)
 
