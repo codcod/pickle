@@ -9,6 +9,7 @@ import (
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/ticket"
 )
@@ -47,7 +48,7 @@ func newTicketFull(t *testing.T, root string, cfg *config.Config, id, title stri
 	if err := os.WriteFile(dst, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := board.Regenerate(root, cfg); err != nil {
+	if err := board.Regenerate(flow.ForName(cfg.FlowName()), root, cfg); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -95,7 +96,7 @@ func TestForwardWalkStaysClean(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected ticket in 6-done: %v", err)
 	}
-	if got := ticket.LastHistoryStatus(string(b)); got != "DONE" {
+	if got := ticket.LastHistoryStatus(flow.ForName(cfg.FlowName()), string(b)); got != "DONE" {
 		t.Errorf("last History status = %q, want DONE", got)
 	}
 	// DONE board row carries the publish-gated default.
