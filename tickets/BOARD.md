@@ -21,11 +21,10 @@ Last updated: 2026-08-10
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | [] |
 
 ## REWORK
 
@@ -33,6 +32,7 @@ Last updated: 2026-08-10
 
 | id | title | open findings |
 |---|---|---|
+| T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | review: 1 blocking (F1 — byte-widened IsSpace splits multi-byte runes, invalid UTF-8); 5 non-blocking (2 fixed inline, … |
 
 ## READY (impact order, per child)
 
