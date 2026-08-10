@@ -352,9 +352,10 @@ func TestLinkifyURLsEscapesSurroundingText(t *testing.T) {
 }
 
 // TestLinkifyURLsHardenedEdgeCases: T-090. Each case guards one sharp edge
-// found in T-089's review (F1, F3, F4, F5) — an entity in a URL's tail, a
-// host-less URL, two adjacent URLs, and the ordinary single-URL case that must
-// keep working once the matching algorithm changes to fix the other three.
+// found in T-089's review — an ampersand and an entity tail inside a URL (F1),
+// a host-less URL (F4), two adjacent URLs (F5), and the ordinary single-URL
+// case that must keep working once the matching algorithm changes to fix the
+// other three. Every `want` also pins `rel="noopener noreferrer"` (F7).
 func TestLinkifyURLsHardenedEdgeCases(t *testing.T) {
 	for _, tc := range []struct {
 		name, in, want string
