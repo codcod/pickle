@@ -308,6 +308,29 @@ randomised fuzz for panics and UTF-8 corruption).
 gap, F5 pre-existing backtick escaping). **0 new tickets** — nothing here passes the promotion
 test; F1 is fixed on this branch, not deferred. → `5-rework/`, scoped to F1 alone.
 
+### Rework (F1 only)
+
+Fixed 2026-08-10 on `feat/T-090-harden-linkify-urls` (commit `a51889d`). Replaced the
+byte-widening scan (`for end < limit && !unicode.IsSpace(rune(s[end])) { end++ }`) with
+`strings.IndexFunc(s[start:limit], unicode.IsSpace)`, which decodes each rune before testing it
+— closing the gap without changing which characters count as whitespace (still `unicode.IsSpace`,
+as F1's suggested resolution allowed; this is the "rune-aware" branch of that choice, not the
+"ASCII-only to match `main`" branch — consistent with F3, which already accepted the `\v`
+behaviour delta that comes with `unicode.IsSpace`). Added two regression cases to
+`TestLinkifyURLsHardenedEdgeCases` (`serve_test.go`): a multi-byte rune (`à`, `C3 A0`) surviving
+intact inside a URL, and a literal NBSP (`C2 A0`) still terminating the run — each asserting both
+the exact rendered string and `utf8.ValidString(got)`.
+
+Re-verified independently (not just via the new unit tests): the seven inputs that produced
+invalid UTF-8 in the review's probe (`https://x.com/à`, `https://x.com/à/commit`,
+`https://example.com/ą`, `https://x.com/a\u00a0b`, `https://x.com/日本`, `https://x.com/a\u0085b`,
+plus the ordinary-case control) now all produce `utf8.ValidString == true` output with the full
+href intact. A fresh 500 000-case fuzz using an alphabet that includes `à ą Å Š 日 é` (the review's
+original fuzz used an ASCII-heavy alphabet, which is exactly why it reported 0 corruptions despite
+F1 existing) found 0 panics and 0 UTF-8 corruptions.
+
+`just build && just test && just lint && just docs-check` all green in the rework worktree.
+
 ### Steps 3, 4, 4a — quality, consistency, docs
 
 - **Security (step 3).** No injection found. `href` and anchor text share one
@@ -341,3 +364,4 @@ the READY queue is empty. Nothing downstream to patch.
 - 2026-08-10 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-10 — IN REVIEW → REWORK: review: 1 blocking (F1 — byte-widened IsSpace splits
   multi-byte runes, invalid UTF-8); 5 non-blocking (2 fixed inline, 3 noted)
+- 2026-08-10 — REWORK → IN REVIEW: F1 fixed: rune-decoding scan closes the byte-widened IsSpace gap
