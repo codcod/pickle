@@ -9,6 +9,7 @@ import (
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 )
 
 // payloadRoot returns the dir whose os.DirFS exposes "skill/SKILL.md" etc. at the
@@ -63,7 +64,7 @@ func TestRunProducesInstall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load config: %v", err)
 	}
-	want := board.Render(nil, cfgForRender, "")
+	want := board.Render(flow.ForName(cfgForRender.FlowName()), nil, cfgForRender, "")
 	if board.NormalizeLastUpdated(string(boardBytes)) != board.NormalizeLastUpdated(want) {
 		t.Errorf("BOARD.md is not a zero-ticket render:\n%s", boardBytes)
 	}

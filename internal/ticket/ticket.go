@@ -1,7 +1,13 @@
-// Package ticket is the shared model for ticket files: the board status table,
-// frontmatter parsing, History interpretation, and loading a whole tickets/ tree.
-// Both the board audit (internal/audit) and the project remove-guard (internal/cli)
-// build on it, so the frontmatter scan lives in exactly one place.
+// Package ticket is the shared model for ticket files: frontmatter parsing,
+// History interpretation, and loading a whole tickets/ tree. Both the board
+// audit (internal/audit) and the project remove-guard (internal/cli) build on
+// it, so the frontmatter scan lives in exactly one place.
+//
+// The status vocabulary itself (the seven directories, their display names,
+// terminal flags, legal transitions) is not this package's data — it lives in
+// internal/flow as a *flow.Definition, and every function here that needs it
+// (LoadAll, HistoryEntries, LastHistoryStatus, LastHistoryReason, MergeLine,
+// HasMergeLine) takes one as an explicit parameter (T-080).
 package ticket
 
 import (
@@ -13,63 +19,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/codcod/pickle/internal/flow"
 )
-
-// Status is a board status with its directory, display name, and terminal flag.
-type Status struct {
-	Dir      string
-	Name     string
-	Terminal bool
-}
-
-// Statuses lists every status in board order.
-var Statuses = []Status{
-	{"1-to-do", "TO DO", false},
-	{"2-ready", "READY", false},
-	{"3-in-development", "IN DEVELOPMENT", false},
-	{"4-in-review", "IN REVIEW", false},
-	{"5-rework", "REWORK", false},
-	{"6-done", "DONE", true},
-	{"7-dropped", "DROPPED", true},
-}
-
-// StatusByDir returns the status for a directory name.
-func StatusByDir(dir string) (Status, bool) {
-	for _, s := range Statuses {
-		if s.Dir == dir {
-			return s, true
-		}
-	}
-	return Status{}, false
-}
-
-// StatusByName returns the status for a display name.
-func StatusByName(name string) (Status, bool) {
-	for _, s := range Statuses {
-		if s.Name == name {
-			return s, true
-		}
-	}
-	return Status{}, false
-}
-
-var statusNumRE = regexp.MustCompile(`^\d+-`)
-
-// StatusByToken resolves a user-supplied status token, case-insensitively, in any
-// of three forms: the dir name ("3-in-development"), the dir minus its number
-// ("in-development"), or the display name lower-cased with spaces to hyphens
-// ("in-development" from "IN DEVELOPMENT").
-func StatusByToken(tok string) (Status, bool) {
-	t := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(tok)), " ", "-")
-	for _, s := range Statuses {
-		bare := statusNumRE.ReplaceAllString(s.Dir, "")
-		name := strings.ReplaceAll(strings.ToLower(s.Name), " ", "-")
-		if t == s.Dir || t == bare || t == name {
-			return s, true
-		}
-	}
-	return Status{}, false
-}
 
 // Ticket is one parsed ticket file.
 type Ticket struct {
@@ -154,15 +106,16 @@ const (
 // historyKind classifies one History entry body. Order matters: merged is
 // tested before transition, because a legacy merge line ("MERGED: feat/… →
 // main (abc123)") also contains a "→" and must not be misread as a status
-// transition.
-func historyKind(body string) HistoryKind {
+// transition. def supplies the status vocabulary transitionParts needs to
+// decide whether a candidate target is a legal status name.
+func historyKind(def *flow.Definition, body string) HistoryKind {
 	switch {
 	case mergedRE.MatchString(body):
 		return HistoryMerged
 	case createdRE.MatchString(body):
 		return HistoryCreated
 	default:
-		if _, _, ok := transitionParts(body); ok {
+		if _, _, ok := transitionParts(def, body); ok {
 			return HistoryTransition
 		}
 		return HistoryNote
@@ -196,7 +149,7 @@ const arrow = "→"
 // Requiring the candidate to be a legal status *exactly* (not merely to start
 // with one) is what keeps a note that happens to mention an arrow — "clarified
 // that a merge → DONE requires a human" — a note.
-func transitionParts(body string) (target, reason string, ok bool) {
+func transitionParts(def *flow.Definition, body string) (target, reason string, ok bool) {
 	for rest := body; ; {
 		i := strings.Index(rest, arrow)
 		if i < 0 {
@@ -207,15 +160,15 @@ func transitionParts(body string) (target, reason string, ok bool) {
 		if j := strings.Index(rest, ":"); j >= 0 {
 			candidate, tail = rest[:j], strings.TrimSpace(rest[j+1:])
 		}
-		if name := strings.ToUpper(strings.TrimSpace(candidate)); statusExists(name) {
+		if name := strings.ToUpper(strings.TrimSpace(candidate)); statusExists(def, name) {
 			return name, tail, true
 		}
 	}
 }
 
-// statusExists reports whether name is a legal status display name.
-func statusExists(name string) bool {
-	_, ok := StatusByName(name)
+// statusExists reports whether name is a legal status display name in def.
+func statusExists(def *flow.Definition, name string) bool {
+	_, ok := def.ByName(name)
 	return ok
 }
 
@@ -248,7 +201,7 @@ type HistoryEntry struct {
 //
 // Date stays a string: the format is already anchored by historyRE, ordering is
 // lexicographic for YYYY-MM-DD, and no caller needs calendar arithmetic.
-func HistoryEntries(text string) []HistoryEntry {
+func HistoryEntries(def *flow.Definition, text string) []HistoryEntry {
 	var out []HistoryEntry
 	inHistory := false
 	for _, line := range strings.Split(text, "\n") {
@@ -262,11 +215,11 @@ func HistoryEntries(text string) []HistoryEntry {
 		trimmed := strings.TrimSpace(line)
 		if m := historyRE.FindStringSubmatch(trimmed); m != nil {
 			body := strings.TrimSpace(m[1])
-			e := HistoryEntry{Date: historyDate(trimmed), Text: body, Kind: historyKind(body)}
+			e := HistoryEntry{Date: historyDate(trimmed), Text: body, Kind: historyKind(def, body)}
 			if e.Kind == HistoryTransition {
 				// Same input as historyKind just classified, so Kind and Target
 				// are decided together and stay true after folding (T-043 R1).
-				e.Target, _, _ = transitionParts(body)
+				e.Target, _, _ = transitionParts(def, body)
 			}
 			out = append(out, e)
 			continue
@@ -380,9 +333,9 @@ func ParseIDList(raw string) ([]string, error) {
 // able to disagree on where an entry ends, T-043. It reads HistoryEntry.Target
 // rather than re-deriving the target from the folded Text: re-derivation is what
 // let an entry be classified a transition and still yield no status (T-043 R1).
-func LastHistoryStatus(text string) string {
+func LastHistoryStatus(def *flow.Definition, text string) string {
 	status := ""
-	for _, e := range HistoryEntries(text) {
+	for _, e := range HistoryEntries(def, text) {
 		switch e.Kind {
 		case HistoryCreated:
 			if c := createdRE.FindStringSubmatch(e.Text); c != nil {
@@ -411,14 +364,14 @@ func LastHistoryStatus(text string) string {
 // is the whole point. When the folded text no longer presents a transition (a
 // reason-less "TO DO → READY" whose continuation line is plain prose), there is
 // no reason clause to report and "" is the answer.
-func LastHistoryReason(text string) string {
+func LastHistoryReason(def *flow.Definition, text string) string {
 	reason := ""
-	for _, e := range HistoryEntries(text) {
+	for _, e := range HistoryEntries(def, text) {
 		if e.Kind != HistoryTransition {
 			continue // merge note, created line, or free-form note
 		}
 		reason = ""
-		if _, r, ok := transitionParts(e.Text); ok {
+		if _, r, ok := transitionParts(def, e.Text); ok {
 			reason = r
 		}
 	}
@@ -429,7 +382,7 @@ func LastHistoryReason(text string) string {
 // (MR !12, abc1234)" from "- 2026-07-23 — merged to main (MR !12, abc1234)"), or "" when the
 // History records no merge. The board renderer derives the DONE `merged` cell
 // from this (D3), so HasMergeLine and the cell can never disagree.
-func MergeLine(text string) string {
+func MergeLine(def *flow.Definition, text string) string {
 	inHistory := false
 	merge := ""
 	for _, line := range strings.Split(text, "\n") {
@@ -441,7 +394,7 @@ func MergeLine(text string) string {
 			continue
 		}
 		if m := historyRE.FindStringSubmatch(strings.TrimSpace(line)); m != nil {
-			if body := strings.TrimSpace(m[1]); historyKind(body) == HistoryMerged {
+			if body := strings.TrimSpace(m[1]); historyKind(def, body) == HistoryMerged {
 				merge = body
 			}
 		}
@@ -452,8 +405,8 @@ func MergeLine(text string) string {
 // HasMergeLine reports whether the History records a merge ("… — MERGED: …").
 // Defined in terms of MergeLine so the gate check and the board's `merged`
 // cell can never disagree.
-func HasMergeLine(text string) bool {
-	return MergeLine(text) != ""
+func HasMergeLine(def *flow.Definition, text string) bool {
+	return MergeLine(def, text) != ""
 }
 
 // Legal grade values (single values or adjacent-pair ranges). These are the one
@@ -508,9 +461,9 @@ func SplitID(id string) (prefix string, num int, ok bool) {
 // distinct prefixes number independently, and children sharing the default "T"
 // share one counter (the legacy global namespace). Scans filenames directly so
 // it is robust to files that fail frontmatter parsing.
-func NextNum(root, prefix string) int {
+func NextNum(def *flow.Definition, root, prefix string) int {
 	max := 0
-	for _, s := range Statuses {
+	for _, s := range def.States() {
 		entries, err := os.ReadDir(filepath.Join(root, "tickets", s.Dir))
 		if err != nil {
 			continue
@@ -675,10 +628,10 @@ tickets by id; hard dependencies go in depends-on: frontmatter (human-approved).
 // LoadAll reads every ticket under root/tickets/<status>/. Missing status dirs are
 // treated as empty (git does not track empty dirs). The second return is a list of
 // structural load problems (bad filename, no frontmatter) keyed by "<dir>/<file>".
-func LoadAll(root string) ([]*Ticket, []string) {
+func LoadAll(def *flow.Definition, root string) ([]*Ticket, []string) {
 	var tickets []*Ticket
 	var issues []string
-	for _, s := range Statuses {
+	for _, s := range def.States() {
 		dir := filepath.Join(root, "tickets", s.Dir)
 		entries, err := os.ReadDir(dir)
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/ticket"
 )
@@ -38,7 +39,7 @@ func addTODO(t *testing.T, root string, cfg *config.Config, id, title, impact st
 	if err := os.WriteFile(dst, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := board.Regenerate(root, cfg); err != nil {
+	if err := board.Regenerate(flow.ForName(cfg.FlowName()), root, cfg); err != nil {
 		t.Fatal(err)
 	}
 }

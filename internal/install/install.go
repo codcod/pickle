@@ -18,6 +18,7 @@ import (
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/hook"
 	"github.com/codcod/pickle/internal/ticket"
 )
@@ -554,10 +555,13 @@ func copyPayload(payload fs.FS, root string, res *Result) error {
 	return nil
 }
 
-// scaffoldTickets creates the seven ordered status dirs, each with a .gitkeep so
-// empty dirs survive git.
+// scaffoldTickets creates every status dir the definition names, each with a
+// .gitkeep so empty dirs survive git. Install always scaffolds the default
+// flow (brine): there is no flow-selection option yet, and pickle.toml has not
+// been written at this point in Run, so there is no configured flow to resolve.
 func scaffoldTickets(root string, res *Result) error {
-	for _, s := range ticket.Statuses {
+	def := flow.Default()
+	for _, s := range def.States() {
 		dir := filepath.Join(root, "tickets", s.Dir)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return err
@@ -570,7 +574,7 @@ func scaffoldTickets(root string, res *Result) error {
 			return err
 		}
 	}
-	res.created("tickets/ (7 status dirs)")
+	res.created(fmt.Sprintf("tickets/ (%d status dirs)", len(def.States())))
 	return nil
 }
 
@@ -583,8 +587,9 @@ func writeBoard(root string, cfg *config.Config, res *Result) error {
 		res.skipped("tickets/BOARD.md (exists)")
 		return nil
 	}
-	tickets, _ := ticket.LoadAll(root)
-	out := board.Render(tickets, cfg, time.Now().Format("2006-01-02"))
+	def := flow.ForName(cfg.FlowName())
+	tickets, _ := ticket.LoadAll(def, root)
+	out := board.Render(def, tickets, cfg, time.Now().Format("2006-01-02"))
 	if err := os.WriteFile(dst, []byte(out), 0o644); err != nil {
 		return err
 	}
@@ -838,6 +843,8 @@ func MarkerBlock(cfg *config.Config) string {
 
 	// One line per child throughout: uniform for any number of children, and
 	// no wording that only reads correctly when there happens to be one.
+	def := flow.ForName(cfg.FlowName())
+	wipStates := def.WIPStates()
 	var commands, branches, wip strings.Builder
 	for _, p := range cfg.Projects {
 		var cmds []string
@@ -852,8 +859,13 @@ func MarkerBlock(cfg *config.Config) string {
 			fmt.Fprintf(&commands, "\n  - `%s`: %s", p.Name, strings.Join(cmds, " · "))
 		}
 		fmt.Fprintf(&branches, "\n  - `%s`: `%s%s-NNN-<slug>`", p.Name, p.BranchPrefix, p.Prefix())
-		fmt.Fprintf(&wip, "\n  - `%s`: `3-in-development/` ≤ %d · `4-in-review/` ≤ %d",
-			p.Name, p.WIPInDevelopment, p.WIPInReview)
+		var limits []string
+		for _, s := range wipStates {
+			if limit, ok := p.WIPLimitFor(s.WIPKey); ok {
+				limits = append(limits, fmt.Sprintf("`%s/` ≤ %d", s.Dir, limit))
+			}
+		}
+		fmt.Fprintf(&wip, "\n  - `%s`: %s", p.Name, strings.Join(limits, " · "))
 	}
 	commandsBullet := ""
 	if commands.Len() > 0 {

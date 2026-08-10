@@ -17,6 +17,7 @@ import (
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -33,14 +34,15 @@ type Result struct {
 // difference is not drift) and runs an audit self-check.
 func Sync(root string, cfg *config.Config, dryRun bool) (Result, error) {
 	res := Result{Path: filepath.Join("tickets", "BOARD.md")}
+	def := flow.ForName(cfg.FlowName())
 
-	tickets, issues := ticket.LoadAll(root)
+	tickets, issues := ticket.LoadAll(def, root)
 	if len(issues) > 0 {
 		return res, fmt.Errorf("cannot sync while the board has load problems: %s", strings.Join(issues, "; "))
 	}
 
 	boardPath := filepath.Join(root, "tickets", "BOARD.md")
-	newText := board.Render(tickets, cfg, time.Now().Format("2006-01-02"))
+	newText := board.Render(def, tickets, cfg, time.Now().Format("2006-01-02"))
 
 	original := ""
 	if data, err := os.ReadFile(boardPath); err == nil {
@@ -50,14 +52,14 @@ func Sync(root string, cfg *config.Config, dryRun bool) (Result, error) {
 
 	// Drift summary: row membership in the old file vs the rendered truth.
 	listed := map[string]string{} // id -> section in the current file
-	if rows, err := board.Parse(boardPath); err == nil {
+	if rows, err := board.Parse(def, boardPath); err == nil {
 		for _, r := range rows {
 			listed[r.ID] = r.Status
 		}
 	}
 	desired := map[string]string{} // id -> section a fresh render puts it in
 	for _, t := range tickets {
-		st, _ := ticket.StatusByDir(t.Dir)
+		st, _ := def.ByDir(t.Dir)
 		desired[t.ID] = st.Name
 	}
 	res.Summary = drift(listed, desired, res.Changed)

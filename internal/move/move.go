@@ -16,6 +16,7 @@ import (
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -27,39 +28,18 @@ type Result struct {
 	Warnings []string
 }
 
-// allowed maps a source status dir to the target dirs it may transition to.
-var allowed = map[string][]string{
-	"1-to-do":          {"2-ready", "7-dropped"},
-	"2-ready":          {"3-in-development", "1-to-do", "7-dropped"},
-	"3-in-development": {"4-in-review", "2-ready", "7-dropped"},
-	"4-in-review":      {"6-done", "5-rework", "7-dropped"},
-	"5-rework":         {"4-in-review", "7-dropped"},
-	// 6-done and 7-dropped are terminal: no outgoing transitions.
-}
-
-// requiresReason reports whether a from->to transition needs a --reason: every
-// abort (-> dropped), every send-back (-> rework), and the two backward moves.
-// Forward progress moves may omit it.
-func requiresReason(from, to string) bool {
-	switch to {
-	case "5-rework", "7-dropped":
-		return true
-	}
-	return (from == "3-in-development" && to == "2-ready") ||
-		(from == "2-ready" && to == "1-to-do")
-}
-
 // Move performs the transition of ticket id to the status named by token.
 func Move(root string, cfg *config.Config, id, token, reason string) (Result, error) {
 	var res Result
 	reason = sanitizeReason(reason)
+	def := flow.ForName(cfg.FlowName())
 
-	target, ok := ticket.StatusByToken(token)
+	target, ok := def.ByToken(token)
 	if !ok {
 		return res, fmt.Errorf("unknown status %q", token)
 	}
 
-	tickets, issues := ticket.LoadAll(root)
+	tickets, issues := ticket.LoadAll(def, root)
 	if len(issues) > 0 {
 		return res, fmt.Errorf("cannot move while the board has load problems: %s", strings.Join(issues, "; "))
 	}
@@ -72,44 +52,50 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 		return res, fmt.Errorf("ticket %s not found", id)
 	}
 
-	from, _ := ticket.StatusByDir(t.Dir)
+	from, _ := def.ByDir(t.Dir)
 	res.From, res.To = from.Name, target.Name
 
 	if target.Dir == t.Dir {
 		return res, fmt.Errorf("%s is already in %s", id, from.Name)
 	}
-	if !contains(allowed[t.Dir], target.Dir) {
+	if _, ok := def.Kind(t.Dir, target.Dir); !ok {
 		return res, fmt.Errorf("illegal transition %s → %s (from %s, legal: %s)",
-			from.Name, target.Name, from.Name, legalTargets(t.Dir))
+			from.Name, target.Name, from.Name, legalTargets(def, t.Dir))
 	}
-	if requiresReason(t.Dir, target.Dir) && reason == "" {
+	if def.RequiresReason(t.Dir, target.Dir) && reason == "" {
 		return res, fmt.Errorf("moving %s to %s requires --reason", id, target.Name)
 	}
 
 	proj := t.Project()
 
-	// WIP gate: moving into in-development / in-review.
-	if target.Dir == "3-in-development" || target.Dir == "4-in-review" {
+	// WIP gate: moving into a WIP-limited state (in-development / in-review
+	// for brine).
+	if target.WIPKey != "" {
 		if err := checkWIP(tickets, cfg, proj, target); err != nil {
 			return res, err
 		}
 	}
 
-	// Cross-child dependency + merge gate: pickup only. depends-on only —
-	// spawned-by is lineage and must never gate a pickup, which is what
-	// move_test.go's TestSpawnedByDoesNotGatePickup guards.
-	if target.Dir == "3-in-development" {
+	// Cross-child dependency + merge gate: pickup only — entering the state a
+	// ticket is built in (the one keyed by config.WIPKeyInDevelopment; for
+	// brine, IN DEVELOPMENT). depends-on only — spawned-by is lineage and must
+	// never gate a pickup, which is what move_test.go's
+	// TestSpawnedByDoesNotGatePickup guards.
+	pickup, hasPickup := def.StateByWIPKey(config.WIPKeyInDevelopment)
+	if hasPickup && target.Dir == pickup.Dir {
 		for _, dep := range t.DependsOn {
 			dt, ok := byID[dep]
 			if !ok {
 				return res, fmt.Errorf("cannot pick up %s: dependency %s does not exist", id, dep)
 			}
-			if dt.Dir != "6-done" {
-				st, _ := ticket.StatusByDir(dt.Dir)
-				return res, fmt.Errorf("cannot pick up %s: dependency %s is in %s (must be DONE and merged)", id, dep, st.Name)
+			if dt.Dir != def.DependencySatisfied().Dir {
+				st, _ := def.ByDir(dt.Dir)
+				return res, fmt.Errorf("cannot pick up %s: dependency %s is in %s (must be %s and merged)",
+					id, dep, st.Name, def.DependencySatisfied().Name)
 			}
-			if !ticket.HasMergeLine(dt.Text) {
-				return res, fmt.Errorf("cannot pick up %s: dependency %s is DONE but not recorded as merged to its child's base", id, dep)
+			if !ticket.HasMergeLine(def, dt.Text) {
+				return res, fmt.Errorf("cannot pick up %s: dependency %s is %s but not recorded as merged to its child's base",
+					id, dep, def.DependencySatisfied().Name)
 			}
 		}
 	}
@@ -134,7 +120,7 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 	}
 	res.Path = newRel
 
-	if err := board.Regenerate(root, cfg); err != nil {
+	if err := board.Regenerate(def, root, cfg); err != nil {
 		return res, fmt.Errorf("moved file but failed to regenerate board: %w", err)
 	}
 
@@ -148,14 +134,14 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 	return res, nil
 }
 
-func checkWIP(tickets []*ticket.Ticket, cfg *config.Config, proj string, target ticket.Status) error {
+func checkWIP(tickets []*ticket.Ticket, cfg *config.Config, proj string, target flow.State) error {
 	p, ok := cfg.Project(proj)
 	if !ok {
 		return nil // unregistered project is an audit concern, not a move gate
 	}
-	limit := p.WIPInDevelopment
-	if target.Dir == "4-in-review" {
-		limit = p.WIPInReview
+	limit, ok := p.WIPLimitFor(target.WIPKey)
+	if !ok {
+		return nil // target names no known WIP key — nothing to enforce
 	}
 	count := 0
 	for _, t := range tickets {
@@ -222,19 +208,9 @@ func sanitizeReason(reason string) string {
 	return strings.TrimSpace(r)
 }
 
-func contains(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
-}
-
-func legalTargets(dir string) string {
+func legalTargets(def *flow.Definition, dir string) string {
 	var names []string
-	for _, d := range allowed[dir] {
-		st, _ := ticket.StatusByDir(d)
+	for _, st := range def.Allowed(dir) {
 		names = append(names, st.Name)
 	}
 	sort.Strings(names)

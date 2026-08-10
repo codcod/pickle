@@ -10,6 +10,7 @@ import (
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -117,7 +118,7 @@ func mk(t *testing.T, root, rel, content string) {
 // for a clean audit now that auditStatusDirs (T-040) checks for them directly.
 func mkStatusDirs(t *testing.T, root string) {
 	t.Helper()
-	for _, s := range ticket.Statuses {
+	for _, s := range flow.Default().States() {
 		mk(t, root, filepath.Join("tickets", s.Dir, ".gitkeep"), "")
 	}
 }
@@ -133,7 +134,8 @@ func writeGood(t *testing.T, root string) {
 // artifact (T-044), so a "good" board is by definition a fresh render.
 func renderBoard(t *testing.T, root string) {
 	t.Helper()
-	if err := board.Regenerate(root, loadCfg(t, root)); err != nil {
+	cfg := loadCfg(t, root)
+	if err := board.Regenerate(flow.ForName(cfg.FlowName()), root, cfg); err != nil {
 		t.Fatalf("regenerate board: %v", err)
 	}
 }

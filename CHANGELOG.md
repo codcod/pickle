@@ -30,6 +30,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   short SHA even when adding the link — it is what still reads in the board's capped `merged`
   cell.
 
+- **Brine's lifecycle — its seven statuses, their transitions, and the terminal/WIP flags and
+  gate targets derived from them — now comes from one declarative definition** (T-080),
+  `internal/flow`, instead of being scattered as Go literals across board rendering, move
+  validation, the audit checks, install/sync and the CLI. Output and behaviour are unchanged:
+  the board renders byte-identical, `pickle board audit`'s checks fire on the same conditions at
+  the same severities, and every move/gate refusal message reads the same. A project-authored
+  flow is still unsupported — `flow = "brine"` remains the only legal value in `pickle.toml`.
+
 ## [0.4.0] - 2026-08-09
 
 ### Added

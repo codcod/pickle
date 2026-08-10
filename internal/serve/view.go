@@ -11,6 +11,7 @@ import (
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -74,10 +75,10 @@ type BoardView struct {
 }
 
 // buildBoard groups tickets by status and child in the board's own order: status
-// sections from board.StatusOrder, rows from board.Sort, WIP counts from
+// sections from def.BoardStates(), rows from board.Sort, WIP counts from
 // board.WIPCounts. Nothing here re-implements those rules (decision 3).
-func buildBoard(tickets []*ticket.Ticket, cfg *config.Config) BoardView {
-	wip := board.WIPCounts(tickets)
+func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config) BoardView {
+	wip := board.WIPCounts(def, tickets)
 	// Whole-tree index for board.Sort's family-umbrella lookup (T-059); a member's
 	// umbrella may live in another status section, so the per-group slice is not
 	// enough. Same map the board's own Render builds.
@@ -87,12 +88,8 @@ func buildBoard(tickets []*ticket.Ticket, cfg *config.Config) BoardView {
 	}
 	view := BoardView{Total: len(tickets)}
 
-	for _, statusName := range board.StatusOrder() {
-		st, ok := ticket.StatusByName(statusName)
-		if !ok {
-			continue
-		}
-		section := Section{Status: statusName}
+	for _, st := range def.BoardStates() {
+		section := Section{Status: st.Name}
 		for _, p := range cfg.Projects {
 			var group []*ticket.Ticket
 			for _, t := range tickets {
@@ -100,17 +97,16 @@ func buildBoard(tickets []*ticket.Ticket, cfg *config.Config) BoardView {
 					group = append(group, t)
 				}
 			}
-			board.Sort(group, statusName, byID)
+			board.Sort(group, st, byID)
 
 			cg := ChildGroup{Child: p.Name, Count: len(group)}
-			switch statusName {
-			case "IN DEVELOPMENT":
-				cg.Count, cg.Limit = wip[p.Name].InDevelopment, p.WIPInDevelopment
-			case "IN REVIEW":
-				cg.Count, cg.Limit = wip[p.Name].InReview, p.WIPInReview
+			if st.WIPKey != "" {
+				if limit, ok := p.WIPLimitFor(st.WIPKey); ok {
+					cg.Count, cg.Limit = wip[p.Name][st.Dir], limit
+				}
 			}
 			for _, t := range group {
-				cg.Entries = append(cg.Entries, newEntry(t, statusName))
+				cg.Entries = append(cg.Entries, newEntry(def, t, st.Name))
 			}
 			section.Total += len(group)
 			section.Children = append(section.Children, cg)
@@ -133,7 +129,7 @@ func buildBoard(tickets []*ticket.Ticket, cfg *config.Config) BoardView {
 	return view
 }
 
-func newEntry(t *ticket.Ticket, statusName string) Entry {
+func newEntry(def *flow.Definition, t *ticket.Ticket, statusName string) Entry {
 	return Entry{
 		ID:         t.ID,
 		Num:        t.Num,
@@ -146,8 +142,8 @@ func newEntry(t *ticket.Ticket, statusName string) Entry {
 		DependsOn:  t.DependsOn,
 		SpawnedBy:  t.SpawnedBy,
 		Family:     t.Front["family"],
-		Reason:     ticket.LastHistoryReason(t.Text),
-		Merged:     ticket.MergeLine(t.Text),
+		Reason:     ticket.LastHistoryReason(def, t.Text),
+		Merged:     ticket.MergeLine(def, t.Text),
 		File:       filepath.Base(t.Path),
 	}
 }
@@ -167,7 +163,7 @@ type TicketView struct {
 
 // buildTicket assembles one ticket's page. all is the whole tree, needed for the
 // reverse edges. It returns false when the id is unknown, so the handler can 404.
-func buildTicket(all []*ticket.Ticket, id string) (TicketView, bool) {
+func buildTicket(def *flow.Definition, all []*ticket.Ticket, id string) (TicketView, bool) {
 	var found *ticket.Ticket
 	for _, t := range all {
 		if t.ID == id {
@@ -180,10 +176,10 @@ func buildTicket(all []*ticket.Ticket, id string) (TicketView, bool) {
 	}
 
 	statusName := ""
-	if st, ok := ticket.StatusByDir(found.Dir); ok {
+	if st, ok := def.ByDir(found.Dir); ok {
 		statusName = st.Name
 	}
-	view := TicketView{Entry: newEntry(found, statusName), History: ticket.HistoryEntries(found.Text)}
+	view := TicketView{Entry: newEntry(def, found, statusName), History: ticket.HistoryEntries(def, found.Text)}
 
 	body, err := renderMarkdown(found.Text)
 	if err != nil {
@@ -317,10 +313,10 @@ type ActivityView struct {
 // state and this shows movement. Ordering is (date desc, ticket number desc) so a
 // day's entries read as "latest ticket first"; within one ticket, file order is
 // preserved (History is append-only, so that is chronological).
-func buildActivity(tickets []*ticket.Ticket) ActivityView {
+func buildActivity(def *flow.Definition, tickets []*ticket.Ticket) ActivityView {
 	var events []Event
 	for _, t := range tickets {
-		for _, h := range ticket.HistoryEntries(t.Text) {
+		for _, h := range ticket.HistoryEntries(def, t.Text) {
 			events = append(events, Event{
 				Date:    h.Date,
 				Text:    h.Text,
@@ -373,15 +369,24 @@ type HealthView struct {
 // OK reports whether the audit found nothing at all.
 func (h HealthView) OK() bool { return len(h.Errors) == 0 && len(h.Warnings) == 0 }
 
-func buildHealth(root string, tickets []*ticket.Ticket, cfg *config.Config) HealthView {
+// buildHealth's two badges (InDevelopment/DevCap, InReview/RevCap) are
+// template-bound field names, tied to the two config WIP keys — not to
+// directory strings. A flow with a third WIP-limited state renders no third
+// badge until ChildWIP and the health template both grow one; that is out of
+// scope here (T-080).
+func buildHealth(def *flow.Definition, root string, tickets []*ticket.Ticket, cfg *config.Config) HealthView {
 	res := audit.Audit(root, cfg)
 	view := HealthView{Tickets: res.NumTickets, Errors: res.Errors, Warnings: res.Warnings}
-	wip := board.WIPCounts(tickets)
+	wip := board.WIPCounts(def, tickets)
+	devSt, _ := def.StateByWIPKey(config.WIPKeyInDevelopment)
+	revSt, _ := def.StateByWIPKey(config.WIPKeyInReview)
 	for _, p := range cfg.Projects {
+		devLimit, _ := p.WIPLimitFor(config.WIPKeyInDevelopment)
+		revLimit, _ := p.WIPLimitFor(config.WIPKeyInReview)
 		view.Children = append(view.Children, ChildWIP{
 			Child:         p.Name,
-			InDevelopment: wip[p.Name].InDevelopment, DevCap: p.WIPInDevelopment,
-			InReview: wip[p.Name].InReview, RevCap: p.WIPInReview,
+			InDevelopment: wip[p.Name][devSt.Dir], DevCap: devLimit,
+			InReview: wip[p.Name][revSt.Dir], RevCap: revLimit,
 		})
 	}
 	return view

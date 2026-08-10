@@ -19,8 +19,13 @@ import (
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
+
+// testDef is the flow definition every test in this package renders against —
+// brine, since that is what every fixture below is written for.
+var testDef = flow.Default()
 
 // --- fixtures ---------------------------------------------------------------
 
@@ -86,7 +91,7 @@ Fixture ticket; exercises serve rendering only, not T-083's check.
 func newTree(t *testing.T, fixtures ...fixture) string {
 	t.Helper()
 	root := t.TempDir()
-	for _, s := range ticket.Statuses {
+	for _, s := range testDef.States() {
 		dir := filepath.Join(root, "tickets", s.Dir)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -104,11 +109,11 @@ func newTree(t *testing.T, fixtures ...fixture) string {
 			t.Fatal(err)
 		}
 	}
-	tickets, issues := ticket.LoadAll(root)
+	tickets, issues := ticket.LoadAll(testDef, root)
 	if len(issues) > 0 {
 		t.Fatalf("fixture load issues: %v", issues)
 	}
-	text := board.Render(tickets, testCfg(), time.Now().Format("2006-01-02"))
+	text := board.Render(testDef, tickets, testCfg(), time.Now().Format("2006-01-02"))
 	if err := os.WriteFile(filepath.Join(root, "tickets", "BOARD.md"), []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -788,8 +793,8 @@ func TestActivityCapReportsTruncation(t *testing.T) {
 		})
 	}
 	root := newTree(t, fixtures...)
-	tickets, _ := ticket.LoadAll(root)
-	view := buildActivity(tickets)
+	tickets, _ := ticket.LoadAll(testDef, root)
+	view := buildActivity(testDef, tickets)
 	if view.Total != 300 {
 		t.Errorf("Total = %d, want 300", view.Total)
 	}
