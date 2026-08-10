@@ -123,3 +123,15 @@ used it — and a wrapped merge line in the recommended T-089 form is now the ob
 - 2026-08-09 — impact low → low-medium; T-089's review impact sweep invalidated the "a merge line
   is far too short to wrap" premise — the recommended form now includes a full commit URL, so the
   wrapped-line defect this ticket fixes is reachable in normal use
+- 2026-08-10 — patched by T-080's review impact sweep (step 8): **premise intact, and the fix got
+  slightly smaller.** T-080 gave `MergeLine`/`HasMergeLine` a leading `def *flow.Definition`
+  parameter (they call `historyKind`, which needs the status vocabulary), so the signature this
+  ticket's fix requires — routing `MergeLine` through `HistoryEntries(def, text)` — is already in
+  place; this ticket no longer has to introduce it. Everything this ticket is about is unchanged:
+  `MergeLine` still carries its own `inHistory` flag, its own `## ` heading test, its own
+  `historyRE` match and its own newest-wins loop, and it still does not fold continuation lines.
+  Anchors re-anchored to the post-T-080 tree: `MergeLine` `ticket.go:391` → `:385` (it had
+  already drifted to `:432` before T-080, which then removed ~47 lines above it); the board's
+  DONE `merged` cell `board.go:178` → `:184` (likewise already at `:194` pre-T-080). Both were
+  therefore stale *before* this branch as well — the numbers above are the ones that will be
+  correct once T-080 merges. Scope and grade unchanged (low-medium/low/S)

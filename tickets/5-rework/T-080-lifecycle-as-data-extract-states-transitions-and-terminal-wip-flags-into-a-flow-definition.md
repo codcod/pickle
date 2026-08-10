@@ -246,12 +246,17 @@ No schema change, no new TOML keys, no change to `Validate()` (decision 1).
 
 - **delete** `Status`, `Statuses`, `StatusByDir`, `StatusByName`, `StatusByToken`, `statusNumRE`
   and `statusExists` (they now live in `internal/flow`, Task 1).
-- add `def *flow.Definition` as the **first parameter** to the four functions that need status
+- add `def *flow.Definition` as the **first parameter** to the functions that need status
   vocabulary: `LoadAll(def, root)` (walks `def.States()` instead of `Statuses`),
   `HistoryEntries(def, text)`, `LastHistoryStatus(def, text)`, `LastHistoryReason(def, text)`
-  (the transition scan's `statusExists` becomes `def.ByName`). `MergeLine`, `HasMergeLine`,
-  `OutcomeMissing`, `Scaffold`, `SplitID`, `ValidID` and `ValidGrade` are untouched — they carry
-  no status vocabulary.
+  (the transition scan's `statusExists` becomes `def.ByName`). `OutcomeMissing`, `Scaffold`,
+  `SplitID`, `ValidID` and `ValidGrade` are untouched — they carry no status vocabulary.
+  *(Amended at review, finding N5 — this originally said "the four functions" and listed
+  `MergeLine`/`HasMergeLine` among the untouched. Six functions actually take the parameter:
+  the two above plus `NextNum`, which genuinely walked `Statuses`, and
+  `MergeLine`/`HasMergeLine`, which call `historyKind` — and `historyKind` resolves a
+  non-merge, non-created body through `transitionParts`, which needs the status vocabulary.
+  The dependency is real, not stylistic.)*
 - `Ticket` keeps `Dir string` and gains no definition field (decision 2).
 
 The `HistoryEntry.Target` derivation (T-043 review R1) must keep resolving from the same first
@@ -381,7 +386,8 @@ guarantee (T-029) must survive this refactor without its test being edited.
 Run from the repo root, on the feature branch:
 
 1. `just build && just test && just lint && just docs-check` — all green.
-2. **No status literal survives outside the definition** — both must print nothing:
+2. **No status literal survives outside the definition** — both must print nothing but
+   comment lines:
    ```
    rg -n '"[1-7]-[a-z-]+"' --glob '*.go' --glob '!*_test.go' --glob '!internal/flow/**'
    rg -n '"(TO DO|READY|IN DEVELOPMENT|IN REVIEW|REWORK|DONE|DROPPED)"' \
@@ -389,6 +395,11 @@ Run from the repo root, on the feature branch:
    ```
    (Test files and prose — the scaffold template, doc comments, the skill payload — are out of
    scope for the guard; the prose is covered by `TestBrineStatesMatchShippedRules`.)
+   *(Amended at review, finding N4 — "must print nothing" was written before the code existed
+   and is literally false: three `// e.g. "1-to-do"`-style doc comments match
+   (`internal/ticket/ticket.go:31`, `internal/board/board.go:29`,
+   `internal/serve/view.go:33`). The parenthetical below always exempted doc comments, so the
+   guard's intent held; only its "print nothing" phrasing was wrong.)*
 3. **The board renders byte-identically.** Never run the WIP binary against this repo's own
    `tickets/` (AGENTS.md self-modify policy, and a `board sync` here would put bookkeeping on a
    feature branch):
@@ -415,11 +426,16 @@ Run from the repo root, on the feature branch:
 ### Docs update (mandatory when user-facing)
 
 **No user-facing surface changes** (decision 9): no new flag, no new command, no changed output,
-no changed rule. `docs/user-manual/concepts/lifecycle.adoc`, `concepts/the-flow.adoc` and
-`cli-reference.adoc` describe the seven statuses and `pickle flow list` exactly as they will
-still behave — leave them alone (acceptance step 5 checks that). The shipped skill payload
-(`skill/**`) is likewise untouched; `TestBrineStatesMatchShippedRules` is how the code now stays
-tied to it.
+no changed rule. `docs/user-manual/concepts/lifecycle.adoc` and `concepts/the-flow.adoc`
+describe the seven statuses exactly as they will still behave — leave them alone (acceptance
+step 5 checks that). The shipped skill payload (`skill/**`) is likewise untouched;
+`TestBrineStatesMatchShippedRules` is how the code now stays tied to it.
+*(Amended at review, finding N8 — this originally also claimed `cli-reference.adoc` "describe[s]
+… `pickle flow list` exactly as [it] will still behave". It does not describe it at all: the
+manual has no `[#cmd-flow]` section, no Overview-table row, and no mention of the `flow` key
+(`rg -n 'flow list' docs/` returns nothing). The omission predates this ticket — T-073 shipped
+the command undocumented — and **T-066 explicitly owns it**, naming `pickle flow show|list` as
+one of its gaps. Nothing for this ticket to do; the claim was simply false.)*
 
 `CHANGELOG.md`: one `### Changed` entry under `## [Unreleased]`, saying that brine's states,
 transitions, terminal/WIP flags and gate targets now come from a single in-binary flow
@@ -445,7 +461,92 @@ project-authored flow is still not supported (`flow = "brine"` remains the only 
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+Reviewed 2026-08-10 on `feat/T-080-flow-definition` (commit `fea296c`), ticket read from `main`
+per the protocol. The implementer authored this ticket, so the implementation, quality,
+consistency and docs audits were also run by an independent sub-agent briefed to be adversarial;
+every finding it returned was then re-verified first-hand (probe tests compiled against
+`internal/flow` and `internal/board`, a real `git merge` into a throwaway worktree, and
+old-vs-new line anchoring against the merge-base `b6cc615`).
+
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [ ] Docs-readability pass (step 4b) — **not applicable: the ticket changed no `.adoc`/`.md`
+      files** (`git diff --name-only main...HEAD` is 23 `.go` files). Nothing for a prose
+      reviewer to read; not a skip, an empty set.
+- [x] Findings recorded with severity **and** disposition; disposition summary present (step 5)
+- [x] Ticket moved; `## History` appended (step 6)
+- [x] Other references updated; board regenerated by the move (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented; bookkeeping committed (step 9)
+
+### Step 2 — implementation audit
+
+| item | verdict | evidence |
+|---|---|---|
+| Task 1 — `internal/flow/flow.go`: Spec/Definition/State/Transition, accessors, `New`/`MustNew` | met, **except one validation rule** | `flow.go`; accessors and profiles all present — but the "unreachable from Initial" rule is not implemented as specified: see **B3** |
+| Task 2 — `brine.go` Spec literal + `registry.go` | met | 7 states, 13 transitions, `Initial`/`DependencySatisfied`; `Get`/`Default`/`Names`/`ForName` |
+| Task 3 — `config`: WIP key constants + `Project.WIPLimitFor` | met | `config.go`; no schema change, `Validate()` still accepts only `"brine"` |
+| Task 4 — `ticket`: delete the status table, thread the definition | met (scope wider than written) | status table and helpers deleted, no aliases; six functions took the parameter, not four — **N5** |
+| Task 5 — `move`: transitions/WIP/dependency gates from the definition | met | `allowed`/`requiresReason` deleted; kinds reproduce the old table on all 13 pairs |
+| Task 6 — `board`: order, headings, columns, WIP counts | met | `boardOrder`/`sectionHeading`/`StatusOrder`/`SectionColumns` deleted; `TestRenderGolden` unchanged and passing |
+| Task 7 — `audit`: the four teeth, parameterised | met | all four verified below at unchanged severity |
+| Task 8 — remaining callers (install/sync/cli/serve) | met | marker block byte-identical (`TestMarkerBlockGolden`, `TestSelfHostMarkerBlockIsCurrent`) |
+| Task 9 — tests | **not met** | the `ByToken` table was deleted, not ported (**B2**); two new tests cannot fail (**N1**, **N2**) |
+| Decisions 1, 2, 3, 4, 5, 6, 8, 9 | met (8/8) | `Validate()` untouched; definition threaded, no package-level cross-package default, no `Def` on `Ticket`; no aliases; `go list` shows `internal/flow` imports nothing from `internal/`; config schema unchanged; column profiles per state with a non-nil fallback; `RequiresReason` reproduces the old four cases exactly; output byte-identical |
+| Decision 7 — audit teeth parameterised, never softened | met | see the teeth table below |
+| Acceptance 1 — `just build`/`test`/`lint`/`docs-check` | met | re-run verbatim: 13 packages `ok`, `go vet` silent, `gofmt` clean, `snowball check` exit 0 |
+| Acceptance 2 — the two `rg` guards | met in intent, false as written | three doc-comment hits — **N4** |
+| Acceptance 3 — byte-identical board in a throwaway dir | met | `board sync: tickets/BOARD.md already in sync`; diff (ignoring `Last updated:`) empty. Also re-run on the **merged** tree — still identical |
+| Acceptance 4 — lifecycle still has teeth | met | illegal transition, WIP limit, missing `--reason`, `flow list`/`show`, `board audit` 90/0/0 — all as before |
+| Acceptance 5 — `docs/` and `skill/` untouched | met | `git diff --stat main...HEAD -- docs/ skill/` empty — but see **B1**: `CHANGELOG.md` is neither, and it was required |
+
+**The audit's teeth** (the ticket's named trap), old vs new, on a synthetic tree with two tickets
+over a limit of 1, a dependency parked in `2-ready/`, and a DONE ticket with no `## Outcome` —
+base and branch output byte-identical:
+
+| check | old trigger | new trigger | severity before → after |
+|---|---|---|---|
+| `## Outcome` missing | `t.Dir != "6-done" && != "7-dropped"` | `!st.Terminal` from the definition | warning → warning |
+| dependency not done | `t.Dir == "3-in-development"`, `dt.Dir != "6-done"` | pickup state via `StateByWIPKey`, `def.DependencySatisfied()` | error → error |
+| dependency done but unmerged | same loop, `!HasMergeLine` | same loop, `!HasMergeLine(def, …)` | warning → warning |
+| per-child WIP over limit | two hard-coded fields | `def.WIPStates()` × `WIPLimitFor` | error → error |
+| status dir missing / no `.gitkeep` | `ticket.Statuses` | `def.States()` | error / warning → unchanged |
+
+**Merge safety (verified, not assumed).** This branch was cut at `b6cc615`, *before* T-090's
+`linkifyURLs` rework landed on `main`, and both changed `internal/serve/view.go`. A real
+`git merge feat/T-080-flow-definition` into a detached worktree at `main` resolved **cleanly**
+(no conflict), kept `main`'s hardened `linkifyURLs` (`strings.IndexFunc(…, unicode.IsSpace)` and
+`rel="noopener noreferrer"` both present; the old `urlRE` absent), and the merged tree passed
+`go build`, all 13 packages' tests, `gofmt`, `go vet`, and the byte-identical board check. T-080's
+hunks touch `buildBoard`/`newEntry`/`buildTicket`/`buildActivity`/`buildHealth` only — no overlap
+with the linkify region. **No revert, no damage.**
+
+### Findings
+
+| id | severity | disposition | description | evidence | suggestion / resolution |
+|---|---|---|---|---|---|
+| B1 | **blocking** | — | The **mandatory `CHANGELOG.md` entry was never written.** The plan's "Docs update (mandatory)" section *and* Finish step 2 both require one `### Changed` entry under `## [Unreleased]`. Acceptance step 5 passes only because `CHANGELOG.md` is neither `docs/` nor `skill/` — the check could not see the omission it was sitting next to. | `git diff --name-only main...HEAD -- CHANGELOG.md` → empty; `grep -n 'T-080\|internal/flow' CHANGELOG.md` → no matches | Add the entry the plan dictates: brine's states/transitions/terminal+WIP flags/gate targets now come from one in-binary definition (`internal/flow`), behaviour and output unchanged, a project-authored flow still unsupported (`flow = "brine"` remains the only legal value). |
+| B2 | **blocking** | — | **A test was deleted under a comment that falsely claims it moved.** `internal/ticket/ticket_test.go:617` reads "TestStatusByToken moved to internal/flow (Definition.ByToken, T-080)". It did not move: `Definition.ByToken` has **zero** test coverage anywhere in the tree, and so do `ByDir`/`ByName` (exercised only transitively). The deleted table covered 10 cases — all three accepted token forms, case-insensitivity, and two negatives — for the parser behind every `pickle ticket move <token>`. Decision 3 explicitly required those three forms "come along unchanged"; the only test that proved it is gone, in a refactor whose entire claim is "moved, not changed". | `rg -n 'ByToken' --glob '*_test.go' .` → only the comment; deleted table at `b6cc615:internal/ticket/ticket_test.go:610-637` | Port the table into `internal/flow` as a real test (e.g. `TestByTokenForms`), and cover `ByDir`/`ByName` directly. Then the comment becomes true. |
+| B3 | **blocking** | — | **`New()`'s structural validation has two holes, and the test that claims to cover one passes for the wrong reason.** (a) The "unreachable state" rule is an *incoming-edge* test, not reachability: `reached` is seeded with `Initial` and then every transition's `To` is marked regardless of whether its `From` is reachable, so a disconnected island passes. The error string still says "is unreachable from Initial". The table's `"unreachable state"` case only adds a state with *no edges at all*, which the incoming-edge test happens to catch — false confidence. (b) The converse the `Spec.Transitions` doc claims is validated ("terminal and no-outgoing must agree — see New's validation") is not: a **non-terminal dead end** is accepted, and `move.legalTargets` then labels it `"(none — terminal status)"`. No effect on brine, but this is the "validated, self-checking `flow.Spec`" the ticket says T-081 and the read-from-disk follow-on inherit. | probe compiled into the package: island (`a`→`b`, `c`⇄`d`, initial `a`) → **accepted**; non-terminal dead end → **accepted**, `Allowed("b")` = `[]`; `flow.go:333,355,358` | Replace the incoming-edge test with a real BFS/DFS from `spec.Initial` over `allowed`, and add the island case to the table. For (b): validate the converse, or correct both the doc comment and `legalTargets`' message. |
+| N1 | non-blocking | noted | `TestBrineDefinitionValidates` is near-tautological: it rebuilds a `Spec` from the already-validated `Definition`'s own accessors and re-validates it, which `New` (being purely reconstructive) can never reject. The coverage it purports to add already exists — `brine` is built with `MustNew` at init, so a malformed built-in aborts *every* test in the package. | `flow_test.go:87-99`; `brine.go:16` inlines the literal into `MustNew`, which is why `New(brineSpec)` as the ticket wrote it was not possible | Closed with evidence. If it is ever made real, extract `var brineSpec = Spec{…}` and validate that literal. |
+| N2 | non-blocking | noted | `TestEveryColumnProfileHasColumns` cannot fail. `ColumnsFor`'s `default:` returns the Active column set for *any* input, so the test is satisfied by `ColumnProfile("bogus")` too and cannot detect the drift it was written for (a profile added in `internal/flow` and left unmapped in `internal/board`). The `default` is itself load-bearing — it is the anti-headerless-table guard of decision 6 — so the guard and the test are in tension by design. Latent only: brine uses all five profiles and both lists are exhaustive, so no profile can currently go unmapped. | probe: `ColumnsFor(flow.ColumnProfile("bogus"))` = `[id title depends-on]`; `board.go` `default:` branch | Closed with evidence. The real fix — back the switch with an explicit `map[flow.ColumnProfile][]string` and assert `flow.ColumnProfiles()` ⊆ its keys — belongs with whoever first adds a profile. |
+| N3 | non-blocking | fixed inline | `internal/audit/audit.go`'s comment above the Outcome check still described it as "scoped to the five non-terminal directories only — 6-done/ and 7-dropped/", naming the two literals the code stopped reading when this branch switched it to `state.Terminal`. Prose this branch made false. | `audit.go` comment vs. the `!st.Terminal` condition below it | Done in `c2b1489`: reworded to describe the definition's terminal flag, naming brine's two directories as the example rather than the mechanism. Comment-only; suite still green. |
+| N4 | non-blocking | fixed inline | The plan's acceptance step 2 says both `rg` guards "must print nothing"; they print three doc-comment hits. The step's own parenthetical always exempted doc comments, so the guard's *intent* held — the phrasing was just false. Prose this branch authored. | `internal/ticket/ticket.go:31`, `internal/board/board.go:29`, `internal/serve/view.go:33` | Done above: step 2 now reads "nothing but comment lines", with the three hits named. |
+| N5 | non-blocking | fixed inline | Task 4 named "the four functions" and listed `MergeLine`/`HasMergeLine` among the untouched; **six** took the parameter. `NextNum` genuinely walked `Statuses`; `MergeLine`/`HasMergeLine` call `historyKind`, which resolves a non-merge body through `transitionParts` — a real dependency. Flagged in commit `95fbeb9`'s message but the plan text stayed wrong. | `ticket.go:385,408` signatures vs. Task 4's list | Done above: Task 4's list corrected with the reason the two extra functions need it. |
+| N6 | non-blocking | folded → **T-081** | The pickup gate in both `move.go` and `audit.go` identifies its own state as `def.StateByWIPKey(config.WIPKeyInDevelopment)` — the flow's most load-bearing gate keyed off an unrelated concern (WIP limits), and `!ok` skips the entire gate with no error or warning (fails open). Task 7 prescribed exactly this and brine is unaffected, but `Spec` has explicit `Initial` and `DependencySatisfied` fields and no `Pickup` — an asymmetry this branch introduced. | `move.go` pickup lookup; `audit.go` dependency-gate guard | Folded into **T-081**, which will edit `Spec` anyway (recorded in its History by this review's step 8): give `Spec` a `Pickup` field, or make the `!ok` case an audit error rather than a silent skip. |
+| N7 | non-blocking | noted | `internal/serve` re-resolves the definition **7× per request** (`flow.ForName(…)` at seven call sites) instead of resolving once onto `handler`. | `serve.go:129,152,169,176,187,202,209` | Closed with evidence: a map lookup on a 1-entry registry, on a localhost read-only dashboard that re-reads the whole ticket tree per request. Cosmetic. |
+| N8 | non-blocking | fixed inline | The plan's docs step claimed `cli-reference.adoc` "describe[s] … `pickle flow list` exactly as [it] will still behave". The manual does not describe it at all — no `[#cmd-flow]` section, no Overview row, no mention of the `flow` key. Prose this branch authored, and false when written. | `rg -n 'flow list\|flow show' docs/` → nothing; no `[#cmd-flow]` among the 12 `[#cmd-*]` anchors | Done above. The underlying gap is **pre-existing** (T-073 shipped the command undocumented) and **T-066 already owns it by name**, so nothing is owed here — only the false claim needed correcting. |
+| N9 | non-blocking | noted | This refactor shifted line anchors cited by **T-013, T-038, T-056, T-065, T-066, T-079** (e.g. `board.go:240`, `move.go:62`, `ticket.go:182`, `serve/view.go:77`). | the `.go:NNN` citations in those tickets vs. current line numbers | Closed with evidence. Every one of those citations names its **symbol** alongside the number, so nothing is ambiguous and no encoded assumption is invalidated; chasing dozens of anchors after every refactor is churn that will be stale again next time. **T-042 and T-070 were patched** (step 8) because their cited declarations sit inside the neighbourhoods this branch rewrote. |
+
+**Disposition summary.** 12 findings, **3 blocking** (B1 missing CHANGELOG entry, B2 deleted
+`ByToken` test under a false "moved" comment, B3 reachability validation that does not check
+reachability), 9 non-blocking: **4 fixed inline** (N3 stale code comment, N4/N5/N8 false claims in
+this ticket's own plan), **1 folded** (N6 → T-081), **4 noted** (N1/N2 unfalsifiable new tests,
+N7 redundant resolution, N9 line-anchor drift). **0 new tickets** — nothing here passes the
+promotion test; all three blocking findings are fixed on this branch, not deferred.
+→ `5-rework/`, scoped to B1, B2 and B3 alone.
 
 ## History
 
@@ -468,3 +569,4 @@ project-authored flow is still not supported (`flow = "brine"` remains the only 
 - 2026-08-10 — TO DO → READY: plan complete
 - 2026-08-10 — READY → IN DEVELOPMENT: picked up
 - 2026-08-10 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-10 — IN REVIEW → REWORK: review: 3 blocking (B1 mandatory CHANGELOG entry never written; B2 ByToken test deleted under a false 'moved' comment; B3 reachability validation is an incoming-edge test); 9 non-blocking (4 fixed inline, 1 folded, 4 noted)

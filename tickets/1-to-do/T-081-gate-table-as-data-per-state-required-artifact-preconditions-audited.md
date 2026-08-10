@@ -75,3 +75,20 @@ coupling stays soft, as T-083's Decision 2 recorded (added by the T-083 review, 
   ticket's "a second flow" argument depends on (`config.DefaultFlowName`, `Config.FlowName()`,
   `pickle flow show|list`). Note that `Validate()` currently accepts **only** `"brine"`, so the
   second-flow story here and in T-080 starts by relaxing that check. Nothing else changed
+- 2026-08-10 — patched by T-080's review impact sweep (step 8): **the dependency this ticket
+  declares has shipped**, so its starting point is now concrete rather than hypothetical.
+  `internal/flow` exists as a leaf package holding a `Spec` (plain declarative data) validated by
+  `New()` into an immutable `Definition`; per-state data already has a precedent to copy in
+  `State.Columns`/`flow.ColumnProfile`, so the gate table is naturally a per-state field on that
+  same struct rather than a new parallel mechanism. Two consequences for this ticket's own
+  decisions: (1) T-083's `## Outcome` check — the hand-rolled section precondition this ticket's
+  Description says to fold in — **is already definition-scoped**: `internal/audit` now tests
+  `!state.Terminal` read from the definition instead of naming `6-done`/`7-dropped`, so folding it
+  into a gate table is a smaller step than when this ticket was filed; (2) **T-080 review finding
+  N6 is folded into this ticket**: `internal/move` and `internal/audit` both identify the pickup
+  state as `def.StateByWIPKey(config.WIPKeyInDevelopment)` — the flow's most load-bearing gate
+  keyed off an unrelated concern (WIP limits), which silently skips the whole gate when the
+  lookup misses. `Spec` has explicit `Initial` and `DependencySatisfied` fields but no `Pickup`;
+  since this ticket edits `Spec` anyway, give it one (or make the miss an audit error). Note also
+  that `Validate()` still accepts only `"brine"` — T-080 deliberately did not relax it. No
+  assumption invalidated; nothing re-graded

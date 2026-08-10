@@ -64,9 +64,9 @@ resolved by T-041, 2026-08-01 — see above) and item 3 (test payload root).
 
 | site | idiom |
 |---|---|
-| `internal/install/install_test.go:15` | `payloadRoot()` returning `filepath.Join("..", "..")` |
-| `internal/doctor/doctor_test.go:14` | the same function duplicated verbatim |
-| `internal/move/move_test.go:20` | inlined `os.DirFS(filepath.Join("..", ".."))` |
+| `internal/install/install_test.go:17` | `payloadRoot()` returning `filepath.Join("..", "..")` |
+| `internal/doctor/doctor_test.go:16` | the same function duplicated verbatim |
+| `internal/move/move_test.go:21` | inlined `os.DirFS(filepath.Join("..", ".."))` |
 | `internal/sync/sync_test.go:21` | inlined `os.DirFS(filepath.Join("..", ".."))` |
 | `internal/cli/cli_test.go:24` (T-029, re-anchored by T-043) | package-level `repoRoot`, absolute, computed in `TestMain`, **now validated against `skill/SKILL.md`** |
 
@@ -91,7 +91,7 @@ does deliberately. Unify on the absolute, CWD-independent form.
 - **T-040 deferred the `T-\d+` unification here — it is now this epic's, unconditionally**
   (T-040 decision D6, 2026-08-02: its self-reference check needed no shape check, so it touched no
   regex). The shape is spelled out three times: `idRE` and `filenameRE`
-  (`internal/ticket/ticket.go:100-110`) and `board.rowRE` (`internal/board/board.go:51`);
+  (`internal/ticket/ticket.go:52-63`) and `board.rowRE` (`internal/board/board.go:35`);
   `ticket.go`'s comment now names T-042 as the owner.
 - **T-013 item 6** ("project-root resolution is triplicated" across the setup commands) is the same
   defect shape and a natural fourth item, but T-013 stays standalone; fold it in only if T-013 is
@@ -127,3 +127,14 @@ does deliberately. Unify on the absolute, CWD-independent form.
   the harness inventory row is re-anchored (`cli_test.go:19` → `:24`). Item 3 gains one
   instruction: delete `TestMain`'s new `os.Stat(skill/SKILL.md)` root validation along with the
   `wd/../..` computation it guards. Scope and grade unchanged (low/low/S)
+- 2026-08-10 — patched by T-080's review impact sweep (step 8): **re-anchored only — scope,
+  substance and grade unchanged.** T-080 moved the status table out of `internal/ticket` and the
+  board's order/heading maps out of `internal/board`, which shifted four of this ticket's cited
+  line numbers: the id-shape regexes `ticket.go:100-110` → `:52-63` and `board.rowRE`
+  `board.go:51` → `:35` (both now much further up their files), plus item 3's
+  `install_test.go:15` → `:17` and `move_test.go:20` → `:21` (one import line each). The
+  `doctor_test.go` anchor is corrected to `:16` in passing as **pre-existing** drift, not T-080's
+  — that file was never touched by this branch. Both items remain live and unaffected in
+  substance: the `T-\d+` shape is still spelled out three times (`idRE`, `filenameRE`,
+  `board.rowRE`), `ticket.go`'s comment still names T-042 as the owner, and the five test
+  payload-root variants are untouched
