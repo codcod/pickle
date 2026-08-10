@@ -160,6 +160,30 @@ func TestSpecValidationRejects(t *testing.T) {
 			s.States = append(s.States, State{Dir: "c", Name: "C", Heading: "C", Columns: ColumnsBacklog})
 			s.BoardOrder = append(s.BoardOrder, "C")
 		}},
+		{"unreachable island (has incoming edges from each other, but no path from Initial)", func(s *Spec) {
+			// c and d each have an incoming transition, so an incoming-edge test
+			// ("mark t.To reached for every transition") would wrongly accept this
+			// spec; only a real reachability search from Initial catches it. This
+			// is the T-080 review's finding B3, reproduced as a regression case.
+			s.States = append(s.States,
+				State{Dir: "c", Name: "C", Heading: "C", Columns: ColumnsBacklog},
+				State{Dir: "d", Name: "D", Heading: "D", Columns: ColumnsBacklog},
+			)
+			s.BoardOrder = append(s.BoardOrder, "C", "D")
+			s.Transitions = append(s.Transitions,
+				Transition{From: "c", To: "d", Kind: Forward},
+				Transition{From: "d", To: "c", Kind: Backward},
+			)
+		}},
+		{"non-terminal state has no outgoing transitions", func(s *Spec) {
+			// c is reachable (a -> c) but, unlike b, is not Terminal and has no
+			// outgoing transitions of its own -- a dead end nothing can ever
+			// leave. legalTargets would mislabel it "(none -- terminal status)"
+			// for a status the Spec never marked terminal. T-080 review finding B3.
+			s.States = append(s.States, State{Dir: "c", Name: "C", Heading: "C", Columns: ColumnsBacklog})
+			s.BoardOrder = append(s.BoardOrder, "C")
+			s.Transitions = append(s.Transitions, Transition{From: "a", To: "c", Kind: Forward})
+		}},
 		{"duplicate WIPKey", func(s *Spec) {
 			s.States[0].WIPKey = "k"
 			s.States[1].WIPKey = "k"
@@ -205,6 +229,79 @@ func TestRequiresReasonMatchesKinds(t *testing.T) {
 		if got := def.RequiresReason(pair[0], pair[1]); got != want {
 			t.Errorf("RequiresReason(%q, %q) = %v, want %v", pair[0], pair[1], got, want)
 		}
+	}
+}
+
+// TestByTokenForms ports the table TestStatusByToken (internal/ticket, pre-T-080)
+// exercised, so the parser behind every `pickle ticket move <token>` keeps its
+// own regression coverage now that it lives on Definition.ByToken instead of a
+// package-level function. Decision 3 required the three accepted forms come
+// along unchanged; this is what proves it, not a comment claiming it moved.
+func TestByTokenForms(t *testing.T) {
+	def := Default()
+	cases := []struct {
+		tok string
+		dir string
+		ok  bool
+	}{
+		{"3-in-development", "3-in-development", true}, // dir name
+		{"in-development", "3-in-development", true},   // dir minus number
+		{"IN DEVELOPMENT", "3-in-development", true},   // display name (spaces)
+		{"In-Development", "3-in-development", true},   // case-insensitive
+		{"to-do", "1-to-do", true},
+		{"1-to-do", "1-to-do", true},
+		{"done", "6-done", true},
+		{"dropped", "7-dropped", true},
+		{"nonsense", "", false},
+		{"", "", false},
+	}
+	for _, tc := range cases {
+		got, ok := def.ByToken(tc.tok)
+		if ok != tc.ok {
+			t.Errorf("ByToken(%q) ok=%v, want %v", tc.tok, ok, tc.ok)
+			continue
+		}
+		if ok && got.Dir != tc.dir {
+			t.Errorf("ByToken(%q) = %q, want %q", tc.tok, got.Dir, tc.dir)
+		}
+	}
+}
+
+// TestByDirAndByName covers the two accessors ByToken is built on directly,
+// including their negative cases — ByToken's table exercises them only
+// through its dir-name and display-name forms, and never their miss path.
+func TestByDirAndByName(t *testing.T) {
+	def := Default()
+
+	if s, ok := def.ByDir("1-to-do"); !ok || s.Name != "TO DO" {
+		t.Errorf("ByDir(%q) = %+v, %v, want TO DO, true", "1-to-do", s, ok)
+	}
+	if s, ok := def.ByDir("6-done"); !ok || s.Name != "DONE" {
+		t.Errorf("ByDir(%q) = %+v, %v, want DONE, true", "6-done", s, ok)
+	}
+	if _, ok := def.ByDir("nonsense"); ok {
+		t.Error("ByDir(nonsense) ok=true, want false")
+	}
+	if _, ok := def.ByDir(""); ok {
+		t.Error(`ByDir("") ok=true, want false`)
+	}
+
+	if s, ok := def.ByName("TO DO"); !ok || s.Dir != "1-to-do" {
+		t.Errorf("ByName(%q) = %+v, %v, want 1-to-do, true", "TO DO", s, ok)
+	}
+	if s, ok := def.ByName("DONE"); !ok || s.Dir != "6-done" {
+		t.Errorf("ByName(%q) = %+v, %v, want 6-done, true", "DONE", s, ok)
+	}
+	// ByName is exact-match, case-sensitive (unlike ByToken) — pin that it does
+	// not silently fall back to token-style matching.
+	if _, ok := def.ByName("to do"); ok {
+		t.Error(`ByName("to do") ok=true, want false (ByName is case-sensitive, exact)`)
+	}
+	if _, ok := def.ByName("nonsense"); ok {
+		t.Error("ByName(nonsense) ok=true, want false")
+	}
+	if _, ok := def.ByName(""); ok {
+		t.Error(`ByName("") ok=true, want false`)
 	}
 }
 

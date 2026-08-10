@@ -614,8 +614,11 @@ func TestLoadAllBadFilename(t *testing.T) {
 	}
 }
 
-// TestStatusByToken moved to internal/flow (Definition.ByToken, T-080) — the
-// status vocabulary it exercises no longer lives in this package.
+// TestStatusByToken's coverage now lives in internal/flow as
+// TestByTokenForms/TestByDirAndByName (Definition.ByToken/ByDir/ByName,
+// T-080) — the status vocabulary it exercised no longer lives in this
+// package, and this package no longer defines the type those tests assert
+// against.
 
 // TestHistoryEntries covers the timeline's data source: every dated line, in file
 // order, with created lines and merge notes kept (the view classifies, the parser
