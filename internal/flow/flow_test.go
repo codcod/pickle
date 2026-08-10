@@ -235,8 +235,16 @@ func TestRequiresReasonMatchesKinds(t *testing.T) {
 // TestByTokenForms ports the table TestStatusByToken (internal/ticket, pre-T-080)
 // exercised, so the parser behind every `pickle ticket move <token>` keeps its
 // own regression coverage now that it lives on Definition.ByToken instead of a
-// package-level function. Decision 3 required the three accepted forms come
-// along unchanged; this is what proves it, not a comment claiming it moved.
+// package-level function. Decision 3 required the accepted forms come along
+// unchanged; this is what proves it, not a comment claiming it moved.
+//
+// What it does *not* prove: brine's display names are its dir names minus the
+// leading number, so "dir minus number" and "display name normalised" collapse
+// to the identical string for all seven states (to-do == to-do, in-development
+// == in-development, ...). No brine-based table can tell those two branches of
+// ByToken apart -- deleting either one leaves this test green. That is a
+// property of brine, not of the table (the pre-T-080 original had it too);
+// TestByTokenDistinguishesAllThreeForms below pins the branches individually.
 func TestByTokenForms(t *testing.T) {
 	def := Default()
 	cases := []struct {
@@ -264,6 +272,45 @@ func TestByTokenForms(t *testing.T) {
 		if ok && got.Dir != tc.dir {
 			t.Errorf("ByToken(%q) = %q, want %q", tc.tok, got.Dir, tc.dir)
 		}
+	}
+}
+
+// TestByTokenDistinguishesAllThreeForms pins each of ByToken's three accepted
+// forms independently, which brine cannot do (see TestByTokenForms): this spec's
+// display Name is deliberately *not* its Dir minus the leading number, so the
+// three forms normalise to three different strings and dropping any one branch
+// of ByToken fails a distinct assertion below.
+func TestByTokenDistinguishesAllThreeForms(t *testing.T) {
+	def := MustNew(Spec{
+		Name: "threeforms",
+		States: []State{
+			{Dir: "1-open", Name: "OPEN WORK", Heading: "OPEN WORK", Columns: ColumnsBacklog},
+			{Dir: "2-shut", Name: "SHUT", Heading: "SHUT", Terminal: true, Columns: ColumnsDone},
+		},
+		BoardOrder:          []string{"OPEN WORK", "SHUT"},
+		Transitions:         []Transition{{From: "1-open", To: "2-shut", Kind: Forward}},
+		Initial:             "1-open",
+		DependencySatisfied: "2-shut",
+	})
+
+	// "1-open" (dir) / "open" (dir minus number) / "open-work" and "OPEN WORK"
+	// (display name) are four spellings that reach the same state by three
+	// different code paths.
+	for _, tok := range []string{"1-open", "open", "open-work", "OPEN WORK"} {
+		s, ok := def.ByToken(tok)
+		if !ok {
+			t.Errorf("ByToken(%q) = not found, want 1-open", tok)
+			continue
+		}
+		if s.Dir != "1-open" {
+			t.Errorf("ByToken(%q) = %q, want 1-open", tok, s.Dir)
+		}
+	}
+
+	// "work" is a fragment of the display name, not a whole form -- ByToken is
+	// exact per form, not a substring search.
+	if _, ok := def.ByToken("work"); ok {
+		t.Error(`ByToken("work") ok=true, want false (forms match whole, not substring)`)
 	}
 }
 
