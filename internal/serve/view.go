@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
@@ -218,52 +219,80 @@ func contains(ids []string, id string) bool {
 	return false
 }
 
-// urlRE matches a bare http(s) URL run (no whitespace). It deliberately over-matches
-// trailing punctuation a human would type right after a URL in free text — a MR ref's
-// closing paren, a trailing comma — linkifyURLs trims that back off rather than
-// teaching the pattern a lookahead Go's regexp package doesn't support.
-var urlRE = regexp.MustCompile(`https?://\S+`)
+// urlSchemeRE marks where a candidate URL run begins; linkifyURLs measures each
+// run's extent itself (see below) rather than trying to teach one regexp every
+// edge case a lookahead-free engine (Go's RE2) can't express directly.
+var urlSchemeRE = regexp.MustCompile(`https?://`)
 
-// urlTrailingPunct is trimmed off the end of a urlRE match before it becomes an href:
-// exactly the characters a human's surrounding prose puts right after a pasted URL
-// (a MR ref's closing paren, a trailing comma or full stop).
+// urlTrailingPunct is trimmed off the end of a URL run before it becomes an
+// href: exactly the characters a human's surrounding prose puts right after a
+// pasted URL (a MR ref's closing paren, a trailing comma or full stop).
 const urlTrailingPunct = ")].,;:"
 
-// linkifyURLs HTML-escapes s and wraps any bare http(s) URL in a clickable anchor.
-// It exists because the merge History line's own convention (T-089) is free text
-// rendered as a plain, auto-escaped string in three serve views (the board's
-// "merged" cell, the ticket page's "merged" summary line, and the activity
-// timeline's per-entry text) — unlike a ticket's `## Description`/body, which
-// already gets a free clickable link from goldmark's GFM Linkify extension
-// (markdown.go). This is the one place that gap is closed, so every caller shares
-// it instead of each growing its own escape-then-wrap logic.
+// linkifyURLs wraps any bare http(s) URL in s in a clickable anchor and
+// HTML-escapes everything else (and the URL itself) with
+// template.HTMLEscapeString. It exists because the merge History line's own
+// convention (T-089) is free text rendered as a plain, auto-escaped string in
+// three serve views (the board's "merged" cell, the ticket page's "merged"
+// summary line, and the activity timeline's per-entry text) — unlike a
+// ticket's `## Description`/body, which already gets a free clickable link
+// from goldmark's GFM Linkify extension (markdown.go). This is the one place
+// that gap is closed, so every caller shares it instead of each growing its
+// own escape-then-wrap logic.
 //
-// s is escaped with template.HTMLEscapeString first, so the URL text captured by
-// urlRE is already escaped by the time it is reused as the anchor's visible text
-// and its href — the href is safe from injection for the same reason the escaped
-// text is: any `"`, `<` or `&` in the original URL has already become an entity
-// reference, and an attribute's delimiters are fixed by the tokenizer *before*
-// character references are decoded, so a decoded quote cannot reopen attribute
-// parsing. `javascript:`/`data:` never match urlRE at all.
-//
-// Escaping before matching does cost fidelity, and the trim below runs on that
-// escaped text: a URL whose tail is an entity (`…/a<` → `…/a&lt;`) can lose the
-// `;` that terminates it, mangling the rendered URL — visibly wrong, but still
-// not a breach, per the ordering argument above. Commit URLs, the convention this
-// serves (T-089), carry no HTML-special characters, so the golden path is exact;
-// hardening the ordering (and the sharp edges around empty hosts and adjacent
-// URLs) is T-090.
+// Matching runs on the raw string, before any escaping: each match is found,
+// trimmed and validated first, and only the resulting pieces are escaped —
+// never the other way around. Escaping first (T-089's original approach) let
+// the trim set below swallow the leading `;` of a genuine HTML entity in a
+// URL's tail, corrupting it; matching raw removes that failure mode entirely
+// (T-090).
 func linkifyURLs(s string) template.HTML {
-	escaped := template.HTMLEscapeString(s)
-	out := urlRE.ReplaceAllStringFunc(escaped, func(m string) string {
-		trimmed := strings.TrimRight(m, urlTrailingPunct)
-		if trimmed == "" {
-			return m
+	starts := urlSchemeRE.FindAllStringIndex(s, -1)
+	if starts == nil {
+		return template.HTML(template.HTMLEscapeString(s))
+	}
+
+	var b strings.Builder
+	cursor := 0
+	for i, loc := range starts {
+		start := loc[0]
+		// A run is the longest non-whitespace stretch from start, capped at
+		// the next scheme occurrence so two adjacent URLs ("a,https://b")
+		// don't collapse into one anchor.
+		limit := len(s)
+		if i+1 < len(starts) {
+			limit = starts[i+1][0]
 		}
-		suffix := m[len(trimmed):]
-		return `<a href="` + trimmed + `" rel="noopener" target="_blank">` + trimmed + `</a>` + suffix
-	})
-	return template.HTML(out) //nolint:gosec // every byte of out is HTMLEscapeString output plus literal anchor markup; see the escaping note above for why the trim cannot breach the attribute
+		// strings.IndexFunc decodes each rune before testing it, unlike
+		// widening a single byte to a rune (T-090's review, finding F1): the
+		// naive `rune(s[i])` scan stopped mid-rune on any UTF-8 continuation
+		// byte that happens to satisfy unicode.IsSpace (0x85, 0xA0), truncating
+		// the href and emitting invalid UTF-8 for any URL containing e.g. à,
+		// Š, Р or a literal NBSP.
+		end := limit
+		if idx := strings.IndexFunc(s[start:limit], unicode.IsSpace); idx >= 0 {
+			end = start + idx
+		}
+
+		trimmed := strings.TrimRight(s[start:end], urlTrailingPunct)
+		host := strings.TrimPrefix(strings.TrimPrefix(trimmed, "https://"), "http://")
+		if host == "" {
+			// Nothing survived trimming but the scheme itself (e.g.
+			// "https://)."): not a real link, leave it as plain text.
+			b.WriteString(template.HTMLEscapeString(s[cursor:end]))
+			cursor = end
+			continue
+		}
+
+		b.WriteString(template.HTMLEscapeString(s[cursor:start]))
+		escaped := template.HTMLEscapeString(trimmed)
+		b.WriteString(`<a href="` + escaped + `" rel="noopener noreferrer" target="_blank">` + escaped + `</a>`)
+		b.WriteString(template.HTMLEscapeString(s[start+len(trimmed) : end]))
+		cursor = end
+	}
+	b.WriteString(template.HTMLEscapeString(s[cursor:]))
+
+	return template.HTML(b.String()) //nolint:gosec // every byte is HTMLEscapeString output plus literal anchor markup; href and text share one escaped source, so a decoded quote can't reopen attribute parsing, and matching runs on the raw string (see doc comment) before any escaping happens.
 }
 
 // Event is one dated History line, tagged with the ticket it came from.

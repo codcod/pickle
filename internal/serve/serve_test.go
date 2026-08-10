@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
@@ -308,7 +309,7 @@ func TestMergeLineLinkification(t *testing.T) {
 			}},
 	)
 	h := newHandler(t, root)
-	want := `<a href="https://example.com/commit/abc123" rel="noopener" target="_blank">https://example.com/commit/abc123</a>`
+	want := `<a href="https://example.com/commit/abc123" rel="noopener noreferrer" target="_blank">https://example.com/commit/abc123</a>`
 	for _, path := range []string{"/", "/t/T-001", "/activity"} {
 		body := get(t, h, path).Body.String()
 		if !strings.Contains(body, want) {
@@ -346,8 +347,71 @@ func TestLinkifyURLsEscapesSurroundingText(t *testing.T) {
 	if !strings.Contains(string(got), "&lt;script&gt;") {
 		t.Errorf("linkifyURLs did not escape surrounding text: %s", got)
 	}
-	if !strings.Contains(string(got), `<a href="https://example.com/x/y" rel="noopener" target="_blank">https://example.com/x/y</a>),`) {
+	if !strings.Contains(string(got), `<a href="https://example.com/x/y" rel="noopener noreferrer" target="_blank">https://example.com/x/y</a>),`) {
 		t.Errorf("linkifyURLs pulled trailing punctuation into the href, or mis-rendered the anchor: %s", got)
+	}
+}
+
+// TestLinkifyURLsHardenedEdgeCases: T-090. Each case guards one sharp edge
+// found in T-089's review — an ampersand and an entity tail inside a URL (F1),
+// a host-less URL (F4), two adjacent URLs (F5), and the ordinary single-URL
+// case that must keep working once the matching algorithm changes to fix the
+// other three. Every `want` also pins `rel="noopener noreferrer"` (F7).
+func TestLinkifyURLsHardenedEdgeCases(t *testing.T) {
+	for _, tc := range []struct {
+		name, in, want string
+	}{
+		{
+			name: "ampersand inside URL escapes in both href and text",
+			in:   `https://x.com/a&b`,
+			want: `<a href="https://x.com/a&amp;b" rel="noopener noreferrer" target="_blank">https://x.com/a&amp;b</a>`,
+		},
+		{
+			name: "entity tail keeps its terminating semicolon",
+			in:   `https://x.com/<script>`,
+			want: `<a href="https://x.com/&lt;script&gt;" rel="noopener noreferrer" target="_blank">https://x.com/&lt;script&gt;</a>`,
+		},
+		{
+			name: "host-less URL is not linkified",
+			in:   `https://).`,
+			want: `https://).`,
+		},
+		{
+			name: "adjacent URLs do not collapse into one anchor",
+			in:   `https://a.com/1,https://b.com/2`,
+			want: `<a href="https://a.com/1" rel="noopener noreferrer" target="_blank">https://a.com/1</a>,<a href="https://b.com/2" rel="noopener noreferrer" target="_blank">https://b.com/2</a>`,
+		},
+		{
+			name: "ordinary single URL still links",
+			in:   `https://a.com`,
+			want: `<a href="https://a.com" rel="noopener noreferrer" target="_blank">https://a.com</a>`,
+		},
+		{
+			// F1 (review rework): a byte-widened unicode.IsSpace check stopped
+			// the run scan mid-rune on any UTF-8 continuation byte satisfying
+			// IsSpace (0x85, 0xA0), truncating the href and emitting invalid
+			// UTF-8. à encodes to C3 A0; A0 alone would have split it.
+			name: "multi-byte rune in the host survives intact",
+			in:   `https://x.com/à/commit`,
+			want: `<a href="https://x.com/à/commit" rel="noopener noreferrer" target="_blank">https://x.com/à/commit</a>`,
+		},
+		{
+			// A literal NBSP (U+00A0, bytes C2 A0) must still delimit a run —
+			// the fix must decode runes, not merely stop treating A0 as space.
+			name: "NBSP after a URL still terminates the run",
+			in:   "https://x.com/a\u00a0tail",
+			want: `<a href="https://x.com/a" rel="noopener noreferrer" target="_blank">https://x.com/a</a>` + "\u00a0tail",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := string(linkifyURLs(tc.in))
+			if got != tc.want {
+				t.Errorf("linkifyURLs(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+			if !utf8.ValidString(got) {
+				t.Errorf("linkifyURLs(%q) produced invalid UTF-8: %q", tc.in, got)
+			}
+		})
 	}
 }
 
