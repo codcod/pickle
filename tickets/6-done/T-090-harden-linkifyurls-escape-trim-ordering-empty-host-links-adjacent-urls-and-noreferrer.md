@@ -279,6 +279,10 @@ randomised fuzz for panics and UTF-8 corruption).
 - [x] Remaining-tickets impact sweep done (step 8)
 - [x] Summary + commit message & MR attributes presented; bookkeeping committed (step 9)
 
+*(The checklist above covers the first, full review round. The scoped re-review after rework is
+recorded under "Scoped re-review" below — per rules §5 it re-verifies only the blocking finding,
+so steps 3, 4, 4a and 8 were deliberately not repeated.)*
+
 ### Step 2 — implementation audit
 
 | item | verdict | evidence |
@@ -310,16 +314,23 @@ test; F1 is fixed on this branch, not deferred. → `5-rework/`, scoped to F1 al
 
 ### Rework (F1 only)
 
-Fixed 2026-08-10 on `feat/T-090-harden-linkify-urls` (commit `a51889d`). Replaced the
-byte-widening scan (`for end < limit && !unicode.IsSpace(rune(s[end])) { end++ }`) with
-`strings.IndexFunc(s[start:limit], unicode.IsSpace)`, which decodes each rune before testing it
-— closing the gap without changing which characters count as whitespace (still `unicode.IsSpace`,
-as F1's suggested resolution allowed; this is the "rune-aware" branch of that choice, not the
-"ASCII-only to match `main`" branch — consistent with F3, which already accepted the `\v`
-behaviour delta that comes with `unicode.IsSpace`). Added two regression cases to
-`TestLinkifyURLsHardenedEdgeCases` (`serve_test.go`): a multi-byte rune (`à`, `C3 A0`) surviving
-intact inside a URL, and a literal NBSP (`C2 A0`) still terminating the run — each asserting both
-the exact rendered string and `utf8.ValidString(got)`.
+Fixed 2026-08-10 on `feat/T-090-harden-linkify-urls` (commit `2707a18`, amended from `a51889d`
+per F7 below). Replaced the byte-widening scan
+(`for end < limit && !unicode.IsSpace(rune(s[end])) { end++ }`) with
+`strings.IndexFunc(s[start:limit], unicode.IsSpace)`, which decodes each rune before testing it.
+This is the "rune-aware" branch of F1's suggested resolution, not the "ASCII-only to match
+`main`" branch.
+
+The **predicate** stays `unicode.IsSpace`, but decoding it correctly necessarily **widens the
+effective whitespace set**: U+2028, U+2029, U+3000, U+1680 and U+202F now terminate a run where
+the byte-widened scan kept them inside the href (measured — see F7). That is coherent with F3,
+which already accepted the analogous `\v` delta, and is strictly better: those characters must be
+percent-encoded in a URL anyway.
+
+Added two regression cases to `TestLinkifyURLsHardenedEdgeCases` (`serve_test.go`): a multi-byte
+rune (`à`, `C3 A0`) surviving intact inside a URL, and a literal NBSP (`C2 A0`) still terminating
+the run — asserting the exact rendered string, plus `utf8.ValidString(got)` across **every**
+subcase in the table, not just the two new ones.
 
 Re-verified independently (not just via the new unit tests): the seven inputs that produced
 invalid UTF-8 in the review's probe (`https://x.com/à`, `https://x.com/à/commit`,
@@ -330,6 +341,52 @@ original fuzz used an ASCII-heavy alphabet, which is exactly why it reported 0 c
 F1 existing) found 0 panics and 0 UTF-8 corruptions.
 
 `just build && just test && just lint && just docs-check` all green in the rework worktree.
+
+### Scoped re-review (2026-08-10, F1 only)
+
+Re-reviewed on `feat/T-090-harden-linkify-urls` @ `2707a18`, ticket read from `main`, audited in a
+detached worktree. Per the protocol's rework clause only F1 was re-verified — the feature was not
+re-audited from scratch. An independent sub-agent re-ran the verification adversarially, briefed
+specifically to hunt for a defect *introduced by* the fix; its findings were then reproduced
+first-hand.
+
+- [x] **F1 resolved.** Every input that previously emitted invalid UTF-8 now yields a complete
+      href and valid UTF-8: `https://x.com/à`, `https://à.com/x`, `https://example.com/ą`,
+      `…/Å`, `…/Š`, `…/Π`, `…/Р`, NBSP/NEL both inside and after the URL, CJK. Independent
+      fuzz, 400 000 cases over an alphabet mixing ASCII URL characters with `à ą Å Š 日 é` and
+      six whitespace runes: **new impl 0 invalid-UTF-8 outputs, 0 panics** (63 852 anchors
+      produced) vs **41 091 invalid outputs for the old impl over the identical corpus**. A
+      further 200 000 deliberately invalid-UTF-8 inputs: no panic (invalid bytes decode to
+      `RuneError`, which is not a space, and the scan advances one byte).
+- [x] **No new defect.** `IndexFunc == -1 → end = limit` is provably the old loop's terminal
+      value; `limit > start` strictly (`FindAllStringIndex` yields non-overlapping ascending
+      matches, so `starts[i+1][0] >= start+7`); `start`/`limit` are rune boundaries because
+      `https?://` is pure ASCII, so `s[start:limit]` never cuts mid-rune and
+      `start <= end <= limit` holds. 0 invariant violations and 0 panics across the fuzz corpus.
+- [x] **The regression tests genuinely guard the defect** — demonstrated, not assumed: both new
+      cases *fail* against `d153f2a` (`https://x.com/à/commit` → old yields `…/\xc3</a>\xa0/commit`,
+      mismatching **and** invalid UTF-8; `https://x.com/a\u00a0tail` likewise).
+- [x] **Acceptance test re-run verbatim.** `just build`/`just test`/`just lint`/`just docs-check`
+      all green; `go vet` silent, `gofmt -l` empty. End-to-end smoke re-done against a real
+      `pickle serve` binary with the merge line `merged to main (MR !1, https://x.com/à/<script>)`:
+      the anchor renders with `à` intact, `<script>` escaped, and `rel="noopener noreferrer"` on
+      **all three** surfaces — board `/`, ticket page `/t/T-001`, and `/activity` — with every
+      response valid UTF-8. (The board cell was silently empty in the previous round's smoke
+      because the throwaway fixture's `project:` did not name that tree's registered child; the
+      fixture is corrected here, so the third surface is now genuinely evidenced rather than
+      inferred from `TestMergeLineLinkification`.)
+
+#### Re-review finding
+
+| id | severity | disposition | description | evidence | suggestion / resolution |
+|---|---|---|---|---|---|
+| F7 | non-blocking | fixed inline | The rework's own prose overclaimed: commit `a51889d`'s message and this section both said the fix closed the gap "without changing which characters count as whitespace". False — decoding runes correctly *widens* the effective set, because the byte-widened scan had never recognised any multi-byte space. Prose this branch authored, no behaviour change. | measured, new vs `d153f2a`: `https://x.com/a\u2028b`, `…\u3000b`, `…\u1680b`, `…\u202fb` all **DIFFER** — new terminates the run, old kept the character inside the href. Plain ASCII space: same. The **in-code** comment (`view.go:266-271`) never made the claim, so only the prose was wrong. | Done: commit message amended (`a51889d` → `2707a18`, unpushed so no history rewrite of published work) and this section's opening paragraph now states the widening explicitly with its rationale. |
+
+**Re-review disposition summary.** F1 **resolved** — no blocking findings remain. 1 new
+non-blocking finding (F7), **fixed inline**. 0 new tickets. → `6-done/`.
+
+Cumulative across both rounds: 7 findings, 1 blocking (F1, fixed in rework), 6 non-blocking
+(3 fixed inline — F2, F6, F7; 3 noted — F3, F4, F5), 0 new tickets.
 
 ### Steps 3, 4, 4a — quality, consistency, docs
 
@@ -365,3 +422,4 @@ the READY queue is empty. Nothing downstream to patch.
 - 2026-08-10 — IN REVIEW → REWORK: review: 1 blocking (F1 — byte-widened IsSpace splits
   multi-byte runes, invalid UTF-8); 5 non-blocking (2 fixed inline, 3 noted)
 - 2026-08-10 — REWORK → IN REVIEW: F1 fixed: rune-decoding scan closes the byte-widened IsSpace gap
+- 2026-08-10 — IN REVIEW → DONE: scoped re-review: F1 resolved, no blocking findings; F7 fixed inline
