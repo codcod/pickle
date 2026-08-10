@@ -151,10 +151,12 @@ func Audit(root string, cfg *config.Config) Result {
 		// Outcome presence (T-083) — a WARNING, never an error, and this is a hard
 		// constraint, not a style preference: an error here would make ticket move,
 		// board sync, install and upgrade all fail for every ticket that predates
-		// the section. Scoped to the five non-terminal directories only — 6-done/
-		// and 7-dropped/ are permanent, immutable archives (rules §3); flagging them
-		// would add one permanent warning per archived ticket for a record nobody
-		// is about to act on. Structural check only (SectionBody.OutcomeMissing) —
+		// the section. Scoped to non-terminal states, read from the flow definition
+		// (T-080) rather than by naming directories: a terminal state is a
+		// permanent, immutable archive (rules §3 — 6-done/ and 7-dropped/ for
+		// brine), and flagging one would add a permanent warning per archived
+		// ticket for a record nobody is about to act on. Structural check only
+		// (SectionBody.OutcomeMissing) —
 		// no prose heuristic, and deliberately NOT in requiredKeys (Outcome is a
 		// body section, not frontmatter; see T-045's migration-break precedent).
 		if st, ok := def.ByDir(t.Dir); ok && !st.Terminal && ticket.OutcomeMissing(t.Text) {
