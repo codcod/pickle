@@ -558,6 +558,41 @@ missing `--reason`, `flow list`/`show`) still refuse/print exactly as before. Se
 → `4-in-review/` for a **scoped re-review** of B1, B2 and B3 only (protocol §6a) — not a
 full re-audit.
 
+### Scoped re-review (2026-08-10)
+
+Per protocol §6a, this verified **only** B1/B2/B3 plus the rework's own blast radius — no
+re-audit of the feature. Because this ticket's blocking findings were themselves *tests and
+validation that could not fail*, each fix was checked by **mutation testing** (break the
+production code, prove the new test goes red) rather than by watching it go green.
+
+| finding | verdict | how it was verified |
+|---|---|---|
+| B1 | **resolved** | Entry present under `## [Unreleased]` / `### Changed` (`e015302`). Its three factual claims were each checked, not taken on trust: byte-identical board (re-run), unchanged audit conditions/severities (original review's teeth table), and `flow = "brine"` still the only legal value — a hand-written `flow = "kanban"` config is refused with `flow "kanban" is not a known flow (legal: brine)`. |
+| B2 | **resolved** | `TestByTokenForms` (the original 10-case table, verbatim) + `TestByDirAndByName` present and green (`0fa870f`). Mutation-tested: removing `ToLower` (case-insensitivity) → red; making `ByName` case-insensitive → red; `ByDir` always reporting `ok` → red. **Two mutations initially slipped through** — see N10/N11 below; the lost coverage is nonetheless faithfully restored, so B2 itself is resolved. |
+| B3 | **resolved** | BFS from `Initial` + the dead-end converse (`2d9068d`). Mutation-tested against the *original bug*: reverting to the incoming-edge form makes the new island case go red; deleting the dead-end check makes its case go red. The review's two original probes now reject with precise messages (`state "c" is unreachable from Initial "a"`; `state "b" is not terminal but has no outgoing transitions`). Also confirmed it does not over-reject: brine validates, and an unreachable *terminal* state is caught by the reachability rule. |
+
+**Scope discipline.** `git diff --stat` over the three rework commits touches exactly the four
+files the findings required (`CHANGELOG.md`, `internal/flow/flow.go`, `internal/flow/flow_test.go`,
+`internal/ticket/ticket_test.go`) — no other work folded in.
+
+**Rework blast radius.** `just build`/`test`/`lint`/`docs-check` green; both `rg` guards and the
+throwaway-dir board byte-identity re-run clean; the lifecycle gates still refuse identically. The
+merge into `main` was re-verified in a **detached** worktree: clean merge, all 13 packages pass,
+board byte-identical on the merged tree, T-090's hardened `linkifyURLs` intact.
+
+| id | severity | disposition | description | evidence | resolution |
+|---|---|---|---|---|---|
+| N10 | non-blocking | fixed inline | `TestByTokenForms`' comment claimed it proves "the three accepted forms come along unchanged". It cannot: brine's display names *are* its dir names minus the leading number, so "dir minus number" and "display name normalised" normalise to the **identical** string for all seven states. Prose authored during the rework, overstating its own test. | probe printing both derived forms per state: `to-do`/`to-do`, `in-development`/`in-development`, … — IDENTICAL ×7 | Comment corrected to state what the table does and does not prove (`4cca7b2`). |
+| N11 | non-blocking | fixed inline | Consequence of N10: two of `ByToken`'s three branches were **not pinned by anything**. Deleting the `bare` branch or the `name` branch left the whole suite green. Not a regression — the pre-T-080 original had the same blind spot — but B2's fix inherited it while claiming otherwise. | mutations M1/M3 (drop either branch, keeping the var used so it compiles) → suite **green** | Added `TestByTokenDistinguishesAllThreeForms`, using a spec whose display Name is deliberately not its Dir minus the number (`1-open` / `OPEN WORK`) so all three forms differ, plus a whole-vs-substring assertion. Re-ran M1/M3/M8: all three now go **red** (`4cca7b2`). |
+| N12 | non-blocking | noted | The dead-end rule added for B3, combined with the pre-existing "Initial must not be terminal" rule, makes a **single-state flow inexpressible**: the lone state may not be terminal (it is `Initial`) and may not be non-terminal (it would have no outgoing transitions). A narrowing the rework introduced as a side effect, not a decision. | probe: a one-state `inbox` spec is rejected with `state "1-inbox" is not terminal but has no outgoing transitions` | Closed with evidence: a single-state flow has no lifecycle to operate — no ticket could ever move — so it is degenerate rather than useful, and `Validate()` admits only brine regardless. Worth knowing when a project-authored flow becomes real (T-081 / the read-from-disk follow-on). |
+
+**Re-review disposition summary.** All **3 blocking findings resolved**; **0 remain**. 3 new
+non-blocking findings, all from mutation-testing the fixes: **2 fixed inline** (N10 overstated
+comment, N11 the unpinned branches it hid — split per rules §5, "a wrong comment *and* the
+substantive defect it hid"), **1 noted** (N12). **0 new tickets.**
+→ `6-done/`. Cumulative across both passes: 15 findings, 3 blocking (all fixed), 12 non-blocking
+(6 fixed inline, 1 folded → T-081, 5 noted), 0 spawned.
+
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
@@ -581,3 +616,4 @@ full re-audit.
 - 2026-08-10 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-10 — IN REVIEW → REWORK: review: 3 blocking (B1 mandatory CHANGELOG entry never written; B2 ByToken test deleted under a false 'moved' comment; B3 reachability validation is an incoming-edge test); 9 non-blocking (4 fixed inline, 1 folded, 4 noted)
 - 2026-08-10 — REWORK → IN REVIEW: rework: B1 CHANGELOG entry added; B2 ByToken/ByDir/ByName coverage ported; B3 reachability is now a real BFS and non-terminal dead ends are rejected — back for scoped re-review
+- 2026-08-10 — IN REVIEW → DONE: scoped re-review: B1/B2/B3 all resolved and mutation-verified; 3 new non-blocking (N10/N11 fixed inline, N12 noted); 0 blocking remain, 0 tickets spawned
