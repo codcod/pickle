@@ -6,7 +6,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/codcod/pickle/internal/flow"
 )
+
+// testDef is the flow definition every test in this package threads through
+// the functions that need status vocabulary — brine, since that is what the
+// fixtures below are all written against.
+var testDef = flow.Default()
 
 const sample = `---
 id: T-001
@@ -92,7 +99,7 @@ func TestHistoryKind(t *testing.T) {
 		{"pickup applicability gate run → nowhere legal", HistoryNote},
 	}
 	for _, c := range cases {
-		if got := historyKind(c.body); got != c.want {
+		if got := historyKind(testDef, c.body); got != c.want {
 			t.Errorf("historyKind(%q) = %q, want %q", c.body, got, c.want)
 		}
 	}
@@ -177,10 +184,10 @@ func TestParseIDList(t *testing.T) {
 }
 
 func TestLastHistoryStatusSkipsMerge(t *testing.T) {
-	if got := LastHistoryStatus(sample); got != "DONE" {
+	if got := LastHistoryStatus(testDef, sample); got != "DONE" {
 		t.Errorf("LastHistoryStatus = %q, want DONE (merge line must be skipped)", got)
 	}
-	if !HasMergeLine(sample) {
+	if !HasMergeLine(testDef, sample) {
 		t.Error("HasMergeLine = false, want true")
 	}
 }
@@ -199,15 +206,15 @@ func TestLastHistoryStatusArrowInReason(t *testing.T) {
 - 2026-07-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-07-28 — IN REVIEW → DONE: review PASS; 2 non-blocking → fixed inline (docs: a.adoc, b.adoc)
 `
-	if got := LastHistoryStatus(doc); got != "DONE" {
+	if got := LastHistoryStatus(testDef, doc); got != "DONE" {
 		t.Errorf("LastHistoryStatus = %q, want DONE (reason's own arrow must not be read as the transition)", got)
 	}
 	want := "review PASS; 2 non-blocking → fixed inline (docs: a.adoc, b.adoc)"
-	if got := LastHistoryReason(doc); got != want {
+	if got := LastHistoryReason(testDef, doc); got != want {
 		t.Errorf("LastHistoryReason = %q, want %q (full reason, including its own arrow)", got, want)
 	}
 	const body = "IN REVIEW → DONE: review PASS; 2 non-blocking → fixed inline (docs: a.adoc, b.adoc)"
-	if got := historyKind(body); got != HistoryTransition {
+	if got := historyKind(testDef, body); got != HistoryTransition {
 		t.Errorf("historyKind(%q) = %q, want %q", body, got, HistoryTransition)
 	}
 }
@@ -225,11 +232,11 @@ func TestLastHistoryReasonFoldsContinuations(t *testing.T) {
 - 2026-07-28 — IN REVIEW → DONE: a long reason that
   wraps onto a continuation line
 `
-	if got := LastHistoryStatus(doc); got != "DONE" {
+	if got := LastHistoryStatus(testDef, doc); got != "DONE" {
 		t.Errorf("LastHistoryStatus = %q, want DONE", got)
 	}
 	want := "a long reason that wraps onto a continuation line"
-	if got := LastHistoryReason(doc); got != want {
+	if got := LastHistoryReason(testDef, doc); got != want {
 		t.Errorf("LastHistoryReason = %q, want %q (full reason across the wrap, not truncated at the fold)", got, want)
 	}
 }
@@ -280,18 +287,18 @@ func TestTransitionSurvivesContinuationFolding(t *testing.T) {
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			if got := LastHistoryStatus(c.doc); got != c.wantStatus {
+			if got := LastHistoryStatus(testDef, c.doc); got != c.wantStatus {
 				t.Errorf("LastHistoryStatus = %q, want %q", got, c.wantStatus)
 			}
-			if got := LastHistoryReason(c.doc); got != c.wantReason {
+			if got := LastHistoryReason(testDef, c.doc); got != c.wantReason {
 				t.Errorf("LastHistoryReason = %q, want %q", got, c.wantReason)
 			}
 			// The invariant behind the fix, asserted directly: an entry classified
 			// as a transition always names a legal target, and one that is not a
 			// transition never names any — whatever folding did to its Text.
-			for _, e := range HistoryEntries(c.doc) {
+			for _, e := range HistoryEntries(testDef, c.doc) {
 				if e.Kind == HistoryTransition {
-					if _, ok := StatusByName(e.Target); !ok {
+					if _, ok := testDef.ByName(e.Target); !ok {
 						t.Errorf("entry %+v is a transition whose Target is not a legal status", e)
 					}
 				} else if e.Target != "" {
@@ -319,7 +326,7 @@ func TestLastHistoryStatusUnexercisedShapes(t *testing.T) {
 		{"content under a different heading level is not History", "### History\n- 2026-08-06 — TO DO → READY: refined\n", ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			if got := LastHistoryStatus(c.doc); got != c.want {
+			if got := LastHistoryStatus(testDef, c.doc); got != c.want {
 				t.Errorf("LastHistoryStatus(%q) = %q, want %q", c.doc, got, c.want)
 			}
 		})
@@ -336,7 +343,7 @@ func TestLoadAllToleratesMissingDirs(t *testing.T) {
 		t.Fatal(err)
 	}
 	// only 1-to-do exists; the other status dirs are absent (vanished-empty)
-	tickets, issues := LoadAll(root)
+	tickets, issues := LoadAll(testDef, root)
 	if len(issues) != 0 {
 		t.Fatalf("unexpected load issues: %v", issues)
 	}
@@ -383,11 +390,11 @@ func TestNextNum(t *testing.T) {
 	}
 	cases := map[string]int{"T": 13, "RICK": 5, "SB": 3, "PK": 1}
 	for prefix, want := range cases {
-		if got := NextNum(root, prefix); got != want {
+		if got := NextNum(testDef, root, prefix); got != want {
 			t.Errorf("NextNum(%q) = %d, want %d", prefix, got, want)
 		}
 	}
-	if got := NextNum(t.TempDir(), "T"); got != 1 {
+	if got := NextNum(testDef, t.TempDir(), "T"); got != 1 {
 		t.Errorf("NextNum(empty) = %d, want 1", got)
 	}
 }
@@ -438,7 +445,7 @@ func TestScaffoldIsAuditClean(t *testing.T) {
 	if fm["id"] != "T-013" || fm["project"] != "pickle" {
 		t.Errorf("scaffold frontmatter = %v", fm)
 	}
-	if got := LastHistoryStatus(out); got != "TO DO" {
+	if got := LastHistoryStatus(testDef, out); got != "TO DO" {
 		t.Errorf("scaffold LastHistoryStatus = %q, want TO DO", got)
 	}
 }
@@ -498,7 +505,7 @@ func TestScaffoldFamily(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "T-013-x.md"), []byte(withFam), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	tickets, issues := LoadAll(root)
+	tickets, issues := LoadAll(testDef, root)
 	if len(issues) != 0 {
 		t.Fatalf("load issues: %v", issues)
 	}
@@ -601,40 +608,14 @@ func TestLoadAllBadFilename(t *testing.T) {
 	dir := filepath.Join(root, "tickets", "1-to-do")
 	os.MkdirAll(dir, 0o755)
 	os.WriteFile(filepath.Join(dir, "not-a-ticket.md"), []byte("x"), 0o644)
-	_, issues := LoadAll(root)
+	_, issues := LoadAll(testDef, root)
 	if len(issues) != 1 {
 		t.Fatalf("expected 1 issue, got %v", issues)
 	}
 }
 
-func TestStatusByToken(t *testing.T) {
-	cases := []struct {
-		tok string
-		dir string
-		ok  bool
-	}{
-		{"3-in-development", "3-in-development", true}, // dir name
-		{"in-development", "3-in-development", true},   // dir minus number
-		{"IN DEVELOPMENT", "3-in-development", true},   // display name (spaces)
-		{"In-Development", "3-in-development", true},   // case-insensitive
-		{"to-do", "1-to-do", true},
-		{"1-to-do", "1-to-do", true},
-		{"done", "6-done", true},
-		{"dropped", "7-dropped", true},
-		{"nonsense", "", false},
-		{"", "", false},
-	}
-	for _, tc := range cases {
-		got, ok := StatusByToken(tc.tok)
-		if ok != tc.ok {
-			t.Errorf("StatusByToken(%q) ok=%v, want %v", tc.tok, ok, tc.ok)
-			continue
-		}
-		if ok && got.Dir != tc.dir {
-			t.Errorf("StatusByToken(%q) = %q, want %q", tc.tok, got.Dir, tc.dir)
-		}
-	}
-}
+// TestStatusByToken moved to internal/flow (Definition.ByToken, T-080) — the
+// status vocabulary it exercises no longer lives in this package.
 
 // TestHistoryEntries covers the timeline's data source: every dated line, in file
 // order, with created lines and merge notes kept (the view classifies, the parser
@@ -662,7 +643,7 @@ func TestHistoryEntries(t *testing.T) {
 
 - 2026-12-31 — a dated bullet after ## History ends must be ignored
 `
-	got := HistoryEntries(doc)
+	got := HistoryEntries(testDef, doc)
 	// Keyed fields, not positional: Target was added to HistoryEntry by T-043's
 	// rework and a positional literal silently re-purposes the next field the
 	// next time the struct grows. Asserting Target here also pins the invariant
@@ -691,7 +672,7 @@ func TestHistoryEntries(t *testing.T) {
 
 func TestHistoryEntriesEmpty(t *testing.T) {
 	for _, doc := range []string{"", "# T-001 — x\n", "## History\n\n<!-- nothing yet -->\n"} {
-		if got := HistoryEntries(doc); got != nil {
+		if got := HistoryEntries(testDef, doc); got != nil {
 			t.Errorf("HistoryEntries(%q) = %+v, want nil", doc, got)
 		}
 	}
@@ -703,23 +684,23 @@ func TestHistoryEntriesEmpty(t *testing.T) {
 // silently renumber it. Read the date and the body from the same lines and assert
 // the three keep working.
 func TestHistoryEntriesDoesNotShiftPositionalCallers(t *testing.T) {
-	if got := LastHistoryStatus(sample); got != "DONE" {
+	if got := LastHistoryStatus(testDef, sample); got != "DONE" {
 		t.Errorf("LastHistoryStatus = %q, want DONE", got)
 	}
-	if got := LastHistoryReason(sample); got != "review PASS" {
+	if got := LastHistoryReason(testDef, sample); got != "review PASS" {
 		t.Errorf("LastHistoryReason = %q, want %q", got, "review PASS")
 	}
-	if got := MergeLine(sample); got != "MERGED: feat/T-001 → main (abc1234)" {
+	if got := MergeLine(testDef, sample); got != "MERGED: feat/T-001 → main (abc1234)" {
 		t.Errorf("MergeLine = %q, want the merge note verbatim", got)
 	}
 	// The bodies HistoryEntries reports must be exactly what those helpers see.
-	entries := HistoryEntries(sample)
+	entries := HistoryEntries(testDef, sample)
 	if len(entries) != 6 {
 		t.Fatalf("HistoryEntries(sample) = %d entries, want 6", len(entries))
 	}
-	if entries[len(entries)-1].Text != MergeLine(sample) {
+	if entries[len(entries)-1].Text != MergeLine(testDef, sample) {
 		t.Errorf("last entry text %q != MergeLine %q — body group moved",
-			entries[len(entries)-1].Text, MergeLine(sample))
+			entries[len(entries)-1].Text, MergeLine(testDef, sample))
 	}
 	for _, e := range entries {
 		if e.Date != "2026-07-23" {
@@ -743,7 +724,7 @@ unindented prose must not fold
 
 - 2026-07-24 — TO DO → READY: second entry
 `
-	got := HistoryEntries(doc)
+	got := HistoryEntries(testDef, doc)
 	want := []HistoryEntry{
 		{Date: "2026-07-23", Text: "created (TO DO). source: test wrapped tail", Kind: HistoryCreated},
 		{Date: "2026-07-24", Text: "TO DO → READY: second entry", Kind: HistoryTransition, Target: "READY"},
