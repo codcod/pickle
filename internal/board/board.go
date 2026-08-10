@@ -9,12 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -22,23 +22,6 @@ import (
 var impactRank = map[string]int{
 	"low": 1, "low-medium": 2, "medium": 3, "medium-high": 4,
 	"high": 5, "high-critical": 6, "critical": 7,
-}
-
-// boardOrder is the fixed order the status sections are rendered in (active
-// work first), by status display name.
-var boardOrder = []string{
-	"IN DEVELOPMENT", "IN REVIEW", "REWORK", "READY", "TO DO", "DONE", "DROPPED",
-}
-
-// sectionHeading is the canonical `## ` heading text per status.
-var sectionHeading = map[string]string{
-	"IN DEVELOPMENT": "IN DEVELOPMENT",
-	"IN REVIEW":      "IN REVIEW",
-	"REWORK":         "REWORK",
-	"READY":          "READY (impact order, per child)",
-	"TO DO":          "TO DO (impact order, per child)",
-	"DONE":           "DONE",
-	"DROPPED":        "DROPPED",
 }
 
 // Row is one ticket listed on the board.
@@ -56,22 +39,23 @@ var rowRE = regexp.MustCompile(`^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|`)
 // match first) and the current `### <child>` sub-heading. This is read-only
 // membership parsing for the sync drift summary — cell contents are never read
 // back (they are sanitised one-way at render time).
-func Parse(path string) ([]Row, error) {
+func Parse(def *flow.Definition, path string) ([]Row, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	return ParseText(string(data)), nil
+	return ParseText(def, string(data)), nil
 }
 
 // ParseText is Parse's underlying scan over an in-memory string, so a freshly
 // rendered board (which never touches disk) can be parsed the same way as one
 // read from BOARD.md — the one caller today is Compare, comparing a render
 // against the file without a temp file in between.
-func ParseText(text string) []Row {
+func ParseText(def *flow.Definition, text string) []Row {
 	// Status names longest-first so a prefix name can't shadow a longer one.
-	names := make([]string, len(ticket.Statuses))
-	for i, s := range ticket.Statuses {
+	states := def.States()
+	names := make([]string, len(states))
+	for i, s := range states {
 		names[i] = s.Name
 	}
 	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })
@@ -105,23 +89,29 @@ func ParseText(text string) []Row {
 	return rows
 }
 
-// SectionColumns is the ordered column list for a status section's table. It
-// returns nil for an unknown section name. There is deliberately no `branch`
-// column: the real branch lives in the ticket's plan and History (D2).
-func SectionColumns(statusName string) []string {
-	switch statusName {
-	case "TO DO", "READY":
+// ColumnsFor is the ordered column list for a board column profile. There is
+// deliberately no `branch` column: the real branch lives in the ticket's plan
+// and History (D2).
+//
+// Every flow.ColumnProfile flow.go defines has a case here — an unrecognised
+// profile falls back to the Active set rather than returning nil (T-080): a
+// nil return once meant a new status rendered a headerless table, which is
+// the exact hazard a flow adding a state must not be able to trigger.
+func ColumnsFor(profile flow.ColumnProfile) []string {
+	switch profile {
+	case flow.ColumnsBacklog:
 		return []string{"id", "title", "impact", "complexity", "cost", "depends-on", "family"}
-	case "IN DEVELOPMENT", "IN REVIEW":
-		return []string{"id", "title", "depends-on"}
-	case "REWORK":
+	case flow.ColumnsRework:
 		return []string{"id", "title", "open findings"}
-	case "DONE":
+	case flow.ColumnsDone:
 		return []string{"id", "title", "merged"}
-	case "DROPPED":
+	case flow.ColumnsDropped:
 		return []string{"id", "title", "reason"}
+	case flow.ColumnsActive:
+		return []string{"id", "title", "depends-on"}
+	default:
+		return []string{"id", "title", "depends-on"}
 	}
-	return nil
 }
 
 var cellBreakRE = regexp.MustCompile(`[\r\n]+`)
@@ -178,7 +168,7 @@ func separatorRow(cols []string) string {
 
 // cellFor derives one cell's value from the ticket itself — never from a
 // previous board (D3: terminal cells come from History; D2: no branch cell).
-func cellFor(t *ticket.Ticket, col string) string {
+func cellFor(def *flow.Definition, t *ticket.Ticket, col string) string {
 	switch col {
 	case "id":
 		return t.ID
@@ -191,62 +181,48 @@ func cellFor(t *ticket.Ticket, col string) string {
 	case "family":
 		return t.Front["family"] // empty for an umbrella or a loose ticket
 	case "merged":
-		if m := ticket.MergeLine(t.Text); m != "" {
+		if m := ticket.MergeLine(def, t.Text); m != "" {
 			return "yes — " + m
 		}
 		return "no — publish-gated"
 	case "reason", "open findings":
-		return ticket.LastHistoryReason(t.Text)
+		return ticket.LastHistoryReason(def, t.Text)
 	}
 	return ""
 }
 
-func renderRow(t *ticket.Ticket, cols []string) string {
+func renderRow(def *flow.Definition, t *ticket.Ticket, cols []string) string {
 	cells := make([]string, len(cols))
 	for i, c := range cols {
-		cells[i] = sanitizeCell(cellFor(t, c))
+		cells[i] = sanitizeCell(cellFor(def, t, c))
 	}
 	return "| " + strings.Join(cells, " | ") + " |"
 }
 
-// StatusOrder returns the fixed order the board renders its status sections in
-// (active work first). It is a copy: the dashboard (internal/serve) walks the
-// same order so the two views can never disagree, and a caller must not be able
-// to reorder the board by mutating the slice it was handed.
-func StatusOrder() []string {
-	return slices.Clone(boardOrder)
-}
-
-// WIP is one child-project's live work-in-progress tally.
-type WIP struct {
-	InDevelopment int
-	InReview      int
-}
-
-// WIPCounts tallies in-development/in-review tickets per project name, as the
-// name is written in the ticket's frontmatter — unregistered names included, so
-// the audit can report them; tickets with no project are skipped.
+// WIPCounts tallies, per child-project name (as written in the ticket's
+// frontmatter — unregistered names included, so the audit can report them;
+// tickets with no project are skipped), how many tickets sit in each of def's
+// WIP-limited states, keyed by that state's directory.
 //
-// It is the single tally behind the board's `(n/limit)` sub-headings, the audit's
-// WIP-limit check, and the dashboard's WIP badges. Three independent counts of
-// the same thing is three chances to disagree about whether a limit is breached.
-func WIPCounts(tickets []*ticket.Ticket) map[string]WIP {
-	counts := map[string]WIP{}
+// It is the single tally behind the board's `(n/limit)` sub-headings, the
+// audit's WIP-limit check, and the dashboard's WIP badges. Three independent
+// counts of the same thing is three chances to disagree about whether a limit
+// is breached.
+func WIPCounts(def *flow.Definition, tickets []*ticket.Ticket) map[string]map[string]int {
+	wipDirs := make(map[string]bool)
+	for _, s := range def.WIPStates() {
+		wipDirs[s.Dir] = true
+	}
+	counts := map[string]map[string]int{}
 	for _, t := range tickets {
 		p := t.Project()
-		if p == "" {
-			continue
-		}
-		c := counts[p]
-		switch t.Dir {
-		case "3-in-development":
-			c.InDevelopment++
-		case "4-in-review":
-			c.InReview++
-		default:
+		if p == "" || !wipDirs[t.Dir] {
 			continue // not WIP; do not create an empty entry for it
 		}
-		counts[p] = c
+		if counts[p] == nil {
+			counts[p] = map[string]int{}
+		}
+		counts[p][t.Dir]++
 	}
 	return counts
 }
@@ -261,8 +237,8 @@ func WIPCounts(tickets []*ticket.Ticket) map[string]WIP {
 // resolve a member's umbrella (which may live in another status section, so it is
 // not necessarily in `group`). Other sections ignore it, and callers may pass nil
 // for them.
-func Sort(group []*ticket.Ticket, name string, byID map[string]*ticket.Ticket) {
-	byImpact := name == "TO DO" || name == "READY"
+func Sort(group []*ticket.Ticket, st flow.State, byID map[string]*ticket.Ticket) {
+	byImpact := st.ImpactOrder
 	sort.SliceStable(group, func(i, j int) bool {
 		a, b := group[i], group[j]
 		if byImpact {
@@ -330,7 +306,7 @@ func famRank(t *ticket.Ticket, byID map[string]*ticket.Ticket) int {
 // lines, `Last updated: <date>`, then the seven status sections, each child
 // sub-grouped with WIP counts computed at render time. Every DONE/DROPPED
 // ticket is always rendered (D4 — no aging).
-func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
+func Render(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config, date string) string {
 	lines := []string{
 		"<!-- generated by pickle — do not edit; run pickle board sync -->",
 		"",
@@ -342,19 +318,26 @@ func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
 		"",
 		"**WIP limits (per child-project):**",
 	}
+	wipStates := def.WIPStates()
 	for _, p := range cfg.Projects {
-		lines = append(lines, fmt.Sprintf("- `%s`: `3-in-development/` ≤ %d · `4-in-review/` ≤ %d",
-			p.Name, p.WIPInDevelopment, p.WIPInReview))
+		var parts []string
+		for _, s := range wipStates {
+			limit, ok := p.WIPLimitFor(s.WIPKey)
+			if !ok {
+				continue
+			}
+			parts = append(parts, fmt.Sprintf("`%s/` ≤ %d", s.Dir, limit))
+		}
+		lines = append(lines, fmt.Sprintf("- `%s`: %s", p.Name, strings.Join(parts, " · ")))
 	}
 	lines = append(lines, "", "Last updated: "+date)
 
-	wip := WIPCounts(tickets)
+	wip := WIPCounts(def, tickets)
 	byID := ticketsByID(tickets)
-	for _, name := range boardOrder {
-		st, _ := ticket.StatusByName(name)
-		lines = append(lines, "", "## "+sectionHeading[name])
+	for _, st := range def.BoardStates() {
+		lines = append(lines, "", "## "+st.Heading)
 
-		cols := SectionColumns(name)
+		cols := ColumnsFor(st.Columns)
 		for _, p := range cfg.Projects {
 			var group []*ticket.Ticket
 			for _, t := range tickets {
@@ -362,17 +345,17 @@ func Render(tickets []*ticket.Ticket, cfg *config.Config, date string) string {
 					group = append(group, t)
 				}
 			}
-			Sort(group, name, byID)
+			Sort(group, st, byID)
 
 			sub := "### " + p.Name
-			if name == "IN DEVELOPMENT" {
-				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, wip[p.Name].InDevelopment, p.WIPInDevelopment)
-			} else if name == "IN REVIEW" {
-				sub = fmt.Sprintf("### %s (%d/%d)", p.Name, wip[p.Name].InReview, p.WIPInReview)
+			if st.WIPKey != "" {
+				if limit, ok := p.WIPLimitFor(st.WIPKey); ok {
+					sub = fmt.Sprintf("### %s (%d/%d)", p.Name, wip[p.Name][st.Dir], limit)
+				}
 			}
 			lines = append(lines, "", sub, "", headerRow(cols), separatorRow(cols))
 			for _, t := range group {
-				lines = append(lines, renderRow(t, cols))
+				lines = append(lines, renderRow(def, t, cols))
 			}
 		}
 	}
@@ -437,16 +420,16 @@ func rowKey(r Row) string {
 // is telling a reader something the tickets do not support (DriftRows, an
 // error). The distinction is about *harm*, not cause: nothing here can tell
 // a hand-edit apart from a renderer change, and it does not try to.
-func Compare(current, fresh string) Drift {
+func Compare(def *flow.Definition, current, fresh string) Drift {
 	if NormalizeLastUpdated(current) == NormalizeLastUpdated(fresh) {
 		return DriftNone
 	}
 	curCounts := map[string]int{}
-	for _, r := range ParseText(current) {
+	for _, r := range ParseText(def, current) {
 		curCounts[rowKey(r)]++
 	}
 	freshCounts := map[string]int{}
-	for _, r := range ParseText(fresh) {
+	for _, r := range ParseText(def, fresh) {
 		freshCounts[rowKey(r)]++
 	}
 	if len(curCounts) != len(freshCounts) {
@@ -464,12 +447,12 @@ func Compare(current, fresh string) Drift {
 // the one write path `ticket new`, `ticket move` and `board sync` all share.
 // It refuses to render over structural load problems rather than generating a
 // board that silently omits the unloadable tickets.
-func Regenerate(root string, cfg *config.Config) error {
-	tickets, issues := ticket.LoadAll(root)
+func Regenerate(def *flow.Definition, root string, cfg *config.Config) error {
+	tickets, issues := ticket.LoadAll(def, root)
 	if len(issues) > 0 {
 		return fmt.Errorf("cannot regenerate the board while tickets have load problems: %s",
 			strings.Join(issues, "; "))
 	}
-	text := Render(tickets, cfg, time.Now().Format("2006-01-02"))
+	text := Render(def, tickets, cfg, time.Now().Format("2006-01-02"))
 	return os.WriteFile(filepath.Join(root, "tickets", "BOARD.md"), []byte(text), 0o644)
 }
