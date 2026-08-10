@@ -423,3 +423,4 @@ the READY queue is empty. Nothing downstream to patch.
   multi-byte runes, invalid UTF-8); 5 non-blocking (2 fixed inline, 3 noted)
 - 2026-08-10 — REWORK → IN REVIEW: F1 fixed: rune-decoding scan closes the byte-widened IsSpace gap
 - 2026-08-10 — IN REVIEW → DONE: scoped re-review: F1 resolved, no blocking findings; F7 fixed inline
+- 2026-08-10 — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept

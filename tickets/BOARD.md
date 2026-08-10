@@ -117,7 +117,7 @@ Last updated: 2026-08-10
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
 | T-087 | release CI: make the user-manual build visible and testable without cutting a release | yes — merged to main (PR #25, 084ff7e) |
 | T-089 | Record a commit reference alongside the merge History line | no — publish-gated |
-| T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | no — publish-gated |
+| T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | yes — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept |
 
 ## DROPPED
 
