@@ -3,6 +3,9 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/codcod/pickle/internal/flow"
 )
 
 // runFlow dispatches `pickle flow <show|list>`. Both subcommands take no
@@ -44,10 +47,12 @@ func runFlowList(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: pickle flow list")
 		return exitUsage
 	}
-	cfg, code := loadConfig()
-	if code != exitOK {
+	// loadConfig's only job here is preserving the pre-T-080 error surface:
+	// `flow list`, like `flow show`, only runs inside a project with a valid
+	// pickle.toml. What it prints now comes from the flow registry, not cfg.
+	if _, code := loadConfig(); code != exitOK {
 		return code
 	}
-	fmt.Println(cfg.FlowName())
+	fmt.Println(strings.Join(flow.Names(), "\n"))
 	return exitOK
 }

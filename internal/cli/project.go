@@ -11,6 +11,7 @@ import (
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/ticket"
 	"github.com/codcod/pickle/internal/vcs"
@@ -122,7 +123,7 @@ func runProjectAdd(args []string) int {
 // `pickle board sync` as the next step, the same restraint refreshMarkers
 // documents for its own failure mode.
 func regenerateBoard(cfg *config.Config) {
-	if err := board.Regenerate(cfg.Root(), cfg); err != nil {
+	if err := board.Regenerate(flow.ForName(cfg.FlowName()), cfg.Root(), cfg); err != nil {
 		fmt.Printf("note: could not regenerate the board (%v) — run pickle board sync\n", err)
 		return
 	}
@@ -202,7 +203,7 @@ func runProjectRemove(args []string) int {
 	if _, ok := cfg.Project(name); !ok {
 		return errf("project %q is not registered", name)
 	}
-	if live := liveTicketsTargeting(cfg.Root(), name); len(live) > 0 {
+	if live := liveTicketsTargeting(cfg, name); len(live) > 0 {
 		return errf("refusing to remove %q: %d live ticket(s) target it: %s",
 			name, len(live), strings.Join(live, ", "))
 	}
@@ -230,11 +231,12 @@ func dash(s string) string {
 // liveTicketsTargeting returns the ids of tickets in a non-terminal status dir
 // whose project: frontmatter is name. It reuses the shared loader so the
 // frontmatter scan lives in exactly one place (internal/ticket).
-func liveTicketsTargeting(root, name string) []string {
-	tickets, _ := ticket.LoadAll(root)
+func liveTicketsTargeting(cfg *config.Config, name string) []string {
+	def := flow.ForName(cfg.FlowName())
+	tickets, _ := ticket.LoadAll(def, cfg.Root())
 	var hits []string
 	for _, t := range tickets {
-		if st, ok := ticket.StatusByDir(t.Dir); ok && st.Terminal {
+		if st, ok := def.ByDir(t.Dir); ok && st.Terminal {
 			continue
 		}
 		if t.Project() == name {

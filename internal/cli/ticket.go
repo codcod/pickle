@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/codcod/pickle/internal/board"
+	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/move"
 	"github.com/codcod/pickle/internal/ticket"
 )
@@ -127,10 +128,11 @@ func runTicketNew(args []string) int {
 	}
 
 	root := cfg.Root()
+	def := flow.ForName(cfg.FlowName())
 	prefix := cp.Prefix()
-	id := fmt.Sprintf("%s-%03d", prefix, ticket.NextNum(root, prefix))
+	id := fmt.Sprintf("%s-%03d", prefix, ticket.NextNum(def, root, prefix))
 	slug := ticket.Slugify(title)
-	rel := filepath.Join("tickets", "1-to-do", id+"-"+slug+".md")
+	rel := filepath.Join("tickets", def.Initial().Dir, id+"-"+slug+".md")
 	path := filepath.Join(root, rel)
 	if _, err := os.Stat(path); err == nil {
 		return errf("%s already exists", rel)
@@ -141,7 +143,7 @@ func runTicketNew(args []string) int {
 	if err := os.WriteFile(path, []byte(ticket.Scaffold(id, title, *project, *impact, *complexity, *cost, lineage, fam)), 0o644); err != nil {
 		return errf("%v", err)
 	}
-	if err := board.Regenerate(root, cfg); err != nil {
+	if err := board.Regenerate(def, root, cfg); err != nil {
 		return errf("%v", err)
 	}
 	fmt.Printf("created %s  (%s)\n", id, rel)
