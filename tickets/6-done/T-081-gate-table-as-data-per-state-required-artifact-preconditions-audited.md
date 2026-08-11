@@ -730,3 +730,4 @@ a historical grading precedent, unaffected.
 - 2026-08-11 — IN REVIEW → REWORK: 3 blocking findings: audit remedy names an illegal transition (B1), lifecycle.adoc contradicts the 1-to-do escape hatch (B2), migration blast radius undocumented (B3)
 - 2026-08-11 — REWORK → IN REVIEW: findings fixed: B1 (audit remedy), B2 (lifecycle.adoc escape hatch), B3 (upgrade/install blast radius documented)
 - 2026-08-11 — IN REVIEW → DONE: scoped re-review — B1, B2 and B3 all verified resolved live in a throwaway install; 4 new non-blocking findings, 2 fixed inline (R1: the B3 fix wrongly claimed this migration is the only one of the four that fails `upgrade`/`install` — all four do; R2: `1-to-do/` scoped to non-terminal), 2 noted (R3, R4), 0 new tickets. Impact sweep concluded: T-085's coupling note patched
+- 2026-08-11 — merged to main (PR #30, 904e460, https://github.com/codcod/pickle/commit/904e460); merge commit, 8 commits kept
