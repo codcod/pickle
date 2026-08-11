@@ -20,11 +20,10 @@ Last updated: 2026-08-11
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-081 | gate table as data: per-state required-artifact preconditions, audited | [T-080] |
 
 ## REWORK
 
@@ -112,6 +111,7 @@ Last updated: 2026-08-11
 | T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | yes — merged to main (PR #19, 236d859), squashed |
 | T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | yes — MERGED: feat/T-073-introduce-brine-name (squashed) → main (7b33876, #18), user-approved; branch deleted |
 | T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | yes — merged to main (PR #28, e214ee3, https://github.com/codcod/pickle/commit/e214ee3); merge commit, 15 commits kept |
+| T-081 | gate table as data: per-state required-artifact preconditions, audited | no — publish-gated |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |

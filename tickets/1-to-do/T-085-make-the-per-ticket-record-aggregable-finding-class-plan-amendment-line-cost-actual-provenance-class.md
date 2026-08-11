@@ -103,8 +103,14 @@ Soft couplings (no `depends-on:`, no ordering enforced):
   and History*, for a reader counting across tickets. Both add a per-ticket field and both
   contemplate a `board audit` warning for its absence, so they should be sequenced, not merged.
   T-083's "11 justifications in `NOTES.md`, 0 in tickets" measurement is item 4's evidence too.
-- **T-081** (gate table as data) — its unit is *"a `##` section (and its non-emptiness)"*, which
-  is what a presence check for the `class` column or the `Disposition summary` line would need.
+- **T-081** (gate table as data, **shipped 2026-08-11**) — its unit is a `##` section **plus** an
+  optional normalised `###` sub-heading stem inside it, each required present with a non-empty
+  body (`flow.Requirement`, per-status `State.Requires`, evaluated by `ticket.GateViolations`).
+  That is a strictly stronger substrate than the *"a `##` section (and its non-emptiness)"* this
+  note originally recorded: a presence check for the `class` column or the `Disposition summary`
+  line would hang off the same table, at either `Severity`. What T-081 does **not** model is a
+  per-*line* requirement inside a section, which is exactly the shape both of those checks need —
+  so this ticket either adds that row kind or keeps its own check.
   Recorded as a coupling only: the 2026-08-04 precedent refuses to credit **prospective** demand
   when grading, and T-083 already declined this same bump on that basis. **The rule cuts both
   ways — do not re-grade T-081 for this.**
@@ -124,3 +130,4 @@ Soft couplings (no `depends-on:`, no ordering enforced):
 - 2026-08-07 — created (TO DO). source: chat — "how can pickle learn from itself" exploration;
   scoped down from a five-part proposal to the four capture items after the retrieval half was
   split out and the mechanism half was noted-not-filed (`NOTES.md`, 2026-08-07)
+- 2026-08-11 — patched by T-081's review impact sweep (step 8): T-081 shipped, so the soft-coupling note now records the substrate as built — a `##` section plus a normalised `###` stem, per-status data at either severity — instead of the weaker unit assumed at filing. The gap this ticket must still close is named: T-081 models no per-*line* requirement, which is what a `class` column or `Disposition summary` presence check needs. Assumption strengthened, not invalidated; nothing re-graded, per this ticket's own standing instruction
