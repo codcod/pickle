@@ -171,7 +171,10 @@ reason — the reason renders into the board's DROPPED/REWORK cell):
   broken, but the plan itself still holds. Note in History whether the `feat/` branch was
   kept or discarded.
 - `2-ready/ → 1-to-do/` — the READY gate no longer holds (e.g. an impact sweep invalidated
-  the plan's assumptions). The Implementation Plan is stale until re-refined.
+  the plan's assumptions). The Implementation Plan is stale until re-refined. This is also the
+  documented escape hatch when `pickle ticket move` refuses a forward move because the gate
+  table (§4) finds a required step missing — `1-to-do/` is the one state that asks nothing of
+  the Implementation Plan.
 - `→ 7-dropped/` — freely from `1-to-do/`/`2-ready/`; from `3-in-development/`,
   `4-in-review/`, or `5-rework/` **only with explicit user sign-off**. Always record the
   reason.
@@ -295,6 +298,19 @@ every item below:
 
 Until all seven hold, the ticket stays in `1-to-do/`.
 
+**All seven are mechanically checked, not only judged.** Each is a required `### ` heading
+inside `## Implementation Plan` (`pickle`'s own `skill/resources/TEMPLATE.md` ships exactly
+these seven), and `pickle ticket move T-NNN ready` **refuses** the move outright when one is
+missing or empty — the same table `board audit` re-checks on every ticket already past the gate
+(an unmet item there is an **error**, not only a warning, since a ticket sitting in READY or
+later with an incomplete plan is a broken invariant). Refusal is the plan's own escape hatch:
+fix the missing heading, or move the ticket back to `1-to-do/` (above) until it is ready to be
+refined again. **The check is structural, not a judgement of quality**: it proves a named step
+is *present and non-empty*, never that it is *good* — a heading with garbage under it still
+passes. Whether the plan's *content* is actually sound (open decisions pinned down, tasks
+concrete, the acceptance test real) stays the agent's call, exactly as before; only its
+*completeness as a document* is now enforced.
+
 ## 5. Findings — severity, then disposition
 
 Trigger: **"validate ticket T-NNN"** (or **"review ticket T-NNN"** — synonyms). Runs the
@@ -382,9 +398,15 @@ copy): frontmatter (id, title, **project**, depends-on, spawned-by, grading) +
 descriptive, not evaluative; it states no worth claim and gates nothing) + `## Description`
 (current spec) + `## Implementation Plan` (empty until refined; the READY-gated executable
 prompt) + `## Review` (empty until reviewed) + `## History` (append-only, dated, newest last).
-`pickle board audit` warns — never errors, never gates a move — when a non-terminal ticket's
-`## Outcome` is absent, empty, or still the template placeholder (T-083); `6-done/` and
-`7-dropped/` are permanent archives and are never checked.
+
+Every status a ticket can sit in declares, as data, which of these sections (and — for the
+READY gate, §4 — which `### ` sub-headings inside `## Implementation Plan`) it requires, each
+marked either **blocking** (an unmet one refuses the move, and is an *error* for a ticket
+already sitting past the gate) or **advisory** (never refuses; always just a warning).
+`## Outcome` is the advisory row every non-terminal status carries: `pickle board audit` warns
+— never errors, never gates a move — when it is absent, empty, or still the template
+placeholder (T-083). `6-done/` and `7-dropped/` are permanent archives: neither status requires
+anything, so nothing about an archived ticket is ever checked, or warned about, again.
 
 ## 8. How work enters the project (the only pipeline)
 

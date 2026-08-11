@@ -107,7 +107,12 @@ WIP limits, and an optional per-child review addendum. Defaults:
   `depends-on:` to express it.
 - **READY gate.** A ticket is READY only when its `## Implementation Plan` is a complete,
   self-contained prompt: feature branch (in the child), prerequisites, confirmed decisions,
-  concrete tasks, a runnable acceptance test, a docs step, and a finish step.
+  concrete tasks, a runnable acceptance test, a docs step, and a finish step. **All seven are
+  mechanically checked**, as a required `### ` heading inside the plan with a non-empty body:
+  `pickle ticket move T-NNN ready` refuses the move when one is missing, and `board audit`
+  errors on a ticket already past the gate with one still missing. The check is structural
+  only — it proves a step is present, never that it is *good* — so the plan's actual soundness
+  is still the agent's call.
 - **Findings — severity, then disposition.** A review gives every finding a severity (blocking →
   `5-rework/` for a scoped fix; non-blocking → the ticket proceeds) and every non-blocking
   finding exactly one of **four dispositions** defined in rules §5, recorded in the ticket's
@@ -166,7 +171,11 @@ When asked to refine ticket T-NNN (or "make it ready"):
 3. **Surface open decisions to the user** — anything ambiguous the plan must pin down.
 4. **Write the Implementation Plan** against the READY gate (rules §4): feature branch (in the
    child's repo), prerequisite gate, confirmed decisions, concrete tasks with exact paths,
-   runnable acceptance test, docs step, finish step.
+   runnable acceptance test, docs step, finish step. Use the `### ` headings
+   `resources/TEMPLATE.md` prescribes for each — `pickle ticket move … ready` now refuses the
+   move outright if one is missing or empty (rules §4), so expect the refusal to work *for*
+   refinement, not around it, and treat it as the signal a step still needs writing rather than
+   something to route around.
 5. **Split only what is independently schedulable** (rules §3). Refinement is a spawn gate like
    any other: a part becomes its own ticket only if it could be picked up, built and reviewed
    alone *and* someone would choose to. Otherwise it stays a task in this plan — six tasks are
@@ -278,9 +287,13 @@ itself (but lineage never gates); all seven status directories exist (a missing 
 error, an empty one with no `.gitkeep` a warning); per-child WIP limits hold; each ticket's
 last History transition matches its directory (and an over-long transition/merge line warns);
 in-development tickets have all dependencies done (warning if a done dependency has no
-`merged` History line); and a non-terminal ticket's `## Outcome` section is present and not a
-placeholder (a warning only, never a gate — `6-done/`/`7-dropped/` are exempt, T-083). Fix
-every error it reports — an error is a broken invariant, not a judgement call.
+`merged` History line); and every status's own **gate table** (rules §4/§7) holds — each
+required section or `### ` sub-heading present with a non-empty body. A **blocking** row unmet
+(the READY-gate plan and its seven steps, `## Review` on `5-rework/`) is an *error*; an
+**advisory** row unmet (`## Outcome`, T-083) is only ever a *warning*. Neither checks content
+quality, only structural presence; `6-done/`/`7-dropped/` require nothing and are therefore
+never flagged. Fix every error it reports — an error is a broken invariant, not a judgement
+call.
 
 ## Notes
 

@@ -76,8 +76,9 @@ merge request — **merging is always the human's.**
 ### Prerequisite gate (hard)
 
 <Any preconditions that must hold before starting — merged branches, clean tree, other tickets
-in `6-done/` and merged in their child (should already be reflected in `depends-on:`). Delete
-if none.>
+in `6-done/` and merged in their child (should already be reflected in `depends-on:`). Keep this
+heading and write "none" if there are none — rules §4 checks that the heading is present with a
+non-empty body, so deleting it fails that check instead of satisfying it.>
 
 ### Confirmed design decisions (do not deviate without asking)
 
@@ -100,8 +101,9 @@ A reviewer must be able to re-run these verbatim.>
 
 ### Docs update (mandatory when user-facing)
 
-<Which docs to add/update and where to register them. Delete if the ticket ships no
-user-facing surface.>
+<Which docs to add/update and where to register them. Keep this heading and write "no
+user-facing surface" if it ships none — rules §4 checks that the heading is present with a
+non-empty body, so deleting it fails that check instead of satisfying it.>
 
 ### Finish (mandatory)
 
