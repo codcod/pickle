@@ -46,11 +46,17 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   `ticket.SubsectionMissing` and `ticket.GateViolations` for evaluating a status's whole table.
   **Upgrade note:** a ticket already sitting in `2-ready/` … `5-rework/` whose Implementation
   Plan predates the seven-heading gate now reports a **blocking** `board audit` error until the
-  missing heading is written (even "none" satisfies a Prerequisite gate/Docs update row) or the
-  ticket is moved back to `1-to-do/`. Note that `board sync` will usually *not* surface this: it
-  only re-runs its own audit self-check when it actually rewrites `BOARD.md`, and nothing in a
-  ticket's plan body feeds any board column — run `board audit` directly. There is no migration
-  flag — see the user manual's `board audit` NOTE for detail.
+  missing heading is written (even "none" satisfies a Prerequisite gate/Docs update row); from
+  `2-ready/` specifically, moving the ticket back to `1-to-do/` also clears it, but no single
+  move does from `3-in-development/`, `4-in-review/` or `5-rework/`, so writing the heading in
+  place is the only way out there. This is the one migration note in this release that can make
+  **`pickle upgrade` and `pickle install` themselves fail** (both run this same audit self-check
+  and exit non-zero on it), and it makes every subsequent `ticket move` — even of an unaffected
+  ticket — report a post-move audit error too, until the offending ticket is fixed. Note that
+  `board sync` will usually *not* surface this on its own: it only re-runs its own audit
+  self-check when it actually rewrites `BOARD.md`, and nothing in a ticket's plan body feeds any
+  board column — run `board audit` directly, before upgrading, to find every affected ticket.
+  There is no migration flag — see the user manual's `board audit` NOTE for detail.
 
 - **The merge History line can now carry a commit reference** (T-089).
   `merged to <base> (<MR ref>)` stays free text — no new parser, no new ticket field — but the

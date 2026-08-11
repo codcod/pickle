@@ -590,23 +590,35 @@ Re-run `pickle install` (idempotent; it only creates what is missing) to
 restore the directory and its `.gitkeep`, then re-run `pickle upgrade` or
 `pickle board audit`.
 
-The gate table's blocking rows have the same upgrade-visible shape a third
-time, and this one is new: a ticket already sitting in `2-ready/` …
-`5-rework/` whose Implementation Plan predates the table — missing one of the
-seven READY-gate `### ` headings, or the section itself — now reports a
-blocking *error* it never did before, from `pickle board audit` directly.
-**`pickle board sync` will usually *not* surface it**: `board sync` only
-re-runs the audit self-check when it actually rewrites `BOARD.md` (a row or
-the generated layout was stale), and nothing about a ticket's
+The gate table's blocking rows have the same upgrade-visible shape a fourth
+time, and this one differs from the other three in its reach: it is the only
+one that can make **`pickle upgrade` and `pickle install` themselves fail**,
+not only `board audit`. Both run this same post-operation audit self-check
+and exit non-zero when it reports an error (the install/upgrade itself
+still completes — the self-check's exit code is what reports the pre-existing
+violation), so one legacy ticket in `2-ready/` … `5-rework/` whose
+Implementation Plan predates the table — missing one of the seven
+READY-gate `### ` headings, or the section itself — turns an otherwise
+unrelated upgrade or fresh install into a reported failure. The same is true
+of `pickle ticket move`: once one such ticket exists anywhere in the tree,
+*every* subsequent move — even of a different, unaffected ticket — reports
+"move applied but board audit now reports N error(s)" from its own post-move
+self-check (the move itself still lands; nothing rolls back).
+**`pickle board sync` will usually *not* surface it** on its own: `sync`
+only re-runs the audit self-check when it actually rewrites `BOARD.md` (a row
+or the generated layout was stale), and nothing about a ticket's
 `## Implementation Plan` body feeds any board column — so a gate-table
 violation confined to the plan typically leaves the board itself unchanged,
-and `sync` reports "already in sync" with no error at all. Run `board audit`
-directly (or attempt the `ticket move` that first surfaces it) rather than
-relying on `sync` to catch this class of error. There is no migration flag
-and nothing to grandfather: write the missing heading (it need only say what
-the ticket's own plan actually does — even "none" satisfies a Prerequisite
-gate or Docs update row), or move the ticket back to `1-to-do/` (its only
-requirement is `## Outcome`) until the plan is complete.
+and `sync` reports "already in sync" with no error at all. Run
+`pickle board audit` directly, **before** upgrading, to find every ticket the
+migration affects. There is no migration flag and nothing to grandfather:
+write the missing heading (it need only say what the ticket's own plan
+actually does — even "none" satisfies a Prerequisite gate or Docs update
+row). From `2-ready/` specifically, moving the ticket back to `1-to-do/`
+(whose only requirement is `## Outcome`) also clears it; from
+`3-in-development/`, `4-in-review/` or `5-rework/` no single move does
+(brine's transition table gives none of them a legal move to a state without
+the same requirement), so writing the heading in place is the only way out.
 ====
 
 [#cmd-board-sync]
