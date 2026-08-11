@@ -52,9 +52,10 @@ All seven are *mechanically checked*. Each must appear as a required `### `
 heading inside `## Implementation Plan`, with a non-empty body. `pickle
 ticket move <T-NNN> ready` refuses the move when one is missing, and `pickle
 board audit` errors on a ticket already sitting past READY with one still
-missing. `1-to-do/` is the one status the plan rows never apply to — from
-`2-ready/`, moving a ticket back there always clears the gate, whatever
-state the plan is in. The check is structural only — it proves a step is
+missing. `1-to-do/` is the one *non-terminal* status the plan rows never
+apply to — from `2-ready/`, moving a ticket back there always clears the
+gate, whatever state the plan is in. (`6-done/` and `7-dropped/` require
+nothing at all, so an archived ticket is never flagged, however incomplete.) The check is structural only — it proves a step is
 present, never that it says something *good* — so judging whether the
 plan's content actually holds up is still the reviewing agent's job.
 

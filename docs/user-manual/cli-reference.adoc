@@ -591,15 +591,18 @@ restore the directory and its `.gitkeep`, then re-run `pickle upgrade` or
 `pickle board audit`.
 
 The gate table's blocking rows have the same upgrade-visible shape a fourth
-time, and this one differs from the other three in its reach: it is the only
-one that can make **`pickle upgrade` and `pickle install` themselves fail**,
-not only `board audit`. Both run this same post-operation audit self-check
+time. Like the other three it reports an *error*, and every one of the four
+therefore makes **`pickle upgrade` and `pickle install` themselves fail**,
+not only `board audit`: both run this same post-operation audit self-check
 and exit non-zero when it reports an error (the install/upgrade itself
 still completes — the self-check's exit code is what reports the pre-existing
-violation), so one legacy ticket in `2-ready/` … `5-rework/` whose
-Implementation Plan predates the table — missing one of the seven
-READY-gate `### ` headings, or the section itself — turns an otherwise
-unrelated upgrade or fresh install into a reported failure. The same is true
+violation). What differs here is the *fix*: the other three clear
+mechanically — one `pickle board sync`, one re-run of `pickle install`, one
+backfilled `spawned-by: []` line — while this one needs a heading written by
+hand into each affected ticket's plan. One legacy ticket in `2-ready/` …
+`5-rework/` whose Implementation Plan predates the table — missing one of the
+seven READY-gate `### ` headings, or the section itself — is enough to turn
+an otherwise unrelated upgrade or fresh install into a reported failure. The same is true
 of `pickle ticket move`: once one such ticket exists anywhere in the tree,
 *every* subsequent move — even of a different, unaffected ticket — reports
 "move applied but board audit now reports N error(s)" from its own post-move
