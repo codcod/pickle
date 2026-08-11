@@ -352,7 +352,9 @@ committed on `main`, never on this branch.**
   `<<cmd-ticket-move>>`, add the gate to the list of gates "enforced before anything is
   written"; extend the upgrade `NOTE` with the one-time migration (a ticket already in
   `2-ready/`…`5-rework/` whose plan predates the table reports errors until a heading is added or
-  the ticket is moved back), and say that `board sync` refuses while such an error stands.
+  the ticket is moved back), and say that `board sync` will usually *not* surface it — it only
+  re-runs its audit self-check when it rewrites `BOARD.md`, and a plan-only violation leaves the
+  board unchanged (verified during implementation; corrected from this task's original text).
 - `docs/user-manual/concepts/lifecycle.adoc`: mark which of the seven READY-gate items are
   mechanically checked and how (heading presence + non-empty body), and that `ticket move`
   refuses.
@@ -459,10 +461,15 @@ Run from the repo root, on the feature branch. Every command is re-runnable verb
    ./pk board sync
    ```
    **Expected: `board audit` exits non-zero with exactly one error naming `"### acceptance
-   test"` and both ways out; `board sync` refuses while that error stands** (the documented
-   migration consequence — a reviewer should see it, not discover it in the field). Confirm the
-   escape hatch works: `./pk ticket move T-001 to-do --reason "gate no longer holds"` succeeds
-   (`1-to-do` requires only `## Outcome`) and `./pk board audit` is back to 0 errors. Finally
+   test"` and both ways out.** **`board sync` reports "already in sync" and exits 0 — it does
+   *not* surface the error**, corrected during implementation from this step's original text
+   ("`board sync` refuses while that error stands"): `sync` only re-runs its own audit
+   self-check when it actually rewrites `BOARD.md`, and nothing in a ticket's plan body feeds
+   any board column, so a plan-only violation leaves the board unchanged and `sync` never
+   reaches that check. `board audit` is the command that surfaces this class of error; run it
+   directly rather than relying on `sync`. Confirm the escape hatch works:
+   `./pk ticket move T-001 to-do --reason "gate no longer holds"` succeeds (`1-to-do` requires
+   only `## Outcome`) and `./pk board audit` is back to 0 errors (1 warning). Finally
    `cd - && rm -rf "$D"`.
 
 ### Docs update (mandatory when user-facing)
@@ -541,3 +548,14 @@ No new manual page is registered.
   schedulable — the table, its evaluator and its two call sites ship or fail together
 - 2026-08-11 — TO DO → READY: plan complete
 - 2026-08-11 — READY → IN DEVELOPMENT: picked up
+- 2026-08-11 — amended during implementation (fixed inline): the acceptance test's step 4 and
+  Task 7's doc bullet both asserted "`board sync` refuses while [a gate-table] error stands" —
+  run verbatim against a throwaway install, this is false. `internal/sync.Sync` only re-runs its
+  post-write audit self-check when it actually rewrites `BOARD.md` (`res.Changed`); a violation
+  confined to a ticket's `## Implementation Plan` body feeds no board column, so the board stays
+  unchanged and sync returns `nil` without ever reaching that check — confirmed live: `board
+  sync` printed "already in sync", exit 0, while `board audit` still reported the error. Both
+  spots corrected to say `board audit` is the command that surfaces this class of error; no code
+  changed, no behaviour changed — only the plan's and the shipped docs' claim about existing
+  `internal/sync` behaviour. cli-reference.adoc and CHANGELOG.md carried the same wrong claim and
+  were corrected alongside.
