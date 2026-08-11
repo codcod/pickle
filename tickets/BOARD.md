@@ -20,10 +20,11 @@ Last updated: 2026-08-11
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-081 | gate table as data: per-state required-artifact preconditions, audited | [T-080] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-11
 
 | id | title | open findings |
 |---|---|---|
-| T-081 | gate table as data: per-state required-artifact preconditions, audited | 3 blocking findings: audit remedy names an illegal transition (B1), lifecycle.adoc contradicts the 1-to-do escape hatch… |
 
 ## READY (impact order, per child)
 

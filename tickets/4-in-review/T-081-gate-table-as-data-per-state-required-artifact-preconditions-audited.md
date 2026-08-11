@@ -582,6 +582,41 @@ B1, B2, B3 only, on `feat/T-081-gate-table`. Two of the three are prose; B1 is a
 plus its regression test. N4 and the readability note may be folded in, since they land in
 paragraphs B2/B3 already reopen. Nothing else.
 
+### Fixed (rework, 2026-08-11)
+
+- **B1** — `internal/audit.gateRemedy` (new) derives the "second way out" from `def.Allowed(dir)`,
+  naming a move only when a legal, non-terminal target exists whose own `Requires` carries no
+  Blocking row; otherwise it falls back to a generic "write it to satisfy the gate" remedy.
+  Verified live: a `4-in-review` ticket missing `### Acceptance test` now gets the generic form,
+  not the old "move it to 1-to-do" advice `ticket move` would refuse; a `2-ready` ticket in the
+  same shape still correctly gets "move the ticket back to 1-to-do", since that move *is* legal
+  from READY. New `TestGateRemedyOnlyNamesLegalNonBlockingTargets` (a property test over every
+  state in `flow.Default()`, so it keeps holding if brine's transitions change shape later) plus
+  a `TestAudit` table case pinning the in-review regression directly. Commit `053a68b`.
+- **B2** — `lifecycle.adoc`'s false claim ("errors … on one moved back to `1-to-do/`, since the
+  gate no longer holds there either") is corrected: `1-to-do/` requires only the advisory
+  `## Outcome` row, which is what makes it the escape hatch, and the escape hatch is now stated
+  as reachable specifically from `2-ready/` (matching B1's fix). Commit `2976701`.
+- **B3** — the `cli-reference.adoc` upgrade NOTE and the matching `CHANGELOG.md` entry now say
+  explicitly that this migration, unlike the other three upgrade-visible shapes in the same NOTE,
+  can make **`pickle upgrade` and `pickle install` themselves fail** (both run the same
+  post-operation audit self-check), and that every subsequent `ticket move` — even of an
+  unaffected ticket — reports a post-move audit error too until the offending ticket is fixed.
+  Both now tell the reader to run `board audit` before upgrading. Behaviour unchanged (decision
+  10: no grandfathering) — verified live with the same throwaway-install reproduction the finding
+  used, confirming the documented failure modes and the corrected remedy text together. Commit
+  `2976701`.
+- **N4** and the **readability suggestion** folded in alongside B2/B3 in the same commit, per the
+  rework scope note above: the NOTE's "a third time" → "a fourth time", and the reopened
+  `lifecycle.adoc` paragraph's dense sentence split in two.
+
+Acceptance test re-run verbatim end to end (throwaway install): refusal at `→ ready` unchanged;
+the positive path unchanged; stripping `### Acceptance test` from a `2-ready` ticket still gives
+the `1-to-do` remedy, from `4-in-review` now gives the generic remedy (B1, confirmed live); an
+unrelated `ticket move … dropped` still reports the pre-existing violation after applying (B3's
+documented, unchanged behaviour). `just build`/`test`/`lint`/`docs-check` and
+`go run . board audit` (`90 tickets, 0 error(s), 0 warning(s)`) all green.
+
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
@@ -634,3 +669,4 @@ paragraphs B2/B3 already reopen. Nothing else.
   were corrected alongside.
 - 2026-08-11 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-11 — IN REVIEW → REWORK: 3 blocking findings: audit remedy names an illegal transition (B1), lifecycle.adoc contradicts the 1-to-do escape hatch (B2), migration blast radius undocumented (B3)
+- 2026-08-11 — REWORK → IN REVIEW: findings fixed: B1 (audit remedy), B2 (lifecycle.adoc escape hatch), B3 (upgrade/install blast radius documented)
