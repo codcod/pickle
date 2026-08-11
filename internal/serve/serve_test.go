@@ -56,6 +56,11 @@ func (f fixture) text() string {
 		familyLine = "family: " + f.family + "\n"
 	}
 	hist := strings.Join(f.history, "\n")
+	// The Implementation Plan and Review sections below are filled in
+	// (T-081) so a fixture landing in ANY status dir — not only 1-to-do —
+	// satisfies the gate table's Blocking rows; without them, standardTree's
+	// own 3-in-development fixture (T-004) would trip "board audit clean"
+	// assertions across this file.
 	return fmt.Sprintf(`---
 id: %s
 title: %s
@@ -76,6 +81,40 @@ Fixture ticket; exercises serve rendering only, not T-083's check.
 ## Description
 
 %s
+
+## Implementation Plan
+
+### 0. Feature branch (mandatory)
+
+feat/demo
+
+### Prerequisite gate (hard)
+
+none
+
+### Confirmed design decisions
+
+d1
+
+### Tasks
+
+t1
+
+### Acceptance test
+
+just test
+
+### Docs update
+
+no user-facing surface
+
+### Finish (mandatory)
+
+summary + suggested commit message
+
+## Review
+
+N1 | blocking | fixed the thing
 
 ## History
 

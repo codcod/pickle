@@ -536,24 +536,25 @@ func TestScaffoldSectionsMatchTemplate(t *testing.T) {
 
 // TestTemplateAndScaffoldOutcomePlaceholdersAreFlagged is the second drift
 // guard for T-083's check: both authoring entry points ship an Outcome
-// placeholder, and OutcomeMissing must flag *both*, or the promise made by
-// TEMPLATE.md, tickets-README.md §7, cli-reference.adoc and the CHANGELOG —
-// "absent, empty, or still the template placeholder" — is false for whichever
-// one drifts. It caught exactly that: a TEMPLATE.md placeholder written in the
-// `<…>` form the other sections use, which the HTML-comment strip cannot see
-// (review 1, finding B1).
+// placeholder, and SectionMissing(text, "Outcome") must flag *both*, or the
+// promise made by TEMPLATE.md, tickets-README.md §7, cli-reference.adoc and
+// the CHANGELOG — "absent, empty, or still the template placeholder" — is
+// false for whichever one drifts. It caught exactly that once: a TEMPLATE.md
+// placeholder written in the `<…>` form the other sections use, which the
+// HTML-comment strip cannot see (T-083 review 1, finding B1). Retargeted from
+// the T-083-specific OutcomeMissing onto its T-081 generalisation.
 func TestTemplateAndScaffoldOutcomePlaceholdersAreFlagged(t *testing.T) {
 	tmplPath := filepath.Join("..", "..", "skill", "resources", "TEMPLATE.md")
 	data, err := os.ReadFile(tmplPath)
 	if err != nil {
 		t.Skipf("TEMPLATE.md not found: %v", err)
 	}
-	if !OutcomeMissing(string(data)) {
+	if !SectionMissing(string(data), "Outcome") {
 		body, _ := SectionBody(string(data), "Outcome")
 		t.Errorf("TEMPLATE.md's own ## Outcome placeholder is not flagged as missing; "+
 			"write it as an HTML comment so the check sees through it. Body was:\n%s", body)
 	}
-	if !OutcomeMissing(Scaffold("T-001", "x", "pickle", "high", "medium", "M", nil, "")) {
+	if !SectionMissing(Scaffold("T-001", "x", "pickle", "high", "medium", "M", nil, ""), "Outcome") {
 		t.Errorf("Scaffold's ## Outcome placeholder is not flagged as missing")
 	}
 }
@@ -581,7 +582,7 @@ func TestSectionBody(t *testing.T) {
 	}
 }
 
-func TestOutcomeMissing(t *testing.T) {
+func TestSectionMissing(t *testing.T) {
 	cases := []struct {
 		name string
 		text string
@@ -596,10 +597,182 @@ func TestOutcomeMissing(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := OutcomeMissing(c.text); got != c.want {
-				t.Errorf("OutcomeMissing(%q) = %v, want %v", c.text, got, c.want)
+			if got := SectionMissing(c.text, "Outcome"); got != c.want {
+				t.Errorf("SectionMissing(%q, Outcome) = %v, want %v", c.text, got, c.want)
 			}
 		})
+	}
+}
+
+// TestNormalizeHeading is table-driven over every "### " heading form T-081's
+// refinement measured across this repo's own 45 done tickets' Implementation
+// Plans, plus the one form that legitimately does not reduce to a
+// READY-gate stem ("### 4. Tests", for what rules §4.5 calls "Acceptance
+// test") — normalizeHeading must not paper over a heading that genuinely
+// uses different words.
+func TestNormalizeHeading(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"0. Feature branch (mandatory)", "feature branch"},
+		{"Feature branch", "feature branch"},
+		{"2. Confirmed decisions", "confirmed decisions"},
+		{"Confirmed design decisions (do not deviate without asking)", "confirmed design decisions"},
+		{"Docs", "docs"},
+		{"Docs update (mandatory when user-facing)", "docs update"},
+		{"6. Finish", "finish"},
+		{"Finish (mandatory)", "finish"},
+		{"Acceptance test (run verbatim; must be green before review)", "acceptance test"},
+		{"Prerequisite gate (hard)", "prerequisite gate"},
+		{"Tasks", "tasks"},
+		{"4. Tests", "tests"}, // deliberately does NOT reduce to "acceptance test"
+	}
+	for _, c := range cases {
+		if got := normalizeHeading(c.in); got != c.want {
+			t.Errorf("normalizeHeading(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestSubsectionMissing(t *testing.T) {
+	const text = `## Implementation Plan
+
+### 0. Feature branch (mandatory)
+
+Cut the branch.
+
+### Prerequisite gate (hard)
+
+<!-- TODO: fill in -->
+
+### Tasks
+
+#### Task 1
+
+detail
+
+## Review
+
+findings
+`
+	cases := []struct {
+		name          string
+		section, stem string
+		want          bool
+	}{
+		{"absent parent section", "Nonexistent", "feature branch", true},
+		{"absent stem", "Implementation Plan", "acceptance test", true},
+		{"heading present with empty body (placeholder comment)", "Implementation Plan", "prerequisite", true},
+		{"heading present with prose", "Implementation Plan", "feature branch", false},
+		{"a #### heading is not mistaken for a ### one", "Implementation Plan", "task 1", true},
+		{"### Tasks itself has a substantive body (its #### child)", "Implementation Plan", "tasks", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := SubsectionMissing(text, c.section, c.stem); got != c.want {
+				t.Errorf("SubsectionMissing(text, %q, %q) = %v, want %v", c.section, c.stem, got, c.want)
+			}
+		})
+	}
+}
+
+// TestGateViolationMessages pins both of GateViolation.Message's forms,
+// including that the section-only form applied to brine's own Outcome row
+// reproduces T-083's original warning text byte-for-byte — the promise T-081
+// decision 6 makes explicit.
+func TestGateViolationMessages(t *testing.T) {
+	sectionForm := GateViolation{Req: flow.Requirement{
+		Section: "Outcome", Label: "Outcome",
+		Hint: "say what changes when this ships, in user-observable terms", Severity: flow.Advisory,
+	}}
+	wantSection := "## Outcome is missing, empty, or still a placeholder — say what changes when this ships, in user-observable terms"
+	if got := sectionForm.Message(); got != wantSection {
+		t.Errorf("section-form Message() = %q, want %q", got, wantSection)
+	}
+	if sectionForm.Blocking() {
+		t.Error("Advisory violation reports Blocking() = true")
+	}
+
+	subForm := GateViolation{Req: flow.Requirement{
+		Section: "Implementation Plan", Sub: "tasks", Label: "tasks",
+		Hint: "list concrete tasks with exact paths in the target child (rules §4.4)", Severity: flow.Blocking,
+	}}
+	wantSub := `## Implementation Plan has no substantive "### tasks" heading (tasks) — ` +
+		"list concrete tasks with exact paths in the target child (rules §4.4)"
+	if got := subForm.Message(); got != wantSub {
+		t.Errorf("sub-form Message() = %q, want %q", got, wantSub)
+	}
+	if !subForm.Blocking() {
+		t.Error("Blocking violation reports Blocking() = false")
+	}
+}
+
+func TestGateViolations(t *testing.T) {
+	reqs := []flow.Requirement{
+		{Section: "Outcome", Label: "Outcome", Hint: "h1", Severity: flow.Advisory},
+		{Section: "Implementation Plan", Sub: "tasks", Label: "tasks", Hint: "h2", Severity: flow.Blocking},
+	}
+	// Neither requirement is met: both violations, in table order.
+	violations := GateViolations(reqs, "## Description\n\nspec\n")
+	if len(violations) != 2 {
+		t.Fatalf("GateViolations() = %d violations, want 2", len(violations))
+	}
+	if violations[0].Req.Section != "Outcome" || violations[1].Req.Sub != "tasks" {
+		t.Errorf("GateViolations() out of table order: %+v", violations)
+	}
+
+	// Both requirements met: no violations.
+	satisfied := "## Outcome\n\nprose\n\n## Implementation Plan\n\n### Tasks\n\ndetail\n"
+	if got := GateViolations(reqs, satisfied); len(got) != 0 {
+		t.Errorf("GateViolations() on satisfied text = %+v, want none", got)
+	}
+}
+
+// TestBrineReadyGateMatchesTemplate is T-081's drift guard between the code
+// gate table and the authoring guide, mirroring internal/audit's
+// TestFrontmatterKeysMatchTemplate: every Requirement.Sub stem brine's READY
+// gate declares must match one of TEMPLATE.md's own "### " headings inside
+// its "## Implementation Plan" skeleton (heading *vocabulary* only — the
+// `<…>` placeholders make body substance meaningless here, T-081 decision
+// 8), and each stem must already be in normalizeHeading's own output form.
+// Lives in this package (not internal/flow, which cannot import
+// normalizeHeading's normalisation contract without ceasing to be a leaf
+// package) and not internal/audit (which cannot see normalizeHeading,
+// unexported here).
+func TestBrineReadyGateMatchesTemplate(t *testing.T) {
+	tmplPath := filepath.Join("..", "..", "skill", "resources", "TEMPLATE.md")
+	data, err := os.ReadFile(tmplPath)
+	if err != nil {
+		t.Skipf("TEMPLATE.md not found: %v", err)
+	}
+	planBody, found := SectionBody(string(data), "Implementation Plan")
+	if !found {
+		t.Fatal("TEMPLATE.md has no ## Implementation Plan section")
+	}
+	var tmplStems []string
+	for _, line := range strings.Split(planBody, "\n") {
+		if strings.HasPrefix(line, "### ") {
+			tmplStems = append(tmplStems, normalizeHeading(line[4:]))
+		}
+	}
+
+	def := flow.Default()
+	ready, _ := def.ByDir("2-ready")
+	var checked int
+	for _, r := range def.Requirements(ready.Dir) {
+		if r.Sub == "" {
+			continue
+		}
+		checked++
+		if normalizeHeading(r.Sub) != r.Sub {
+			t.Errorf("Requirement.Sub %q is not itself in normalizeHeading's output form (got %q)",
+				r.Sub, normalizeHeading(r.Sub))
+		}
+		if !slices.ContainsFunc(tmplStems, func(s string) bool { return strings.HasPrefix(s, r.Sub) }) {
+			t.Errorf("Requirement.Sub %q matches no ### heading in TEMPLATE.md's Implementation Plan (stems: %v)",
+				r.Sub, tmplStems)
+		}
+	}
+	if checked != 7 {
+		t.Fatalf("checked %d sub-heading requirements, want 7 (the READY-gate items)", checked)
 	}
 }
 

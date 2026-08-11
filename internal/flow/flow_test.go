@@ -3,6 +3,7 @@ package flow
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"testing"
 
@@ -20,12 +21,23 @@ func TestBrineMatchesLegacyLiterals(t *testing.T) {
 		t.Fatalf("Name() = %q, want brine", def.Name())
 	}
 
+	// Requires is now a slice field (T-081), so State is no longer comparable
+	// with == — wantStates below carries each state's expected gate table and
+	// the comparison uses reflect.DeepEqual instead. The table itself pins
+	// decision 6: Outcome on every non-terminal state, the plan section plus
+	// the seven READY-gate stems on 2-ready...5-rework, Review only on
+	// 5-rework, and nothing on either terminal state.
 	wantStates := []State{
-		{Dir: "1-to-do", Name: "TO DO", Heading: "TO DO (impact order, per child)", ImpactOrder: true, Columns: ColumnsBacklog},
-		{Dir: "2-ready", Name: "READY", Heading: "READY (impact order, per child)", ImpactOrder: true, Columns: ColumnsBacklog},
-		{Dir: "3-in-development", Name: "IN DEVELOPMENT", Heading: "IN DEVELOPMENT", Columns: ColumnsActive, WIPKey: "wip_in_development"},
-		{Dir: "4-in-review", Name: "IN REVIEW", Heading: "IN REVIEW", Columns: ColumnsActive, WIPKey: "wip_in_review"},
-		{Dir: "5-rework", Name: "REWORK", Heading: "REWORK", Columns: ColumnsRework},
+		{Dir: "1-to-do", Name: "TO DO", Heading: "TO DO (impact order, per child)", ImpactOrder: true, Columns: ColumnsBacklog,
+			Requires: []Requirement{outcomeStated}},
+		{Dir: "2-ready", Name: "READY", Heading: "READY (impact order, per child)", ImpactOrder: true, Columns: ColumnsBacklog,
+			Requires: append([]Requirement{outcomeStated}, readyGate...)},
+		{Dir: "3-in-development", Name: "IN DEVELOPMENT", Heading: "IN DEVELOPMENT", Columns: ColumnsActive, WIPKey: "wip_in_development",
+			Requires: append([]Requirement{outcomeStated}, readyGate...)},
+		{Dir: "4-in-review", Name: "IN REVIEW", Heading: "IN REVIEW", Columns: ColumnsActive, WIPKey: "wip_in_review",
+			Requires: append([]Requirement{outcomeStated}, readyGate...)},
+		{Dir: "5-rework", Name: "REWORK", Heading: "REWORK", Columns: ColumnsRework,
+			Requires: append(append([]Requirement{outcomeStated}, readyGate...), reviewRecorded)},
 		{Dir: "6-done", Name: "DONE", Heading: "DONE", Terminal: true, Columns: ColumnsDone},
 		{Dir: "7-dropped", Name: "DROPPED", Heading: "DROPPED", Terminal: true, Columns: ColumnsDropped},
 	}
@@ -34,7 +46,7 @@ func TestBrineMatchesLegacyLiterals(t *testing.T) {
 		t.Fatalf("States() has %d entries, want %d", len(states), len(wantStates))
 	}
 	for i, want := range wantStates {
-		if states[i] != want {
+		if !reflect.DeepEqual(states[i], want) {
 			t.Errorf("States()[%d] = %+v, want %+v", i, states[i], want)
 		}
 	}
@@ -94,8 +106,26 @@ func TestBrineDefinitionValidates(t *testing.T) {
 		Transitions:         brine.Transitions(),
 		Initial:             brine.Initial().Dir,
 		DependencySatisfied: brine.DependencySatisfied().Dir,
+		Pickup:              brine.Pickup().Dir,
 	}); err != nil {
 		t.Errorf("re-validating brine's own Spec failed: %v", err)
+	}
+}
+
+// TestBrinePickupAndTerminalRequirements pins two of T-081's decisions: the
+// pickup gate is now an explicit field (finding N6), not inferred from a WIP
+// key, and a terminal state declares no gate-table rows (decision 4) — the
+// exact mechanism that lets an archived ticket go unflagged forever instead
+// of the audit hand-rolling a !Terminal exemption.
+func TestBrinePickupAndTerminalRequirements(t *testing.T) {
+	def := Default()
+	if got := def.Pickup().Dir; got != "3-in-development" {
+		t.Errorf("brine.Pickup().Dir = %q, want 3-in-development", got)
+	}
+	for _, s := range def.States() {
+		if s.Terminal && len(def.Requirements(s.Dir)) != 0 {
+			t.Errorf("terminal state %q has %d Requirements, want 0", s.Dir, len(def.Requirements(s.Dir)))
+		}
 	}
 }
 
@@ -121,6 +151,7 @@ func minimalSpec() Spec {
 		Transitions:         []Transition{{From: "a", To: "b", Kind: Forward}},
 		Initial:             "a",
 		DependencySatisfied: "b",
+		Pickup:              "a",
 	}
 }
 
@@ -147,6 +178,29 @@ func TestSpecValidationRejects(t *testing.T) {
 		{"Initial unknown", func(s *Spec) { s.Initial = "nope" }},
 		{"Initial terminal", func(s *Spec) { s.Initial = "b" }},
 		{"DependencySatisfied unknown", func(s *Spec) { s.DependencySatisfied = "nope" }},
+		{"Pickup unknown", func(s *Spec) { s.Pickup = "nope" }},
+		{"Pickup terminal", func(s *Spec) { s.Pickup = "b" }},
+		{"Requirement empty Section", func(s *Spec) {
+			s.States[0].Requires = []Requirement{{Section: "", Label: "L", Hint: "H", Severity: Blocking}}
+		}},
+		{"Requirement empty Label", func(s *Spec) {
+			s.States[0].Requires = []Requirement{{Section: "S", Label: "", Hint: "H", Severity: Blocking}}
+		}},
+		{"Requirement empty Hint", func(s *Spec) {
+			s.States[0].Requires = []Requirement{{Section: "S", Label: "L", Hint: "", Severity: Blocking}}
+		}},
+		{"Requirement un-normalised Sub", func(s *Spec) {
+			s.States[0].Requires = []Requirement{{Section: "S", Sub: "Not Normalised", Label: "L", Hint: "H", Severity: Blocking}}
+		}},
+		{"Requirement duplicate (Section, Sub)", func(s *Spec) {
+			s.States[0].Requires = []Requirement{
+				{Section: "S", Sub: "x", Label: "L1", Hint: "H1", Severity: Blocking},
+				{Section: "S", Sub: "x", Label: "L2", Hint: "H2", Severity: Advisory},
+			}
+		}},
+		{"Requirement unset Severity", func(s *Spec) {
+			s.States[0].Requires = []Requirement{{Section: "S", Label: "L", Hint: "H"}}
+		}},
 		{"transition unknown From", func(s *Spec) { s.Transitions[0].From = "nope" }},
 		{"transition unknown To", func(s *Spec) { s.Transitions[0].To = "nope" }},
 		{"transition self-loop", func(s *Spec) { s.Transitions[0].To = s.Transitions[0].From }},
@@ -291,6 +345,7 @@ func TestByTokenDistinguishesAllThreeForms(t *testing.T) {
 		Transitions:         []Transition{{From: "1-open", To: "2-shut", Kind: Forward}},
 		Initial:             "1-open",
 		DependencySatisfied: "2-shut",
+		Pickup:              "1-open",
 	})
 
 	// "1-open" (dir) / "open" (dir minus number) / "open-work" and "OPEN WORK"
@@ -393,6 +448,15 @@ func TestAccessorsReturnCopies(t *testing.T) {
 	wip[0].Dir = "MANGLED"
 	if def.WIPStates()[0].Dir == "MANGLED" {
 		t.Error("WIPStates() exposed the definition's own slice")
+	}
+
+	reqs := def.Requirements("2-ready")
+	if len(reqs) == 0 {
+		t.Fatal("Requirements(2-ready) returned nothing")
+	}
+	reqs[0].Section = "MANGLED"
+	if def.Requirements("2-ready")[0].Section == "MANGLED" {
+		t.Error("Requirements() exposed the definition's own slice")
 	}
 }
 

@@ -85,8 +85,9 @@ func (k TransitionKind) String() string {
 }
 
 // State is one status in the lifecycle: its directory, display name, board
-// heading, terminal flag, board sort behaviour, column profile, and — for a
-// WIP-limited state — the pickle.toml key its limit is configured under.
+// heading, terminal flag, board sort behaviour, column profile, the gate
+// table it enforces, and — for a WIP-limited state — the pickle.toml key its
+// limit is configured under.
 type State struct {
 	Dir  string // "3-in-development" — the status directory under tickets/
 	Name string // "IN DEVELOPMENT" — the display name
@@ -109,6 +110,87 @@ type State struct {
 	// caps how many tickets of one child-project may sit in this state at
 	// once, or "" when this state is not WIP-limited.
 	WIPKey string
+
+	// Requires is this state's gate table (T-081): the ticket sections a
+	// ticket must carry to enter this state, checked again while it sits
+	// here (Requirement's doc comment explains why entry and residency share
+	// one table). A terminal state declaring no Requires is how an archived
+	// ticket is exempt from a check that would otherwise warn on it forever
+	// (see brine.go's terminal states for the worked example) — New still
+	// permits a terminal state to declare rows, for a flow that wants one.
+	Requires []Requirement
+}
+
+// Severity classifies how a Requirement is enforced once its state is
+// unmet: Blocking gates the move itself, Advisory only ever warns. The zero
+// value is deliberately invalid — New rejects it — so a Requirement cannot
+// acquire or lose its teeth by an author simply forgetting the field.
+type Severity int
+
+const (
+	_ Severity = iota // zero value is invalid: New rejects an unset Severity
+	// Blocking means an unmet Requirement refuses the ticket move that would
+	// enter this state, and is reported by board audit as an error.
+	Blocking
+	// Advisory means an unmet Requirement never refuses a move — only board
+	// audit (including the one ticket move runs on itself after applying) —
+	// reports it, as a warning.
+	Advisory
+)
+
+func (s Severity) String() string {
+	switch s {
+	case Blocking:
+		return "blocking"
+	case Advisory:
+		return "advisory"
+	default:
+		return fmt.Sprintf("Severity(%d)", int(s))
+	}
+}
+
+// Requirement is one row of a state's gate table (State.Requires): the "##"
+// Section a ticket must carry to enter, and remain in, that state —
+// optionally narrowed to one "###" sub-heading inside that section (Sub),
+// when the state cares about a specific step rather than the section as a
+// whole. Label names the requirement for messages; Hint is the one-clause
+// remedy every violation message ends with (internal/ticket.GateViolation
+// renders both).
+//
+// Deliberately narrow, twice over:
+//
+//   - Section is a single string, not a set of acceptable alternatives —
+//     rick's phase gates (the model this table copies) let a requirement
+//     accept any one of several artifact *kinds* ("an approved design OR an
+//     approved task"); brine never needs that today. An any-of set is the
+//     extension point a per-phase-artifact flow would add here, not
+//     something to speculatively build now.
+//   - There is no approval flag. Rick's requirements distinguish an artifact
+//     merely existing from one that has been approved; brine has no
+//     approval concept for a ticket section, and this type does not invent
+//     one.
+//
+// Entry and residency share this one table by design: a requirement on state
+// X is evaluated both when a ticket moves into X (internal/move, which
+// refuses on an unmet Blocking row) and while a ticket already sits in X
+// (internal/board's audit, run standalone and as ticket move's own
+// post-move self-check). A flow wanting an entry-only check — enforced at
+// the door but never re-checked at rest — is out of scope; nothing here
+// models that distinction.
+//
+// Sub, when set, must already be in internal/ticket's normalised form
+// (lower-case, no leading/trailing whitespace) — New checks that much itself
+// even though it cannot check the fuller normalisation rule without
+// importing internal/ticket (this package stays a leaf). It is matched as a
+// *prefix* of the normalised heading, not an exact match, precisely so
+// `"0. Feature branch (mandatory)"` and `"Feature branch"` can both satisfy
+// `Sub: "feature branch"`.
+type Requirement struct {
+	Section  string
+	Sub      string
+	Label    string
+	Hint     string
+	Severity Severity
 }
 
 // Transition is one legal (From, To) move between two state directories.
@@ -150,6 +232,16 @@ type Spec struct {
 	// DependencySatisfied is the dir a depends-on target must reach — and stay
 	// merged from — before a ticket naming it may be picked up.
 	DependencySatisfied string
+
+	// Pickup is the dir a ticket is built in — the state the dependency+merge
+	// gate itself guards entry into (T-080 finding N6). It must name a known,
+	// non-terminal state. Before this field existed, both internal/move and
+	// internal/audit inferred "the pickup state" as whichever state happened
+	// to be keyed by config.WIPKeyInDevelopment — the flow's most
+	// load-bearing gate keyed off an unrelated concern (WIP limits), which
+	// silently skipped the entire gate on a lookup miss. Pickup makes the
+	// concept explicit and mandatory instead.
+	Pickup string
 }
 
 // Definition is a validated, immutable view of a Spec. Every slice-returning
@@ -166,8 +258,10 @@ type Definition struct {
 	allowed     map[string][]Transition // by From dir, in Transitions order
 	initial     State
 	depSat      State
+	pickup      State
 	wipStates   []State // board order, WIPKey != ""
 	byWIPKey    map[string]State
+	requires    map[string][]Requirement // by dir
 }
 
 // Name is the flow's configured name ("brine" today).
@@ -218,6 +312,19 @@ func (d *Definition) Initial() State { return d.initial }
 // DependencySatisfied is the state a depends-on target must reach (and stay
 // merged from) before a ticket naming it may be picked up.
 func (d *Definition) DependencySatisfied() State { return d.depSat }
+
+// Pickup is the state a ticket is built in — the state the dependency+merge
+// gate guards entry into. Unlike StateByWIPKey, a validated Definition
+// always has one: New rejects a Spec whose Pickup does not name a known,
+// non-terminal state, so this accessor cannot fail.
+func (d *Definition) Pickup() State { return d.pickup }
+
+// Requirements returns dir's gate table (State.Requires), in table order, as
+// a clone — the same mutation-safety contract every other slice-returning
+// accessor on this type makes. An unknown dir returns nil, mirroring Allowed.
+func (d *Definition) Requirements(dir string) []Requirement {
+	return slices.Clone(d.requires[dir])
+}
 
 // Allowed returns the legal target states from a source directory, in Spec
 // transition order. A terminal state (or an unknown one) returns nil.
@@ -294,6 +401,9 @@ func New(spec Spec) (*Definition, error) {
 		if !slices.Contains(columnProfiles, s.Columns) {
 			return nil, fmt.Errorf("flow %q: state %q has unknown Columns profile %q", spec.Name, s.Dir, s.Columns)
 		}
+		if err := validateRequirements(spec.Name, s.Dir, s.Requires); err != nil {
+			return nil, err
+		}
 		byDir[s.Dir] = s
 		byName[s.Name] = s
 	}
@@ -326,6 +436,13 @@ func New(spec Spec) (*Definition, error) {
 	depSat, ok := byDir[spec.DependencySatisfied]
 	if !ok {
 		return nil, fmt.Errorf("flow %q: DependencySatisfied %q is not a known state", spec.Name, spec.DependencySatisfied)
+	}
+	pickup, ok := byDir[spec.Pickup]
+	if !ok {
+		return nil, fmt.Errorf("flow %q: Pickup %q is not a known state", spec.Name, spec.Pickup)
+	}
+	if pickup.Terminal {
+		return nil, fmt.Errorf("flow %q: Pickup %q is terminal", spec.Name, spec.Pickup)
 	}
 
 	allowed := make(map[string][]Transition, len(spec.States))
@@ -398,6 +515,11 @@ func New(spec Spec) (*Definition, error) {
 		wipStates = append(wipStates, s)
 	}
 
+	requires := make(map[string][]Requirement, len(spec.States))
+	for _, s := range spec.States {
+		requires[s.Dir] = slices.Clone(s.Requires)
+	}
+
 	return &Definition{
 		name:        spec.Name,
 		states:      slices.Clone(spec.States),
@@ -408,9 +530,47 @@ func New(spec Spec) (*Definition, error) {
 		allowed:     allowed,
 		initial:     initial,
 		depSat:      depSat,
+		pickup:      pickup,
 		wipStates:   wipStates,
 		byWIPKey:    byWIPKey,
+		requires:    requires,
 	}, nil
+}
+
+// validateRequirements checks one state's Requires rows: every field is
+// non-empty (an empty Hint would render a dangling em dash in every
+// violation message), Sub is already in internal/ticket's normalised form as
+// far as a leaf package can tell (lower-case, trimmed — the fuller
+// normalisation rule, e.g. stripping a leading ordinal, is
+// internal/ticket's), Severity is one of the two legal values, and no two
+// rows target the same (Section, Sub) pair.
+func validateRequirements(flowName, dir string, reqs []Requirement) error {
+	seen := make(map[[2]string]bool, len(reqs))
+	for _, r := range reqs {
+		if r.Section == "" {
+			return fmt.Errorf("flow %q: state %q has a Requirement with an empty Section", flowName, dir)
+		}
+		if r.Label == "" {
+			return fmt.Errorf("flow %q: state %q Requirement %q has an empty Label", flowName, dir, r.Section)
+		}
+		if r.Hint == "" {
+			return fmt.Errorf("flow %q: state %q Requirement %q has an empty Hint", flowName, dir, r.Section)
+		}
+		if r.Sub != strings.ToLower(strings.TrimSpace(r.Sub)) {
+			return fmt.Errorf("flow %q: state %q Requirement %q has an un-normalised Sub %q (want lower-case, trimmed)",
+				flowName, dir, r.Section, r.Sub)
+		}
+		if r.Severity != Blocking && r.Severity != Advisory {
+			return fmt.Errorf("flow %q: state %q Requirement %q has an invalid Severity %v", flowName, dir, r.Section, r.Severity)
+		}
+		pair := [2]string{r.Section, r.Sub}
+		if seen[pair] {
+			return fmt.Errorf("flow %q: state %q has a duplicate Requirement (Section %q, Sub %q)",
+				flowName, dir, r.Section, r.Sub)
+		}
+		seen[pair] = true
+	}
+	return nil
 }
 
 // MustNew is New, panicking on error. Used only for the built-in registered

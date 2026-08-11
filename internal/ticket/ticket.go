@@ -541,19 +541,138 @@ func SectionBody(text, heading string) (body string, found bool) {
 // wrap onto its own line.
 var htmlCommentRE = regexp.MustCompile(`(?s)<!--.*?-->`)
 
-// OutcomeMissing reports whether text's "## Outcome" section is absent, or its
-// body is empty once HTML comments (the TEMPLATE.md placeholder form) are
-// stripped and the remainder is trimmed of whitespace (T-083). It is
-// deliberately structural, not a prose-quality heuristic: presence-and-not-
-// placeholder is mechanical and has no judgement in it. Used by board audit
-// as a warning only — never a gate on ticket move, and never joining
-// requiredKeys (Outcome is a body section, not frontmatter).
-func OutcomeMissing(text string) bool {
-	body, found := SectionBody(text, "Outcome")
+// SectionMissing reports whether text's "## <heading>" section is absent, or
+// its body is empty once HTML comments (the TEMPLATE.md placeholder form) are
+// stripped and the remainder is trimmed of whitespace. Originally T-083's
+// Outcome-specific predicate, generalised by T-081 into the one "is this
+// section substantive" check both SubsectionMissing and GateViolations build
+// on. It is deliberately structural, not a prose-quality heuristic:
+// presence-and-not-placeholder is mechanical and has no judgement in it. The
+// `<…>` angle-bracket placeholder form TEMPLATE.md uses elsewhere in its
+// Implementation Plan skeleton is NOT stripped (only HTML comments are) — a
+// skeleton pasted verbatim therefore reads as substantive. That is a known,
+// documented boundary (T-083 review finding B1), not a defect to fix here.
+func SectionMissing(text, heading string) bool {
+	body, found := SectionBody(text, heading)
 	if !found {
 		return true
 	}
 	return strings.TrimSpace(htmlCommentRE.ReplaceAllString(body, "")) == ""
+}
+
+// leadingOrdinalRE strips a leading "N" / "N." / "N)" step number
+// ("0. Feature branch" -> "Feature branch") and trailingParenRE strips one
+// trailing parenthetical ("Feature branch (mandatory)" -> "Feature branch") —
+// the two forms of decoration TEMPLATE.md's own Implementation Plan headings
+// carry that a content stem match must see through.
+var (
+	leadingOrdinalRE = regexp.MustCompile(`^\d+[.)]?\s*`)
+	trailingParenRE  = regexp.MustCompile(`\s*\([^)]*\)\s*$`)
+)
+
+// normalizeHeading reduces a "### …" heading to the deterministic form
+// flow.Requirement.Sub is matched against as a prefix (T-081 decision 7):
+// lower-case, strip one leading ordinal and one trailing parenthetical,
+// collapse internal whitespace runs, and trim surrounding whitespace and
+// trailing punctuation. It is a fixed, declared normalisation — never a
+// content judgement — chosen by measuring every "### " heading actually used
+// under an Implementation Plan across this repo's own 45 done tickets at
+// T-081's refinement: forms like "0. Feature branch (mandatory)",
+// "2. Confirmed decisions", "Docs", "6. Finish" and
+// "Acceptance test (run verbatim; must be green before review)" all reduce
+// to a stem a Requirement.Sub can prefix-match; a heading using neither
+// vocabulary (e.g. "### 4. Tests" for what rules §4.5 calls "Acceptance
+// test") legitimately does not match, and is not this function's job to fix.
+func normalizeHeading(h string) string {
+	h = strings.ToLower(strings.TrimSpace(h))
+	h = leadingOrdinalRE.ReplaceAllString(h, "")
+	h = trailingParenRE.ReplaceAllString(h, "")
+	h = strings.Join(strings.Fields(h), " ")
+	return strings.TrimRight(strings.TrimSpace(h), ".:;,")
+}
+
+// SubsectionMissing reports whether the top-level "## section" span contains
+// a "### " heading whose normalizeHeading form has stem as a prefix, with a
+// substantive body (SectionMissing's own predicate, applied to the
+// sub-heading's own span: up to the next "### " or "## ", whichever comes
+// first). An absent parent section, or no sub-heading matching stem, both
+// count as missing — the caller (GateViolations) does not need to
+// distinguish the two. Reuses SectionBody's line-prefix walk rather than
+// adding a fifth copy of it (T-042): the parent scan is exactly SectionBody's
+// own logic, repeated one level down for "### " instead of "## ".
+//
+// Like SectionBody/SectionHeadings, this walk is blind to a "### "-looking
+// line at column 0 inside a fenced code block — an inherited, pre-existing
+// limitation (T-083 documented it for SectionHeadings), not a new one.
+func SubsectionMissing(text, section, stem string) bool {
+	parent, found := SectionBody(text, section)
+	if !found {
+		return true
+	}
+	lines := strings.Split(parent, "\n")
+	start := -1
+	for i, line := range lines {
+		if strings.HasPrefix(line, "### ") && strings.HasPrefix(normalizeHeading(line[4:]), stem) {
+			start = i + 1
+			break
+		}
+	}
+	if start == -1 {
+		return true
+	}
+	end := len(lines)
+	for i := start; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], "### ") || strings.HasPrefix(lines[i], "## ") {
+			end = i
+			break
+		}
+	}
+	body := strings.TrimSpace(strings.Join(lines[start:end], "\n"))
+	return strings.TrimSpace(htmlCommentRE.ReplaceAllString(body, "")) == ""
+}
+
+// GateViolation is one unmet flow.Requirement, as evaluated by GateViolations
+// against one ticket's text.
+type GateViolation struct{ Req flow.Requirement }
+
+// Blocking reports whether this violation refuses a ticket move (as opposed
+// to only ever warning) — flow.Requirement.Severity, restated as the
+// question its two callers (internal/move, internal/audit) actually ask.
+func (v GateViolation) Blocking() bool { return v.Req.Severity == flow.Blocking }
+
+// Message renders the violation in one of exactly two forms, chosen by
+// whether the Requirement names a sub-heading (Req.Sub) or the section as a
+// whole. The first form, applied to brine's Outcome row, must reproduce
+// T-083's original warning byte-for-byte —
+// TestGateViolationMessages pins that.
+func (v GateViolation) Message() string {
+	if v.Req.Sub == "" {
+		return fmt.Sprintf("## %s is missing, empty, or still a placeholder — %s", v.Req.Section, v.Req.Hint)
+	}
+	return fmt.Sprintf("## %s has no substantive \"### %s\" heading (%s) — %s",
+		v.Req.Section, v.Req.Sub, v.Req.Label, v.Req.Hint)
+}
+
+// GateViolations evaluates every requirement in reqs (a state's gate table,
+// via flow.Definition.Requirements) against text, and returns one
+// GateViolation per unmet row, preserving table order. Both call sites
+// (internal/move, before writing a move; internal/audit, on every ticket in
+// its own state) drive from this single evaluator, so an unmet requirement
+// is judged identically wherever it is checked (T-081).
+func GateViolations(reqs []flow.Requirement, text string) []GateViolation {
+	var out []GateViolation
+	for _, r := range reqs {
+		var missing bool
+		if r.Sub == "" {
+			missing = SectionMissing(text, r.Section)
+		} else {
+			missing = SubsectionMissing(text, r.Section, r.Sub)
+		}
+		if missing {
+			out = append(out, GateViolation{Req: r})
+		}
+	}
+	return out
 }
 
 // renderIDList renders a ticket-id slice in frontmatter form: "[]" when empty,
