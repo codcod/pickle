@@ -66,6 +66,22 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 		return res, fmt.Errorf("moving %s to %s requires --reason", id, target.Name)
 	}
 
+	// Gate table (T-081): a Blocking requirement unmet by the ticket's own
+	// text refuses the move outright, before anything is written. Advisory
+	// violations are deliberately not reported here — the post-move audit
+	// self-check below already prints them (board audit's own walk over the
+	// same table), and reporting both would double-report the same finding.
+	var blocking []string
+	for _, v := range ticket.GateViolations(def.Requirements(target.Dir), t.Text) {
+		if v.Blocking() {
+			blocking = append(blocking, v.Message())
+		}
+	}
+	if len(blocking) > 0 {
+		return res, fmt.Errorf("cannot move %s to %s: %d unmet gate requirement(s): %s",
+			id, target.Name, len(blocking), strings.Join(blocking, "; "))
+	}
+
 	proj := t.Project()
 
 	// WIP gate: moving into a WIP-limited state (in-development / in-review
@@ -77,12 +93,12 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 	}
 
 	// Cross-child dependency + merge gate: pickup only — entering the state a
-	// ticket is built in (the one keyed by config.WIPKeyInDevelopment; for
-	// brine, IN DEVELOPMENT). depends-on only — spawned-by is lineage and must
-	// never gate a pickup, which is what move_test.go's
-	// TestSpawnedByDoesNotGatePickup guards.
-	pickup, hasPickup := def.StateByWIPKey(config.WIPKeyInDevelopment)
-	if hasPickup && target.Dir == pickup.Dir {
+	// ticket is built in (def.Pickup(), T-081; for brine, IN DEVELOPMENT — a
+	// validated Definition always has one, so there is no fails-open miss
+	// case left to guard against, unlike the WIP-key lookup this replaced).
+	// depends-on only — spawned-by is lineage and must never gate a pickup,
+	// which is what move_test.go's TestSpawnedByDoesNotGatePickup guards.
+	if target.Dir == def.Pickup().Dir {
 		for _, dep := range t.DependsOn {
 			dt, ok := byID[dep]
 			if !ok {

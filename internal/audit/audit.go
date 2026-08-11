@@ -148,20 +148,24 @@ func Audit(root string, cfg *config.Config) Result {
 				r.errf("%s: family %s is itself a family member (families do not nest)", ref, fam)
 			}
 		}
-		// Outcome presence (T-083) — a WARNING, never an error, and this is a hard
-		// constraint, not a style preference: an error here would make ticket move,
-		// board sync, install and upgrade all fail for every ticket that predates
-		// the section. Scoped to non-terminal states, read from the flow definition
-		// (T-080) rather than by naming directories: a terminal state is a
-		// permanent, immutable archive (rules §3 — 6-done/ and 7-dropped/ for
-		// brine), and flagging one would add a permanent warning per archived
-		// ticket for a record nobody is about to act on. Structural check only
-		// (SectionBody.OutcomeMissing) —
-		// no prose heuristic, and deliberately NOT in requiredKeys (Outcome is a
-		// body section, not frontmatter; see T-045's migration-break precedent).
-		if st, ok := def.ByDir(t.Dir); ok && !st.Terminal && ticket.OutcomeMissing(t.Text) {
-			r.warnf("%s: ## Outcome is missing, empty, or still a placeholder — say what changes "+
-				"when this ships, in user-observable terms", ref)
+		// Gate table (T-081): every Requirement the ticket's own state declares
+		// (flow.State.Requires, read via def.Requirements) is evaluated against
+		// its text — a Blocking violation is an error (the same check
+		// ticket move refuses a move on, now caught for a ticket already past
+		// the gate), an Advisory one a warning. This is also where T-083's
+		// original Outcome-presence check lives now: it used to be hand-rolled
+		// here as `!st.Terminal && ticket.OutcomeMissing(...)`, gated on
+		// Terminal directly; the exemption for 6-done/7-dropped is now the
+		// table's own (brine declares no Requires on either terminal state,
+		// internal/flow/brine.go), not this file's — a permanent archive simply
+		// has nothing to ask, rather than this loop special-casing it.
+		for _, v := range ticket.GateViolations(def.Requirements(t.Dir), t.Text) {
+			if v.Blocking() {
+				r.errf("%s: %s — write it, or move the ticket back to 1-to-do until the plan is complete",
+					ref, v.Message())
+			} else {
+				r.warnf("%s: %s", ref, v.Message())
+			}
 		}
 	}
 
@@ -215,26 +219,25 @@ func Audit(root string, cfg *config.Config) Result {
 		}
 	}
 
-	// In-development dependency gate: applies to whichever state is keyed by
-	// config.WIPKeyInDevelopment (for brine, IN DEVELOPMENT) — the same state
-	// internal/move gates pickup into. depends-on only: spawned-by parents
-	// are intentionally absent here — lineage never gates a pickup.
-	if pickup, ok := def.StateByWIPKey(config.WIPKeyInDevelopment); ok {
-		for _, t := range tickets {
-			if t.Dir != pickup.Dir {
-				continue
+	// In-development dependency gate: applies to def.Pickup() (T-081; for
+	// brine, IN DEVELOPMENT) — the same state internal/move gates pickup
+	// into. depends-on only: spawned-by parents are intentionally absent here
+	// — lineage never gates a pickup.
+	pickup := def.Pickup()
+	for _, t := range tickets {
+		if t.Dir != pickup.Dir {
+			continue
+		}
+		ref := t.Dir + "/" + filepath.Base(t.Path)
+		for _, dep := range t.DependsOn {
+			dt, ok := byID[dep]
+			if !ok {
+				continue // already reported
 			}
-			ref := t.Dir + "/" + filepath.Base(t.Path)
-			for _, dep := range t.DependsOn {
-				dt, ok := byID[dep]
-				if !ok {
-					continue // already reported
-				}
-				if dt.Dir != def.DependencySatisfied().Dir {
-					r.errf("%s: in development but dependency %s is in %s", ref, dep, dt.Dir)
-				} else if !ticket.HasMergeLine(def, dt.Text) {
-					r.warnf("%s: dependency %s is DONE but has no 'MERGED' History line — confirm the human merged it in its own child", ref, dep)
-				}
+			if dt.Dir != def.DependencySatisfied().Dir {
+				r.errf("%s: in development but dependency %s is in %s", ref, dep, dt.Dir)
+			} else if !ticket.HasMergeLine(def, dt.Text) {
+				r.warnf("%s: dependency %s is DONE but has no 'MERGED' History line — confirm the human merged it in its own child", ref, dep)
 			}
 		}
 	}
