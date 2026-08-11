@@ -161,8 +161,7 @@ func Audit(root string, cfg *config.Config) Result {
 		// has nothing to ask, rather than this loop special-casing it.
 		for _, v := range ticket.GateViolations(def.Requirements(t.Dir), t.Text) {
 			if v.Blocking() {
-				r.errf("%s: %s — write it, or move the ticket back to 1-to-do until the plan is complete",
-					ref, v.Message())
+				r.errf("%s: %s%s", ref, v.Message(), gateRemedy(def, t.Dir))
 			} else {
 				r.warnf("%s: %s", ref, v.Message())
 			}
@@ -245,6 +244,47 @@ func Audit(root string, cfg *config.Config) Result {
 	sort.Strings(r.Errors)
 	sort.Strings(r.Warnings)
 	return r
+}
+
+// gateRemedy names the second of a blocking gate violation's "two ways out"
+// (T-081 Task 4): writing the missing heading always works, and is named by
+// v.Message() itself; this appends the other way, when one actually exists —
+// moving the ticket to a state reachable in one legal move from dir that
+// carries no Blocking requirement of its own. Derived from def.Allowed(dir)
+// rather than hard-coded, so it can never again name an illegal transition
+// (rework fix for review finding B1, T-081: the original hard-coded "move the
+// ticket back to 1-to-do" is only ever true from 2-ready — brine's transition
+// table gives 1-to-do no direct predecessor from 3-in-development/4-in-review
+// /5-rework, so the same suffix on those states told a user to run a move
+// `ticket move` would then refuse). A terminal target is skipped even when it
+// meets the requirement bar: dropping the ticket is not "fixing" the plan, and
+// suggesting it here would blur the gate-violation message with the abort
+// gate's own sign-off requirement. When no such state exists (3-in-development,
+// 4-in-review, 5-rework today — every legal move from them either keeps the
+// same gate or is terminal), the remedy is the generic one: fix the text in
+// place, since no move clears the violation for free.
+func gateRemedy(def *flow.Definition, dir string) string {
+	for _, st := range def.Allowed(dir) {
+		if st.Terminal {
+			continue
+		}
+		if !hasBlockingRequirement(def.Requirements(st.Dir)) {
+			return fmt.Sprintf(" — write it, or move the ticket back to %s until the plan is complete", st.Dir)
+		}
+	}
+	return " — write it to satisfy the gate"
+}
+
+// hasBlockingRequirement reports whether any row in reqs is Blocking —
+// gateRemedy's test for "does this state's own gate still hold the same
+// requirement class".
+func hasBlockingRequirement(reqs []flow.Requirement) bool {
+	for _, r := range reqs {
+		if r.Severity == flow.Blocking {
+			return true
+		}
+	}
+	return false
 }
 
 // auditWIP checks each child's per-status WIP limits. The tally itself comes from

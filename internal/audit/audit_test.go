@@ -448,6 +448,18 @@ func TestAudit(t *testing.T) {
 				withoutPlan(withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DONE"))))
 			renderBoard(t, root)
 		}},
+		// Review finding B1 (T-081 rework): the pre-fix remedy hard-coded "move the
+		// ticket back to 1-to-do" on every blocking violation, but 1-to-do has no
+		// direct predecessor from 4-in-review (brine's transition table: legal
+		// targets are done, dropped, rework) — the exact state most gate violations
+		// are actually found in. The remedy must fall back to the generic "fix it
+		// in place" form instead of naming a move `ticket move` would then refuse.
+		{name: "blocking gate violation in-review names no illegal move to 1-to-do", mutate: func(t *testing.T, root string) {
+			mk(t, root, "tickets/4-in-review/T-002-bar.md",
+				withoutPlan(ticketFile("T-002", "pickle", "[]", "high", "IN REVIEW")))
+			renderBoard(t, root)
+		}, wantErr: true, substr: `## Implementation Plan is missing, empty, or still a placeholder — ` +
+			`fill in the plan before moving past READY — write it to satisfy the gate`},
 	}
 
 	for _, tc := range cases {
@@ -641,6 +653,40 @@ func commentedFrontmatterKeys(t *testing.T, text string) map[string]bool {
 		}
 	}
 	return out
+}
+
+// TestGateRemedyOnlyNamesLegalNonBlockingTargets is a property test over every
+// state in the flow, run against the fix for review finding B1 (T-081
+// rework): whatever gateRemedy suggests, if it names a move at all, the named
+// directory must (a) be a legal target from dir per def.Allowed — so
+// `ticket move` never refuses the very move the audit just told a user to
+// run — and (b) carry no Blocking requirement of its own, or the "escape
+// hatch" would just relocate the same violation. Checked against the real
+// flow.Default() rather than a hand-built fixture, so it keeps holding if
+// brine's transition table changes shape later.
+func TestGateRemedyOnlyNamesLegalNonBlockingTargets(t *testing.T) {
+	def := flow.Default()
+	moveRE := regexp.MustCompile(`move the ticket back to (\S+) until`)
+	for _, s := range def.States() {
+		remedy := gateRemedy(def, s.Dir)
+		m := moveRE.FindStringSubmatch(remedy)
+		if m == nil {
+			continue // generic remedy ("write it to satisfy the gate") — nothing to check
+		}
+		target := m[1]
+		allowed := false
+		for _, a := range def.Allowed(s.Dir) {
+			if a.Dir == target {
+				allowed = true
+			}
+		}
+		if !allowed {
+			t.Errorf("gateRemedy(%q) names %q, which is not a legal move from %q", s.Dir, target, s.Dir)
+		}
+		if hasBlockingRequirement(def.Requirements(target)) {
+			t.Errorf("gateRemedy(%q) names %q, which still carries a Blocking requirement", s.Dir, target)
+		}
+	}
 }
 
 func keySet(fm map[string]string) map[string]bool {
