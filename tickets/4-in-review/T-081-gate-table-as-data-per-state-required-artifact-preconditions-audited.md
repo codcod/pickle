@@ -559,3 +559,4 @@ No new manual page is registered.
   changed, no behaviour changed — only the plan's and the shipped docs' claim about existing
   `internal/sync` behaviour. cli-reference.adoc and CHANGELOG.md carried the same wrong claim and
   were corrected alongside.
+- 2026-08-11 — IN DEVELOPMENT → IN REVIEW: acceptance green
