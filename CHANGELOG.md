@@ -10,6 +10,23 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Added
 
+- **Each flow status now declares, as data, which ticket sections it requires — and `pickle
+  ticket move`/`board audit` enforce it** (T-081). Previously the READY gate's seven
+  Implementation Plan steps (rules §4) were prose an agent judged by eye; `internal/flow`'s
+  `State.Requires` is a per-status gate table (`flow.Requirement`: a `##` section, an optional
+  `###` sub-heading, a severity), so `2-ready/` … `5-rework/` now mechanically require the plan
+  section plus its seven READY-gate headings (feature branch, prerequisite gate, confirmed
+  decisions, tasks, acceptance test, docs update, finish), and `5-rework/` additionally requires
+  `## Review`. A **blocking** row unmet refuses `ticket move` outright, before anything is
+  written, and is an *error* from `board audit` for a ticket already sitting past the gate; an
+  **advisory** row unmet only ever warns. The check is structural (a named heading present with
+  a non-empty body, HTML-comment placeholders stripped) — it proves a step is present, never
+  that its content is *good*. Terminal statuses (`6-done/`, `7-dropped/`) declare nothing, so an
+  archived ticket is never flagged, however incomplete. Folds in T-080's review finding N6:
+  `flow.Spec` gains an explicit `Pickup` state (the state the dependency+merge gate guards entry
+  into) instead of `internal/move`/`internal/audit` inferring it from
+  `config.WIPKeyInDevelopment`, which silently skipped the gate on a lookup miss.
+
 - **`pickle serve` now renders a URL in a merge or History line as a clickable link** (T-089).
   A bare URL in a ticket's `## Description`/body already linked itself on the ticket page
   (goldmark's GFM `Linkify` extension), but the board's `merged` cell, the ticket page's
@@ -20,6 +37,20 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   commit URL can be clipped there; the ticket page and the timeline show it in full.
 
 ### Changed
+
+- **T-083's `## Outcome`-presence check is now one row of the new per-status gate table
+  (T-081), not a hand-rolled `internal/audit` branch** — wording and severity (a warning, never
+  a gate) are unchanged, but it now lives as `internal/flow` data alongside every other
+  requirement instead of a `!st.Terminal` special case. `ticket.OutcomeMissing` is removed;
+  `ticket.SectionMissing(text, heading)` is its generalisation, along with new
+  `ticket.SubsectionMissing` and `ticket.GateViolations` for evaluating a status's whole table.
+  **Upgrade note:** a ticket already sitting in `2-ready/` … `5-rework/` whose Implementation
+  Plan predates the seven-heading gate now reports a **blocking** `board audit` error until the
+  missing heading is written (even "none" satisfies a Prerequisite gate/Docs update row) or the
+  ticket is moved back to `1-to-do/`. Note that `board sync` will usually *not* surface this: it
+  only re-runs its own audit self-check when it actually rewrites `BOARD.md`, and nothing in a
+  ticket's plan body feeds any board column — run `board audit` directly. There is no migration
+  flag — see the user manual's `board audit` NOTE for detail.
 
 - **The merge History line can now carry a commit reference** (T-089).
   `merged to <base> (<MR ref>)` stays free text — no new parser, no new ticket field — but the

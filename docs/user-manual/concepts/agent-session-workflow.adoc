@@ -53,9 +53,12 @@ cheap.
 | Continue only while context is still small; otherwise start fresh from the
   ticket file
 | Heavier
-| The READY gate is a judgement call — open decisions, scope splits, concrete
-  tasks. If exploration ran long, a fresh session reading just the ticket
-  costs less than dragging a large transcript through the heavier tier.
+| The READY gate's *completeness* is now mechanically checked: a required
+  `### ` heading missing from the plan refuses the move. Writing what goes
+  *under* each heading is still a judgement call: open decisions, scope
+  splits, concrete tasks. If exploration ran long, a fresh session reading
+  just the ticket costs less than dragging a large transcript through the
+  heavier tier.
 
 | *Implement a ticket*
 | New session

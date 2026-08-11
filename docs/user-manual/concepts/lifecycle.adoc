@@ -48,6 +48,15 @@ a complete, self-contained prompt (§4):
    atomic ones. The merge then defaults to preserving them (rebase/keep-history) rather than
    squashing — see <<project-structure>>.
 
+All seven are *mechanically checked*: each is a required `### ` heading inside
+`## Implementation Plan`, present with a non-empty body. `pickle ticket move
+<T-NNN> ready` refuses the move when one is missing. `pickle board audit`
+errors on a ticket already past READY with one still missing, or on one
+moved back to `1-to-do/`, since the gate no longer holds there either. The
+check is structural only — it proves a step is present, never that it says
+something *good* — so judging whether the plan's content actually holds up
+is still the reviewing agent's job.
+
 == Pickup gates
 
 Before a READY ticket enters development, three checks run:

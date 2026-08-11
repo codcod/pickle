@@ -491,6 +491,12 @@ backward/abort:  in-development → ready,  ready → to-do,  (any non-terminal)
   on one that is done but unmerged, while the pickup gate demands the `MERGED`
   History line outright. *`spawned-by:` takes no part in this gate* — lineage
   is provenance, so a ticket is pickable however its parents stand.
+* *Gate table* — the target status's own required sections/`### ` headings
+  (see <<cmd-board-audit>>'s gate-table bullet) must already hold in the
+  ticket's *current* text: a **blocking** row unmet refuses the move outright,
+  before anything is written. An **advisory** row unmet (e.g. `## Outcome`)
+  never refuses — `ticket move`'s own post-move `board audit` self-check
+  (below) is what reports it, as a warning.
 
 After applying, `ticket move` runs `board audit` as a self-check and fails
 loudly if the tree is no longer clean.
@@ -543,13 +549,24 @@ summary) when any invariant fails:
   is flagged and should move into the Description or `tickets/NOTES.md`.
   `created` lines and other free-form dated notes carry no such shape and are
   exempt, however long;
-* a non-terminal ticket's `## Outcome` section is present and says something
-  (a *warning*): absent, empty, or still the `TEMPLATE.md` placeholder all
-  trigger it. Checked only in `1-to-do/` … `5-rework/` — `6-done/` and
-  `7-dropped/` are permanent archives and are never flagged, however old the
-  ticket. The check is structural (section present and non-empty once HTML
-  comments are stripped), never a prose-quality judgement, and never blocks
-  `ticket move`.
+* every status's own **gate table** holds — the sections (and, inside
+  `## Implementation Plan`, the `### ` sub-headings) that status requires,
+  each row present with a non-empty body. Two severities: a **blocking** row
+  unmet is an *error* (`2-ready/` … `5-rework/` require the plan section plus
+  its seven READY-gate steps — rules §4 — in order: feature branch,
+  prerequisite gate, confirmed decisions, tasks, acceptance test, docs
+  update, finish; `5-rework/` additionally requires `## Review`); an
+  **advisory** row unmet is only ever a *warning* (`## Outcome`, absent,
+  empty, or still the `TEMPLATE.md` placeholder, on every non-terminal
+  status — T-083's original check, now one row of this table). `6-done/` and
+  `7-dropped/` require nothing, so a permanent archive is never flagged,
+  however old or incomplete the ticket. The check is purely structural (a
+  named heading present with a non-empty body once HTML comments are
+  stripped) — it proves a step exists, never that its content is *good* —
+  and `ticket move` enforces the blocking half of the same table *before*
+  writing anything (<<cmd-ticket-move>>), so a ticket already past a gate
+  failing here means its plan changed out from under it after the move, not
+  that the move let it through.
 
 [NOTE]
 ====
@@ -572,6 +589,24 @@ upgrade` deliberately never writes under `tickets/`, it cannot self-heal this.
 Re-run `pickle install` (idempotent; it only creates what is missing) to
 restore the directory and its `.gitkeep`, then re-run `pickle upgrade` or
 `pickle board audit`.
+
+The gate table's blocking rows have the same upgrade-visible shape a third
+time, and this one is new: a ticket already sitting in `2-ready/` …
+`5-rework/` whose Implementation Plan predates the table — missing one of the
+seven READY-gate `### ` headings, or the section itself — now reports a
+blocking *error* it never did before, from `pickle board audit` directly.
+**`pickle board sync` will usually *not* surface it**: `board sync` only
+re-runs the audit self-check when it actually rewrites `BOARD.md` (a row or
+the generated layout was stale), and nothing about a ticket's
+`## Implementation Plan` body feeds any board column — so a gate-table
+violation confined to the plan typically leaves the board itself unchanged,
+and `sync` reports "already in sync" with no error at all. Run `board audit`
+directly (or attempt the `ticket move` that first surfaces it) rather than
+relying on `sync` to catch this class of error. There is no migration flag
+and nothing to grandfather: write the missing heading (it need only say what
+the ticket's own plan actually does — even "none" satisfies a Prerequisite
+gate or Docs update row), or move the ticket back to `1-to-do/` (its only
+requirement is `## Outcome`) until the plan is complete.
 ====
 
 [#cmd-board-sync]
