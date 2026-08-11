@@ -13,10 +13,11 @@ Last updated: 2026-08-11
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-081 | gate table as data: per-state required-artifact preconditions, audited | [T-080] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-11
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-081 | gate table as data: per-state required-artifact preconditions, audited | medium | high | L | [T-080] |  |
 
 ## TO DO (impact order, per child)
 

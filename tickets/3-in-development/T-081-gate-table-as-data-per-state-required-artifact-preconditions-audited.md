@@ -540,3 +540,4 @@ No new manual page is registered.
   `high`, cost `M` → `L` (reason in the Description). Nothing split: no part is independently
   schedulable — the table, its evaluator and its two call sites ship or fail together
 - 2026-08-11 — TO DO → READY: plan complete
+- 2026-08-11 — READY → IN DEVELOPMENT: picked up
