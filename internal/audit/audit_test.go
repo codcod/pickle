@@ -25,6 +25,51 @@ wip_in_development = 1
 wip_in_review = 1
 `
 
+// fixturePlan and fixtureReview are appended to every ticketFile/historyTemplate
+// fixture so a ticket placed in ANY status dir — not only 1-to-do — satisfies
+// the T-081 gate table's Blocking rows (the plan section + its seven
+// READY-gate stems on 2-ready...5-rework, plus ## Review on 5-rework) by
+// default. Kept as named constants (not inlined) so withoutPlan/withoutReview
+// below can strip exactly one of them by exact string match, the same trick
+// withoutOutcome already used for ## Outcome.
+const fixturePlan = `## Implementation Plan
+
+### 0. Feature branch (mandatory)
+
+feat/demo
+
+### Prerequisite gate (hard)
+
+none
+
+### Confirmed design decisions
+
+d1
+
+### Tasks
+
+t1
+
+### Acceptance test
+
+just test
+
+### Docs update
+
+no user-facing surface
+
+### Finish (mandatory)
+
+summary + suggested commit message
+
+`
+
+const fixtureReview = `## Review
+
+N1 | blocking | fixed the thing
+
+`
+
 func ticketFile(id, project, depends, impact, hist string) string {
 	return fmt.Sprintf(`---
 id: %s
@@ -43,9 +88,9 @@ cost: M
 
 Fixture ticket; exercises the audit only.
 
-## History
+%s%s## History
 - 2026-07-23 — created (%s). source: test
-`, id, id, project, depends, impact, id, hist)
+`, id, id, project, depends, impact, id, fixturePlan, fixtureReview, hist)
 }
 
 // withoutOutcome strips the fixture's default ## Outcome section entirely —
@@ -53,6 +98,13 @@ Fixture ticket; exercises the audit only.
 func withoutOutcome(body string) string {
 	return strings.Replace(body, "## Outcome\n\nFixture ticket; exercises the audit only.\n\n", "", 1)
 }
+
+// withoutPlan and withoutReview strip the fixture's default satisfying
+// ## Implementation Plan / ## Review blocks entirely, to exercise the T-081
+// gate table's Blocking rows without touching any other field — the same
+// trick as withoutOutcome, one level up the severity scale.
+func withoutPlan(body string) string   { return strings.Replace(body, fixturePlan, "", 1) }
+func withoutReview(body string) string { return strings.Replace(body, fixtureReview, "", 1) }
 
 // withPlaceholderOutcome replaces the fixture's real Outcome sentence with an
 // HTML-comment placeholder — the same "section present but says nothing" shape
@@ -83,7 +135,7 @@ cost: M
 
 Fixture ticket; exercises the audit only.
 
-## History
+` + fixturePlan + fixtureReview + `## History
 %[4]s
 `
 
@@ -370,6 +422,32 @@ func TestAudit(t *testing.T) {
 				withFamily(ticketFile("T-003", "pickle", "[]", "high", "READY"), "T-002"))
 			renderBoard(t, root)
 		}, wantErr: true, substr: "families do not nest"},
+
+		// --- gate table (T-081): per-state Requires, Blocking vs Advisory, terminal exemption ---
+		{name: "blocking gate violation errors, names the heading and both ways out", mutate: func(t *testing.T, root string) {
+			mk(t, root, "tickets/2-ready/T-002-bar.md",
+				withoutPlan(ticketFile("T-002", "pickle", "[]", "high", "READY")))
+			renderBoard(t, root)
+		}, wantErr: true, substr: `## Implementation Plan is missing, empty, or still a placeholder — ` +
+			`fill in the plan before moving past READY — write it, or move the ticket back to 1-to-do until the plan is complete`},
+		{name: "advisory outcome violation still only warns, byte-identical to T-083", mutate: func(t *testing.T, root string) {
+			mk(t, root, "tickets/2-ready/T-002-bar.md",
+				withoutOutcome(ticketFile("T-002", "pickle", "[]", "high", "READY")))
+			renderBoard(t, root)
+		}, wantWarn: true, warnSubstr: "## Outcome is missing, empty, or still a placeholder — say what changes " +
+			"when this ships, in user-observable terms"},
+		// Decision 4: a terminal state (6-done) declares no Requires at all, so a
+		// ticket missing BOTH Outcome and its plan produces no finding whatsoever
+		// — the exemption is the table's own now, not a !st.Terminal special case
+		// in this file.
+		{name: "done ticket missing both outcome and plan produces no finding (terminal exemption)", mutate: func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			mk(t, root, "tickets/6-done/T-001-foo.md",
+				withoutPlan(withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DONE"))))
+			renderBoard(t, root)
+		}},
 	}
 
 	for _, tc := range cases {

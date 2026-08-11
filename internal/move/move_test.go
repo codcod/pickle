@@ -31,8 +31,47 @@ func newProject(t *testing.T) (string, *config.Config) {
 	return root, cfg
 }
 
+// readyGateBody is a minimal ## Implementation Plan body satisfying every
+// Blocking Requirement in brine's readyGate (T-081: the plan section itself,
+// plus its seven READY-gate ### stems) — injected by newTicketFull in place
+// of Scaffold's own placeholder, so every existing test that walks a ticket
+// past READY keeps working under the new gate without individually pasting a
+// skeleton into each one. TestReadyGateRefusesIncompletePlan below
+// deliberately does NOT go through newTicketFull, so it still exercises a raw
+// Scaffold's empty placeholder — the exact shape of the defect this ticket
+// closes.
+const readyGateBody = `### 0. Feature branch (mandatory)
+
+feat/T-NNN-demo
+
+### Prerequisite gate (hard)
+
+none
+
+### Confirmed design decisions
+
+d1
+
+### Tasks
+
+t1
+
+### Acceptance test
+
+just test
+
+### Docs update
+
+no user-facing surface
+
+### Finish (mandatory)
+
+summary + suggested commit message`
+
 // newTicketFull writes a TO DO ticket directly (bypassing the CLI) with the given
 // depends-on and spawned-by, then regenerates the board (the path ticket-new uses).
+// Its Implementation Plan is pre-filled with readyGateBody so a caller can walk
+// the ticket straight through READY without the gate table (T-081) refusing it.
 //
 // Lineage goes in typed, because ticket.Scaffold takes a spawnedBy parameter;
 // only depends-on needs the string rewrite, since Scaffold hardcodes
@@ -41,6 +80,9 @@ func newProject(t *testing.T) (string, *config.Config) {
 func newTicketFull(t *testing.T, root string, cfg *config.Config, id, title string, deps, spawnedBy []string) {
 	t.Helper()
 	body := ticket.Scaffold(id, title, "demo", "medium", "medium", "M", spawnedBy, "")
+	body = strings.Replace(body,
+		"<!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->",
+		readyGateBody, 1)
 	if len(deps) > 0 {
 		body = strings.Replace(body, "depends-on: []", "depends-on: ["+strings.Join(deps, ", ")+"]", 1)
 	}
@@ -243,4 +285,82 @@ func TestSanitizeReason(t *testing.T) {
 	if got := sanitizeReason("a → b\nc"); got != "a -> b c" {
 		t.Errorf("sanitizeReason = %q", got)
 	}
+}
+
+// TestReadyGateRefusesIncompletePlan is the regression for T-081's whole
+// reason to exist: measured on main at refinement, a ticket scaffolded by
+// `pickle ticket new` — empty Implementation Plan — moved to READY cleanly,
+// printing only the ## Outcome warning. It must now be refused, leaving the
+// ticket exactly where it was.
+func TestReadyGateRefusesIncompletePlan(t *testing.T) {
+	root, cfg := newProject(t)
+	// Deliberately not newTicketFull: a raw Scaffold is exactly what
+	// `pickle ticket new` produces, with the placeholder plan intact.
+	body := ticket.Scaffold("T-001", "Alpha", "demo", "medium", "medium", "M", nil, "")
+	dst := filepath.Join(root, "tickets", "1-to-do", "T-001-alpha.md")
+	if err := os.WriteFile(dst, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := board.Regenerate(flow.ForName(cfg.FlowName()), root, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Move(root, cfg, "T-001", "ready", "plan complete"); err == nil {
+		t.Fatal("expected move to READY to be refused: Implementation Plan is empty")
+	}
+	if _, err := os.Stat(dst); err != nil {
+		t.Errorf("ticket no longer at its original path after a refused move: %v", err)
+	}
+	// 1-to-do only requires ## Outcome (Advisory) — a warning, never an error.
+	assertClean(t, root, cfg)
+}
+
+// TestReadyGateAcceptsCompletePlan is the positive twin: the same shape of
+// ticket, this time with the seven READY-gate headings filled in
+// (newTicketFull's readyGateBody), moves cleanly.
+func TestReadyGateAcceptsCompletePlan(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	mustMove(t, root, cfg, "T-001", "ready", "plan complete")
+	assertClean(t, root, cfg)
+}
+
+// TestReworkRequiresReviewRecorded pins the one Requirement that is Blocking
+// only on 5-rework: a rework's whole scope is its recorded findings (rules
+// §5), so ## Review must be substantive before the ticket may sit there.
+func TestReworkRequiresReviewRecorded(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	mustMove(t, root, cfg, "T-001", "ready", "plan complete")
+	mustMove(t, root, cfg, "T-001", "in-development", "")
+	mustMove(t, root, cfg, "T-001", "in-review", "")
+
+	if _, err := Move(root, cfg, "T-001", "rework", "blocking finding"); err == nil {
+		t.Fatal("expected rework to be refused: ## Review is still the placeholder")
+	}
+
+	path := filepath.Join(root, "tickets", "4-in-review", "T-001-alpha.md")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.Replace(string(b), "<!-- empty until IN REVIEW -->", "N1 | blocking | fixed the thing", 1)
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	mustMove(t, root, cfg, "T-001", "rework", "blocking finding")
+	assertClean(t, root, cfg)
+}
+
+// TestBackToToDoNeverRefused pins the documented escape hatch (rules §2,
+// T-081 decision 6): 1-to-do requires only ## Outcome (Advisory), so a
+// ticket may always retreat there regardless of how incomplete its plan is
+// — including one whose plan the gate had just refused to let past READY.
+func TestBackToToDoNeverRefused(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	mustMove(t, root, cfg, "T-001", "ready", "plan complete")
+	mustMove(t, root, cfg, "T-001", "to-do", "gate no longer holds")
+	assertClean(t, root, cfg)
 }
