@@ -283,3 +283,4 @@ pushing or opening the MR.
   of them can see a ticket or tell a `board:` commit from a feature commit. Complexity `medium` →
   `low-medium` now the design is concrete; impact/cost unchanged
 - 2026-08-12 — TO DO → READY: plan complete; build-vs-buy gate answered (build, small)
+- 2026-08-12 — READY → IN DEVELOPMENT: picked up
