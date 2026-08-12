@@ -89,10 +89,15 @@ var (
 	sectionHeadingRE = regexp.MustCompile(`^##\s+\[`)
 )
 
-// ClassifySubject classifies one commit subject line and, when the
-// classification carries a ticket id, returns it — "" otherwise (a
-// Bookkeeping subject that doesn't parse an id after "board:", or any
-// Neither subject).
+// ClassifySubject classifies one commit subject line and returns the
+// *primary* ticket id — the one ChildProject's "shipped" set needs, and the
+// one Bookkeeping parses right after "board:" — or "" when there isn't one
+// (a Bookkeeping subject with no id after "board:", or any Neither
+// subject). It is not the full id inventory for a Bookkeeping or
+// Unclassified subject: Check builds that separately, with subjectIDs,
+// because a bookkeeping commit may legally name more than one ticket
+// (rules §0's "board: T-NNN[, T-MMM …] …" form) and this function's single
+// return only ever carried the first.
 func ClassifySubject(subject string) (CommitKind, string) {
 	s := strings.TrimSpace(subject)
 	if strings.HasPrefix(s, "board:") {
@@ -114,18 +119,24 @@ func ClassifySubject(subject string) (CommitKind, string) {
 	return Neither, ""
 }
 
-// Exclusion records one commit the check left out of "shipped", with the
+// Exclusion records one commit the check left out of "shipped", with every
 // ticket id it names. It carries both non-shipped-but-noteworthy kinds:
-// Result.Excluded's bookkeeping commits, so a convention drift (decision 7)
-// is visible in the report rather than silently under-counting, and
-// Result.Unclassified's safety-net commits (T-094 decision 6). One struct
+// Result.Excluded's bookkeeping commits, so a convention drift (decision 7,
+// T-093) is visible in the report rather than silently under-counting, and
+// Result.Unclassified's safety-net commits (decision 6, T-094). One struct
 // rather than two, because the shape either list needs is identical.
 type Exclusion struct {
 	Subject string
-	// ID is the ticket id the subject names — "" only for a bookkeeping
-	// commit whose subject parsed no id at all (an Unclassified commit always
-	// has one; that is what made it Unclassified rather than Neither).
-	ID string
+	// IDs is every ticket id the subject mentions, deduplicated, in the order
+	// they first appear (T-095 decision 2: a permissive scan of the whole
+	// subject, not just the id ClassifySubject's single return carries — a
+	// bookkeeping commit may legally name several tickets, and most that do
+	// carry the extra ones outside the leading "board: T-NNN[, T-MMM …]"
+	// list, in the verb phrase). Empty only when the subject names no id at
+	// all — the loudest possible symptom of a bookkeeping-convention drift
+	// (T-094 decision 4); an Unclassified commit's IDs is never empty, since
+	// finding one is what made it Unclassified rather than Neither.
+	IDs []string
 }
 
 // Result is the outcome of Check.
@@ -178,9 +189,9 @@ func Check(subjects []string, changelogText, section string) (Result, error) {
 				shipped = append(shipped, id)
 			}
 		case Bookkeeping:
-			excluded = append(excluded, Exclusion{Subject: subj, ID: id})
+			excluded = append(excluded, Exclusion{Subject: subj, IDs: subjectIDs(subj)})
 		case Unclassified:
-			unclassified = append(unclassified, Exclusion{Subject: subj, ID: id})
+			unclassified = append(unclassified, Exclusion{Subject: subj, IDs: subjectIDs(subj)})
 		case Neither:
 			// not from a ticket at all — neither shipped nor excluded
 		}
@@ -238,6 +249,28 @@ func sectionIDs(changelogText, section string) (map[string]bool, error) {
 		ids[m] = true
 	}
 	return ids, nil
+}
+
+// subjectIDs returns every ticket-id-shaped token idRE finds anywhere in
+// subject, deduplicated, in first-seen order. It is deliberately the same
+// permissive rule sectionIDs already uses to scan a changelog section's
+// whole body — so both halves of the report recognise an id identically —
+// rather than a stricter pattern anchored to "board:"'s documented
+// leading-list grammar. Measured across this project's entire commit
+// history (T-095 decision 2): of every multi-id `board:` subject, only one
+// keeps its extra ids in that leading list; the rest carry them in the verb
+// phrase ("board: T-089 reviewed and done, T-090 filed, T-070 re-graded"),
+// which a grammar-strict parser would still miss.
+func subjectIDs(subject string) []string {
+	var ids []string
+	seen := make(map[string]bool)
+	for _, m := range idRE.FindAllString(subject, -1) {
+		if !seen[m] {
+			seen[m] = true
+			ids = append(ids, m)
+		}
+	}
+	return ids
 }
 
 func sortedKeys(m map[string]bool) []string {

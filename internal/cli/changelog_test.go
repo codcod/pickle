@@ -80,7 +80,7 @@ func TestChangelogCheckFlagDefaults(t *testing.T) {
 	// The default report summarizes exclusions (T-094 decision 4) — the full
 	// subject is not printed unless --show-excluded is given (see
 	// TestChangelogCheckShowExcludedPrintsSubjects).
-	if !strings.Contains(out, "excluded 1 board: bookkeeping commit(s) covering T-050") {
+	if !strings.Contains(out, "excluded 1 board: bookkeeping commit(s) mentioning T-050") {
 		t.Errorf("output missing the exclusion summary line, got:\n%s", out)
 	}
 	if strings.Contains(out, "board: T-050 filed") {
@@ -241,7 +241,7 @@ func TestChangelogCheckShowExcludedPrintsSubjects(t *testing.T) {
 	if strings.Contains(defaultOut, "board: T-050 filed") {
 		t.Errorf("default report should summarize, not print the subject, got:\n%s", defaultOut)
 	}
-	if !strings.Contains(defaultOut, "excluded 1 board: bookkeeping commit(s) covering T-050") {
+	if !strings.Contains(defaultOut, "excluded 1 board: bookkeeping commit(s) mentioning T-050") {
 		t.Errorf("default report missing the exclusion summary, got:\n%s", defaultOut)
 	}
 
@@ -252,6 +252,90 @@ func TestChangelogCheckShowExcludedPrintsSubjects(t *testing.T) {
 	})
 	if !strings.Contains(verboseOut, "board: T-050 filed") {
 		t.Errorf("--show-excluded should print the full subject, got:\n%s", verboseOut)
+	}
+}
+
+// TestChangelogCheckExclusionSummaryNamesEveryID (T-095 decisions 2/3): a
+// two-id board: commit must have BOTH ids in the default summary line, and
+// the summary must say "mentioning" now that the scan is whole-subject
+// rather than leading-id-only.
+func TestChangelogCheckExclusionSummaryNamesEveryID(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+	writeAndCommit(t, root, "tickets/NOTES.md", "note\n", "board: T-010, T-011 re-aimed after review")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check"}); got != exitOK {
+			t.Fatalf("changelog check = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "excluded 1 board: bookkeeping commit(s) mentioning T-010, T-011") {
+		t.Errorf("output missing both ids in the exclusion summary, got:\n%s", out)
+	}
+}
+
+// TestChangelogCheckUntilFallsBackOnTaggedRootCommit (T-095 decision 7): when
+// HEAD is the repository's root commit, <until>^ cannot resolve at all —
+// this must fall back to describing <until> itself and still exit 0,
+// restoring the pre-T-094 answer on a tagged root commit instead of an
+// error that blames a missing tag for what is really a missing parent.
+func TestChangelogCheckUntilFallsBackOnTaggedRootCommit(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	// One commit only — HEAD is the root commit — then tag it immediately.
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check"}); got != exitOK {
+			t.Fatalf("changelog check on a tagged root commit = %d, want %d (fallback to describing --until itself)", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "v0.1.0..HEAD") {
+		t.Errorf("output does not show the fallback resolving --since to v0.1.0, got:\n%s", out)
+	}
+}
+
+// TestChangelogCheckTagNoteOnDefaultSection (T-095 decision 8): a tagged
+// --until with the default --section prints an advisory note; the same
+// --until with an explicit --section does not, since the reader has already
+// answered "which release".
+func TestChangelogCheckTagNoteOnDefaultSection(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [0.2.0]\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+	writeAndCommit(t, root, "src/a.go", "package a\n", "feat(a): ship a thing (T-050)")
+	gitTag(t, root, "v0.2.0")
+
+	noteOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check", "--until", "v0.2.0"}); got != exitOK {
+			t.Fatalf("changelog check --until v0.2.0 = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(noteOut, "note: v0.2.0 is a tag") {
+		t.Errorf("output missing the tagged---until note with the default --section, got:\n%s", noteOut)
+	}
+	if !strings.Contains(noteOut, "try --section 0.2.0") {
+		t.Errorf("note should suggest --section 0.2.0, got:\n%s", noteOut)
+	}
+
+	noNoteOut := captureStdout(t, func() {
+		got := Run(nil, "test", []string{"changelog", "check", "--until", "v0.2.0", "--section", "0.2.0"})
+		if got != exitOK {
+			t.Fatalf("changelog check --until v0.2.0 --section 0.2.0 = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(noNoteOut, "note:") {
+		t.Errorf("an explicit --section must suppress the tagged---until note, got:\n%s", noNoteOut)
 	}
 }
 

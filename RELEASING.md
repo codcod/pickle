@@ -12,6 +12,13 @@ report rather than a from-scratch reading of the log. It is read-only and always
 `0` — read the candidates it prints (each points at its ticket file) and either add an
 entry or confirm the ticket already records a deliberate decision to have none.
 
+Auditing a release that has already been tagged (rather than the in-flight
+`[Unreleased]` section) is also read-only: point `--until` at the tag and
+`--section` at its version, e.g. `pickle changelog check --until v0.5.0
+--section 0.5.0` — the bare command's default range moves with `HEAD`, so
+standing on a tag without `--section` audits the *previous* release against
+`[Unreleased]` instead (the report says so with a `note:` line if you forget).
+
 Then update [`CHANGELOG.md`](CHANGELOG.md): retitle the `[Unreleased]` section to
 `[X.Y.Z] - YYYY-MM-DD`, add a fresh empty `[Unreleased]` above it, update the link
 references at the bottom, and commit — the tag should include the changelog.
