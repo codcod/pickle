@@ -302,3 +302,14 @@ pi|opencode`. Covered by Task 5 (`CHANGELOG.md` `[Unreleased]`), Task 3 (`.openc
   and the board delta since READY is entirely unrelated T-095/T-097 work
 - 2026-08-12 — READY → IN DEVELOPMENT: picked up; plan amended at the applicability gate (F1: user manual omitted)
 - 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green; smoke-tested against the live model on both backends
+- 2026-08-12 — published on approval: one atomic commit `348890f` on
+  `feat/T-096-docs-readability-gpt-5-4` (8 files; no tidying needed, the work was already a
+  single coherent change). **PR #36** open against `main`; history to be kept, not squashed
+  (rules §0, root-path child). Pre-push gate verified: `git diff --name-only
+  origin/main...HEAD` carries no `tickets/` path, and `origin/main` was not behind local
+  `main`. **Merging is the human's**; add the `merged:` line here once #36 lands. Note for the
+  reviewer: PR #35 (T-095) is open concurrently and touches disjoint files
+  (`internal/cli/changelog.go` and the changelog-check docs paragraphs), so the two are
+  independent — but both edit `CHANGELOG.md`'s `[Unreleased]` section, #35 inside the existing
+  `### Added` bullet and #36 in a new `### Changed` subsection below it, so whichever merges
+  second may want a glance at that hunk
