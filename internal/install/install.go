@@ -55,6 +55,18 @@ const (
 	PiExtensionsDir = ".pi/extensions"
 )
 
+// SkillLinked reports whether the installed skill directory is a symlink: the
+// dev/self-host arrangement in which .agents/skills/ticket-flow points at the
+// payload source (this repo's skill/) instead of holding a copy of it. install,
+// upgrade and uninstall all already treat that link as "not ours to replace";
+// doctor uses it to skip the payload_version comparison, which compares an
+// installed copy that does not exist. A broken link still counts — it is still
+// not a copy; checkSkill reports the breakage on its own.
+func SkillLinked(root string) bool {
+	fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(SkillDir)))
+	return err == nil && fi.Mode()&os.ModeSymlink != 0
+}
+
 // AgentAsset pairs an installed agent-scaffold path (relative to the project
 // root, slash-separated) with its source inside the embedded payload.
 type AgentAsset struct {
@@ -286,7 +298,7 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 	// removed from the new payload don't linger; a self-host symlink is left
 	// alone (copyPayload already skips it via the Lstat/ModeSymlink guard).
 	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
-	if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink == 0 {
+	if !SkillLinked(root) {
 		if err := os.RemoveAll(dst); err != nil {
 			return res, fmt.Errorf("refresh skill payload: %w", err)
 		}
