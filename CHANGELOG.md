@@ -17,12 +17,12 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   (T-093, T-094, T-095). Read-only and advisory: it always
   exits `0`, even with candidates, and is never wired into `board audit`, CI, or
   `ticket move`. `--since`, `--until`, `--changelog` and `--section` override the defaults
-  (the last tag before `--until`, `HEAD`, `CHANGELOG.md`, `Unreleased`, falling back to the
-  last tag at `--until` itself when `--until` has no parent commit to describe); a
-  squash-merge's trailing `(#31)`/`(!31)` is tolerated after the ticket id; the excluded
-  `board:` commits summarize to one line, naming every id any excluded subject mentions,
-  unless `--show-excluded`; a tagged `--until` with the default `--section` gets an
-  advisory note pointing at the section it probably means.
+  (the last tag before `--until`, `HEAD`, `CHANGELOG.md`, `Unreleased`); when `--until` has
+  no parent commit at all to describe, the `--since` default falls back to `--until` itself
+  instead of erroring. A squash-merge's trailing `(#31)`/`(!31)` is tolerated after the
+  ticket id; the excluded `board:` commits summarize to one line, naming every id any
+  excluded subject mentions, unless `--show-excluded`; a tagged `--until` with the default
+  `--section` gets an advisory note pointing at the section it probably means.
 
 ## [0.5.0] - 2026-08-12
 

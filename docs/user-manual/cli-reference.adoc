@@ -723,12 +723,14 @@ verb phrase (`board: T-089 reviewed and done, T-090 filed, T-070 re-graded`),
 not the leading comma-list, and a stricter parser would silently drop them.
 A trailing `(+N with no ticket id)` clause counts a bookkeeping subject that
 names **no** ticket anywhere — the loudest possible symptom of a convention
-drift, so it is never the thing the summary hides. Pass `--show-excluded` to
-print every excluded subject in full, exactly as earlier versions of this
-command always did; a project that stops following the `board:` convention
-still sees a visibly odd summary (a rising count, or unfamiliar ids) rather
-than a silent under-report. A subject that mentions a ticket in parentheses
-but matches neither convention — typically a revert, e.g.
+drift, so it is never the thing the summary hides; when *no* excluded
+subject names an id at all, the line says so directly instead of naming an
+empty list. Pass `--show-excluded` to print every excluded subject in full,
+exactly as earlier versions of this command always did; a project that
+stops following the `board:` convention still sees a visibly odd summary (a
+rising count, or unfamiliar ids) rather than a silent under-report. A
+subject that mentions a ticket in parentheses but matches neither
+convention — typically a revert, e.g.
 `Revert "feat(cli): add a thing (T-050)"` — is never silently dropped
 either: it prints in its own short "match neither convention" list, always
 in full.
@@ -742,23 +744,32 @@ make `--until v0.5.0` (with no `--since`) describe `HEAD`'s own last tag
 rather than `v0.5.0`'s predecessor, and if `v0.5.0` is that last tag the
 range collapses to the empty, falsely-passing `v0.5.0..v0.5.0`. Resolving
 from `--until` instead makes `--until v0.5.0` alone mean exactly what it
-reads as: audit the `0.5.0` release. When `<until>^` cannot resolve at all —
-`--until` names the repository's root commit, or a shallow clone has no
-parent to name — the default `--since` falls back to describing `<until>`
-itself, the same answer this command gave before `--until` existed; only
-when *that* also fails to find a tag does it error, naming `<until>` rather
-than `<until>^` so the message blames the actual missing tag instead of the
-fallback's own missing parent.
+reads as: audit the `0.5.0` release. When `<until>^` does not *exist at
+all* — `--until` names the repository's root commit, or a shallow clone has
+no parent to name — the default `--since` falls back to describing
+`<until>` itself, the same answer this command gave before `--until`
+existed; only when *that* also fails to find a tag does it error, naming
+`<until>` rather than `<until>^` so the message blames the actual missing
+tag instead of the fallback's own missing parent. This fallback is narrower
+than "`<until>^` fails to describe": a reachable parent that simply has no
+tag before it — a project's first release, tagged — still errors naming
+`<until>^`, exactly as it did before this fallback existed, rather than
+falling back to `<until>`'s own tag and silently producing that same
+empty-range false pass by another route.
 
 Standing on a freshly-tagged `HEAD` with no `--since` or `--section` given is
 an easy moment to misread: the range becomes the *previous* release, audited
 against `[Unreleased]`, which can read like a false pass rather than the
 wrong question. When `--until` resolves to an exact tag and `--section` is
 still its default `Unreleased`, the report adds one advisory line right
-after the header, e.g. `note: v0.5.0 is a tag — this range is release
-0.5.0, not [Unreleased]; try --section 0.5.0`. Passing an explicit
-`--section` suppresses it — an explicit section already answers "which
-release am I auditing". The note never changes the exit code.
+after the header, e.g. `note: v0.5.0 is at tag v0.5.0 — this range is
+release 0.5.0, not [Unreleased]; try --section 0.5.0` (the ref you passed
+and the tag it resolved to are named separately, since `--until` need not
+be the tag's own name, e.g. `--until main`). Passing a `--section` other
+than the default `Unreleased` suppresses it — an explicit section already
+answers "which release am I auditing"; an explicit `--section Unreleased`
+is indistinguishable from the default and still gets the note. The note
+never changes the exit code.
 
 The check is one direction only: *shipped but unmentioned*. It never reports
 the reverse (mentioned but not shipped in this range) — an entry may

@@ -211,7 +211,9 @@ func printChangelogCheckReport(root, flowName, since, until, changelogPath strin
 // thing the summary hides; T-095 decision 4 narrows this clause's meaning to
 // exactly that — "no id anywhere", not "no *leading* id" — since a
 // permissive scan finds an id in some subjects the old anchored parse
-// missed). --show-excluded still prints every subject, as before T-094.
+// missed); when *no* excluded subject names an id at all, the line says so
+// instead of naming an empty list (T-095 review finding N7). --show-excluded
+// still prints every subject, as before T-094.
 func printExclusions(excluded []changelog.Exclusion, showExcluded bool) {
 	if len(excluded) == 0 {
 		return
