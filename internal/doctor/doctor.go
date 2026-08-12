@@ -99,7 +99,11 @@ func checkSkill(root string, selfHost bool, r *Result) {
 		}
 	}
 	if selfHost {
-		target, err := os.Readlink(filepath.Join(root, filepath.FromSlash(install.SkillDir)))
+		// dir is the link path itself (os.Stat above followed it; Readlink must
+		// not). Only a TOCTOU race can fail here — selfHost came from an Lstat
+		// on this same path — so the fallback is belt-and-braces, not a case
+		// worth naming in the output.
+		target, err := os.Readlink(dir)
 		if err != nil {
 			target = "?"
 		}

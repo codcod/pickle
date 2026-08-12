@@ -207,10 +207,11 @@ exist are refreshed: `CLAUDE.md` is re-injected only if it is a regular file
 (a `CLAUDE.md -> AGENTS.md` symlink is left alone), and the
 `.claude/skills/ticket-flow` view is re-linked only if it is already there. A
 self-host *symlinked* `.agents/skills/ticket-flow` is left untouched, never
-followed and overwritten. `payload_version` **is** still stamped in that
-case: `upgrade` refreshed everything else it owns (the marker block, the pi
-scaffolds, the hook shim), so the stamp truthfully records that this tree was
-last upgraded by this binary.
+followed and overwritten. The `payload_version` stamp **is** still updated in
+that case whenever it actually differs (an already-current version is a no-op,
+as below): `upgrade` refreshed everything else it owns — the marker block, the
+pi scaffolds, the hook shim — so the stamp truthfully records that this tree
+was last upgraded by this binary.
 
 Idempotent: re-running at the current version still refreshes the payload and
 marker block (so drift is corrected) and reports `already at <version>`

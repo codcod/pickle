@@ -386,6 +386,14 @@ func TestCheckSelfHostLinkSkipsUnstampableVersionCheck(t *testing.T) {
 // Outcome: doctor -v's passed line for the skill check names the self-host
 // link and the target it resolves to, rather than the generic "skill payload
 // present" text an ordinary install gets.
+//
+// It also pins the *other* half of D5. This fixture is checked at a version
+// equal to its own stamp, so it is the one case that distinguishes "the skip
+// is checkVersion's first statement" from "the skip merely precedes the
+// PayloadVersionStampable probe": if the skip were moved below the
+// version==""/"dev" guard or the equal-version early return, those would
+// return first and the passed line would vanish here, while every other
+// self-host test still passed.
 func TestCheckSelfHostLinkNamesTheLink(t *testing.T) {
 	root := selfHostFixture(t)
 	target, err := os.Readlink(filepath.Join(root, filepath.FromSlash(install.SkillDir)))
@@ -401,6 +409,11 @@ func TestCheckSelfHostLinkNamesTheLink(t *testing.T) {
 	}
 	if !hasPassedContaining(res.Passed, target) {
 		t.Errorf("expected the passed line to name the link target %q, got: %v", target, res.Passed)
+	}
+	// D5: unconditional — the skip fires even when version == the stamp, which
+	// the equal-version early return would otherwise swallow.
+	if !hasPassedContaining(res.Passed, "payload version check skipped") {
+		t.Errorf("the version-check skip must fire even when version equals the stamp (D5: first statement), got: %v", res.Passed)
 	}
 }
 
