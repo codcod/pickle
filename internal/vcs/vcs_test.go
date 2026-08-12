@@ -165,6 +165,41 @@ func TestAdviceEntryActuallyIgnores(t *testing.T) {
 	}
 }
 
+// TestOutputCapturesStdout (T-093) pins Output's basic contract: it runs the
+// command and returns its trimmed stdout, not merely a status like exitCode.
+func TestOutputCapturesStdout(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	gitInit(t, root)
+	if out, err := exec.Command("git", "-C", root, "commit", "-q", "--allow-empty", "-m", "first").CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v: %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", root, "tag", "v1.2.3").CombinedOutput(); err != nil {
+		t.Fatalf("git tag: %v: %s", err, out)
+	}
+
+	got, err := Output(root, "describe", "--tags", "--abbrev=0")
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+	if got != "v1.2.3" {
+		t.Fatalf("Output(describe) = %q, want %q", got, "v1.2.3")
+	}
+}
+
+// TestOutputErrorsOnNonZeroExit pins the other half: a failing git command
+// (here, describe with no tag reachable) is reported as an error, not as
+// empty output silently swallowing the failure.
+func TestOutputErrorsOnNonZeroExit(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	gitInit(t, root)
+
+	if _, err := Output(root, "describe", "--tags", "--abbrev=0"); err == nil {
+		t.Fatal("Output(describe) with no tags = nil error, want one")
+	}
+}
+
 // TestIsRepoRoot (T-051 review R1) pins the gate that keeps the overarching
 // repository from being reported as a nested child of itself. The raw-string
 // comparison it replaced accepted "." only, so a child registered as "./"
