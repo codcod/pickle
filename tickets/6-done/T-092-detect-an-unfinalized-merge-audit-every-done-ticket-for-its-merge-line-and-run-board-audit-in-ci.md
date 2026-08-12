@@ -318,3 +318,14 @@ refinement had already decoupled it (decision 3 reads commit subjects, not merge
 - 2026-08-12 — READY → IN DEVELOPMENT: picked up
 - 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-12 — IN REVIEW → DONE: 0 blocking, 8 non-blocking (3 fixed inline, 5 noted)
+- 2026-08-12 — published (late): the review moved this ticket to DONE on 2026-08-12, but its
+  branch was never pushed or merged and no merge line was ever appended — the precise condition
+  this ticket's own feature detects, unnoticed for the whole interval because the detector was
+  the unmerged thing. Found while explaining why `git branch --no-merged main` still listed four
+  branches: three were squash-merge artifacts (content verified present on `main`, so pruned),
+  this one was real work. Rebased 55 commits onto `main` (one `CHANGELOG.md` conflict: the entry
+  moved to the `### Changed` section that appeared meanwhile), four gates green, opened as
+  **PR #37**. The new audit run against the live tree emits exactly one warning — about T-092
+  itself — at exit 0, so the CI step this ticket adds warns without blocking its own merge.
+  **Merging is the human's**; the `merged:` line appended here on merge is also what clears
+  that warning
