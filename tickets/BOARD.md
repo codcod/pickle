@@ -38,6 +38,8 @@ Last updated: 2026-08-12
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | medium | low | S | [] |  |
+| T-093 | reconcile merged tickets against the changelog's Unreleased section | low-medium | low-medium | S-M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -56,7 +58,6 @@ Last updated: 2026-08-12
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
 | T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | medium | low | S-M | [] |  |
-| T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
@@ -64,7 +65,6 @@ Last updated: 2026-08-12
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
-| T-093 | reconcile merged tickets against the changelog's Unreleased section | low-medium | medium | S-M | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
