@@ -344,3 +344,4 @@ pushing or opening the MR. **Push `origin main` first if the local base is ahead
   would be picked up alone. Grades unchanged (`low`/`low`/`S`): the plan grew precise, not larger
 - 2026-08-12 — TO DO → READY: plan complete; four design questions settled (permissive id scan, mentioning verb, single <until>^ fallback, tagged-until note)
 - 2026-08-12 — READY → IN DEVELOPMENT: picked up
+- 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green
