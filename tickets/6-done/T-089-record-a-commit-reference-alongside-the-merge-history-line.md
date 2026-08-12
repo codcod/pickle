@@ -281,3 +281,6 @@ Proceeds to `6-done/`.
 - 2026-08-09 — READY → IN DEVELOPMENT: picked up
 - 2026-08-09 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-09 — IN REVIEW → DONE: review PASS; 0 blocking, 12 non-blocking all dispositioned (5 fixed inline, 6 -> T-090, 1 noted)
+- 2026-08-09 — merged to main (PR #26, 1ceaead, https://github.com/codcod/pickle/commit/1ceaead);
+  merge commit, 2 commits kept. Line added 2026-08-12 during T-092's refinement, which found this
+  was the only DONE ticket of 45 missing its merge line — the exact gap T-092 exists to detect
