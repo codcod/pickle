@@ -284,3 +284,4 @@ pushing or opening the MR.
   `low-medium` now the design is concrete; impact/cost unchanged
 - 2026-08-12 — TO DO → READY: plan complete; build-vs-buy gate answered (build, small)
 - 2026-08-12 — READY → IN DEVELOPMENT: picked up
+- 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green
