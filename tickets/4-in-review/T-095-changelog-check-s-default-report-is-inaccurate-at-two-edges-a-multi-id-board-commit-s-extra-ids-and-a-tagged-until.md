@@ -516,3 +516,4 @@ Because the branch is already merged, the rework lands on a **new branch off `ma
   human's approval **before** this ticket's review ran, so the review below is retroactive and
   its rework lands on a fresh branch off `main` rather than on the merged feature branch
 - 2026-08-12 — IN REVIEW → REWORK: review: 3 blocking (B1 fallback empty-range false pass; B2/B3 docs), 7 folded, T-097 spawned, 4 noted
+- 2026-08-12 — REWORK → IN REVIEW: 3 blocking + 7 folded findings fixed; ready for scoped re-review

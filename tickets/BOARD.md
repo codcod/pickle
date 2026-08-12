@@ -20,10 +20,11 @@ Last updated: 2026-08-12
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-12
 
 | id | title | open findings |
 |---|---|---|
-| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | review: 3 blocking (B1 fallback empty-range false pass; B2/B3 docs), 7 folded, T-097 spawned, 4 noted |
 
 ## READY (impact order, per child)
 
