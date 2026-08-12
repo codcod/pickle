@@ -20,11 +20,10 @@ Last updated: 2026-08-12
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | [] |
 
 ## REWORK
 
@@ -121,6 +120,7 @@ Last updated: 2026-08-12
 | T-087 | release CI: make the user-manual build visible and testable without cutting a release | yes — merged to main (PR #25, 084ff7e) |
 | T-089 | Record a commit reference alongside the merge History line | yes — merged to main (PR #26, 1ceaead, https://github.com/codcod/pickle/commit/1ceaead); |
 | T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | yes — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept |
+| T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | no — publish-gated |
 
 ## DROPPED
 

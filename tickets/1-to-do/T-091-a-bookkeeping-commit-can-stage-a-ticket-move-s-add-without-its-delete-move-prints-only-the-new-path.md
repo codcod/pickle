@@ -82,9 +82,9 @@ behaviour; if shape 2 wins, sequence with them rather than merging.
 
 Soft coupling: **T-092** (detect an unfinalized merge) is the other half of the same incident that
 spawned this ticket — that ticket makes the omission *detectable* after the fact (generalising the
-DONE-without-a-merge-line audit check, and running `board audit` in CI, which nothing does today);
-this ticket fixes the staging mistake at its source (`move` naming both paths). Neither blocks the
-other.
+DONE-without-a-merge-line audit check, and running `board audit` in CI — both shipped in T-092,
+reviewed 2026-08-13, so CI now audits the board on every push and PR); this ticket fixes the
+staging mistake at its source (`move` naming both paths). Neither blocks the other.
 
 ## Implementation Plan
 
