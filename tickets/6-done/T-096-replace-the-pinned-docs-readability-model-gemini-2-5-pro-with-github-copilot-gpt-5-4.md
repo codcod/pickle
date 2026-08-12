@@ -411,3 +411,7 @@ change rather than re-read by its author.
   `### Added` bullet and #36 in a new `### Changed` subsection below it, so whichever merges
   second may want a glance at that hunk
 - 2026-08-12 — IN REVIEW → DONE: review: 0 blocking, 5 fixed inline, 1 folded; step 4b ran successfully for the first time
+- 2026-08-12 — review's inline fixes published on approval: `fa47f8b` pushed to **PR #36**, a
+  fast-forward over `348890f` (no history rewritten). The PR now carries two commits — the
+  change, then the review's five `fixed inline` corrections. **Merging is the human's**; add the
+  `merged:` line here once #36 lands
