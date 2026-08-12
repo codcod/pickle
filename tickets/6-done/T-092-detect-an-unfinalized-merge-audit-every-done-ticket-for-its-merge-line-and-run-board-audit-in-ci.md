@@ -329,3 +329,5 @@ refinement had already decoupled it (decision 3 reads commit subjects, not merge
   itself — at exit 0, so the CI step this ticket adds warns without blocking its own merge.
   **Merging is the human's**; the `merged:` line appended here on merge is also what clears
   that warning
+- 2026-08-12 — merged to `main` (`7b8cbdd`, PR #37): 3 commits kept, CI green — its own new CI
+  step ran in that PR and warned about this very ticket, at exit 0
