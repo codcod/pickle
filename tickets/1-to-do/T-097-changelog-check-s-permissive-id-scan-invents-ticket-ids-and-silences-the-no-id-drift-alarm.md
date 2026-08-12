@@ -91,3 +91,11 @@ introduces a strict ticket-id rule, that regex is the natural place for it to li
   projects rather than only at an edge of this one; complexity `low` and cost `S` because the
   likely fix is splitting one predicate into two in `printExclusions`/`Check`, with the
   regression tests already in place
+- 2026-08-12 — patched by T-095's scoped re-review impact sweep. T-095's rework does **not**
+  invalidate this ticket: the `noID` predicate it targets (`len(ex.IDs) == 0` in
+  `printExclusions`) is untouched, and the measured reproduction still holds. Two notes for
+  whoever picks this up: (a) the `cli-reference.adoc` paragraph this ticket quotes was reflowed
+  and gained a clause about the summary's *third* branch ("no excluded subject names an id at
+  all"), so the quoted promise survives but its line numbers have shifted — search the text,
+  not the line; (b) the branch this ticket must not break is that same third branch, which is
+  now documented, so a strict-count fix has to keep both it and the `(+N …)` clause coherent
