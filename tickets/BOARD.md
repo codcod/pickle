@@ -20,11 +20,10 @@ Last updated: 2026-08-12
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-093 | reconcile merged tickets against the changelog's Unreleased section | [] |
 
 ## REWORK
 
@@ -64,6 +63,7 @@ Last updated: 2026-08-12
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
+| T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | low-medium | low | S | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
@@ -121,6 +121,7 @@ Last updated: 2026-08-12
 | T-089 | Record a commit reference alongside the merge History line | yes — merged to main (PR #26, 1ceaead, https://github.com/codcod/pickle/commit/1ceaead); |
 | T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | yes — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept |
 | T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | no — publish-gated |
+| T-093 | reconcile merged tickets against the changelog's Unreleased section | no — publish-gated |
 
 ## DROPPED
 
