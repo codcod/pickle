@@ -415,3 +415,4 @@ change rather than re-read by its author.
   fast-forward over `348890f` (no history rewritten). The PR now carries two commits — the
   change, then the review's five `fixed inline` corrections. **Merging is the human's**; add the
   `merged:` line here once #36 lands
+- 2026-08-12 — merged to `main` (`bf02f33`, PR #36): 2 commits kept, CI green
