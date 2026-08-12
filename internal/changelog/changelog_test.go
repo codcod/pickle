@@ -111,9 +111,70 @@ func TestCheckBoardOnlyTicketExcluded(t *testing.T) {
 	if len(res.Candidates) != 0 {
 		t.Fatalf("Candidates = %v, want empty", res.Candidates)
 	}
-	want := []Exclusion{{Subject: "board: T-091 file a finding", ID: "T-091"}}
+	want := []Exclusion{{Subject: "board: T-091 file a finding", IDs: []string{"T-091"}}}
 	if !reflect.DeepEqual(res.Excluded, want) {
 		t.Fatalf("Excluded = %+v, want %+v", res.Excluded, want)
+	}
+}
+
+// TestCheckMultiIDBoardCommitCapturesEveryID (T-095 decision 2/5): a
+// bookkeeping commit naming several tickets must have every one of them in
+// Exclusion.IDs, not just the id immediately after "board:".
+func TestCheckMultiIDBoardCommitCapturesEveryID(t *testing.T) {
+	subjects := []string{"board: T-010, T-011 re-aimed after review"}
+	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Exclusion{{Subject: "board: T-010, T-011 re-aimed after review", IDs: []string{"T-010", "T-011"}}}
+	if !reflect.DeepEqual(res.Excluded, want) {
+		t.Fatalf("Excluded = %+v, want %+v", res.Excluded, want)
+	}
+}
+
+// TestCheckBoardCommitWithIDsOutsideLeadingListStillCapturesAll pins T-095
+// decision 2 against a well-meaning future "tighten this to the rules §0
+// grammar" edit: most multi-id board: subjects in this project's own history
+// carry their extra ids in the verb phrase, not the leading comma-list, and
+// a grammar-strict parser would silently drop them.
+func TestCheckBoardCommitWithIDsOutsideLeadingListStillCapturesAll(t *testing.T) {
+	subjects := []string{"board: T-080 review findings recorded, moved to rework; T-042, T-070, T-081 patched by the sweep"}
+	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"T-080", "T-042", "T-070", "T-081"}
+	if !reflect.DeepEqual(res.Excluded[0].IDs, want) {
+		t.Fatalf("Excluded[0].IDs = %v, want %v", res.Excluded[0].IDs, want)
+	}
+}
+
+// TestCheckBoardCommitWithNoIDHasEmptyIDs: a bookkeeping subject that names
+// no ticket at all must report an empty IDs, not a slice holding "" — this
+// is what makes it count toward printExclusions' "no ticket id" clause.
+func TestCheckBoardCommitWithNoIDHasEmptyIDs(t *testing.T) {
+	subjects := []string{"board: file the skill gaps found while releasing"}
+	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Excluded[0].IDs) != 0 {
+		t.Fatalf("Excluded[0].IDs = %v, want empty", res.Excluded[0].IDs)
+	}
+}
+
+// TestCheckBoardCommitDeduplicatesRepeatedID: a subject naming the same id
+// twice (a ticket referenced once in the lead and again in prose) must
+// report it once.
+func TestCheckBoardCommitDeduplicatesRepeatedID(t *testing.T) {
+	subjects := []string{"board: T-050 re-aimed; see T-050's own history for why"}
+	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"T-050"}
+	if !reflect.DeepEqual(res.Excluded[0].IDs, want) {
+		t.Fatalf("Excluded[0].IDs = %v, want %v", res.Excluded[0].IDs, want)
 	}
 }
 
@@ -197,7 +258,7 @@ func TestCheckUnclassifiedSubjectIsNeitherShippedNorExcluded(t *testing.T) {
 	if len(res.Excluded) != 0 {
 		t.Fatalf("Excluded = %v, want empty", res.Excluded)
 	}
-	want := []Exclusion{{Subject: `Revert "feat(x): add a thing (T-050)"`, ID: "T-050"}}
+	want := []Exclusion{{Subject: `Revert "feat(x): add a thing (T-050)"`, IDs: []string{"T-050"}}}
 	if !reflect.DeepEqual(res.Unclassified, want) {
 		t.Fatalf("Unclassified = %+v, want %+v", res.Unclassified, want)
 	}

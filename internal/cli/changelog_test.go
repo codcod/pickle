@@ -80,7 +80,7 @@ func TestChangelogCheckFlagDefaults(t *testing.T) {
 	// The default report summarizes exclusions (T-094 decision 4) — the full
 	// subject is not printed unless --show-excluded is given (see
 	// TestChangelogCheckShowExcludedPrintsSubjects).
-	if !strings.Contains(out, "excluded 1 board: bookkeeping commit(s) covering T-050") {
+	if !strings.Contains(out, "excluded 1 board: bookkeeping commit(s) mentioning T-050") {
 		t.Errorf("output missing the exclusion summary line, got:\n%s", out)
 	}
 	if strings.Contains(out, "board: T-050 filed") {
@@ -241,7 +241,7 @@ func TestChangelogCheckShowExcludedPrintsSubjects(t *testing.T) {
 	if strings.Contains(defaultOut, "board: T-050 filed") {
 		t.Errorf("default report should summarize, not print the subject, got:\n%s", defaultOut)
 	}
-	if !strings.Contains(defaultOut, "excluded 1 board: bookkeeping commit(s) covering T-050") {
+	if !strings.Contains(defaultOut, "excluded 1 board: bookkeeping commit(s) mentioning T-050") {
 		t.Errorf("default report missing the exclusion summary, got:\n%s", defaultOut)
 	}
 
@@ -252,6 +252,29 @@ func TestChangelogCheckShowExcludedPrintsSubjects(t *testing.T) {
 	})
 	if !strings.Contains(verboseOut, "board: T-050 filed") {
 		t.Errorf("--show-excluded should print the full subject, got:\n%s", verboseOut)
+	}
+}
+
+// TestChangelogCheckExclusionSummaryNamesEveryID (T-095 decisions 2/3): a
+// two-id board: commit must have BOTH ids in the default summary line, and
+// the summary must say "mentioning" now that the scan is whole-subject
+// rather than leading-id-only.
+func TestChangelogCheckExclusionSummaryNamesEveryID(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+	writeAndCommit(t, root, "tickets/NOTES.md", "note\n", "board: T-010, T-011 re-aimed after review")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check"}); got != exitOK {
+			t.Fatalf("changelog check = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "excluded 1 board: bookkeeping commit(s) mentioning T-010, T-011") {
+		t.Errorf("output missing both ids in the exclusion summary, got:\n%s", out)
 	}
 }
 

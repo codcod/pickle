@@ -156,10 +156,15 @@ func printChangelogCheckReport(root, flowName, since, until, changelogPath strin
 // silently under-reporting; decision 4 (T-094) is the escape hatch decision
 // 7 explicitly allowed ("or offer behind a flag") for the noise that
 // unconditional printing caused — a release-sized run had far more exclusion
-// lines than candidates. Default: one summary line naming every id covered,
-// plus a count of any commit that parsed no id at all (the loudest possible
-// symptom of a convention drift, so it must never be the thing the summary
-// hides). --show-excluded still prints every subject, as before T-094.
+// lines than candidates. Default: one summary line naming every id any
+// excluded subject *mentions* — the union of Exclusion.IDs, which is a
+// permissive whole-subject scan (T-095 decision 2), not just each subject's
+// leading id — plus a count of any commit that parsed no id anywhere (the
+// loudest possible symptom of a convention drift, so it must never be the
+// thing the summary hides; T-095 decision 4 narrows this clause's meaning to
+// exactly that — "no id anywhere", not "no *leading* id" — since a
+// permissive scan finds an id in some subjects the old anchored parse
+// missed). --show-excluded still prints every subject, as before T-094.
 func printExclusions(excluded []changelog.Exclusion, showExcluded bool) {
 	if len(excluded) == 0 {
 		return
@@ -167,11 +172,13 @@ func printExclusions(excluded []changelog.Exclusion, showExcluded bool) {
 	ids := make(map[string]bool)
 	noID := 0
 	for _, ex := range excluded {
-		if ex.ID == "" {
+		if len(ex.IDs) == 0 {
 			noID++
 			continue
 		}
-		ids[ex.ID] = true
+		for _, id := range ex.IDs {
+			ids[id] = true
+		}
 	}
 	sorted := make([]string, 0, len(ids))
 	for id := range ids {
@@ -183,10 +190,10 @@ func printExclusions(excluded []changelog.Exclusion, showExcluded bool) {
 	case len(sorted) == 0:
 		fmt.Printf("  excluded %d board: bookkeeping commit(s), none with a parsable ticket id (--show-excluded for subjects)\n", len(excluded))
 	case noID == 0:
-		fmt.Printf("  excluded %d board: bookkeeping commit(s) covering %s (--show-excluded for subjects)\n",
+		fmt.Printf("  excluded %d board: bookkeeping commit(s) mentioning %s (--show-excluded for subjects)\n",
 			len(excluded), strings.Join(sorted, ", "))
 	default:
-		fmt.Printf("  excluded %d board: bookkeeping commit(s) covering %s (+%d with no ticket id; --show-excluded for subjects)\n",
+		fmt.Printf("  excluded %d board: bookkeeping commit(s) mentioning %s (+%d with no ticket id; --show-excluded for subjects)\n",
 			len(excluded), strings.Join(sorted, ", "), noID)
 	}
 	if showExcluded {
