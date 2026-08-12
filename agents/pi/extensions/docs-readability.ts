@@ -86,7 +86,7 @@ export default function (pi: ExtensionAPI) {
     const result = await pi.exec("pi", args, { signal, timeout: 180_000 });
     if (result.code !== 0) {
       throw new Error(
-        `docs-readability: reviewer (\`pi --provider ${PROVIDER} --model ${MODEL}\`) ` +
+        `docs-readability: the reviewer (\`pi --provider ${PROVIDER} --model ${MODEL}\`) ` +
           `exited ${result.code}. Is that provider logged in (\`pi\` \`/login\`)? ` +
           `stderr:\n${result.stderr?.slice(0, 2000) ?? ""}`,
       );

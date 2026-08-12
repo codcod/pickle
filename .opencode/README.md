@@ -71,7 +71,7 @@ it at a ticket's changed `.adoc`/`.md` files for an optional readability pass;
 the flow agent then approves and applies the suggestions inline.
 
 ```sh
-opencode models github-copilot   # confirm/adjust the model id
+opencode models github-copilot                     # confirm/adjust the model id
 opencode agent list                                # confirm it registered
 opencode run --agent docs-readability --file <changed.adoc> "…"
 ```

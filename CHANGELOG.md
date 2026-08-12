@@ -30,7 +30,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   backends `pickle install` scaffolds — the pi extension (`docs-readability.ts`) and the
   opencode subagent (`opencode.jsonc`) — replacing `github-copilot/gemini-2.5-pro` (T-096).
   The old pin was unreachable through GitHub Copilot: every recorded attempt to invoke it
-  failed with `model_not_supported`, forcing a conscious skip of review protocol Step 4b in
+  failed to reach the model (`model_not_supported` / `Model not found`), forcing a conscious
+  skip of review protocol Step 4b in
   eleven reviews (T-019, T-022, T-026, T-040, T-041, T-057, T-068, T-089, T-092, T-093,
   T-094). Same provider and same shared prompt, so no new login or plumbing; the
   `DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` env-var overrides are unaffected.

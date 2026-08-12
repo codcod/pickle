@@ -73,10 +73,10 @@ ticket's changed **AsciiDoc or Markdown** docs during review. It exposes:
 - **`/docs-readability <file.adoc|file.md> [more …]`** — a thin command to run
   the pass manually.
 
-The reviewer is reached via your `pi` `/login` provider (GitHub Copilot by
-default; override with `DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` for
-any other provider/model your `pi` is logged into). It only *suggests*; you apply
-edits with the normal tools. Its system prompt is the shared file
+The reviewer uses your `pi` `/login` provider. By default that is GitHub
+Copilot; override it with `DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL`
+for any other provider/model your `pi` is logged into. The reviewer only
+*suggests*; you approve and apply edits with the normal tools. Its system prompt is the shared file
 [`../skill/resources/docs-readability.prompt.md`](../skill/resources/docs-readability.prompt.md)
 — the same one the OpenCode `docs-readability` subagent uses (`../opencode.jsonc`).
 The prompt **ships** in the skill payload, and `pickle install --agent pi`
