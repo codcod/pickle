@@ -14,12 +14,12 @@
 {
   "$schema": "https://opencode.ai/config.json",
 
-  // docs-readability reviewer — a read-only Gemini subagent that suggests
+  // docs-readability reviewer — a read-only AI subagent that suggests
   // readability improvements to AsciiDoc/Markdown prose during a ticket review
   // (review protocol Step 4b). It only *suggests*; the flow agent applies
   // approved edits. Reached via your GitHub Copilot login
   // (`opencode auth login` -> GitHub Copilot). Adjust the model id to taste:
-  // `opencode models github-copilot | grep -i gemini`.
+  // `opencode models github-copilot`.
   //
   // Other agent sessions (pi, zed, …) can reach this same reviewer by shelling
   // out to: opencode run --agent docs-readability --file <changed.adoc|.md> "…"
@@ -27,7 +27,7 @@
     "docs-readability": {
       "description": "Suggests readability improvements to changed AsciiDoc/Markdown prose. Suggestions only.",
       "mode": "subagent",
-      "model": "github-copilot/gemini-2.5-pro",
+      "model": "github-copilot/gpt-5.4",
       "temperature": 0.2,
       "prompt": "{file:./.agents/skills/ticket-flow/resources/docs-readability.prompt.md}",
       "permission": {

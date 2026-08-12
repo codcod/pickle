@@ -31,7 +31,7 @@ On first run:
 | Project rules / flow / commit policy | `AGENTS.md` | Native AGENTS.md loading (cwd + ancestors to git root) |
 | Ticket-flow engine | `.agents/skills/ticket-flow/` (→ `skill/`) | Native `.agents/skills` discovery + `/skill:ticket-flow` |
 | Guardrails | `.pi/extensions/workspace-guardrails.ts` | Auto-loaded after trust; `/reload` to refresh |
-| Docs-readability reviewer | `.pi/extensions/docs-readability.ts` | Read-only `docs_readability` tool + `/docs-readability` command (Gemini via Copilot) |
+| Docs-readability reviewer | `.pi/extensions/docs-readability.ts` | Read-only `docs_readability` tool + `/docs-readability` command (via Copilot) |
 | Skill commands | `.pi/settings.json` (`enableSkillCommands`) | `/skill:name` |
 
 `.claude/skills/ticket-flow` and the `CLAUDE.md` view are for Claude Code / Zed and are ignored
@@ -65,7 +65,7 @@ Edit the rules in the extension and run `/reload`.
 
 ## Docs-readability reviewer (`docs-readability.ts`)
 
-An **optional** read-only Gemini reviewer for an extra readability pass over a
+An **optional** read-only AI reviewer for an extra readability pass over a
 ticket's changed **AsciiDoc or Markdown** docs during review. It exposes:
 
 - **`docs_readability` tool** — LLM-callable; the flow agent calls it with the
@@ -73,8 +73,9 @@ ticket's changed **AsciiDoc or Markdown** docs during review. It exposes:
 - **`/docs-readability <file.adoc|file.md> [more …]`** — a thin command to run
   the pass manually.
 
-Gemini is reached via your `pi` `/login` provider (GitHub Copilot by default, or
-`export GEMINI_API_KEY=…`). The reviewer only *suggests*; you approve and apply
+The reviewer is reached via your `pi` `/login` provider (GitHub Copilot by
+default; override with `DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` for
+any other provider/model your `pi` is logged into). It only *suggests*; you apply
 edits with the normal tools. Its system prompt is the shared file
 [`../skill/resources/docs-readability.prompt.md`](../skill/resources/docs-readability.prompt.md)
 — the same one the OpenCode `docs-readability` subagent uses (`../opencode.jsonc`).
