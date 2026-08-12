@@ -276,7 +276,9 @@ child-project the feature targets** rather than guessing.
   needs nothing installed — hence reimplementing `check-board.py` natively.)
 - **Payload versioning**: embed a payload version; `pickle upgrade` compares it to the
   installed skill's version and rewrites in place. `pickle.toml` records the version a project
-  was initialized/upgraded to.
+  was initialized/upgraded to. `pickle doctor` skips that comparison when the skill directory
+  is a self-host symlink (the payload is the linked source, not an installed copy to compare
+  against) — `upgrade` still stamps `payload_version` in that mode.
 - **The skill source of truth**: keep the canonical `resources/` in the `pickle` repo; the
   `translator` copy becomes a *consumer* of `pickle`, not the master. (The dogfooding path this
   once pointed at is complete — this repo now self-hosts the flow it ships; see

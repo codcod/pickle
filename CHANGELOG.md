@@ -8,6 +8,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Changed
+
+- **`pickle doctor`** no longer warns about `payload_version` in a self-hosting checkout
+  (`.agents/skills/ticket-flow` a symlink to the payload source): the comparison is skipped
+  and reported as an informational passed line under `--verbose` instead, since the payload
+  is the linked source, not an installed copy. `pickle upgrade` keeps stamping
+  `payload_version` in that mode — it still refreshes everything else it owns (T-046).
+
 ## [0.6.0] - 2026-08-12
 
 ### Added
