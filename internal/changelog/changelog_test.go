@@ -42,6 +42,30 @@ func TestClassifySubject(t *testing.T) {
 			kind:    Neither,
 			id:      "",
 		},
+		{
+			name:    "a trailing GitHub squash-merge PR number is stripped, id still classifies",
+			subject: "feat(cli): add a thing (T-050) (#31)",
+			kind:    ChildProject,
+			id:      "T-050",
+		},
+		{
+			name:    "a trailing GitLab squash-merge MR number is stripped, id still classifies",
+			subject: "feat(cli): add a thing (T-050) (!31)",
+			kind:    ChildProject,
+			id:      "T-050",
+		},
+		{
+			name:    "a bare merge commit's branch-name id must NOT count as shipped or unclassified (T-094 decision 5/6)",
+			subject: "Merge pull request #30 from codcod/feat/T-081-gate-table",
+			kind:    Neither,
+			id:      "",
+		},
+		{
+			name:    "a revert with a parenthesised id neither convention recognises is Unclassified",
+			subject: `Revert "feat(x): add a thing (T-050)"`,
+			kind:    Unclassified,
+			id:      "T-050",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -154,6 +178,28 @@ func TestCheckMentionedButUnshippedYieldsNothing(t *testing.T) {
 func TestCheckUnknownSectionErrors(t *testing.T) {
 	if _, err := Check(nil, fixtureChangelog, "9.9.9"); err == nil {
 		t.Fatal("Check with an absent section = nil error, want one")
+	}
+}
+
+// TestCheckUnclassifiedSubjectIsNeitherShippedNorExcluded (T-094 decision 6):
+// an Unclassified subject must land only in Result.Unclassified, never in
+// Shipped (it would be a false candidate) or Excluded (it isn't a board:
+// bookkeeping commit either).
+func TestCheckUnclassifiedSubjectIsNeitherShippedNorExcluded(t *testing.T) {
+	subjects := []string{`Revert "feat(x): add a thing (T-050)"`}
+	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Shipped) != 0 {
+		t.Fatalf("Shipped = %v, want empty", res.Shipped)
+	}
+	if len(res.Excluded) != 0 {
+		t.Fatalf("Excluded = %v, want empty", res.Excluded)
+	}
+	want := []Exclusion{{Subject: `Revert "feat(x): add a thing (T-050)"`, ID: "T-050"}}
+	if !reflect.DeepEqual(res.Unclassified, want) {
+		t.Fatalf("Unclassified = %+v, want %+v", res.Unclassified, want)
 	}
 }
 
