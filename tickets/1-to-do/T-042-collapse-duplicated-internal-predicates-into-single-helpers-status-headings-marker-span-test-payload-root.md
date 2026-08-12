@@ -73,6 +73,30 @@ resolved by T-041, 2026-08-01 — see above) and item 3 (test payload root).
 The first four break if the test process's CWD ever moves — which **T-043**'s `TestMain` sandbox
 does deliberately. Unify on the absolute, CWD-independent form.
 
+### 4. Skill-dir symlink predicate — one exact duplicate left by T-046 (T-046 review)
+
+**Folded here by T-046's review (2026-08-12), two items, both non-blocking.**
+
+T-046 added the exported predicate `install.SkillLinked(root) bool`
+(`internal/install/install.go`, beside the `SkillDir` constant) —
+`os.Lstat(join(root, SkillDir))`, `err == nil && mode&os.ModeSymlink != 0` — and routed
+`Upgrade`'s skill-refresh guard through it. It deliberately left the other `Lstat` sites to this
+epic, on the stated rationale that they "need `Lstat`'s *existence* answer as well as the mode".
+That rationale is **correct for `Uninstall`** (`:406` branches on dry-run/symlink/dir and needs
+`fi`), but **wrong for `copyPayload`** (`internal/install/install.go:541`): its guard is
+`if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink != 0`, where `fi` is used for
+nothing else — i.e. **character-for-character `SkillLinked(root)`**, since `dst` is the same
+`filepath.Join(root, filepath.FromSlash(SkillDir))`. It is a free, exact collapse to
+`if SkillLinked(root) { … }`; only the mis-stated reason kept it out of T-046's diff.
+
+Second item, same theme, in the tests: `internal/doctor/doctor_test.go`'s `selfHostFixture`
+and `internal/doctor/hooks_test.go`'s `TestCheckSelfHostLinkStillReportsIncapablePATHPickle`
+both build the self-host symlink by hand (`RemoveAll` the installed skill dir, `filepath.Abs`
+the payload `skill/`, `os.Symlink`). The duplication is *justified* as written — the two need
+different bases (`installFixture` vs `gitFixture`) and so cannot compose — but a four-line
+`linkSkill(t, root)` taking the root would serve both. Natural to do alongside item 3, which
+already reworks these two test files' shared payload-root helper.
+
 ### Sequencing
 
 - **T-043** (test harness + coverage) **landed first** (2026-08-06, D5): it owns `TestMain` and
@@ -138,3 +162,9 @@ does deliberately. Unify on the absolute, CWD-independent form.
   substance: the `T-\d+` shape is still spelled out three times (`idRE`, `filenameRE`,
   `board.rowRE`), `ticket.go`'s comment still names T-042 as the owner, and the five test
   payload-root variants are untouched
+- 2026-08-12 — patched by **T-046's review impact sweep**: gained **item 4** (skill-dir symlink
+  predicate). T-046 introduced `install.SkillLinked` and routed one call site through it, leaving
+  `copyPayload`'s guard — which is an *exact* duplicate of the new predicate, not a case needing
+  `Lstat`'s existence answer as T-046's plan asserted — plus a justified-but-collapsible
+  self-host-symlink fixture duplication across the two `internal/doctor` test files. Both are
+  `folded` dispositions from that review, no new ticket

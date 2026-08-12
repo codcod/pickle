@@ -117,3 +117,12 @@ assertion closes it.
   real remedies are shim-side (have the shim version-check, since *it* is refreshed by `upgrade`)
   or release-side, and both are bigger than "harden the probe". Do not silently absorb it;
   refinement should either scope it out explicitly or spawn it
+- 2026-08-12 — patched by **T-046's review impact sweep**: the stated coupling above is
+  **discharged, and was overstated**. T-046 has landed and did **not** touch `checkHooks` at all —
+  its only `internal/doctor/doctor.go` edits were `Check`, `checkSkill` and `checkVersion` (its
+  decision D6 explicitly protected every hook branch, and it added
+  `TestCheckSelfHostLinkStillReportsIncapablePATHPickle` to `internal/doctor/hooks_test.go` to pin
+  that the self-host skip never mutes the inert-`PATH` warning). So there is no "same `checkHooks`
+  branch" to sequence around: this ticket's ground is untouched, and the only overlap left is the
+  file itself plus that one new test living beside `TestCheckHooksProbesPATH`, which this ticket
+  should expect to see when it edits the probe's assertions

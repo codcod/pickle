@@ -87,3 +87,12 @@ cheaper than merging them.
   drifted: the `ticket-flow skill` comment cited at `.pi/extensions/docs-readability.ts:49` is
   now at `:50`, since T-096 added a line to that doc comment. Search the text rather than the
   line numbers at refinement — as the note above already says for the "~85" occurrence count
+- 2026-08-12 — patched by **T-046's review impact sweep**: T-046 has landed, so this ticket is the
+  one that rebases. Concretely it added `install.SkillLinked(root) bool` next to the `SkillDir`
+  constant in `internal/install/install.go` — a **third** consumer of that constant's value, read
+  by `Upgrade`'s skill-refresh guard and by `internal/doctor`'s `Check` (which passes the result
+  into `checkSkill` and `checkVersion`). The rename must carry `SkillLinked` and both call sites
+  with it, and the dual-name `doctor` this ticket plans has to decide what the predicate means
+  while *both* names may exist — a link under the old name and a real dir under the new one is
+  exactly the migration state. Not a conflict, one more call site, as T-046's own Description
+  predicted
