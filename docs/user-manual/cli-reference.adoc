@@ -509,8 +509,11 @@ loudly if the tree is no longer clean.
 == `pickle board audit`
 
 A pure, dependency-free check of the flow invariants over `tickets/` +
-`pickle.toml`. It exits non-zero (and prints `ERROR:`/`WARNING:` lines plus a
-summary) when any invariant fails:
+`pickle.toml`. It prints `ERROR:`/`WARNING:` lines plus a summary for every
+invariant that fails, but the two severities do not carry equal weight: it
+exits non-zero only when at least one *error* fires; a *warning* — including
+the unfinalized-merge one below — is a routine, expected nudge (merging is
+the human's and may lag) and never changes the exit code:
 
 * each ticket file sits in a known status dir and is named `T-NNN-<slug>.md`;
 * frontmatter is complete (`id`, `title`, `project`, `depends-on`,
@@ -542,6 +545,15 @@ summary) when any invariant fails:
 * nothing is in `3-in-development/` with a dependency not yet in `6-done/`
   (warning if a done dependency has no `MERGED` History line) —
   `spawned-by:` parents are deliberately exempt;
+* every ticket in `6-done/` carries a `merged to <base>` History line — a
+  *warning*, never an error, since a done ticket legitimately sits unmerged
+  for as long as the human takes: `DONE but has no 'MERGED' History line —
+  not merged yet, or the merge line was forgotten (rules §4: append it and
+  run pickle board sync)`. This is the same check as the dependency-scoped
+  bullet above, generalized to *every* done ticket rather than only those
+  named in some other ticket's `depends-on:` — the common case (nobody
+  depends on it) was otherwise never checked. `7-dropped/` is out of scope:
+  a dropped ticket has nothing to merge;
 * all seven status directories (`1-to-do/` … `7-dropped/`) exist — a missing
   one is an error, since `pickle install` promises all seven on every clone;
   one that exists but is empty and carries no `.gitkeep` is only a *warning*
@@ -563,8 +575,10 @@ summary) when any invariant fails:
   **advisory** row unmet is only ever a *warning* (`## Outcome`, absent,
   empty, or still the `TEMPLATE.md` placeholder, on every non-terminal
   status — T-083's original check, now one row of this table). `6-done/` and
-  `7-dropped/` require nothing, so a permanent archive is never flagged,
-  however old or incomplete the ticket. The check is purely structural (a
+  `7-dropped/` declare no rows at all, so *this table* never flags a permanent
+  archive, however old or incomplete the ticket — the unfinalized-merge
+  warning above is a separate check, and it does apply to `6-done/`. The
+  check is purely structural (a
   named heading present with a non-empty body once HTML comments are
   stripped) — it proves a step exists, never that its content is *good* —
   and `ticket move` enforces the blocking half of the same table *before*

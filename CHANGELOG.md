@@ -38,6 +38,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   The reviewer's user-facing wording is now vendor-neutral, so the next model swap is a
   one-line default change rather than a repo-wide text hunt.
 
+- **`pickle board audit` now warns on every `6-done/` ticket with no `merged to <base>` History
+  line, not only those named in another ticket's `depends-on:`.** The prior check only fired on
+  the *dependent* ticket's ref; the common case — a done ticket nobody depends on — was never
+  visited. It stays a warning, never an error: merging is the human's and may lag. CI now runs
+  `pickle board audit` in the `build-test` job, so the board's error class (duplicate ids, a
+  stale generated render, …) is checked on every push/PR instead of only when a human remembers
+  to run it locally. (T-092)
+
 ## [0.5.0] - 2026-08-12
 
 ### Added
