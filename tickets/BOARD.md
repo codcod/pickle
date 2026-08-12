@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 
 ## IN DEVELOPMENT
 
@@ -55,6 +55,7 @@ Last updated: 2026-08-11
 | T-074 | rename the installed skill directory to brine, with upgrade migration and dual-name doctor | medium | high | L | [T-073] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
+| T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | medium | low | S-M | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
