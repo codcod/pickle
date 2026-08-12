@@ -38,6 +38,7 @@ Last updated: 2026-08-12
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -68,7 +69,6 @@ Last updated: 2026-08-12
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
 | T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | low | low | S | [] |  |
-| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | low | low | S | [] |  |
 
 ## DONE
 
