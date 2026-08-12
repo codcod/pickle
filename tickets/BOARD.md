@@ -13,10 +13,11 @@ Last updated: 2026-08-12
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-12
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | low-medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 

@@ -277,3 +277,4 @@ pushing or opening the MR. **Push `origin main` first if the local base is ahead
   package, and roughly twenty lines each — none would be picked up alone. Grades unchanged
   (`low-medium`/`low`/`S`)
 - 2026-08-12 — TO DO → READY: plan complete; three design questions settled (range-relative --since, strip-not-widen, parenthesised-only Unclassified)
+- 2026-08-12 — READY → IN DEVELOPMENT: picked up
