@@ -43,6 +43,10 @@ ever written to `~/` or outside the project root.
 | `pickle board sync`
 | Regenerate the board from ticket state.
 
+| `pickle changelog check [--since …] [--changelog …] [--section …]`
+| Report tickets that shipped since the last release but aren't named in the
+  changelog. Read-only and advisory — always exits `0`.
+
 | `pickle serve [--addr …]`
 | Serve a read-only browser view of the board, the tickets, and their history.
 
@@ -661,6 +665,47 @@ A board differing from a fresh render only in the `Last updated:` date is in
 sync — no write. `--dry-run` reports the drift, writes nothing, and *exits
 non-zero if the board would change* (wire it into CI). After a write, sync
 runs `board audit` as a self-check.
+
+[#cmd-changelog-check]
+== `pickle changelog check`
+
+----
+pickle changelog check [--since <ref>] [--changelog <path>] [--section <name>]
+----
+
+A *read-only, advisory* report (T-093): for every ticket that shipped since
+`--since` (default: the last `git describe --tags --abbrev=0`), does
+`--changelog` (default `CHANGELOG.md`) already account for it, in its
+`--section` (default `Unreleased`) — either with an entry naming the ticket,
+or a recorded, confirmed decision inside the ticket's own file that it
+deliberately gets none? Anything else is printed as a candidate, pointing at
+the ticket file so the judgement (does a recorded decision already explain
+it?) is one click away.
+
+*It never gates anything* — not `board audit`, not CI, not `ticket move` —
+and **always exits `0`, even when it finds candidates**: a merged ticket with
+no entry yet is not an error, because the entry may legitimately be written
+any time before the release. Do not wire this into a CI check expecting a
+non-zero exit; it would fire on every ordinary in-flight release and be
+ignored.
+
+"Shipped" is computed from `git log --format=%s <since>..HEAD` — commit
+*subjects*, not a ticket's `## History` merge line — kept only when the
+subject is a Conventional Commit for the target child-project's own code with
+a ticket id in brackets at the *end* of the subject (e.g.
+`feat(cli): add board audit (T-2)`). A `board: …` bookkeeping commit (the
+ticket/board-bookkeeping convention) is deliberately **excluded**: filing,
+re-grading or moving a ticket never ships code, so counting it would produce
+false candidates. Because this exclusion is the check's only defence against
+over-reporting, **the command depends on that convention holding**. Every
+excluded commit is printed in the report for exactly that reason: a project
+that stops following the convention sees a visibly odd exclusion list rather
+than a silent under-report.
+
+The check is one direction only: *shipped but unmentioned*. It never reports
+the reverse (mentioned but not shipped in this range) — an entry may
+legitimately reference an older, already-released ticket for context, and
+flagging that would be noise.
 
 [#cmd-serve]
 == `pickle serve`

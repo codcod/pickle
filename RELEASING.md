@@ -6,7 +6,13 @@ a separate tap repo (`github.com/codcod/homebrew-tap` → `brew install codcod/t
 
 ## Cutting a release
 
-First, update [`CHANGELOG.md`](CHANGELOG.md): retitle the `[Unreleased]` section to
+First, run `pickle changelog check` (T-093): a mechanical reconciliation of every ticket
+that shipped since the last tag against `[Unreleased]`, so you start retitling from a
+report rather than a from-scratch reading of the log. It is read-only and always exits
+`0` — read the candidates it prints (each points at its ticket file) and either add an
+entry or confirm the ticket already records a deliberate decision to have none.
+
+Then update [`CHANGELOG.md`](CHANGELOG.md): retitle the `[Unreleased]` section to
 `[X.Y.Z] - YYYY-MM-DD`, add a fresh empty `[Unreleased]` above it, update the link
 references at the bottom, and commit — the tag should include the changelog.
 
