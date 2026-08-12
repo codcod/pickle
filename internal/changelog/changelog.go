@@ -135,7 +135,10 @@ type Exclusion struct {
 	// list, in the verb phrase). Empty only when the subject names no id at
 	// all — the loudest possible symptom of a bookkeeping-convention drift
 	// (T-094 decision 4); an Unclassified commit's IDs is never empty, since
-	// finding one is what made it Unclassified rather than Neither.
+	// finding one is what made it Unclassified rather than Neither. Computed
+	// for both Excluded and Unclassified for symmetry, but only Excluded's
+	// IDs is read today — printUnclassified still prints subjects only
+	// (T-095 review finding N6).
 	IDs []string
 }
 
