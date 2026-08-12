@@ -35,7 +35,7 @@ On first run, authenticate with a provider:
 | Project rules / flow | `AGENTS.md` | Native `AGENTS.md` discovery (cwd → git root) |
 | Ticket-flow engine | `.agents/skills/ticket-flow/` (→ `skill/`) | **Native** `.agents/skills/<name>/SKILL.md` discovery |
 | Guardrails | `opencode.jsonc` (`permission.bash`) | Declarative config, loaded at startup — no plugin code |
-| Docs-readability reviewer | `opencode.jsonc` (`agent.docs-readability`) | **Native** read-only Gemini subagent |
+| Docs-readability reviewer | `opencode.jsonc` (`agent.docs-readability`) | **Native** read-only AI subagent |
 
 `.claude/skills/ticket-flow` is also read (Claude Code compatibility) — same
 skill, same name, so this is harmless double discovery, not a conflict.
@@ -57,11 +57,11 @@ Patterns match the parsed bash command; the **last matching rule wins**, so
 `"*": "allow"` must stay first. Edit `opencode.jsonc` and restart OpenCode to
 change the rules.
 
-## Docs-readability reviewer (Gemini)
+## Docs-readability reviewer
 
 The `docs-readability` subagent (defined in `../opencode.jsonc` under
 `agent.docs-readability`) is read-only (`edit`/`bash` denied — it only
-*suggests*), pinned to a Gemini model reached through your **GitHub Copilot**
+*suggests*), pinned to a model reached through your **GitHub Copilot**
 login. It reviews **AsciiDoc or Markdown** prose. Its system prompt is the shared file
 [`../skill/resources/docs-readability.prompt.md`](../skill/resources/docs-readability.prompt.md)
 (shipped in the skill payload; `pickle install --agent opencode` scaffolds this
@@ -71,7 +71,7 @@ it at a ticket's changed `.adoc`/`.md` files for an optional readability pass;
 the flow agent then approves and applies the suggestions inline.
 
 ```sh
-opencode models github-copilot | grep -i gemini   # confirm/adjust the model id
+opencode models github-copilot                     # confirm/adjust the model id
 opencode agent list                                # confirm it registered
 opencode run --agent docs-readability --file <changed.adoc> "…"
 ```

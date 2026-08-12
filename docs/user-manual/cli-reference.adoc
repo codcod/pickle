@@ -120,12 +120,12 @@ untouched and the template is printed for you to merge by hand. From then on
 the file is yours — `upgrade` never touches it, and `uninstall` removes it
 only while it is still byte-identical to the shipped template.
 
-*The docs-readability reviewer* is a read-only, suggestions-only Gemini
+*The docs-readability reviewer* is a read-only, suggestions-only AI
 reviewer for the `.adoc`/`.md` files a ticket changed (review protocol
 *Step 4b* — optional, never blocking). Both scaffolds default to
-`github-copilot/gemini-2.5-pro` (one-time GitHub Copilot login; adjust with
-`opencode models github-copilot | grep -i gemini`, or
-`DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` for the pi extension).
+`github-copilot/gpt-5.4` (one-time GitHub Copilot login; adjust with
+`opencode models github-copilot`, or `DOCS_READABILITY_PROVIDER`/
+`DOCS_READABILITY_MODEL` for the pi extension).
 Sessions in other agents (zed, Claude Code, …) can reach the opencode reviewer
 by shelling out:
 `opencode run --agent docs-readability --file <changed.md> "…"` — or record a

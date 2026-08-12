@@ -24,6 +24,20 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   excluded subject mentions, unless `--show-excluded`; a tagged `--until` with the default
   `--section` gets an advisory note pointing at the section it probably means.
 
+### Changed
+
+- **The docs-readability reviewer's default model is now `github-copilot/gpt-5.4`**, in both
+  backends `pickle install` scaffolds — the pi extension (`docs-readability.ts`) and the
+  opencode subagent (`opencode.jsonc`) — replacing `github-copilot/gemini-2.5-pro` (T-096).
+  The old pin was unreachable through GitHub Copilot: every recorded attempt to invoke it
+  failed to reach the model (`model_not_supported` / `Model not found`), forcing a conscious
+  skip of review protocol Step 4b in
+  eleven reviews (T-019, T-022, T-026, T-040, T-041, T-057, T-068, T-089, T-092, T-093,
+  T-094). Same provider and same shared prompt, so no new login or plumbing; the
+  `DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` env-var overrides are unaffected.
+  The reviewer's user-facing wording is now vendor-neutral, so the next model swap is a
+  one-line default change rather than a repo-wide text hunt.
+
 ## [0.5.0] - 2026-08-12
 
 ### Added

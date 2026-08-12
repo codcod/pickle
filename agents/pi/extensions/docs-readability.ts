@@ -3,13 +3,14 @@
  * an optional AsciiDoc/Markdown readability reviewer for ticket-flow reviews
  * (review protocol Step 4b).
  *
- * Exposes a Gemini readability reviewer two ways, sharing one core helper:
+ * Exposes an AI readability reviewer two ways, sharing one core helper:
  *   - `docs_readability` tool  — LLM-callable, used by the flow agent mid-review.
  *   - `/docs-readability`      — thin command to run the pass manually.
  *
- * Gemini is reached through your `pi` `/login` provider — GitHub Copilot by
- * default (same subscription as the opencode backend), or a direct
- * `GEMINI_API_KEY` (`google` provider).
+ * The reviewer is reached through your `pi` `/login` provider — GitHub Copilot
+ * by default (same subscription as the opencode backend). Override via
+ * `DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` below for any other
+ * provider/model your `pi` is logged into.
  *
  * It is a SUGGESTION SERVICE only: it reads the given AsciiDoc/Markdown files
  * and returns a list of suggestions. It never edits files — the flow agent
@@ -18,7 +19,7 @@
  * with the skill at `.agents/skills/ticket-flow/resources/docs-readability.prompt.md`.
  *
  * Mechanism: Pi has no in-process "call model X" primitive, so — like Pi's own
- * examples/extensions/subagent — it spawns a Gemini-pinned `pi` subprocess in
+ * examples/extensions/subagent — it spawns a model-pinned `pi` subprocess in
  * print mode with `--no-builtin-tools`, so the child can neither read nor write
  * files; it only transforms the prompt text into suggestions.
  *
@@ -28,7 +29,7 @@
  *
  * Install: auto-discovered from `.pi/extensions/` once the project is trusted.
  * Hot-reload after edits with `/reload`. Requires a one-time `pi` `/login` to
- * GitHub Copilot (or `export GEMINI_API_KEY=…`).
+ * GitHub Copilot (or whichever provider `DOCS_READABILITY_PROVIDER` names).
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
@@ -43,7 +44,7 @@ import { join, resolve } from "node:path";
 
 // Reviewer model, reached via your `pi` /login provider. Override with env vars.
 const PROVIDER = process.env.DOCS_READABILITY_PROVIDER ?? "github-copilot";
-const MODEL = process.env.DOCS_READABILITY_MODEL ?? "gemini-2.5-pro";
+const MODEL = process.env.DOCS_READABILITY_MODEL ?? "gpt-5.4";
 
 // Canonical reviewer prompt — SHARED with the opencode docs-readability agent;
 // shipped with the installed ticket-flow skill.
@@ -54,7 +55,7 @@ const MAX_INPUT_BYTES = 200_000;
 
 export default function (pi: ExtensionAPI) {
   // Core: read the shared prompt + the changed doc files (.adoc/.md), ask a
-  // Gemini-pinned `pi` subprocess (read-only) for readability suggestions, return them.
+  // model-pinned `pi` subprocess (read-only) for readability suggestions, return them.
   async function review(files: string[], cwd: string, signal?: AbortSignal): Promise<string> {
     const clean = files.filter((f) => f.trim());
     if (clean.length === 0) {
@@ -76,7 +77,7 @@ export default function (pi: ExtensionAPI) {
       fullPrompt = `${trimmed.content}\n\n[input truncated for size]`;
     }
 
-    // Pi has no in-process inference API; spawn a Gemini-pinned `pi` in print
+    // Pi has no in-process inference API; spawn a model-pinned `pi` in print
     // mode. `--no-builtin-tools` guarantees the child cannot read/write files.
     // NOTE: verify the print-mode invocation for your Pi version (`pi --help`);
     // adjust the flags below if the prompt is not passed as a positional arg.
@@ -85,7 +86,7 @@ export default function (pi: ExtensionAPI) {
     const result = await pi.exec("pi", args, { signal, timeout: 180_000 });
     if (result.code !== 0) {
       throw new Error(
-        `docs-readability: Gemini reviewer (\`pi --provider ${PROVIDER} --model ${MODEL}\`) ` +
+        `docs-readability: the reviewer (\`pi --provider ${PROVIDER} --model ${MODEL}\`) ` +
           `exited ${result.code}. Is that provider logged in (\`pi\` \`/login\`)? ` +
           `stderr:\n${result.stderr?.slice(0, 2000) ?? ""}`,
       );
@@ -107,13 +108,13 @@ export default function (pi: ExtensionAPI) {
   // LLM-callable tool — used by the flow agent during a ticket review.
   pi.registerTool({
     name: "docs_readability",
-    label: "Docs readability (Gemini)",
+    label: "Docs readability",
     description:
-      "Ask a Gemini reviewer for readability-only suggestions on the given AsciiDoc " +
+      "Ask an AI reviewer for readability-only suggestions on the given AsciiDoc " +
       "or Markdown files. Suggestions only — never edits files. Use during a " +
       "ticket-flow review on the .adoc/.md files the ticket changed.",
     promptSnippet:
-      "Get Gemini readability suggestions for changed AsciiDoc/Markdown files (ticket review)",
+      "Get docs readability suggestions for changed AsciiDoc/Markdown files (ticket review)",
     promptGuidelines: [
       "Use docs_readability during a ticket review to get a second-opinion readability " +
         "pass on the .adoc/.md files the ticket changed, then present each suggestion for " +
@@ -137,7 +138,7 @@ export default function (pi: ExtensionAPI) {
   // Thin manual wrapper — `/docs-readability <file> [more …]` (.adoc or .md).
   pi.registerCommand("docs-readability", {
     description:
-      "Readability-only Gemini review of the given .adoc/.md files (suggestions only). " +
+      "Readability-only AI review of the given .adoc/.md files (suggestions only). " +
       "Usage: /docs-readability <file.adoc|file.md> [more …]",
     handler: async (args, ctx) => {
       const files = args.split(/\s+/).filter(Boolean);
