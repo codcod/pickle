@@ -419,3 +419,4 @@ edit: its `payload_version` text is about *how* `upgrade` rewrites the line, whi
   trees only) keeps it below a general `medium` quality win. Collapsing either way would discard
   one of them
 - 2026-08-12 — TO DO → READY: plan complete
+- 2026-08-12 — READY → IN DEVELOPMENT: picked up
