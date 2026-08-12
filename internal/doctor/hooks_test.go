@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/codcod/pickle/internal/hook"
+	"github.com/codcod/pickle/internal/install"
 )
 
 // gitFixture upgrades installFixture's fake .git directory into a real
@@ -169,6 +170,38 @@ func TestCheckHooksForeignIsLeftAlone(t *testing.T) {
 	}
 	if !hasPassedContaining(res.Passed, "not pickle's") {
 		t.Errorf("foreign hook not reported: %v", res.Passed)
+	}
+}
+
+// TestCheckSelfHostLinkStillReportsIncapablePATHPickle guards D6 (T-046): the
+// self-host version-check skip must not become a blanket self-host mute. The
+// hook checks are about the user's PATH and about hand-edits, not about how
+// the skill dir is arranged, so a self-hosting checkout with an incapable
+// PATH pickle must still warn exactly as an ordinary install would.
+func TestCheckSelfHostLinkStillReportsIncapablePATHPickle(t *testing.T) {
+	root := gitFixture(t)
+	skillPath := filepath.Join(root, filepath.FromSlash(install.SkillDir))
+	if err := os.RemoveAll(skillPath); err != nil {
+		t.Fatal(err)
+	}
+	target, err := filepath.Abs(filepath.Join(payloadRoot(), "skill"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, skillPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hook.Install(root, false); err != nil {
+		t.Fatalf("hook.Install: %v", err)
+	}
+	bin := stubPickle(t, 2) // mirrors an older pickle's exit 2 on the (then) unknown `hooks` verb
+	pinPATH(t, bin)
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasWarnContaining(res.Warnings, "inert") {
+		t.Errorf("self-host checkout with an incapable PATH pickle did not warn: %v", res.Warnings)
+	}
+	if !hasWarnContaining(res.Warnings, filepath.Join(bin, "pickle")) {
+		t.Errorf("warning does not name the incapable binary's path: %v", res.Warnings)
 	}
 }
 

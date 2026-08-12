@@ -34,6 +34,29 @@ func installFixture(t *testing.T) string {
 	return root
 }
 
+// selfHostFixture is installFixture with the installed skill dir replaced by a
+// symlink to a real payload tree — the self-hosting arrangement of pickle's
+// own repo (.agents/skills/ticket-flow -> ../../skill). The link points at an
+// absolute path, mirroring TestUpgradeSelfHostSymlinkGuard in the install
+// package, so checkSkill still resolves SKILL.md and
+// resources/tickets-README.md through it.
+func selfHostFixture(t *testing.T) string {
+	t.Helper()
+	root := installFixture(t)
+	skillPath := filepath.Join(root, filepath.FromSlash(install.SkillDir))
+	if err := os.RemoveAll(skillPath); err != nil {
+		t.Fatal(err)
+	}
+	target, err := filepath.Abs(filepath.Join(payloadRoot(), "skill"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, skillPath); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func hasErrContaining(errs []string, sub string) bool {
 	for _, e := range errs {
 		if strings.Contains(e, sub) {
@@ -299,6 +322,85 @@ func TestCheckVersionDriftUnstampableSuggestsHandEdit(t *testing.T) {
 	}
 	if strings.Contains(joined, "run `pickle upgrade`") {
 		t.Errorf("warning must not recommend running `pickle upgrade` when it cannot succeed, got: %v", res.Warnings)
+	}
+}
+
+// TestCheckSelfHostLinkSkipsVersionCheck is T-046's headline behaviour, the
+// mirror of TestCheckVersionDriftWarns: in a self-hosting checkout the skill
+// dir is a symlink to the payload source, not an installed copy, so comparing
+// payload_version against the running binary is meaningless and must produce
+// neither a warning nor an error — only an informational passed line.
+func TestCheckSelfHostLinkSkipsVersionCheck(t *testing.T) {
+	root := selfHostFixture(t) // installed at payload_version "test-ver"
+	res := Check(root, "v9.9.9", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("self-host link must not error: %v", res.Errors)
+	}
+	if len(res.Warnings) != 0 {
+		t.Fatalf("self-host link must not warn: %v", res.Warnings)
+	}
+	if !hasPassedContaining(res.Passed, "payload version check skipped") {
+		t.Errorf("expected a passed line naming the skip, got: %v", res.Passed)
+	}
+	for _, p := range res.Passed {
+		if strings.Contains(p, "payload version") && !strings.Contains(p, "skipped") {
+			t.Errorf("unexpected payload-version line: %q", p)
+		}
+		if strings.Contains(p, "pickle upgrade") {
+			t.Errorf("self-host skip must never mention `pickle upgrade`: %q", p)
+		}
+	}
+}
+
+// TestCheckSelfHostLinkSkipsUnstampableVersionCheck proves the skip sits ahead
+// of *both* of checkVersion's T-026 warning branches (D5): even when the
+// installed pickle.toml has a payload_version shape the in-place writer would
+// refuse to stamp, the self-host skip fires first and no warning appears. If
+// the skip were inserted after the PayloadVersionStampable probe instead, this
+// would fail with the "edit payload_version by hand" warning.
+func TestCheckSelfHostLinkSkipsUnstampableVersionCheck(t *testing.T) {
+	root := selfHostFixture(t) // installed at payload_version "test-ver"
+	cfgPath := filepath.Join(root, config.FileName)
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wedged := strings.Replace(string(data), `payload_version = "test-ver"`, "payload_version = \"\"\"\ntest-ver\n\"\"\"", 1)
+	if wedged == string(data) {
+		t.Fatal("fixture setup: payload_version line not found to wedge")
+	}
+	if err := os.WriteFile(cfgPath, []byte(wedged), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Check(root, "v9.9.9", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("self-host link must not error: %v", res.Errors)
+	}
+	if len(res.Warnings) != 0 {
+		t.Fatalf("self-host link must not warn even with an unstampable payload_version: %v", res.Warnings)
+	}
+}
+
+// TestCheckSelfHostLinkNamesTheLink pins the informational half of the
+// Outcome: doctor -v's passed line for the skill check names the self-host
+// link and the target it resolves to, rather than the generic "skill payload
+// present" text an ordinary install gets.
+func TestCheckSelfHostLinkNamesTheLink(t *testing.T) {
+	root := selfHostFixture(t)
+	target, err := os.Readlink(filepath.Join(root, filepath.FromSlash(install.SkillDir)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if len(res.Errors) != 0 {
+		t.Fatalf("self-host link must not error: %v", res.Errors)
+	}
+	if !hasPassedContaining(res.Passed, "self-host link") {
+		t.Errorf("expected a passed line naming the self-host link, got: %v", res.Passed)
+	}
+	if !hasPassedContaining(res.Passed, target) {
+		t.Errorf("expected the passed line to name the link target %q, got: %v", target, res.Passed)
 	}
 }
 
