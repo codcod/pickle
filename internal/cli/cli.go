@@ -122,10 +122,12 @@ Flow commands:
                           Move a ticket (file + History + board regeneration) atomically.
   board audit             Check the ticket invariants + board freshness (exit non-zero on any error).
   board sync              Regenerate BOARD.md from ticket frontmatter + locations.
-  changelog check [--since <ref>] [--changelog <path>] [--section <name>]
-                          Report tickets that shipped since <ref> (default: the last git
-                          tag) but aren't named in the changelog's named section (default
-                          "Unreleased"). Read-only and advisory — always exits 0.
+  changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]
+                          Report tickets that shipped in <since>..<until> (defaults: the
+                          last git tag before <until>, and HEAD) but aren't named
+                          in the changelog's named section (default "Unreleased").
+                          Excluded board: bookkeeping commits summarize to one line unless
+                          --show-excluded. Read-only and advisory — always exits 0.
 
 Visualize:
   serve [--addr host:port]

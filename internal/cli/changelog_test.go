@@ -68,8 +68,8 @@ func TestChangelogCheckFlagDefaults(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, "since v0.1.0") {
-		t.Errorf("output does not show the default --since resolving to the last tag, got:\n%s", out)
+	if !strings.Contains(out, "v0.1.0..HEAD") {
+		t.Errorf("output does not show the default --since resolving to the last tag and --until defaulting to HEAD, got:\n%s", out)
 	}
 	if !strings.Contains(out, `"Unreleased"`) {
 		t.Errorf("output does not show the default --section Unreleased, got:\n%s", out)
@@ -77,8 +77,14 @@ func TestChangelogCheckFlagDefaults(t *testing.T) {
 	if !strings.Contains(out, "T-050") {
 		t.Errorf("output missing the one candidate T-050, got:\n%s", out)
 	}
-	if !strings.Contains(out, "board: T-050 filed") {
-		t.Errorf("output missing the excluded board: commit, got:\n%s", out)
+	// The default report summarizes exclusions (T-094 decision 4) — the full
+	// subject is not printed unless --show-excluded is given (see
+	// TestChangelogCheckShowExcludedPrintsSubjects).
+	if !strings.Contains(out, "excluded 1 board: bookkeeping commit(s) covering T-050") {
+		t.Errorf("output missing the exclusion summary line, got:\n%s", out)
+	}
+	if strings.Contains(out, "board: T-050 filed") {
+		t.Errorf("default output should not print the full excluded subject, got:\n%s", out)
 	}
 }
 
@@ -129,8 +135,8 @@ func TestChangelogCheckExplicitFlags(t *testing.T) {
 			t.Fatalf("changelog check = %d, want %d", got, exitOK)
 		}
 	})
-	if !strings.Contains(out, "since v1.0.0") {
-		t.Errorf("output does not honour --since, got:\n%s", out)
+	if !strings.Contains(out, "v1.0.0..HEAD") {
+		t.Errorf("output does not honour --since (and default --until HEAD), got:\n%s", out)
 	}
 	if !strings.Contains(out, "docs/HISTORY.md") {
 		t.Errorf("output does not honour --changelog, got:\n%s", out)
@@ -140,6 +146,112 @@ func TestChangelogCheckExplicitFlags(t *testing.T) {
 	}
 	if !strings.Contains(out, "T-061") {
 		t.Errorf("output missing the candidate T-061, got:\n%s", out)
+	}
+}
+
+// TestChangelogCheckUntilExcludesLaterCommits (T-094 decision 2): a commit
+// shipped after --until must not appear as a candidate — this is what makes
+// a past --section auditable once later work has landed on top of it.
+func TestChangelogCheckUntilExcludesLaterCommits(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [0.2.0]\n\n### Added\n\n- shipped in this release (T-050)\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+	writeAndCommit(t, root, "src/a.go", "package a\n", "feat(a): ship a thing (T-050)")
+	gitTag(t, root, "v0.2.0")
+	// Lands after v0.2.0 — must not count when auditing the [0.2.0] section.
+	writeAndCommit(t, root, "src/b.go", "package b\n", "feat(b): ship another thing (T-060)")
+
+	out := captureStdout(t, func() {
+		got := Run(nil, "test", []string{
+			"changelog", "check",
+			"--since", "v0.1.0",
+			"--until", "v0.2.0",
+			"--section", "0.2.0",
+		})
+		if got != exitOK {
+			t.Fatalf("changelog check --until v0.2.0 = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(out, "T-060") {
+		t.Errorf("a commit after --until must not appear, got:\n%s", out)
+	}
+	if !strings.Contains(out, "no candidates") {
+		t.Errorf("T-050 is shipped and mentioned in [0.2.0], want no candidates, got:\n%s", out)
+	}
+}
+
+// TestChangelogCheckSinceDefaultsRelativeToUntil pins T-094 decision 3, the
+// exact footgun this ticket exists to close: with --until <tag> given and no
+// --since, resolving --since from HEAD (instead of from --until) would ask
+// git to describe HEAD's own last tag — which, when --until IS the last tag,
+// produces the same tag twice and an empty, falsely-passing range. Resolving
+// --since as "the tag before --until" (git describe --tags --abbrev=0
+// <until>^") gets the non-empty range a bare "--until <tag>" invocation
+// obviously means.
+func TestChangelogCheckSinceDefaultsRelativeToUntil(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [0.2.0]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+	writeAndCommit(t, root, "src/a.go", "package a\n", "feat(a): ship a thing (T-050)")
+	gitTag(t, root, "v0.2.0")
+	// After v0.2.0 — must be excluded by --until, proving --since did not
+	// silently fall back to describing HEAD.
+	writeAndCommit(t, root, "src/b.go", "package b\n", "feat(b): ship another thing (T-060)")
+
+	out := captureStdout(t, func() {
+		got := Run(nil, "test", []string{"changelog", "check", "--until", "v0.2.0", "--section", "0.2.0"})
+		if got != exitOK {
+			t.Fatalf("changelog check --until v0.2.0 (no --since) = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "v0.1.0..v0.2.0") {
+		t.Errorf("--since should default to the tag before --until (v0.1.0), got:\n%s", out)
+	}
+	if !strings.Contains(out, "T-050") {
+		t.Errorf("T-050 shipped in v0.1.0..v0.2.0 and is unmentioned in [0.2.0], want it as a candidate, got:\n%s", out)
+	}
+	if strings.Contains(out, "T-060") {
+		t.Errorf("T-060 shipped after --until and must not appear, got:\n%s", out)
+	}
+}
+
+// TestChangelogCheckShowExcludedPrintsSubjects: the default report
+// summarizes exclusions to one line (T-094 decision 4); --show-excluded adds
+// every full subject back, exactly as the pre-T-094 report always printed.
+func TestChangelogCheckShowExcludedPrintsSubjects(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+	writeAndCommit(t, root, "tickets/NOTES.md", "note\n", "board: T-050 filed")
+
+	defaultOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check"}); got != exitOK {
+			t.Fatalf("changelog check = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(defaultOut, "board: T-050 filed") {
+		t.Errorf("default report should summarize, not print the subject, got:\n%s", defaultOut)
+	}
+	if !strings.Contains(defaultOut, "excluded 1 board: bookkeeping commit(s) covering T-050") {
+		t.Errorf("default report missing the exclusion summary, got:\n%s", defaultOut)
+	}
+
+	verboseOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check", "--show-excluded"}); got != exitOK {
+			t.Fatalf("changelog check --show-excluded = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(verboseOut, "board: T-050 filed") {
+		t.Errorf("--show-excluded should print the full subject, got:\n%s", verboseOut)
 	}
 }
 

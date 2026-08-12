@@ -45,6 +45,18 @@ const (
 	// reported (decision 7), so a project that stops following it sees a
 	// visibly odd exclusion list rather than a silent under-report.
 	Bookkeeping
+	// Unclassified (T-094 decision 6) is the safety net: a subject that is
+	// not Bookkeeping, does not classify as ChildProject even after stripping
+	// a trailing PR/MR-number token (decision 5), but still names a ticket in
+	// parentheses somewhere else in the subject — e.g. a revert,
+	// `Revert "feat(cli): add a thing (T-050)"`. Deliberately narrower than
+	// "an id anywhere": a plain merge commit's branch name
+	// (`Merge pull request #30 from codcod/feat/T-081-gate-table`) carries a
+	// bare id too, and counting *that* as noteworthy would add a line per
+	// merge to every report — the opposite of what this kind exists for.
+	// Not part of "shipped" and not an Exclusion; it gets its own list so a
+	// subject that mentions a ticket is never silently neither.
+	Unclassified
 )
 
 var (
@@ -55,6 +67,19 @@ var (
 	// at the end of the subject — the only position the project's commit
 	// convention sanctions for child-project code.
 	trailingIDRE = regexp.MustCompile(`\(([A-Z][A-Z0-9]*-\d+)\)\s*$`)
+	// prTokenRE (T-094 decision 5) matches a trailing GitHub/GitLab
+	// squash-merge annotation — "(#31)" or "(!31)" — appended *after* a
+	// Conventional Commit's own trailing "(T-NNN)". Stripped once, before
+	// trailingIDRE runs, so "feat(cli): add a thing (T-050) (#31)" still
+	// classifies as ChildProject. Deliberately narrow (digits only, exactly
+	// one trailing group) rather than widening trailingIDRE itself — see
+	// ClassifySubject.
+	prTokenRE = regexp.MustCompile(`\s*\([#!]\d+\)$`)
+	// parenIDRE recognises a ticket id in parentheses anywhere in a subject —
+	// the shape Unclassified looks for once trailingIDRE has already missed.
+	// Anchoring on the parentheses (unlike idRE below) is what keeps an
+	// ordinary merge commit's bare branch-name id from counting.
+	parenIDRE = regexp.MustCompile(`\(([A-Z][A-Z0-9]*-\d+)\)`)
 	// idRE finds any ticket-id-shaped token anywhere in text. Used to scan a
 	// changelog section's whole body for every id it mentions, not just a
 	// bullet's first line — see sectionIDs.
@@ -71,23 +96,36 @@ var (
 func ClassifySubject(subject string) (CommitKind, string) {
 	s := strings.TrimSpace(subject)
 	if strings.HasPrefix(s, "board:") {
+		// Never PR-token-stripped: a bookkeeping commit is never merged
+		// through a squash-merge button in this flow (rules §0), so
+		// stripping here would only add a way to misparse.
 		if m := boardIDRE.FindStringSubmatch(s); m != nil {
 			return Bookkeeping, m[1]
 		}
 		return Bookkeeping, ""
 	}
-	if m := trailingIDRE.FindStringSubmatch(s); m != nil {
+	stripped := prTokenRE.ReplaceAllString(s, "")
+	if m := trailingIDRE.FindStringSubmatch(stripped); m != nil {
 		return ChildProject, m[1]
+	}
+	if m := parenIDRE.FindStringSubmatch(stripped); m != nil {
+		return Unclassified, m[1]
 	}
 	return Neither, ""
 }
 
-// Exclusion records one bookkeeping commit the check left out of "shipped",
-// so a convention drift (decision 7) is visible in the report rather than
-// silently under-counting.
+// Exclusion records one commit the check left out of "shipped", with the
+// ticket id it names. It carries both non-shipped-but-noteworthy kinds:
+// Result.Excluded's bookkeeping commits, so a convention drift (decision 7)
+// is visible in the report rather than silently under-counting, and
+// Result.Unclassified's safety-net commits (T-094 decision 6). One struct
+// rather than two, because the shape either list needs is identical.
 type Exclusion struct {
 	Subject string
-	ID      string // "" when the subject didn't parse a ticket id at all
+	// ID is the ticket id the subject names — "" only for a bookkeeping
+	// commit whose subject parsed no id at all (an Unclassified commit always
+	// has one; that is what made it Unclassified rather than Neither).
+	ID string
 }
 
 // Result is the outcome of Check.
@@ -105,9 +143,13 @@ type Result struct {
 	Candidates []string
 	// Excluded is every Bookkeeping commit, in commit-log order.
 	Excluded []Exclusion
+	// Unclassified is every Unclassified commit, in commit-log order — a
+	// subject that names a ticket in parentheses but matches neither the
+	// Bookkeeping nor the ChildProject convention (T-094 decision 6).
+	Unclassified []Exclusion
 }
 
-// Check classifies subjects (as from `git log --format=%s <since>..HEAD`)
+// Check classifies subjects (as from `git log --format=%s <since>..<until>`)
 // and diffs the resulting shipped set against the ticket ids already
 // mentioned in changelogText's named section (a top-level "## [<section>]"
 // heading, e.g. "Unreleased" or a version like "0.5.0"). It returns an error
@@ -126,6 +168,7 @@ func Check(subjects []string, changelogText, section string) (Result, error) {
 	var shipped []string
 	seen := make(map[string]bool, len(subjects))
 	var excluded []Exclusion
+	var unclassified []Exclusion
 	for _, subj := range subjects {
 		kind, id := ClassifySubject(subj)
 		switch kind {
@@ -136,6 +179,8 @@ func Check(subjects []string, changelogText, section string) (Result, error) {
 			}
 		case Bookkeeping:
 			excluded = append(excluded, Exclusion{Subject: subj, ID: id})
+		case Unclassified:
+			unclassified = append(unclassified, Exclusion{Subject: subj, ID: id})
 		case Neither:
 			// not from a ticket at all — neither shipped nor excluded
 		}
@@ -149,11 +194,12 @@ func Check(subjects []string, changelogText, section string) (Result, error) {
 	}
 
 	return Result{
-		Section:    section,
-		Shipped:    shipped,
-		Mentioned:  sortedKeys(mentioned),
-		Candidates: candidates,
-		Excluded:   excluded,
+		Section:      section,
+		Shipped:      shipped,
+		Mentioned:    sortedKeys(mentioned),
+		Candidates:   candidates,
+		Excluded:     excluded,
+		Unclassified: unclassified,
 	}, nil
 }
 

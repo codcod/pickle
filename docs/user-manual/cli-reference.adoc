@@ -43,7 +43,7 @@ ever written to `~/` or outside the project root.
 | `pickle board sync`
 | Regenerate the board from ticket state.
 
-| `pickle changelog check [--since …] [--changelog …] [--section …]`
+| `pickle changelog check [--since …] [--until …] [--changelog …] [--section …] [--show-excluded]`
 | Report tickets that shipped since the last release but aren't named in the
   changelog. Read-only and advisory — always exits `0`.
 
@@ -670,14 +670,15 @@ runs `board audit` as a self-check.
 == `pickle changelog check`
 
 ----
-pickle changelog check [--since <ref>] [--changelog <path>] [--section <name>]
+pickle changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]
 ----
 
-A *read-only, advisory* report (T-093): for every ticket that shipped since
-`--since` (default: the last `git describe --tags --abbrev=0`), is it named
-in `--changelog` (default `CHANGELOG.md`), inside the `--section` section
-(default `Unreleased`)? Every shipped ticket that section does not name is
-printed as a candidate, pointing at its ticket file.
+A *read-only, advisory* report (T-093): for every ticket that shipped in
+`--since`..`--until` (defaults: the last tag *before* `--until` — precisely,
+`git describe --tags --abbrev=0 <until>^` — and `HEAD`), is it named in `--changelog` (default
+`CHANGELOG.md`), inside the `--section` section (default `Unreleased`)?
+Every shipped ticket that section does not name is printed as a candidate,
+pointing at its ticket file.
 
 The command checks *mentions only*, and has no exemption mechanism: a ticket
 that deliberately gets no entry — because its own file records a confirmed
@@ -695,18 +696,42 @@ ignored. Genuine errors remain errors: a `--since` git cannot resolve, an
 unreadable `--changelog`, or a `--section` the file does not contain exits
 non-zero.
 
-"Shipped" is computed from `git log --format=%s <since>..HEAD` — commit
+"Shipped" is computed from `git log --format=%s <since>..<until>` — commit
 *subjects*, not a ticket's `## History` merge line — kept only when the
 subject is a Conventional Commit for the target child-project's own code with
 a ticket id in brackets at the *end* of the subject (e.g.
-`feat(cli): add board audit (T-2)`). A `board: …` bookkeeping commit (the
+`feat(cli): add board audit (T-2)`), tolerating one trailing GitHub/GitLab
+squash-merge annotation first (`(#31)` or `(!31)`) so a squash button that
+rewrites the subject to `feat(cli): add board audit (T-2) (#31)` still
+classifies correctly. A `board: …` bookkeeping commit (the
 ticket/board-bookkeeping convention) is deliberately **excluded**: filing,
 re-grading or moving a ticket never ships code, so counting it would produce
 false candidates. Because this exclusion is the check's only defence against
-over-reporting, **the command depends on that convention holding**. Every
-excluded commit is printed in the report for exactly that reason: a project
-that stops following the convention sees a visibly odd exclusion list rather
-than a silent under-report.
+over-reporting, **the command depends on that convention holding**.
+
+By default the exclusion list is a single summary line — a count plus the
+ticket ids it covers, e.g. `excluded 28 board: bookkeeping commit(s)
+covering T-080, T-081, T-089, T-090, T-091 (--show-excluded for subjects)`
+— since printing every excluded subject unconditionally made a release-sized
+report mostly noise. Pass `--show-excluded` to print every excluded
+subject in full, exactly as earlier versions of this command always did; a
+project that stops following the `board:` convention still sees a visibly
+odd summary (a rising count, or unfamiliar ids) rather than a silent
+under-report. A subject that mentions a ticket in parentheses but matches
+neither convention — typically a revert, e.g.
+`Revert "feat(cli): add a thing (T-050)"` — is never silently dropped
+either: it prints in its own short "match neither convention" list, always
+in full.
+
+`--until <ref>` (default `HEAD`) closes the range, so a past `--section` stays
+auditable once later commits have landed on top of it. **The default
+`--since` resolves relative to `--until`, not to `HEAD`**: it is the last tag
+reachable from `<until>^`. This matters the moment `--until` is given alone —
+a `HEAD`-relative default would make `--until v0.5.0` (with no `--since`)
+describe `HEAD`'s own last tag rather than `v0.5.0`'s predecessor, and if
+`v0.5.0` is that last tag the range collapses to the empty, falsely-passing
+`v0.5.0..v0.5.0`. Resolving from `--until` instead makes `--until v0.5.0`
+alone mean exactly what it reads as: audit the `0.5.0` release.
 
 The check is one direction only: *shipped but unmentioned*. It never reports
 the reverse (mentioned but not shipped in this range) — an entry may
