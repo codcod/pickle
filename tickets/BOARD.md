@@ -20,11 +20,10 @@ Last updated: 2026-08-12
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | [] |
 
 ## REWORK
 
@@ -68,6 +67,7 @@ Last updated: 2026-08-12
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
 | T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | low | low | S | [] |  |
+| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | low | low | S | [] |  |
 
 ## DONE
 
@@ -122,6 +122,7 @@ Last updated: 2026-08-12
 | T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | yes — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept |
 | T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | no — publish-gated |
 | T-093 | reconcile merged tickets against the changelog's Unreleased section | yes — merged to main (PR #31, 212730c, https://github.com/codcod/pickle/commit/212730c); merge commit, 4 commits kept |
+| T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | no — publish-gated |
 
 ## DROPPED
 
