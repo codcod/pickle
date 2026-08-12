@@ -13,10 +13,12 @@ import (
 	"github.com/codcod/pickle/internal/vcs"
 )
 
-// Changelog mechanics. `changelog check` (T-093) is a read-only report: does
-// CHANGELOG.md account for every ticket that shipped since the last release,
-// either with an entry naming it or a recorded decision saying it deliberately
-// gets none? It is advisory only (decision 2) — it always exits 0, even with
+// Changelog mechanics. `changelog check` (T-093) is a read-only report: is
+// every ticket that shipped since the last release named in CHANGELOG.md?
+// Mentions are all it checks — a ticket whose own file records a decision to
+// get no entry is still reported, and the report points at that file so the
+// reader can settle it (decision 5, no exemption mechanism). It is advisory
+// only (decision 2) — it always exits 0, even with
 // candidates, and is never wired into `board audit`, CI, or `ticket move`: a
 // merged ticket missing an entry is not an error, because the entry may
 // legitimately be written any time before the release.
@@ -81,7 +83,7 @@ func runChangelogCheck(args []string) int {
 		return errf("changelog check: %v", err)
 	}
 
-	printChangelogCheckReport(cfg.Root(), cfg.FlowName(), sinceRef, *changelogPath, res)
+	printChangelogCheckReport(root, cfg.FlowName(), sinceRef, *changelogPath, res)
 	return exitOK // advisory only — decision 2, never a gate
 }
 

@@ -1,7 +1,9 @@
 // Package changelog implements the logic behind `pickle changelog check`
-// (T-093): does CHANGELOG.md account for every ticket that shipped since the
-// last release, either with an entry naming it or a recorded decision in the
-// ticket saying it deliberately gets none?
+// (T-093): is every ticket that shipped since the last release named in
+// CHANGELOG.md? Only the mention is checked here — whether an unmentioned
+// ticket needs an entry or already records a decision to get none is the
+// reader's judgement, which the CLI supports by pointing at the ticket file
+// (T-093 decision 5: no exemption mechanism).
 //
 // It is pure text-in, text-out logic — no subprocess, no filesystem, no
 // printing, no exit code — mirroring internal/audit's shape (a Result value,
