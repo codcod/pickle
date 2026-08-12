@@ -521,3 +521,11 @@ in the same commits. The three re-review findings are cosmetic or pre-existing.
 - 2026-08-12 — IN REVIEW → REWORK: review: 3 blocking (B1 fallback empty-range false pass; B2/B3 docs), 7 folded, T-097 spawned, 4 noted
 - 2026-08-12 — REWORK → IN REVIEW: 3 blocking + 7 folded findings fixed; ready for scoped re-review
 - 2026-08-12 — IN REVIEW → DONE: scoped re-review: 3 blocking + 7 folded findings verified fixed; 2 fixed inline, 1 noted
+- 2026-08-12 — published on approval: rework branch tidied to three atomic commits (`e2b1fd3`
+  B1+N4, `b1ca02d` N1+N2, `7de2310` B2+B3+N6+N7+N8+N9+R1 — the review's own inline R1 rewrap
+  folded into the docs commit it belonged to, and the `(T-095 rework)` subject suffixes
+  normalized to the rules §0 `(T-095)` form). Fast-forward over the stale remote tip `3353b31`,
+  so no history was rewritten in anger. **PR #35** open against `main`; history to be kept, not
+  squashed (rules §0, root-path child). This is T-095's *second* PR — #34 merged the original
+  implementation before the first review ran. **Merging is the human's**; add the `merged:` line
+  here once #35 lands
