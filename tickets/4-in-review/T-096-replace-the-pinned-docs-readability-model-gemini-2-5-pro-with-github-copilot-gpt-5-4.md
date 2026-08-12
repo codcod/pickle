@@ -301,3 +301,4 @@ pi|opencode`. Covered by Task 5 (`CHANGELOG.md` `[Unreleased]`), Task 3 (`.openc
   .prompt.md` is still vendor-neutral, no `.go`/testdata/golden file references these strings,
   and the board delta since READY is entirely unrelated T-095/T-097 work
 - 2026-08-12 — READY → IN DEVELOPMENT: picked up; plan amended at the applicability gate (F1: user manual omitted)
+- 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green; smoke-tested against the live model on both backends
