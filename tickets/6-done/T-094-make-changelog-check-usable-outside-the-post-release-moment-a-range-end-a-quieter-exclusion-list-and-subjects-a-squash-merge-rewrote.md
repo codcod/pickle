@@ -349,3 +349,4 @@ commit `5ff933d`), 2 `new ticket` batched into **T-095** (F1, F2), 0 `folded`, 0
   or parentless `HEAD`). Docs-readability pass consciously skipped — the host reviewer is
   unavailable (`model_not_supported`)
 - 2026-08-12 — IN REVIEW → DONE: review verdict: no blocking findings; 4 fixed inline, F1/F2 -> T-095
+- 2026-08-12 — merged to main (PR #33, 876e63d, https://github.com/codcod/pickle/commit/876e63d); merge commit, 4 commits kept
