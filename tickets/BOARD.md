@@ -56,6 +56,8 @@ Last updated: 2026-08-12
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
 | T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | medium | low | S-M | [] |  |
+| T-092 | finalize a ticket after its PR merges: a step 10 for the review protocol | medium | low | S | [] |  |
+| T-093 | a release procedure for the ticket-flow skill: changelog completeness, SemVer proposal, approval-gated tag | medium | medium | M-L | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
