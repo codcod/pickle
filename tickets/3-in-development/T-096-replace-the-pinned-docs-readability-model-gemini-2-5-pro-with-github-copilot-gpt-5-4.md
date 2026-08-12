@@ -169,6 +169,24 @@ GEMINI_API_KEY=…`)." with "The reviewer is reached via your `pi` `/login` prov
 Copilot by default; override with `DOCS_READABILITY_PROVIDER`/`DOCS_READABILITY_MODEL` for any
 other provider/model your `pi` is logged into)."
 
+#### Task 3b — the user manual (added by the pickup applicability gate, finding F1)
+
+`docs/user-manual/cli-reference.adoc` (~lines 123–128), the *only* **user-facing** doc that
+names this reviewer — reached from `docs/user-manual.adoc:37` via
+`include::user-manual/cli-reference.adoc[]`, so `just docs-check` builds it:
+
+- "a read-only, suggestions-only Gemini reviewer" → "a read-only, suggestions-only AI
+  reviewer" (decision 2's genericising, same as everywhere else).
+- "Both scaffolds default to `github-copilot/gemini-2.5-pro`" → "`github-copilot/gpt-5.4`".
+- Drop the ` | grep -i gemini` filter from the `opencode models github-copilot` example, exactly
+  as Task 2 does for the JSONC comment.
+- Leave the surrounding paragraphs (the *Step 4b* optional/never-blocking framing, the
+  shell-out line for other agents, the conscious-skip sentence) untouched — all still true.
+
+This task exists because the plan as written asserted the opposite ("No change needed to
+`docs/user-manual.adoc` — it does not mention docs-readability or its model"), which was false;
+the Docs update section below is corrected to match.
+
 #### Task 4 — verify the shared prompt needs no change
 
 `grep -in gemini skill/resources/docs-readability.prompt.md` — confirm no hits (already
@@ -188,8 +206,14 @@ in both the pi extension and the opencode subagent (T-096).
 # No stray vendor-specific wording left in the touched files:
 grep -rni gemini agents/pi/extensions/docs-readability.ts .pi/extensions/docs-readability.ts \
   agents/opencode/opencode.jsonc opencode.jsonc .opencode/README.md .pi/README.md \
-  skill/resources/docs-readability.prompt.md
+  docs/user-manual/cli-reference.adoc skill/resources/docs-readability.prompt.md
 # → prints nothing
+
+# Repo-wide, the ONLY remaining hits are the two that must survive (gate finding F2):
+grep -rni gemini . --exclude-dir=.git --exclude-dir=tickets --exclude-dir=dist
+# → CHANGELOG.md's *released* history only (an old version section, shipped and immutable —
+#   never rewrite it), plus the gitignored ./pickle build artifact, which `just build`
+#   regenerates from the edited payload. Nothing else.
 
 # New default model present in all four config/extension files:
 grep -n 'gpt-5.4' agents/pi/extensions/docs-readability.ts .pi/extensions/docs-readability.ts \
@@ -218,10 +242,17 @@ Manual smoke test (best-effort, requires GitHub Copilot login): run
 ### Docs update (mandatory when user-facing)
 
 User-facing: this changes the shipped default for every future `pickle install --agent
-pi|opencode`. Covered by Task 5 (`CHANGELOG.md` `[Unreleased]`) and Task 3 (`.opencode/README.md`,
-`.pi/README.md`, the dev-facing docs for this repo's own self-hosted setup). No change needed to
-`docs/user-manual.adoc` — it does not mention docs-readability or its model (`just docs-check`
-stays green because nothing there changed).
+pi|opencode`. Covered by Task 5 (`CHANGELOG.md` `[Unreleased]`), Task 3 (`.opencode/README.md`,
+`.pi/README.md`, the dev-facing docs for this repo's own self-hosted setup) and **Task 3b**
+(`docs/user-manual/cli-reference.adoc`, the user manual).
+
+> **Corrected by the pickup applicability gate (finding F1).** This section previously read "No
+> change needed to `docs/user-manual.adoc` — it does not mention docs-readability or its
+> model." That was false: `docs/user-manual/cli-reference.adoc:123-128` describes the reviewer
+> and pins `github-copilot/gemini-2.5-pro` by name, and `docs/user-manual.adoc:37` includes
+> that file. Missing user-manual coverage of a changed shipped default would have been a
+> blocking documentation finding at review (protocol step 4a.1). `just docs-check` builds the
+> manual, so it now covers Task 3b.
 
 ### Finish (mandatory)
 
@@ -250,3 +281,23 @@ stays green because nothing there changed).
 
 - 2026-08-12 — created (TO DO). source: pickle ticket new
 - 2026-08-12 — TO DO → READY: plan complete
+- 2026-08-12 — plan amended at the pickup applicability gate (rules §5 inline disposition; the
+  audit ran in a fresh sub-agent, per the skill's pickup procedure). The gate's critical premise
+  was confirmed *empirically*, not from the ticket's prose: `pi -p … --provider github-copilot
+  --model gpt-5.4` returned a completion (rc 0) while the same call with `gemini-2.5-pro`
+  returned `model_not_supported` (rc 1), and `opencode run --model github-copilot/gpt-5.4`
+  likewise answered — so both backends' spellings in decision 1 are right and the swap really
+  does fix the failure. Three findings: **F1 (blocking)** — the plan omitted
+  `docs/user-manual/cli-reference.adoc`, the only *user-facing* doc naming the reviewer, and its
+  Docs update section asserted the opposite in so many words; added as **Task 3b**, the false
+  claim corrected, and the file added to the acceptance grep. This is an amendment, not an
+  invalidation: all five original tasks stand unchanged. **F2 (non-blocking, fixed inline)** —
+  `CHANGELOG.md`'s *released* history mentions Gemini and must never be rewritten; the
+  acceptance test now states that carve-out explicitly instead of leaving it to the
+  implementer's judgement. **F3 (non-blocking, noted)** — the gitignored `./pickle` and `dist/`
+  binaries carry the old string in their embedded payload; `just build` regenerates them, no
+  action. Also verified unchanged since READY: every quoted "before" string exists verbatim, the
+  two `docs-readability.ts` copies are still byte-identical, `skill/resources/docs-readability
+  .prompt.md` is still vendor-neutral, no `.go`/testdata/golden file references these strings,
+  and the board delta since READY is entirely unrelated T-095/T-097 work
+- 2026-08-12 — READY → IN DEVELOPMENT: picked up; plan amended at the applicability gate (F1: user manual omitted)
