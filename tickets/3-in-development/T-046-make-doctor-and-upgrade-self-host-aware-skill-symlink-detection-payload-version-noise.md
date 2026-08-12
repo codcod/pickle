@@ -419,4 +419,17 @@ edit: its `payload_version` text is about *how* `upgrade` rewrites the line, whi
   trees only) keeps it below a general `medium` quality win. Collapsing either way would discard
   one of them
 - 2026-08-12 — TO DO → READY: plan complete
-- 2026-08-12 — READY → IN DEVELOPMENT: picked up
+- 2026-08-12 — READY → IN DEVELOPMENT: picked up; applicability gate ran in a fresh sub-agent
+  (rules §3): every D1–D8 assumption and every file:line the plan anchors on (`install.go:43`
+  `SkillDir`, the `~288` `Lstat`/`ModeSymlink` upgrade guard, `checkVersion`'s two T-026
+  branches at `doctor.go:328-339`, `checkSkill`'s one-arg pre-ticket signature, the referenced
+  test fixtures/lines in `doctor_test.go`, `hooks_test.go` and `install_test.go`, and the three
+  docs anchors) confirmed **true**; `SkillLinked` confirmed **absent** (not yet added); no
+  ticket touching the same files landed or moved since READY; `board audit` clean; live
+  `doctor` on this repo still showed the one payload-version warning the ticket exists to
+  remove. One non-blocking finding: the Description's illustrative quoted warning
+  (`"0.5.0"`/`"v0.5.0-67-gb6b583b"`) is now stale text — the repo released 0.6.0 and re-stamped
+  since this ticket went READY — but no task, test or acceptance-check string depends on those
+  exact numbers. **Disposition: note-and-close** (rules §5 default), recorded here rather than
+  editing the Description for a purely illustrative value. No plan invalidation; proceeded to
+  pickup unchanged
