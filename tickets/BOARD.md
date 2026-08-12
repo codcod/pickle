@@ -20,11 +20,10 @@ Last updated: 2026-08-12
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-12
 
 | id | title | open findings |
 |---|---|---|
+| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | review: 3 blocking (B1 fallback empty-range false pass; B2/B3 docs), 7 folded, T-097 spawned, 4 noted |
 
 ## READY (impact order, per child)
 
@@ -58,6 +58,7 @@ Last updated: 2026-08-12
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
 | T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | medium | low | S-M | [] |  |
+| T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | low-medium | low | S | [] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
