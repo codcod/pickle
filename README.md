@@ -1,40 +1,33 @@
 # pickle
 
-`pickle` installs and operates **brine**, a ticket-based, board-driven feature flow, in
-any project.
+`pickle` installs and operates **brine**. Brine is a ticket-based workflow for
+software development, designed to be used with any coding agent.
 
-Run `pickle install` in a project and a coding agent (Claude Code, opencode, Pi)
-understands requests like *"create a feature to review the Jira board"*: it
-authors a correctly-formatted ticket in `tickets/1-to-do/T-NNN-<slug>.md` and
-regenerates `BOARD.md`, because `install` laid down the flow skill, the board,
-and the agent-instruction markers. Judgment (what a ticket says, how it is
-graded, refined, reviewed) stays with the agent; the deterministic mechanics
-(id allocation, atomic moves, board rendering, invariant audits) are CLI
-commands.
+Brine is a name of this particular SDLC. Pickle is a command-line tool that
+installs brine.
+
+Run `pickle install` in a project and a coding agent understands requests like
+*"create a feature to enable dark theme"*: it authors a correctly-formatted
+ticket in `tickets/1-to-do/T-NNN-<slug>.md` and regenerates `BOARD.md`. All
+this is possible because `install` laid down the workflow skill, the board, and
+the agent-instruction markers. Judgment (what a ticket says, how it is graded,
+refined, reviewed) stays with the agent; the deterministic mechanics (id
+allocation, atomic moves, board rendering, invariant audits) are CLI commands.
+
+For the best UX use `pickle` with [Pi](https://pi.dev).
 
 ## Install
 
-> **Two different “installs.”** *This* section installs the **`pickle` binary** on your machine.
-> The `pickle install` *command* is a separate step you run **inside a project** to lay down the
-> flow (skill, board, markers).
+> **Two different "installs."** *This* section installs the **`pickle` binary**
+> on your machine. The `pickle install` *command* is a separate step you run
+> **inside a project** to lay down the workflow (skill, board, markers).
 
-**Homebrew** (via the tap):
+Run:
 
 ```sh
+brew tap codcod/tap
+brew trust --formula codcod/tap/pickle
 brew install codcod/tap/pickle
-```
-
-**`go install`** (Go 1.26+, any platform):
-
-```sh
-go install github.com/codcod/pickle@latest
-```
-
-**From source** (Go 1.26+, optionally [`just`](https://github.com/casey/just)):
-
-```sh
-git clone https://github.com/codcod/pickle && cd pickle
-just build            # → ./pickle   (or: go build -o pickle .)
 ```
 
 Then, inside any project:
@@ -46,13 +39,7 @@ pickle version
 
 ## Documentation
 
-The user manual (AsciiDoc) lives in [`docs/`](docs/README.adoc) — the book is
-[`docs/user-manual.adoc`](docs/user-manual.adoc), in three parts:
+Each release offers a current version of the user manual in PDF and EPUB
+formats.
 
-- **Start Here** — quickstart, installation, your first project.
-- **Concepts** — how the flow works: tickets, lifecycle, the board, multi-project.
-- **CLI Reference** — every command, plus the `pickle.toml` reference.
-
-Validate the sources with `just docs-check`; render PDF/EPUB with `just docs-build`
-(both use [snowball](https://github.com/codcod/snowball) — see
-[docs/README.adoc](docs/README.adoc) for the one-time toolchain setup).
+Both formats are provided by [snowball](https://github.com/codcod/snowball).
