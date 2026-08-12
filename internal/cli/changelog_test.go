@@ -278,6 +278,67 @@ func TestChangelogCheckExclusionSummaryNamesEveryID(t *testing.T) {
 	}
 }
 
+// TestChangelogCheckUntilFallsBackOnTaggedRootCommit (T-095 decision 7): when
+// HEAD is the repository's root commit, <until>^ cannot resolve at all —
+// this must fall back to describing <until> itself and still exit 0,
+// restoring the pre-T-094 answer on a tagged root commit instead of an
+// error that blames a missing tag for what is really a missing parent.
+func TestChangelogCheckUntilFallsBackOnTaggedRootCommit(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	// One commit only — HEAD is the root commit — then tag it immediately.
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check"}); got != exitOK {
+			t.Fatalf("changelog check on a tagged root commit = %d, want %d (fallback to describing --until itself)", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "v0.1.0..HEAD") {
+		t.Errorf("output does not show the fallback resolving --since to v0.1.0, got:\n%s", out)
+	}
+}
+
+// TestChangelogCheckTagNoteOnDefaultSection (T-095 decision 8): a tagged
+// --until with the default --section prints an advisory note; the same
+// --until with an explicit --section does not, since the reader has already
+// answered "which release".
+func TestChangelogCheckTagNoteOnDefaultSection(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [0.2.0]\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.1.0")
+	writeAndCommit(t, root, "src/a.go", "package a\n", "feat(a): ship a thing (T-050)")
+	gitTag(t, root, "v0.2.0")
+
+	noteOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check", "--until", "v0.2.0"}); got != exitOK {
+			t.Fatalf("changelog check --until v0.2.0 = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(noteOut, "note: v0.2.0 is a tag") {
+		t.Errorf("output missing the tagged---until note with the default --section, got:\n%s", noteOut)
+	}
+	if !strings.Contains(noteOut, "try --section 0.2.0") {
+		t.Errorf("note should suggest --section 0.2.0, got:\n%s", noteOut)
+	}
+
+	noNoteOut := captureStdout(t, func() {
+		got := Run(nil, "test", []string{"changelog", "check", "--until", "v0.2.0", "--section", "0.2.0"})
+		if got != exitOK {
+			t.Fatalf("changelog check --until v0.2.0 --section 0.2.0 = %d, want %d", got, exitOK)
+		}
+	})
+	if strings.Contains(noNoteOut, "note:") {
+		t.Errorf("an explicit --section must suppress the tagged---until note, got:\n%s", noNoteOut)
+	}
+}
+
 // TestChangelogCheckUnknownSectionErrors: an absent section is a genuine
 // user mistake (a typo'd --section, or a version that was never released),
 // unlike a missing candidate — it exits non-zero.

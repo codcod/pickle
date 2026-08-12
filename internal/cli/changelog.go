@@ -32,6 +32,13 @@ import (
 
 const changelogCheckUsage = `usage: pickle changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]`
 
+// defaultChangelogSection is the --section flag's default, and also the
+// value tagNote (T-095 decision 8) compares against: a tagged --until only
+// earns the note when --section is still at this default, since an explicit
+// version section (e.g. --section 0.5.0) means the reader already knows
+// which release they're auditing.
+const defaultChangelogSection = "Unreleased"
+
 func runChangelog(args []string) int {
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, "usage: pickle changelog <check> ...")
@@ -51,7 +58,7 @@ func runChangelogCheck(args []string) int {
 	since := fs.String("since", "", "start of the shipped-commit range, exclusive (default: the last git tag before --until)")
 	until := fs.String("until", "HEAD", "end of the shipped-commit range, inclusive")
 	changelogPath := fs.String("changelog", "CHANGELOG.md", "path to the changelog, relative to the project root")
-	section := fs.String("section", "Unreleased", `the "## [<name>]" section to check against (e.g. a version like "0.5.0")`)
+	section := fs.String("section", defaultChangelogSection, `the "## [<name>]" section to check against (e.g. a version like "0.5.0")`)
 	showExcluded := fs.Bool("show-excluded", false, "print every excluded board: commit's subject instead of a one-line summary")
 	fs.Usage = func() { fmt.Fprintln(os.Stderr, changelogCheckUsage) }
 	if err := fs.Parse(args); err != nil {
@@ -71,16 +78,9 @@ func runChangelogCheck(args []string) int {
 	untilRef := *until
 	sinceRef := *since
 	if sinceRef == "" {
-		// Resolved relative to --until, not HEAD (T-094 decision 3): with a
-		// HEAD-relative default, "--until v0.5.0" alone would describe HEAD's
-		// own last tag, not v0.5.0's predecessor, and could produce the empty
-		// range v0.5.0..v0.5.0 — reporting a false "no candidates" pass. The
-		// "^" is what makes a tag-shaped --until name the range *ending*
-		// there; with the default --until HEAD this is unchanged from today
-		// whenever HEAD itself isn't exactly a tag.
-		tag, err := vcs.Output(root, "describe", "--tags", "--abbrev=0", untilRef+"^")
+		tag, err := defaultSince(root, untilRef)
 		if err != nil {
-			return errf("changelog check: no --since given and no git tag found reachable from %s^: %v", untilRef, err)
+			return errf("changelog check: %v", err)
 		}
 		sinceRef = tag
 	}
@@ -102,6 +102,33 @@ func runChangelogCheck(args []string) int {
 
 	printChangelogCheckReport(root, cfg.FlowName(), sinceRef, untilRef, *changelogPath, *showExcluded, res)
 	return exitOK // advisory only — decision 2, never a gate
+}
+
+// defaultSince resolves the default --since relative to --until, not HEAD
+// (T-094 decision 3): with a HEAD-relative default, "--until v0.5.0" alone
+// would describe HEAD's own last tag, not v0.5.0's predecessor, and could
+// produce the empty range v0.5.0..v0.5.0 — reporting a false "no candidates"
+// pass. The "^" is what makes a tag-shaped --until name the range *ending*
+// there; with the default --until HEAD this is unchanged from today
+// whenever HEAD itself isn't exactly a tag.
+//
+// If <until>^ doesn't resolve at all — HEAD is the repo's root commit, or a
+// shallow clone has no parent to name — fall back to describing <until>
+// itself (T-095 decision 7): this is the one case a tag-shaped --until was
+// never trying to solve, and it is what restores today's pre-T-094 answer
+// on a tagged root commit instead of a spurious error. Only when *both*
+// resolutions fail is it a genuine "no tag anywhere on this history" error,
+// and it names <until> rather than <until>^ so the message blames the
+// actual missing thing instead of the fallback's own missing parent.
+func defaultSince(root, until string) (string, error) {
+	if tag, err := vcs.Output(root, "describe", "--tags", "--abbrev=0", until+"^"); err == nil {
+		return tag, nil
+	}
+	tag, err := vcs.Output(root, "describe", "--tags", "--abbrev=0", until)
+	if err != nil {
+		return "", fmt.Errorf("no --since given and no git tag found reachable from %s: %w", until, err)
+	}
+	return tag, nil
 }
 
 // commitSubjects returns `git log --format=%s <since>..<until>`, one subject
@@ -134,6 +161,9 @@ func printChangelogCheckReport(root, flowName, since, until, changelogPath strin
 	}
 
 	fmt.Printf("changelog check: %s..%s, against %s's %q section\n", since, until, changelogPath, res.Section)
+	if note := tagNote(root, until, res.Section); note != "" {
+		fmt.Printf("  note: %s\n", note)
+	}
 	if len(res.Candidates) == 0 {
 		fmt.Println("  no candidates — every shipped ticket is mentioned")
 	} else {
@@ -217,4 +247,26 @@ func printUnclassified(unclassified []changelog.Exclusion) {
 	for _, u := range unclassified {
 		fmt.Printf("    %s\n", u.Subject)
 	}
+}
+
+// tagNote returns an advisory line (T-095 decision 8) for the one moment a
+// tagged --until is easy to misread: standing on a fresh tag, the bare
+// default invocation audits the *previous* release against [Unreleased],
+// which reads like a false pass rather than the wrong question. It fires
+// only when until resolves to an exact tag (git describe --tags
+// --exact-match, a clean one-call test: it fails whenever until isn't
+// precisely a tagged commit) *and* section is still the default — an
+// explicit --section already answers "which release am I auditing", so the
+// hint would be redundant. Returns "" (print nothing) otherwise. Never
+// affects the exit code; it is advisory prose, not a finding.
+func tagNote(root, until, section string) string {
+	if section != defaultChangelogSection {
+		return ""
+	}
+	tag, err := vcs.Output(root, "describe", "--tags", "--exact-match", until)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%s is a tag — this range is release %s, not [%s]; try --section %s",
+		tag, strings.TrimPrefix(tag, "v"), defaultChangelogSection, strings.TrimPrefix(tag, "v"))
 }
