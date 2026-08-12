@@ -55,7 +55,10 @@ board audit` errors on a ticket already sitting past READY with one still
 missing. `1-to-do/` is the one *non-terminal* status the plan rows never
 apply to — from `2-ready/`, moving a ticket back there always clears the
 gate, whatever state the plan is in. (`6-done/` and `7-dropped/` require
-nothing at all, so an archived ticket is never flagged, however incomplete.) The check is structural only — it proves a step is
+nothing at all, so *this* check never flags an archived ticket, however
+incomplete — the unfinalized-merge warning under *Done ≠ merged* is a
+separate check, and it does apply to `6-done/`.) The check is structural
+only — it proves a step is
 present, never that it says something *good* — so judging whether the
 plan's content actually holds up is still the reviewing agent's job.
 
@@ -107,7 +110,10 @@ DONE records the review verdict. *Merging is always the human's* and may lag —
 a dependency counts as satisfied only once its code is actually on the base a
 new branch would fork from. When you merge, append a dated
 `merged to <base> (<MR ref>)` History line to the done ticket and run
-`pickle board sync`. Add a commit reference alongside the MR ref (a short SHA, and a full
+`pickle board sync`. Forget it and `pickle board audit` says so: every ticket
+in `6-done/` without such a line draws a *warning* (never an error — the lag
+is legitimate, so the audit cannot tell "not merged yet" from "merge line
+forgotten"). Add a commit reference alongside the MR ref (a short SHA, and a full
 commit link where the remote resolves to a known hosting URL) so the line traces straight to
 what shipped. Keep the short SHA even when you add the link: the board's `merged` cell is
 capped at 120 runes, which a full commit URL can exceed, so the SHA is what still reads there

@@ -22,6 +22,8 @@ jobs:
         run: go test ./...
       - name: build
         run: go build -o pickle .
+      - name: board audit
+        run: ./pickle board audit
 
   goreleaser-check:
     runs-on: ubuntu-latest

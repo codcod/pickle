@@ -153,6 +153,15 @@ func withFamily(body, id string) string {
 	return strings.Replace(body, "spawned-by: []", "spawned-by: []\nfamily: "+id, 1)
 }
 
+// withMergeLine appends a merge History line right after ticketFile's single
+// created-line entry — used by DONE-ticket fixtures that intentionally
+// exercise some other check (outcome, plan) and must not also trip the T-092
+// unfinalized-merge warning as an unrelated side effect.
+func withMergeLine(body string) string {
+	return strings.Replace(body, "). source: test\n",
+		"). source: test\n- 2026-07-24 — merged to main (abc1234)\n", 1)
+}
+
 // writeGood lays down a clean, audit-passing tree at root.
 func mk(t *testing.T, root, rel, content string) {
 	t.Helper()
@@ -297,6 +306,35 @@ func TestAudit(t *testing.T) {
 			renderBoard(t, root)
 		}, wantErr: true, substr: "dependency T-001 is in 1-to-do"},
 
+		// --- unfinalized-merge detection (T-092): every DONE ticket, not only depends-on targets ---
+		{name: "done ticket without merge line warns on its own ref", mutate: func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			mk(t, root, "tickets/6-done/T-001-foo.md", ticketFile("T-001", "pickle", "[]", "high", "DONE"))
+			renderBoard(t, root)
+		}, wantWarn: true, warnSubstr: "6-done/T-001-foo.md: DONE but has no 'MERGED' History line"},
+		{name: "done ticket with merge line stays clean", mutate: func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			body := fmt.Sprintf(historyTemplate, "T-001", "pickle", "[]",
+				"- 2026-07-23 — created (TO DO). source: test\n"+
+					"- 2026-07-24 — TO DO → DONE: shipped\n"+
+					"- 2026-07-25 — merged to main (abc1234)")
+			mk(t, root, "tickets/6-done/T-001-foo.md", body)
+			renderBoard(t, root)
+		}},
+		// Decision 5: scope is 6-done only — a dropped ticket has nothing to
+		// merge by definition, so it is exempt even without a merge line.
+		{name: "dropped ticket without merge line stays clean", mutate: func(t *testing.T, root string) {
+			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
+				t.Fatal(err)
+			}
+			mk(t, root, "tickets/7-dropped/T-001-foo.md", ticketFile("T-001", "pickle", "[]", "high", "DROPPED"))
+			renderBoard(t, root)
+		}},
+
 		// --- status directories (T-040 D3): the seven-directory tree invariant ---
 		{name: "missing status directory", mutate: func(t *testing.T, root string) {
 			if err := os.RemoveAll(filepath.Join(root, "tickets/7-dropped")); err != nil {
@@ -387,8 +425,10 @@ func TestAudit(t *testing.T) {
 			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
 				t.Fatal(err)
 			}
+			// Carries a merge line (T-092) so this case stays about the outcome
+			// exemption only — see the dedicated unfinalized-merge cases above.
 			mk(t, root, "tickets/6-done/T-001-foo.md",
-				withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DONE")))
+				withMergeLine(withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DONE"))))
 			renderBoard(t, root)
 		}},
 		{name: "missing outcome in dropped ticket stays clean (terminal dirs exempt)", mutate: func(t *testing.T, root string) {
@@ -444,8 +484,10 @@ func TestAudit(t *testing.T) {
 			if err := os.Remove(filepath.Join(root, "tickets/1-to-do/T-001-foo.md")); err != nil {
 				t.Fatal(err)
 			}
+			// Carries a merge line (T-092) so this case stays about the gate-table
+			// terminal exemption only.
 			mk(t, root, "tickets/6-done/T-001-foo.md",
-				withoutPlan(withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DONE"))))
+				withMergeLine(withoutPlan(withoutOutcome(ticketFile("T-001", "pickle", "[]", "high", "DONE")))))
 			renderBoard(t, root)
 		}},
 		// Review finding B1 (T-081 rework): the pre-fix remedy hard-coded "move the
@@ -497,6 +539,41 @@ func TestAudit(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestAuditUnmergedDoneTicketWarnsOnBothRefsWhenDependedOn is the regression
+// the T-092 plan calls out by name: a done ticket with no merge line that is
+// ALSO some other ticket's depends-on target must produce TWO warnings, not
+// one deduplicated to the first match — the dependency-scoped check
+// (audit.go, addressed to the dependent, "T-002: dependency T-001 …") and the
+// new own-ref check (addressed to whoever forgot to finalize T-001, "T-001:
+// DONE but has no …") are both still needed (Confirmed design decision 3); the
+// TestAudit table's single-warnSubstr assertion cannot tell "exactly two,
+// naming different refs" apart from "one, matched twice", so this gets its own
+// test.
+func TestAuditUnmergedDoneTicketWarnsOnBothRefsWhenDependedOn(t *testing.T) {
+	root := t.TempDir()
+	mk(t, root, "pickle.toml", cfgBody)
+	mkStatusDirs(t, root)
+	mk(t, root, "tickets/6-done/T-001-foo.md", ticketFile("T-001", "pickle", "[]", "high", "DONE"))
+	mk(t, root, "tickets/3-in-development/T-002-bar.md", ticketFile("T-002", "pickle", "[T-001]", "high", "IN DEVELOPMENT"))
+	renderBoard(t, root)
+
+	res := Audit(root, loadCfg(t, root))
+	if len(res.Errors) != 0 {
+		t.Fatalf("expected no errors, got: %v", res.Errors)
+	}
+	const ownRef = "6-done/T-001-foo.md: DONE but has no 'MERGED' History line"
+	const depRef = "3-in-development/T-002-bar.md: dependency T-001 is DONE but has no 'MERGED' History line"
+	if !containsAny(res.Warnings, ownRef) {
+		t.Fatalf("expected a warning on T-001's own ref (%q); warnings: %v", ownRef, res.Warnings)
+	}
+	if !containsAny(res.Warnings, depRef) {
+		t.Fatalf("expected a warning on T-002's dependency ref (%q); warnings: %v", depRef, res.Warnings)
+	}
+	if len(res.Warnings) != 2 {
+		t.Fatalf("expected exactly two warnings (one per ref), got %d: %v", len(res.Warnings), res.Warnings)
 	}
 }
 

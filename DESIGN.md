@@ -241,8 +241,9 @@ built — §13.4). What survives is what the manual doesn't cover:
   *not* check which branch it is on. `internal/audit` is git-free and its tests are plain temp
   dirs; adding `git rev-parse`/`merge-base` would make the audit's verdict depend on the
   environment it runs in, and it would need a `base_branch` config key that does not exist. The
-  hook is where branch knowledge belongs. Wiring `board audit` into CI remains worthwhile and
-  unshipped — as does running the docs gate there at all (T-067).
+  hook is where branch knowledge belongs. Wiring `board audit` into CI shipped in T-092 — the
+  `build-test` job runs `./pickle board audit` after the build step; running the docs gate there
+  at all remains unshipped (T-067).
 - **Design tension, unresolved by design:** how much the agent uses the CLI vs. edits files
   directly. The skill instructs the agent to *prefer* the CLI for id allocation and moves
   (mechanical, error-prone by hand) while authoring prose directly in the ticket file. Board

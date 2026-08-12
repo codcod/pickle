@@ -241,6 +241,27 @@ func Audit(root string, cfg *config.Config) Result {
 		}
 	}
 
+	// Unfinalized-merge detection (T-092): the dependency-scoped warning above
+	// only fires when some other ticket names a done one in depends-on — a
+	// done ticket nobody depends on (the common case) was never checked. Scan
+	// every ticket sitting in def.DependencySatisfied() (DONE; never DROPPED —
+	// a dropped ticket has nothing to merge) and warn on its own ref when it
+	// carries no merge line. This is a WARNING, not an error (rules §3/§4:
+	// merging is the human's and may lag) — it stays alongside the
+	// dependency-scoped check rather than replacing it, since the two address
+	// different readers (rules §4 decision 3).
+	done := def.DependencySatisfied().Dir
+	for _, t := range tickets {
+		if t.Dir != done {
+			continue
+		}
+		if ticket.HasMergeLine(def, t.Text) {
+			continue
+		}
+		ref := t.Dir + "/" + filepath.Base(t.Path)
+		r.warnf("%s: DONE but has no 'MERGED' History line — not merged yet, or the merge line was forgotten (rules §4: append it and run pickle board sync)", ref)
+	}
+
 	sort.Strings(r.Errors)
 	sort.Strings(r.Warnings)
 	return r
