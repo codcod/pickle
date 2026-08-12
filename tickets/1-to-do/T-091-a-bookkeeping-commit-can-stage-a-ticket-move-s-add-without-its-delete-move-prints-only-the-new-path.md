@@ -80,10 +80,11 @@ built to share its staged-path plumbing; neither blocks the other.
 Soft coupling: **T-071** (harden the PATH probe) and **T-050** (pi staging gate) both touch hook
 behaviour; if shape 2 wins, sequence with them rather than merging.
 
-Soft coupling: **T-092** (finalize a ticket after its PR merges) is the other half of the same
-incident that spawned this ticket — that ticket makes the post-merge `board audit` that actually
-caught this bug a named, mandatory step; this ticket fixes the staging mistake at its source
-(`move` naming both paths). Neither blocks the other.
+Soft coupling: **T-092** (detect an unfinalized merge) is the other half of the same incident that
+spawned this ticket — that ticket makes the omission *detectable* after the fact (generalising the
+DONE-without-a-merge-line audit check, and running `board audit` in CI, which nothing does today);
+this ticket fixes the staging mistake at its source (`move` naming both paths). Neither blocks the
+other.
 
 ## Implementation Plan
 
