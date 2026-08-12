@@ -13,11 +13,13 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 - **`pickle changelog check`** reports tickets that shipped since the last release (by
   Conventional Commit subject, excluding `board:` bookkeeping commits) but aren't named in
   `CHANGELOG.md`'s `[Unreleased]` section, pointing at each candidate's ticket file so you
-  can add an entry or confirm the ticket already records a decision to have none (T-093).
-  Read-only and advisory: it always
+  can add an entry or confirm the ticket already records a decision to have none
+  (T-093, T-094). Read-only and advisory: it always
   exits `0`, even with candidates, and is never wired into `board audit`, CI, or
-  `ticket move`. `--since`, `--changelog` and `--section` override the defaults (the last
-  git tag, `CHANGELOG.md`, `Unreleased`).
+  `ticket move`. `--since`, `--until`, `--changelog` and `--section` override the defaults
+  (the last tag reachable from `--until`, `HEAD`, `CHANGELOG.md`, `Unreleased`); a squash-merge's
+  trailing `(#31)`/`(!31)` is tolerated after the ticket id; the excluded `board:` commits
+  summarize to one line unless `--show-excluded`.
 
 ## [0.5.0] - 2026-08-12
 
