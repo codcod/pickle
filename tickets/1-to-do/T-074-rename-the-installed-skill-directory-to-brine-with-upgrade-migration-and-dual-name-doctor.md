@@ -79,3 +79,11 @@ cheaper than merging them.
   byte-compared by `doctor`, so renaming them without this ticket's upgrade path would raise a
   drift warning in every already-installed project. This ticket already lists those scaffolds in
   its scope; the Go comments are the new part
+- 2026-08-12 — patched by T-096's review impact sweep. T-096 repinned the docs-readability
+  model and genericised the surrounding prose in both `docs-readability.ts` copies and both
+  `opencode.jsonc` files — all four of which this ticket lists as rename targets. Nothing here
+  is invalidated (T-096 touched the *model* and the word "Gemini", never the words "ticket
+  flow"/"ticket-flow skill" this ticket renames), but the folded-F5 line references above have
+  drifted: the `ticket-flow skill` comment cited at `.pi/extensions/docs-readability.ts:49` is
+  now at `:50`, since T-096 added a line to that doc comment. Search the text rather than the
+  line numbers at refinement — as the note above already says for the "~85" occurrence count
