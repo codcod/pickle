@@ -343,3 +343,4 @@ pushing or opening the MR. **Push `origin main` first if the local base is ahead
   confusion. Not split: two findings, one command, one package, ~40 lines total — neither half
   would be picked up alone. Grades unchanged (`low`/`low`/`S`): the plan grew precise, not larger
 - 2026-08-12 — TO DO → READY: plan complete; four design questions settled (permissive id scan, mentioning verb, single <until>^ fallback, tagged-until note)
+- 2026-08-12 — READY → IN DEVELOPMENT: picked up

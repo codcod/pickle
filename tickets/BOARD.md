@@ -13,10 +13,11 @@ Last updated: 2026-08-12
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-12
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-096 | replace the pinned docs-readability model gemini-2.5-pro with github-copilot/gpt-5.4 | medium | low | S | [] |  |
-| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
