@@ -674,20 +674,26 @@ pickle changelog check [--since <ref>] [--changelog <path>] [--section <name>]
 ----
 
 A *read-only, advisory* report (T-093): for every ticket that shipped since
-`--since` (default: the last `git describe --tags --abbrev=0`), does
-`--changelog` (default `CHANGELOG.md`) already account for it, in its
-`--section` (default `Unreleased`) — either with an entry naming the ticket,
-or a recorded, confirmed decision inside the ticket's own file that it
-deliberately gets none? Anything else is printed as a candidate, pointing at
-the ticket file so the judgement (does a recorded decision already explain
-it?) is one click away.
+`--since` (default: the last `git describe --tags --abbrev=0`), is it named
+in `--changelog` (default `CHANGELOG.md`), inside the `--section` section
+(default `Unreleased`)? Every shipped ticket that section does not name is
+printed as a candidate, pointing at its ticket file.
+
+The command checks *mentions only*, and has no exemption mechanism: a ticket
+that deliberately gets no entry — because its own file records a confirmed
+decision to fold it into another one, say — is printed like any other
+candidate. Whether a candidate needs an entry or already carries a recorded
+reason not to is the reader's call, which is why the report points at the
+ticket file instead of trying to answer it.
 
 *It never gates anything* — not `board audit`, not CI, not `ticket move` —
 and **always exits `0`, even when it finds candidates**: a merged ticket with
 no entry yet is not an error, because the entry may legitimately be written
 any time before the release. Do not wire this into a CI check expecting a
 non-zero exit; it would fire on every ordinary in-flight release and be
-ignored.
+ignored. Genuine errors remain errors: a `--since` git cannot resolve, an
+unreadable `--changelog`, or a `--section` the file does not contain exits
+non-zero.
 
 "Shipped" is computed from `git log --format=%s <since>..HEAD` — commit
 *subjects*, not a ticket's `## History` merge line — kept only when the
