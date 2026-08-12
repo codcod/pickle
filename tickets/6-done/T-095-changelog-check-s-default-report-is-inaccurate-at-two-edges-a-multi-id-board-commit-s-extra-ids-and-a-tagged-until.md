@@ -529,3 +529,4 @@ in the same commits. The three re-review findings are cosmetic or pre-existing.
   squashed (rules §0, root-path child). This is T-095's *second* PR — #34 merged the original
   implementation before the first review ran. **Merging is the human's**; add the `merged:` line
   here once #35 lands
+- 2026-08-12 — merged to `main` (`eed6b3e`, PR #35): the rework loop closed, history kept

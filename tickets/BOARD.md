@@ -124,7 +124,7 @@ Last updated: 2026-08-12
 | T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | no — publish-gated |
 | T-093 | reconcile merged tickets against the changelog's Unreleased section | yes — merged to main (PR #31, 212730c, https://github.com/codcod/pickle/commit/212730c); merge commit, 4 commits kept |
 | T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | yes — merged to main (PR #33, 876e63d, https://github.com/codcod/pickle/commit/876e63d); merge commit, 4 commits kept |
-| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | yes — merged: PR #34 (`feat/T-095-changelog-summary-and-range-edges` → `main`, merge |
+| T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | yes — merged to `main` (`eed6b3e`, PR #35): the rework loop closed, history kept |
 
 ## DROPPED
 
