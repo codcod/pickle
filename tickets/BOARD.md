@@ -121,7 +121,7 @@ Last updated: 2026-08-12
 | T-089 | Record a commit reference alongside the merge History line | yes — merged to main (PR #26, 1ceaead, https://github.com/codcod/pickle/commit/1ceaead); |
 | T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | yes — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept |
 | T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | no — publish-gated |
-| T-093 | reconcile merged tickets against the changelog's Unreleased section | no — publish-gated |
+| T-093 | reconcile merged tickets against the changelog's Unreleased section | yes — merged to main (PR #31, 212730c, https://github.com/codcod/pickle/commit/212730c); merge commit, 4 commits kept |
 
 ## DROPPED
 

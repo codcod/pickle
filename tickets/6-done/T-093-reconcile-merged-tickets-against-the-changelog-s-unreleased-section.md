@@ -299,6 +299,14 @@ skill-payload prose (6); exclusions are printed (7).
 `5412023` on the ticket branch), 3 to one new ticket batched by theme (F3, F4, F5 → **T-094**),
 4 noted and closed (F1, F6, F7, F9). No finding was folded.
 
+> **The inline fixes did not ship with this ticket.** PR #31 merged the four implementation
+> commits that were already on `origin` when the review began; `5412023` (F2 + F8) was committed
+> locally during the review and never pushed, so `main` still carries the F2 wording and the F8
+> nit. The commit is intact on the local `feat/T-093-changelog-reconcile` branch and needs its
+> own small follow-up PR to land. Recorded here rather than silently re-fixed, because
+> "fixed inline" claims in a Review table must be true of `main` — until that PR merges, F2 and
+> F8 are outstanding, not fixed.
+
 **Impact sweep (step 8).** `T-092` is the only other ticket whose text mentions T-093, and it is
 in `6-done/`; its soft-coupling note ("neither blocks nor materially helps the other", corrected
 during T-093's refinement) is still accurate against what shipped, so nothing needed patching.
@@ -335,3 +343,6 @@ falsifies. `pickle board audit`: 93 tickets, 0 errors, 0 warnings (before T-094 
 - 2026-08-12 — READY → IN DEVELOPMENT: picked up
 - 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-12 — IN REVIEW → DONE: review: 0 blocking, 9 non-blocking (2 fixed inline, 3 -> T-094, 4 noted)
+- 2026-08-12 — merged to main (PR #31, 212730c, https://github.com/codcod/pickle/commit/212730c); merge commit, 4 commits kept
+  — the review's own inline-fix commit (F2/F8) was not pushed in time and is **not** in this
+  merge; see the note under the `## Review` disposition summary
