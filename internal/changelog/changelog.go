@@ -114,12 +114,18 @@ func ClassifySubject(subject string) (CommitKind, string) {
 	return Neither, ""
 }
 
-// Exclusion records one bookkeeping commit the check left out of "shipped",
-// so a convention drift (decision 7) is visible in the report rather than
-// silently under-counting.
+// Exclusion records one commit the check left out of "shipped", with the
+// ticket id it names. It carries both non-shipped-but-noteworthy kinds:
+// Result.Excluded's bookkeeping commits, so a convention drift (decision 7)
+// is visible in the report rather than silently under-counting, and
+// Result.Unclassified's safety-net commits (T-094 decision 6). One struct
+// rather than two, because the shape either list needs is identical.
 type Exclusion struct {
 	Subject string
-	ID      string // "" when the subject didn't parse a ticket id at all
+	// ID is the ticket id the subject names — "" only for a bookkeeping
+	// commit whose subject parsed no id at all (an Unclassified commit always
+	// has one; that is what made it Unclassified rather than Neither).
+	ID string
 }
 
 // Result is the outcome of Check.
@@ -143,7 +149,7 @@ type Result struct {
 	Unclassified []Exclusion
 }
 
-// Check classifies subjects (as from `git log --format=%s <since>..HEAD`)
+// Check classifies subjects (as from `git log --format=%s <since>..<until>`)
 // and diffs the resulting shipped set against the ticket ids already
 // mentioned in changelogText's named section (a top-level "## [<section>]"
 // heading, e.g. "Unreleased" or a version like "0.5.0"). It returns an error

@@ -124,7 +124,7 @@ Flow commands:
   board sync              Regenerate BOARD.md from ticket frontmatter + locations.
   changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]
                           Report tickets that shipped in <since>..<until> (defaults: the
-                          last git tag reachable from <until>, and HEAD) but aren't named
+                          last git tag before <until>, and HEAD) but aren't named
                           in the changelog's named section (default "Unreleased").
                           Excluded board: bookkeeping commits summarize to one line unless
                           --show-excluded. Read-only and advisory — always exits 0.

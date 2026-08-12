@@ -17,7 +17,7 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   (T-093, T-094). Read-only and advisory: it always
   exits `0`, even with candidates, and is never wired into `board audit`, CI, or
   `ticket move`. `--since`, `--until`, `--changelog` and `--section` override the defaults
-  (the last tag reachable from `--until`, `HEAD`, `CHANGELOG.md`, `Unreleased`); a squash-merge's
+  (the last tag before `--until`, `HEAD`, `CHANGELOG.md`, `Unreleased`); a squash-merge's
   trailing `(#31)`/`(!31)` is tolerated after the ticket id; the excluded `board:` commits
   summarize to one line unless `--show-excluded`.
 

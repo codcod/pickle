@@ -48,7 +48,7 @@ func runChangelog(args []string) int {
 
 func runChangelogCheck(args []string) int {
 	fs := flag.NewFlagSet("changelog check", flag.ContinueOnError)
-	since := fs.String("since", "", "start of the shipped-commit range, exclusive (default: the last git tag reachable from --until)")
+	since := fs.String("since", "", "start of the shipped-commit range, exclusive (default: the last git tag before --until)")
 	until := fs.String("until", "HEAD", "end of the shipped-commit range, inclusive")
 	changelogPath := fs.String("changelog", "CHANGELOG.md", "path to the changelog, relative to the project root")
 	section := fs.String("section", "Unreleased", `the "## [<name>]" section to check against (e.g. a version like "0.5.0")`)
