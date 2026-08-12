@@ -271,3 +271,4 @@ opening the MR.
 - 2026-08-12 — soft-coupling note to T-093 corrected while refining T-093: its sweep reads commit
   subjects, not merge History lines, so this ticket is not its ground truth (plan unaffected)
 - 2026-08-12 — READY → IN DEVELOPMENT: picked up
+- 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green
