@@ -112,21 +112,38 @@ func runChangelogCheck(args []string) int {
 // there; with the default --until HEAD this is unchanged from today
 // whenever HEAD itself isn't exactly a tag.
 //
-// If <until>^ doesn't resolve at all — HEAD is the repo's root commit, or a
+// If <until>^ doesn't *exist at all* — HEAD is the repo's root commit, or a
 // shallow clone has no parent to name — fall back to describing <until>
 // itself (T-095 decision 7): this is the one case a tag-shaped --until was
 // never trying to solve, and it is what restores today's pre-T-094 answer
-// on a tagged root commit instead of a spurious error. Only when *both*
-// resolutions fail is it a genuine "no tag anywhere on this history" error,
-// and it names <until> rather than <until>^ so the message blames the
-// actual missing thing instead of the fallback's own missing parent.
+// on a tagged root commit instead of a spurious error. Only when *that*
+// also fails to find a tag is it a genuine "no tag anywhere on this
+// history" error, and it names <until> rather than <until>^ so the message
+// blames the actual missing thing instead of the fallback's own missing
+// parent.
+//
+// Existence is tested directly with rev-parse --verify, not inferred from
+// describe's own failure (T-095 review finding B1): describe --tags
+// --abbrev=0 <until>^ also fails whenever <until>^ resolves fine but no tag
+// is reachable from it at all — a project's first release, tagged. Falling
+// back in that case would describe <until> itself, return <until>'s own
+// tag, and produce the empty <tag>..<tag> range decision 3's whole "^"
+// exists to prevent — a silent false "no candidates" pass for tickets that
+// genuinely shipped unmentioned. That case must still error, exactly as it
+// did before this fallback existed, naming <until>^: a reachable parent
+// with no tag before it is not the same fact as no parent to name.
 func defaultSince(root, until string) (string, error) {
-	if tag, err := vcs.Output(root, "describe", "--tags", "--abbrev=0", until+"^"); err == nil {
+	if _, err := vcs.Output(root, "rev-parse", "--verify", until+"^"); err != nil {
+		// No parent at all: the one case the fallback exists for.
+		tag, err := vcs.Output(root, "describe", "--tags", "--abbrev=0", until)
+		if err != nil {
+			return "", fmt.Errorf("no --since given and no git tag found reachable from %s: %w", until, err)
+		}
 		return tag, nil
 	}
-	tag, err := vcs.Output(root, "describe", "--tags", "--abbrev=0", until)
+	tag, err := vcs.Output(root, "describe", "--tags", "--abbrev=0", until+"^")
 	if err != nil {
-		return "", fmt.Errorf("no --since given and no git tag found reachable from %s: %w", until, err)
+		return "", fmt.Errorf("no --since given and no git tag found reachable from %s^: %w", until, err)
 	}
 	return tag, nil
 }

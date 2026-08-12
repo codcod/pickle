@@ -302,6 +302,61 @@ func TestChangelogCheckUntilFallsBackOnTaggedRootCommit(t *testing.T) {
 	}
 }
 
+// TestChangelogCheckUntilFallsBackErrorsNamingUntilNotUntilCaret (T-095
+// review finding N4): the fallback's error path — root commit, no tag
+// anywhere — was previously verified only by hand. It must name --until
+// itself ("HEAD"), not "HEAD^", so the message blames the actual missing
+// thing (no tag at all) rather than the fallback's own missing parent.
+func TestChangelogCheckUntilFallsBackErrorsNamingUntilNotUntilCaret(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	// One commit only, HEAD is the root commit, and it is never tagged.
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+
+	errOut := captureStderr(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check"}); got != exitError {
+			t.Fatalf("changelog check on an untagged root commit = %d, want %d", got, exitError)
+		}
+	})
+	if !strings.Contains(errOut, "reachable from HEAD:") {
+		t.Errorf("error should name HEAD, not HEAD^, got:\n%s", errOut)
+	}
+	if strings.Contains(errOut, "HEAD^") {
+		t.Errorf("error should not blame HEAD^ once the fallback itself has failed, got:\n%s", errOut)
+	}
+}
+
+// TestChangelogCheckNoTagBeforeFirstReleaseErrorsRatherThanFalsePasses
+// (T-095 review finding B1, blocking): a repository with a reachable parent
+// but no tag anywhere before --until (a project's first release, tagged)
+// must still error, exactly as it did before T-095's fallback existed — not
+// silently describe --until itself, which would resolve to --until's own
+// tag and produce the empty, falsely-passing <tag>..<tag> range that T-094
+// decision 3's "^" exists to prevent. This is the regression T-095's rework
+// fixes: before the fix, this scenario printed "no candidates" at exit 0
+// for tickets that genuinely shipped unmentioned.
+func TestChangelogCheckNoTagBeforeFirstReleaseErrorsRatherThanFalsePasses(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	writeAndCommit(t, root, "src/a.go", "package a\n", "feat(a): first real feature (T-001)")
+	writeAndCommit(t, root, "src/b.go", "package b\n", "feat(a): second feature (T-002)")
+	gitTag(t, root, "v1.0.0") // the ONLY tag, and it is on HEAD itself
+
+	errOut := captureStderr(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check"}); got != exitError {
+			t.Fatalf("changelog check with no tag before the first release = %d, want %d (not a false pass)", got, exitError)
+		}
+	})
+	if !strings.Contains(errOut, "reachable from HEAD^:") {
+		t.Errorf("error should name HEAD^ — a parent exists, it just has no tag before it — got:\n%s", errOut)
+	}
+}
+
 // TestChangelogCheckTagNoteOnDefaultSection (T-095 decision 8): a tagged
 // --until with the default --section prints an advisory note; the same
 // --until with an explicit --section does not, since the reader has already
