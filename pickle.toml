@@ -6,7 +6,7 @@
 # tool-managed. Its schema is finalised by T-001.
 
 # Payload version pinned into this project (stamped by install/upgrade).
-payload_version = "0.4.0"
+payload_version = "0.5.0"
 
 # Optional overarching review addendum, applied to every ticket on top of the
 # generic review protocol (see skill/resources/review-protocol.md). None yet.
