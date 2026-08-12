@@ -284,6 +284,19 @@ func tagNote(root, until, section string) string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf("%s is a tag — this range is release %s, not [%s]; try --section %s",
-		tag, strings.TrimPrefix(tag, "v"), defaultChangelogSection, strings.TrimPrefix(tag, "v"))
+	version := versionFromTag(tag)
+	return fmt.Sprintf("%s is at tag %s — this range is release %s, not [%s]; try --section %s",
+		until, tag, version, defaultChangelogSection, version)
+}
+
+// versionFromTag strips a leading "v" from a tag name to get the bare
+// version tagNote suggests for --section — but only when a digit follows it
+// (T-095 review finding N2): TrimPrefix alone mangled any tag beginning
+// with a literal "v" word, e.g. "version-2" became the nonsensical
+// "ersion-2". A tag with no leading "vN" shape is passed through unchanged.
+func versionFromTag(tag string) string {
+	if len(tag) > 1 && tag[0] == 'v' && tag[1] >= '0' && tag[1] <= '9' {
+		return tag[1:]
+	}
+	return tag
 }

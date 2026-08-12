@@ -376,7 +376,7 @@ func TestChangelogCheckTagNoteOnDefaultSection(t *testing.T) {
 			t.Fatalf("changelog check --until v0.2.0 = %d, want %d", got, exitOK)
 		}
 	})
-	if !strings.Contains(noteOut, "note: v0.2.0 is a tag") {
+	if !strings.Contains(noteOut, "note: v0.2.0 is at tag v0.2.0") {
 		t.Errorf("output missing the tagged---until note with the default --section, got:\n%s", noteOut)
 	}
 	if !strings.Contains(noteOut, "try --section 0.2.0") {
@@ -391,6 +391,50 @@ func TestChangelogCheckTagNoteOnDefaultSection(t *testing.T) {
 	})
 	if strings.Contains(noNoteOut, "note:") {
 		t.Errorf("an explicit --section must suppress the tagged---until note, got:\n%s", noNoteOut)
+	}
+}
+
+// TestChangelogCheckTagNoteNamesTheRefNotJustTheTag (T-095 review finding
+// N1): the note must name the --until ref the user actually passed, not
+// just the tag it resolved to — "main is at tag v0.2.0", not the false
+// "main is a tag" a branch name would have been under the old wording.
+func TestChangelogCheckTagNoteNamesTheRefNotJustTheTag(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "v0.2.0")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check", "--until", "main"}); got != exitOK {
+			t.Fatalf("changelog check --until main = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "note: main is at tag v0.2.0") {
+		t.Errorf("note should name the ref (main) and the tag it resolved to (v0.2.0) separately, got:\n%s", out)
+	}
+}
+
+// TestChangelogCheckTagNoteVersionTrimsOnlyANumericVPrefix (T-095 review
+// finding N2): stripping a leading "v" for the --section suggestion must
+// not mangle a tag that merely starts with the letter "v" — versionFromTag
+// requires a digit immediately after it.
+func TestChangelogCheckTagNoteVersionTrimsOnlyANumericVPrefix(t *testing.T) {
+	gitOrSkip(t)
+	root := newProject(t)
+	gitInit(t, root, "main")
+
+	writeAndCommit(t, root, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n", "chore: seed changelog")
+	gitTag(t, root, "version-2")
+
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"changelog", "check", "--until", "version-2"}); got != exitOK {
+			t.Fatalf("changelog check --until version-2 = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, "try --section version-2") {
+		t.Errorf("a non-numeric-vN tag must not be mangled (e.g. into \"ersion-2\"), got:\n%s", out)
 	}
 }
 
