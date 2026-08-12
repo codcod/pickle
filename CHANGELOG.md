@@ -8,6 +8,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle changelog check`** reports tickets that shipped since the last release (by
+  Conventional Commit subject, excluding `board:` bookkeeping commits) but aren't named in
+  `CHANGELOG.md`'s `[Unreleased]` section — either with an entry, or a recorded decision in
+  the ticket saying it deliberately has none (T-093). Read-only and advisory: it always
+  exits `0`, even with candidates, and is never wired into `board audit`, CI, or
+  `ticket move`. `--since`, `--changelog` and `--section` override the defaults (the last
+  git tag, `CHANGELOG.md`, `Unreleased`).
+
 ## [0.5.0] - 2026-08-12
 
 ### Added

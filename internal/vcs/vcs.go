@@ -16,6 +16,14 @@
 // keeping the dependency out of the packages that must stay testable in a
 // plain temp dir (board audit, ticket loading).
 //
+// Output (T-093) broadens this package one notch: `pickle changelog check`
+// needs git's answer to two unrelated questions (the last release tag, the
+// commit subjects shipped since it) that have nothing to do with a child's
+// ignore status, but need the identical repo-pinning scrub and timeout this
+// package already got right. Rather than open a third file that re-derives
+// both, the narrow ChildState question and the generic output-capturing
+// helper share this one.
+//
 // Three limits of asking git this way, all accepted (T-051 review, F7/F8/R2):
 //
 //   - The question is answered by whichever repository git discovers from
@@ -47,6 +55,7 @@ package vcs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -167,6 +176,29 @@ func exitCode(root string, args ...string) int {
 		return exitErr.ExitCode()
 	}
 	return -1 // git not found, context deadline exceeded, etc.
+}
+
+// Output runs `git -C root <args...>` and returns its trimmed stdout, or an
+// error when git could not even be started, exited non-zero, or the timeout
+// elapsed. It is exitCode's output-capturing sibling: exitCode's only caller,
+// ChildState, ever needs a status, but T-093's `pickle changelog check` needs
+// the text itself (the last release tag, a run of commit subjects), and
+// shares the exact repo-pinning-env scrub and probeTimeout bound exitCode
+// already got right — reused rather than re-derived a third time (the
+// package doc's "mirrors internal/hook" note explains why exitCode itself
+// isn't shared instead: keeping the shell-out contained to one file per
+// caller).
+func Output(root string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...)
+	cmd.Env = withoutRepoEnv(os.Environ())
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // repoEnv are the variables that pin git to a specific repository, index or

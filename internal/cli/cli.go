@@ -63,6 +63,8 @@ func Run(payload fs.FS, version string, args []string) int {
 		return runTicket(args[1:])
 	case "board":
 		return runBoard(args[1:])
+	case "changelog":
+		return runChangelog(args[1:])
 	case "serve":
 		return runServe(args[1:])
 	case "version", "--version", "-v":
@@ -120,6 +122,10 @@ Flow commands:
                           Move a ticket (file + History + board regeneration) atomically.
   board audit             Check the ticket invariants + board freshness (exit non-zero on any error).
   board sync              Regenerate BOARD.md from ticket frontmatter + locations.
+  changelog check [--since <ref>] [--changelog <path>] [--section <name>]
+                          Report tickets that shipped since <ref> (default: the last git
+                          tag) but aren't named in the changelog's named section (default
+                          "Unreleased"). Read-only and advisory — always exits 0.
 
 Visualize:
   serve [--addr host:port]
