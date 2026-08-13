@@ -492,3 +492,7 @@ configured commands were re-run green afterwards, and the F2 mutation re-verifie
   `tickets/` paths into the push range; resolved exactly as §0 prescribes by pushing `origin main`
   first, after which the range re-checked clean (9 files, no `tickets/`). **Merging is the
   human's**; add the `merged:` line here once #38 lands
+- 2026-08-13 — merged to `main` (`b5af6ab`, PR #38): 4 commits kept, not squashed; CI green.
+  Post-merge verification on `main`: `just build`/`test`/`lint` clean and `pickle doctor` reports
+  `0 error(s), 0 warning(s)` with the binary at `v0.6.0-11-gb5af6ab` against a `0.6.0` stamp —
+  the exact mismatch that used to warn, now silent

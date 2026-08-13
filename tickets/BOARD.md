@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-12
+Last updated: 2026-08-13
 
 ## IN DEVELOPMENT
 
@@ -96,7 +96,7 @@ Last updated: 2026-08-12
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | yes — merged to main (PR #10, 25d2152), user-approved as an exception; squashed to one commit; branch deleted |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | yes — merged to main (PR #15, 17e2341), user-approved; squashed to 5291aeb; branch deleted |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
-| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | no — publish-gated |
+| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | yes — merged to `main` (`b5af6ab`, PR #38): 4 commits kept, not squashed; CI green. |
 | T-047 | AsciiDoc user manual in docs/ + slim README to about & install | yes — merged to main (local squash merge 7a0995d) |
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | yes — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted |
