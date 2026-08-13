@@ -749,37 +749,56 @@ a ticket id in brackets at the *end* of the subject (e.g.
 `feat(cli): add board audit (T-2)`), tolerating one trailing GitHub/GitLab
 squash-merge annotation first (`(#31)` or `(!31)`) so a squash button that
 rewrites the subject to `feat(cli): add board audit (T-2) (#31)` still
-classifies correctly. A `board: …` bookkeeping commit (the
+classifies correctly. The trailing bracketed token only counts when its
+prefix is one this project actually registers (T-097) — a subject ending in
+`(RFC-7231)` is never read as a shipped ticket, however id-shaped that token
+looks. A `board: …` bookkeeping commit (the
 ticket/board-bookkeeping convention) is deliberately **excluded**: filing,
 re-grading or moving a ticket never ships code, so counting it would produce
 false candidates. Because this exclusion is the check's only defence against
 over-reporting, **the command depends on that convention holding**.
 
 By default the exclusion list is a single summary line — a count plus every
-ticket id any excluded subject *mentions* (a permissive scan of the whole
-subject, not just the id right after `board:`), e.g. `excluded 28 board:
+ticket id any excluded subject *mentions* (a whole-subject scan, not just the
+id right after `board:`, and restricted to the ticket-id prefixes this
+project registers — T-097), e.g. `excluded 28 board:
 bookkeeping commit(s) mentioning T-042, T-070, T-080, T-081, T-089, T-090,
-T-091 (--show-excluded for subjects)` — since printing every excluded
-subject unconditionally made a release-sized report mostly noise. Scanning
-the whole subject (T-095), rather than only the id immediately after
-`board:`, matters because the rules' `board: T-NNN[, T-MMM …] …` convention
-is usually honoured in spirit rather than to the letter: most multi-id
-`board:` commits in this project's own history name their extra ids in the
-verb phrase (`board: T-089 reviewed and done, T-090 filed, T-070 re-graded`),
-not the leading comma-list, and a stricter parser would silently drop them.
-A trailing `(+N with no ticket id)` clause counts a bookkeeping subject that
-names **no** ticket anywhere — the loudest possible symptom of a convention
-drift, so it is never the thing the summary hides; when *no* excluded
-subject names an id at all, the line says so directly instead of naming an
-empty list. Pass `--show-excluded` to print every excluded subject in full,
-exactly as earlier versions of this command always did; a project that
-stops following the `board:` convention still sees a visibly odd summary (a
-rising count, or unfamiliar ids) rather than a silent under-report. A
-subject that mentions a ticket in parentheses but matches neither
-convention — typically a revert, e.g.
+T-091 (--show-excluded for subjects)`. Full subjects move behind
+`--show-excluded`, because printing them all unconditionally made a
+release-sized report mostly noise. The whole-subject scan (T-095), rather
+than only the id immediately after `board:`, matters because the rules'
+`board: T-NNN[, T-MMM …] …` convention is usually honoured in spirit rather
+than to the letter: most multi-id `board:` commits in this project's own
+history name their extra ids in the verb phrase (`board: T-089 reviewed and
+done, T-090 filed, T-070 re-graded`), not the leading comma-list, and a
+stricter parser would silently drop them. Restricting the scan to
+registered prefixes (T-097) matters just as much: without it, an ordinary
+bookkeeping subject mentioning a non-ticket id-shaped token — `SHA-256`,
+`UTF-8`, `CVE-2024` — would be reported as though it named a ticket. A
+trailing `(+N with no ticket id)` clause counts
+a bookkeeping subject that names **no** ticket anywhere — the loudest
+possible symptom of a convention drift, so it is never the thing the
+summary hides; when *no* excluded subject names an id at all, the line says
+so directly instead of naming an empty list. Pass `--show-excluded` to
+print every excluded subject in full, exactly as earlier versions of this
+command always did; a project that stops following the `board:` convention
+still sees a visibly odd summary (a rising count, or unfamiliar ids) rather
+than a silent under-report. A subject that mentions a ticket in parentheses
+but matches neither convention — typically a revert, e.g.
 `Revert "feat(cli): add a thing (T-050)"` — is never silently dropped
 either: it prints in its own short "match neither convention" list, always
 in full.
+
+An id whose prefix is no longer registered — a child-project removed from
+`pickle.toml`, or one whose `ticket_prefix` was renamed — becomes invisible
+to every part of this check, in either direction: it is never reported as a
+shipped candidate, never counted into an exclusion summary, and never
+matched in the changelog body either (T-097). This is a documented limit of
+a read-only, advisory command, not a bug: remembering every prefix a
+project ever used would need persistent state the flow does not keep, and
+the alternative — matching any `[A-Z][A-Z0-9]*-\d+`-shaped token regardless
+of registration — is exactly the false-positive bug T-097 fixed (a
+`SHA-256` or `RFC-7231` in ordinary prose read as a fabricated ticket id).
 
 `--until <ref>` (default `HEAD`) closes the range, so a past `--section` stays
 auditable once later commits have landed on top of it. **The default

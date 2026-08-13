@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/codcod/pickle/internal/changelog"
+	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
 	"github.com/codcod/pickle/internal/vcs"
@@ -95,7 +96,7 @@ func runChangelogCheck(args []string) int {
 		return errf("changelog check: %v", err)
 	}
 
-	res, err := changelog.Check(subjects, string(data), *section)
+	res, err := changelog.Check(subjects, string(data), *section, ticketPrefixes(cfg))
 	if err != nil {
 		return errf("changelog check: %v", err)
 	}
@@ -164,6 +165,25 @@ func commitSubjects(root, since, until string) ([]string, error) {
 	return strings.Split(out, "\n"), nil
 }
 
+// ticketPrefixes returns the deduplicated union of every registered child's
+// effective ticket-id prefix (config.Project.Prefix()), in cfg.Projects'
+// registration order — stable output, so a report (and its tests) doesn't
+// depend on map iteration order. This is the prefix set changelog.Check
+// (T-097) restricts id recognition to: a token whose prefix isn't in this
+// set is never read as a ticket id, however id-shaped it looks.
+func ticketPrefixes(cfg *config.Config) []string {
+	seen := make(map[string]bool, len(cfg.Projects))
+	var prefixes []string
+	for _, p := range cfg.Projects {
+		pfx := p.Prefix()
+		if !seen[pfx] {
+			seen[pfx] = true
+			prefixes = append(prefixes, pfx)
+		}
+	}
+	return prefixes
+}
+
 // printChangelogCheckReport renders res. Resolving a candidate to its ticket
 // file (decision 5 — "point at each candidate ticket file so that judgement
 // is one click away") is best-effort: a ticket that fails to load must not
@@ -205,15 +225,20 @@ func printChangelogCheckReport(root, flowName, since, until, changelogPath strin
 // unconditional printing caused — a release-sized run had far more exclusion
 // lines than candidates. Default: one summary line naming every id any
 // excluded subject *mentions* — the union of Exclusion.IDs, which is a
-// permissive whole-subject scan (T-095 decision 2), not just each subject's
-// leading id — plus a count of any commit that parsed no id anywhere (the
+// whole-subject scan (T-095 decision 2) restricted to the ticket-id
+// prefixes the project actually registers (T-097), not just each subject's
+// leading id, and never a bare id-shaped token like SHA-256 or RFC-7231 —
+// plus a count of any commit that parsed no id anywhere (the
 // loudest possible symptom of a convention drift, so it must never be the
 // thing the summary hides; T-095 decision 4 narrows this clause's meaning to
 // exactly that — "no id anywhere", not "no *leading* id" — since a
-// permissive scan finds an id in some subjects the old anchored parse
+// whole-subject scan finds an id in some subjects the old anchored parse
 // missed); when *no* excluded subject names an id at all, the line says so
 // instead of naming an empty list (T-095 review finding N7). --show-excluded
-// still prints every subject, as before T-094.
+// still prints every subject, as before T-094. T-097 is what makes this
+// "+N with no ticket id" clause trustworthy: before it, any id-shaped token
+// anywhere in the subject silenced the clause even though the subject named
+// no *ticket* at all.
 func printExclusions(excluded []changelog.Exclusion, showExcluded bool) {
 	if len(excluded) == 0 {
 		return
