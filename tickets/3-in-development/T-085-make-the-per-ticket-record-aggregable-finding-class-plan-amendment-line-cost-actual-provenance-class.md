@@ -456,3 +456,4 @@ nearest comparable payload change — set that precedent. `just docs-check` must
   `flow.Requirement` models none and building one contradicts the criterion's own
   cheapness argument. Cost collapsed S-M → **S**; impact/complexity unchanged
 - 2026-08-13 — TO DO → READY: plan complete: prose-only, 8-value class vocabulary, cost collapsed to S
+- 2026-08-13 — READY → IN DEVELOPMENT: picked up
