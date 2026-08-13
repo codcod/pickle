@@ -13,18 +13,18 @@ Last updated: 2026-08-13
 
 ## IN DEVELOPMENT
 
+### pickle (0/1)
+
+| id | title | depends-on |
+|---|---|---|
+
+## IN REVIEW
+
 ### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
 | T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | [] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | depends-on |
-|---|---|---|
 
 ## REWORK
 
