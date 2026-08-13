@@ -141,3 +141,11 @@ assertion closes it.
   `probeCapable` itself is **unchanged and still probes with `pre-commit`** (T-082 decision 6
   deliberately kept it out of this ticket's function), so no collision in either order. Scope and
   grade unchanged
+- 2026-08-14 — patched by **T-082's scoped re-review** (step 8): settles the "re-read it after
+  T-082's rework lands" caveat in the note above. T-082 is DONE and its rework did **not** touch
+  `doctor`, so `checkHooks`' warning text is final as quoted there (`hooks: installed and
+  current, but …`, no hook path). Finding F9 (the `hooks: the pickle on PATH can run it` pass
+  line having lost its antecedent) was promoted out of `noted` into **T-100**, which now owns
+  that one-line wording change — so if T-100 lands first, expect that string to have moved, and
+  if this ticket lands first, T-100's item 2 re-reads whatever this leaves behind. Item 2's
+  chained-foreign-hook scope still spans both hooks. Scope and grade unchanged

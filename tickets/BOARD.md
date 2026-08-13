@@ -20,11 +20,10 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | [] |
 
 ## REWORK
 
@@ -54,6 +53,7 @@ Last updated: 2026-08-13
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
 | T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | medium | low | S | [] |  |
+| T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
@@ -111,6 +111,7 @@ Last updated: 2026-08-13
 | T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | yes — MERGED: PR #44 (`feat/T-074-rename-skill-dir-to-brine`, kept history, not |
 | T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | yes — merged to main (PR #28, e214ee3, https://github.com/codcod/pickle/commit/e214ee3); merge commit, 15 commits kept |
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | yes — merged to main (PR #30, 904e460, https://github.com/codcod/pickle/commit/904e460); merge commit, 8 commits kept |
+| T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | no — publish-gated |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | yes — merged to main (PR #42, 89bccc5, https://github.com/codcod/pickle/commit/89bccc5); |
