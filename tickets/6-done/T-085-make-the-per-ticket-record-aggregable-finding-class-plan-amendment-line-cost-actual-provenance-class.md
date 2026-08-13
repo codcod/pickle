@@ -641,3 +641,6 @@ the F2 fix actually ships in the payload rather than only existing in the repo.
   7 files, +152/-40); all four CI checks green (`build-test`, `ci-surface`, `goreleaser-check`,
   `smoke`). Awaiting the human merge — append the `merged to main (#42, <sha>)` line and run
   `pickle board sync` once it lands
+- 2026-08-13 — merged to main (PR #42, 89bccc5, https://github.com/codcod/pickle/commit/89bccc5);
+  merge commit, 7 commits kept rather than squashed — the root-path default (rules §0), so the
+  rework round stays visible in history

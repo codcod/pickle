@@ -113,7 +113,7 @@ Last updated: 2026-08-13
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | yes — merged to main (PR #30, 904e460, https://github.com/codcod/pickle/commit/904e460); merge commit, 8 commits kept |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
-| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | no — publish-gated |
+| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | yes — merged to main (PR #42, 89bccc5, https://github.com/codcod/pickle/commit/89bccc5); |
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
 | T-087 | release CI: make the user-manual build visible and testable without cutting a release | yes — merged to main (PR #25, 084ff7e) |
 | T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | yes — merged to main (PR #41, 64a3794) |
