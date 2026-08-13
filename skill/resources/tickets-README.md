@@ -122,18 +122,16 @@ ticket body** — a second source of truth would drift. Status transitions are r
 dated lines in the ticket's **History** section, in the form
 `YYYY-MM-DD — OLD → NEW: one-clause reason` (first line:
 `created (TO DO). source: <field-use|self-host|review|audit|chat>: <prose>`. The leading class
-token is the provenance class, a closed vocabulary: `field-use` (surfaced while using the flow to
-ship something else — the finding is a by-product of real work), `self-host` (surfaced while
-working *on* the flow itself, its tooling or its own docs), `review` (spawned from a review
-finding — pairs with `spawned-by:`), `audit` (from `board audit` or a board-audit pass), `chat`
-(from discussion, with no triggering incident). When a finding could fit either of the first two
-— a slow `board audit` noticed mid-feature, say — the test is the ticket's own *product*, not the
-activity it was noticed during: if the ticket that would carry the finding changes the flow, its
-tooling or its own docs, it is `self-host`; everything else surfaced while shipping is
-`field-use`. It weights every other signal the ticket record carries: a backlog drifts toward
-whatever its authors happened to be doing when they filed, so knowing which findings came from
-real use, which from working on the flow itself, and which from idle chat matters more than any
-other axis.
+token is the provenance class, a closed vocabulary: `field-use` (the ticket's product changes
+what you ship, not the flow — the finding is a by-product of real work), `self-host` (the
+ticket's product changes the flow itself, its tooling or its own docs), `review` (spawned from a
+review finding — pairs with `spawned-by:`), `audit` (from `board audit` or a board-audit pass),
+`chat` (from discussion, with no triggering incident). A slow `board audit` spotted mid-feature is
+`self-host`, not `field-use` — fixing it changes the tooling, even though it was noticed while
+shipping something else. It weights every other signal the ticket record carries: a backlog
+drifts toward whatever its authors happened to be doing when they filed, so knowing which
+findings came from real use, which from working on the flow itself, and which from idle chat
+matters more than any other axis.
 A human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>[, <commit>])` — the
 commit reference (short SHA, and a full commit link where the remote resolves to a known
 hosting URL) is recommended alongside the MR ref so the line traces straight to what shipped,
