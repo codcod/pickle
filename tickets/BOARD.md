@@ -40,6 +40,7 @@ Last updated: 2026-08-13
 |---|---|---|---|---|---|---|
 | T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | medium | low | S | [] |  |
 | T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | medium | low | M | [] |  |
+| T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | low | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -66,7 +67,6 @@ Last updated: 2026-08-13
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
-| T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | low | low | S | [] |  |
 
 ## DONE
 
