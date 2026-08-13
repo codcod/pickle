@@ -462,6 +462,26 @@ that is precisely the content that earns a second pair of eyes.
 **Round 2 scope is F2 alone**, and the suggestion above is the whole fix. The two prior rounds
 found sites; this one is a single contained passage with the replacement text already written.
 
+### Rework round 2 — F2 fixed
+
+One commit (`9c5539f`), `tickets-README.md:125-133` only. Both glosses rephrased to the product
+test the tie-break used ("the ticket's product changes what you ship, not the flow…" /
+"…changes the flow itself, its tooling or its own docs"); the tie-break sentence deleted as
+redundant and replaced by a worked example that **agrees** with the glosses instead of
+overriding them ("A slow `board audit` spotted mid-feature is `self-host`, not `field-use` —
+fixing it changes the tooling, even though it was noticed while shipping something else").
+
+**Re-verified with a second blind read** (same method as the finding, fresh scenarios plus the
+original four): given only the new paragraph and five cases, the reader classified all five
+consistently, reported the worked example's "even though" clause "doing the same work as the
+glosses' dash-clauses", and concluded "no tension… the paragraph never claims context determines
+class". The specific divergence F2 found — the hotfix-exception ticket — now resolves to
+`self-host` by the gloss alone, no tie-break needed.
+
+**Full acceptance test re-run and green:** `build`/`test`/`lint`/`docs-check` clean, no-Go-code
+guard silent, checks 1–6 pass including both over-correction guards, fresh e2e install into a
+throwaway workspace clean, `board audit` 0/0/0 in the install target.
+
 **Disposition summary:** 7 findings — 1 blocking (F1 → rework); 6 non-blocking: 5 *fixed inline*
 (N1, N2, N3, N4, N5 — all branch-authored prose, applied in the rework pass), 1 *noted* (N6),
 1 *new ticket* (N7 → T-099, batched as the single guard-check theme).
@@ -548,3 +568,4 @@ the wrong instrument. That is what T-099 exists to replace.
   at F1 + N1–N5
 - 2026-08-13 — REWORK → IN REVIEW: findings fixed
 - 2026-08-13 — IN REVIEW → REWORK: scoped re-review: F1 + N1,N2,N4,N5 verified fixed; F2 blocking (N3's fix left the provenance glosses contradicting their own tie-break)
+- 2026-08-13 — REWORK → IN REVIEW: F2 fixed

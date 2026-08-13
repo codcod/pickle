@@ -20,10 +20,11 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-13
 
 | id | title | open findings |
 |---|---|---|
-| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | scoped re-review: F1 + N1,N2,N4,N5 verified fixed; F2 blocking (N3's fix left the provenance glosses contradicting thei… |
 
 ## READY (impact order, per child)
 
