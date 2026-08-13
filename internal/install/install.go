@@ -55,6 +55,25 @@ const (
 	PiExtensionsDir = ".pi/extensions"
 )
 
+// SkillLinked reports whether the installed skill directory is a symlink: the
+// dev/self-host arrangement in which .agents/skills/ticket-flow points at the
+// payload source (this repo's skill/) instead of holding a copy of it. install
+// and upgrade never overwrite through such a link, and uninstall removes the
+// link itself rather than RemoveAll-ing the tree it points at; doctor uses it
+// to skip the payload_version comparison, which would otherwise compare against
+// an installed copy that does not exist.
+//
+// A broken link still counts — it is still not an installed copy, and doctor
+// reports the breakage separately. Note the asymmetry: false means "not a
+// link", which covers both a real directory and a path that could not be
+// stat'ed at all, so a caller using !SkillLinked to guard a destructive branch
+// should be sure that is what it wants (Upgrade is: RemoveAll of a missing
+// path is a no-op).
+func SkillLinked(root string) bool {
+	fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(SkillDir)))
+	return err == nil && fi.Mode()&os.ModeSymlink != 0
+}
+
 // AgentAsset pairs an installed agent-scaffold path (relative to the project
 // root, slash-separated) with its source inside the embedded payload.
 type AgentAsset struct {
@@ -286,7 +305,7 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 	// removed from the new payload don't linger; a self-host symlink is left
 	// alone (copyPayload already skips it via the Lstat/ModeSymlink guard).
 	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
-	if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink == 0 {
+	if !SkillLinked(root) {
 		if err := os.RemoveAll(dst); err != nil {
 			return res, fmt.Errorf("refresh skill payload: %w", err)
 		}

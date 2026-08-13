@@ -24,8 +24,12 @@ therefore live out here where `pickle upgrade` will not overwrite them:
   - The one legitimate self-upgrade is a **human action**: after a merge, a clean-built
     `pickle upgrade` from `main` may re-stamp `payload_version` and verify the marker block
     round-trips, reviewing `git diff` before committing.
-  - `pickle doctor`'s standing `payload version … differs` warning is accepted self-host noise
-    until it is made self-host-aware.
+  - `pickle doctor` is self-host-aware (T-046): it detects the `.agents/skills/ticket-flow`
+    symlink and skips the `payload_version`-vs-binary comparison entirely, reporting the skip
+    as an informational passed line under `-v` instead of a warning. `pickle upgrade` still
+    stamps `payload_version` in that mode — it refreshes everything else it owns — so `doctor`
+    and `upgrade` agree by construction and `doctor` never sends you to the `upgrade` this
+    policy forbids running from a feature branch.
 
 <!-- pickle:begin -->
 ## Brine (start here)

@@ -207,7 +207,11 @@ exist are refreshed: `CLAUDE.md` is re-injected only if it is a regular file
 (a `CLAUDE.md -> AGENTS.md` symlink is left alone), and the
 `.claude/skills/ticket-flow` view is re-linked only if it is already there. A
 self-host *symlinked* `.agents/skills/ticket-flow` is left untouched, never
-followed and overwritten.
+followed and overwritten. The `payload_version` stamp **is** still updated in
+that case whenever it actually differs (an already-current version is a no-op,
+as below): `upgrade` refreshed everything else it owns — the marker block, the
+pi scaffolds, the hook shim — so the stamp truthfully records that this tree
+was last upgraded by this binary.
 
 Idempotent: re-running at the current version still refreshes the payload and
 marker block (so drift is corrected) and reports `already at <version>`
@@ -287,7 +291,11 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   warning points at `pickle upgrade`; if `upgrade` would refuse (see
   <<configuration>>), the warning gives that reason and tells you to edit
   `payload_version` by hand instead — it never sends you to a command that
-  cannot succeed.
+  cannot succeed. When `.agents/skills/ticket-flow` is a self-host symlink
+  (a dev checkout pointing straight at the payload source, not an installed
+  copy), this comparison is skipped entirely — there is nothing to
+  compare — and the skip is reported as a passed line under `--verbose`,
+  never a warning.
 
 `--verbose` (`-v`) also lists the checks that passed.
 

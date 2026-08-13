@@ -257,6 +257,20 @@ func TestUpgradeSelfHostSymlinkGuard(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(external, "SKILL.md")); err != nil {
 		t.Error("external symlink target was modified/removed by upgrade")
 	}
+
+	// D4 (T-046): upgrade still stamps payload_version even when the skill
+	// dir is a self-host link — it keeps refreshing everything else it owns
+	// (marker block, pi scaffolds, hook shim), so the stamp truthfully
+	// records "this tree was last upgraded by that binary"; and doctor no
+	// longer reads the stamp in this mode (T-046), so the two can never
+	// disagree about it.
+	cfg, err := config.Load(filepath.Join(root, config.FileName))
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if cfg.PayloadVersion != "v2" {
+		t.Errorf("payload_version = %q, want %q (D4: upgrade keeps stamping over a self-host link)", cfg.PayloadVersion, "v2")
+	}
 }
 
 func TestUninstall(t *testing.T) {

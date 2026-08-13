@@ -39,22 +39,26 @@ func (r *Result) warnf(format string, a ...any) {
 func (r *Result) ok(msg string) { r.Passed = append(r.Passed, msg) }
 
 // Check inspects an installed pickle project rooted at root (the directory that
-// holds pickle.toml). version is the running binary's version, used only for a
-// payload-drift warning; payload is the binary's embedded payload, used only to
-// drift-check the pickle-owned agent scaffolds. Filesystem checks run even when
-// pickle.toml fails to parse; per-child checks run only when it loaded.
+// holds pickle.toml). version is used for a payload-drift warning, unless the
+// skill directory is a self-host link (install.SkillLinked), in which case the
+// payload is that linked source by construction and the comparison is skipped.
+// payload is the binary's embedded payload, used only to drift-check the
+// pickle-owned agent scaffolds. Filesystem checks run even when pickle.toml
+// fails to parse; per-child checks run only when it loaded.
 func Check(root, version string, payload fs.FS) Result {
 	var r Result
 
+	selfHost := install.SkillLinked(root)
+
 	cfg := checkConfig(root, &r)
-	checkSkill(root, &r)
+	checkSkill(root, selfHost, &r)
 	checkClaudeView(root, &r)
 	checkMarkers(root, cfg, &r)
 	checkAgentScaffolds(root, payload, &r)
 	checkHooks(root, &r)
 	if cfg != nil {
 		checkChildren(root, cfg, &r)
-		checkVersion(cfg, version, &r)
+		checkVersion(cfg, version, selfHost, &r)
 	}
 
 	sort.Strings(r.Errors)
@@ -78,7 +82,10 @@ func checkConfig(root string, r *Result) *config.Config {
 
 // checkSkill verifies the skill payload resolves (following a dev/self-host
 // symlink) to a directory carrying SKILL.md and resources/tickets-README.md.
-func checkSkill(root string, r *Result) {
+// When selfHost is true, the passed line names the link and its target instead
+// of the generic "skill payload present" text, since there is no installed
+// copy to speak of — the payload *is* the linked source.
+func checkSkill(root string, selfHost bool, r *Result) {
 	dir := filepath.Join(root, filepath.FromSlash(install.SkillDir))
 	fi, err := os.Stat(dir) // follows symlinks
 	if err != nil || !fi.IsDir() {
@@ -90,6 +97,18 @@ func checkSkill(root string, r *Result) {
 			r.errf("skill: %s missing %s", install.SkillDir, filepath.ToSlash(f))
 			return
 		}
+	}
+	if selfHost {
+		// dir is the link path itself (os.Stat above followed it; Readlink must
+		// not). Only a TOCTOU race can fail here — selfHost came from an Lstat
+		// on this same path — so the fallback is belt-and-braces, not a case
+		// worth naming in the output.
+		target, err := os.Readlink(dir)
+		if err != nil {
+			target = "?"
+		}
+		r.ok(fmt.Sprintf("skill payload present (%s -> %s, self-host link)", install.SkillDir, target))
+		return
 	}
 	r.ok(fmt.Sprintf("skill payload present (%s)", install.SkillDir))
 }
@@ -325,7 +344,22 @@ func checkChildren(root string, cfg *config.Config, r *Result) {
 // would send the user to a command that is going to fail. Probe first — with
 // PayloadVersionStampable, which changes nothing — and give whichever advice
 // actually applies.
-func checkVersion(cfg *config.Config, version string, r *Result) {
+//
+// T-046: when selfHost is true, the installed skill directory is a symlink to
+// the payload source (this tree's own skill/), not an installed copy — the
+// payload_version-vs-binary comparison is meaningless in that arrangement, so
+// it is skipped entirely, before either of the two branches above (and ahead
+// of the version=={"","dev"} guard and the equal-version early return, since
+// the check genuinely does not run rather than happening to agree). `upgrade`
+// still stamps payload_version in this mode (it keeps refreshing everything
+// else it owns), so this is purely doctor no longer having an opinion about a
+// number it has no business comparing — it can never send you to `pickle
+// upgrade` in vain.
+func checkVersion(cfg *config.Config, version string, selfHost bool, r *Result) {
+	if selfHost {
+		r.ok(fmt.Sprintf("payload version check skipped (%s is a self-host link, so the payload is this tree, not an installed copy)", install.SkillDir))
+		return
+	}
 	if version == "" || version == "dev" {
 		return
 	}
