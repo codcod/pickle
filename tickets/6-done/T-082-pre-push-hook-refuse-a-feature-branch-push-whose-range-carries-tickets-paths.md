@@ -598,3 +598,12 @@ through, while never refusing the base branch.
 - 2026-08-13 — IN REVIEW → REWORK: review: 4 blocking (F1 marker-block/AGENTS.md docs sites undone, F2 HEAD:refs/heads/feat push bypasses the guard, F3 hooks status probes per hook against its own doc, F4 InstallAll partial-failure misreports), 6 non-blocking (2 fixed inline, 1 folded to T-042, 3 noted)
 - 2026-08-13 — REWORK → IN REVIEW: F1-F4 fixed on the same branch, findings F5-F10 unchanged
 - 2026-08-13 — IN REVIEW → DONE: scoped re-review: F1-F4 all resolved with non-vacuous tests; 2 new non-blocking (F11 -> T-100, F12 fixed inline)
+- 2026-08-14 — IN REVIEW → DONE: scoped re-review passed, all four blocking findings resolved
+  with non-vacuous tests; F11 promoted to T-100 (batched with F6/F8/F9), F12 fixed inline
+- 2026-08-14 — published with approval: history tidied 9 → 2 atomic commits (`9327e01` code,
+  `afa1015` docs — the plan's 4-way split is not achievable, since Go will not compile the
+  `internal/hook` generalization apart from its callers), base pushed first per §0, then the
+  branch. **PR #45** opened against `main`, keep-history (root-path default). The forge's own
+  diff for #45 carries no `tickets/` path — the invariant this ticket mechanizes, verified on
+  the merge request it shipped in. Merging is the human's
+
