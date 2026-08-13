@@ -25,6 +25,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   is the linked source, not an installed copy. `pickle upgrade` keeps stamping
   `payload_version` in that mode — it still refreshes everything else it owns (T-046).
 
+### Fixed
+
+- **`pickle changelog check`** no longer mistakes an id-shaped non-ticket token (`SHA-256`,
+  `UTF-8`, `RFC-7231`, `CVE-2024`, ...) for a ticket id. Every id-recognition site now shares
+  one predicate, restricted to the ticket-id prefixes the project actually registers in
+  `pickle.toml`. As a result, a `board:` bookkeeping subject mentioning `SHA-256` no longer
+  silences the `(+N with no ticket id)` drift alarm, and a child-project commit ending in
+  `(RFC-7231)` no longer prints as a fabricated shipped candidate that no changelog entry
+  could ever clear (T-097).
+
 ## [0.6.0] - 2026-08-12
 
 ### Added
