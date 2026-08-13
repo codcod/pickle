@@ -23,6 +23,15 @@ func mustExist(t *testing.T, path string) {
 	}
 }
 
+// firstLine returns s up to (not including) the first newline, for readable
+// test failure messages.
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
+
 func TestRunProducesInstall(t *testing.T) {
 	root := t.TempDir()
 	payload := os.DirFS(payloadRoot())
@@ -50,11 +59,20 @@ func TestRunProducesInstall(t *testing.T) {
 		t.Errorf("claude symlink = %q, %v", target, err)
 	}
 
-	// Markers injected into both files.
+	// Markers injected into both files, each headed by the current on-disk
+	// name (T-074 F1 regression: a freshly-created file must not fall back to
+	// the pre-rename "Ticket flow", which would sit above a marker block
+	// already headed "## Brine (start here)").
 	for _, f := range []string{"AGENTS.md", "CLAUDE.md"} {
 		b, _ := os.ReadFile(filepath.Join(root, f))
 		if !strings.Contains(string(b), MarkerBegin) {
 			t.Errorf("%s missing marker", f)
+		}
+		if !strings.HasPrefix(string(b), "# "+MarkerTitle+"\n") {
+			t.Errorf("%s H1 = %q, want prefix %q", f, firstLine(string(b)), "# "+MarkerTitle)
+		}
+		if strings.Contains(string(b), "Ticket flow") {
+			t.Errorf("%s still contains the pre-rename name \"Ticket flow\"", f)
 		}
 	}
 	// The board is a fresh zero-ticket render (T-044): byte-identical to

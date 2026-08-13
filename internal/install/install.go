@@ -38,6 +38,13 @@ func hookLabel(root, path string) string {
 const (
 	MarkerBegin = "<!-- pickle:begin -->"
 	MarkerEnd   = "<!-- pickle:end -->"
+	// MarkerTitle is the H1 injectMarker writes above the marker block when it
+	// creates AGENTS.md/CLAUDE.md from scratch (the file does not yet exist).
+	// The single call site for the flow's on-disk name (T-074 F1): every
+	// injectMarker call site names this constant instead of a literal, so a
+	// freshly-created file never falls back to a name the marker block inside
+	// it (MarkerBlock, "## Brine (start here)") has already moved past.
+	MarkerTitle = "Brine"
 
 	// SkillDir is the installed skill payload location (relative to the project root).
 	SkillDir = ".agents/skills/brine"
@@ -191,7 +198,7 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 	if err := writeTicketsReadme(root, &res); err != nil {
 		return res, err
 	}
-	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", MarkerBlock(cfg), &res); err != nil {
+	if err := injectMarker(filepath.Join(root, "AGENTS.md"), MarkerTitle, MarkerBlock(cfg), &res); err != nil {
 		return res, err
 	}
 	if opts.Agents.Claude {
@@ -204,7 +211,7 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 			if err := ensureSymlink(filepath.Join(root, "CLAUDE.md"), "AGENTS.md", &res); err != nil {
 				return res, err
 			}
-		} else if err := injectMarker(filepath.Join(root, "CLAUDE.md"), "Ticket flow", MarkerBlock(cfg), &res); err != nil {
+		} else if err := injectMarker(filepath.Join(root, "CLAUDE.md"), MarkerTitle, MarkerBlock(cfg), &res); err != nil {
 			return res, err
 		}
 	}
@@ -284,12 +291,12 @@ func installPi(payload fs.FS, root string, res *Result) error {
 // doc comment).
 func RefreshMarkers(root string, cfg *config.Config) (Result, error) {
 	var res Result
-	if err := injectMarker(filepath.Join(root, "AGENTS.md"), "Ticket flow", MarkerBlock(cfg), &res); err != nil {
+	if err := injectMarker(filepath.Join(root, "AGENTS.md"), MarkerTitle, MarkerBlock(cfg), &res); err != nil {
 		return res, err
 	}
 	claude := filepath.Join(root, "CLAUDE.md")
 	if fi, err := os.Lstat(claude); err == nil && fi.Mode()&os.ModeSymlink == 0 {
-		if err := injectMarker(claude, "Ticket flow", MarkerBlock(cfg), &res); err != nil {
+		if err := injectMarker(claude, MarkerTitle, MarkerBlock(cfg), &res); err != nil {
 			return res, err
 		}
 	}
