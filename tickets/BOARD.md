@@ -20,10 +20,11 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-13
 
 | id | title | open findings |
 |---|---|---|
-| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | review: 2 blocking (F1 user-manual coverage, F2 provenance class absent from the authoring procedure); 5 non-blocking d… |
 
 ## READY (impact order, per child)
 

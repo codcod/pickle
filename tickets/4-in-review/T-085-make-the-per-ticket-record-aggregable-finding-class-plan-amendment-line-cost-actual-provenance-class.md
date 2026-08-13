@@ -525,6 +525,28 @@ impact. T-070 (`HistoryEntries`) is unaffected: a `plan amended inline:` line al
 `HistoryNote` with no code change. No other `1-to-do/` or `2-ready/` ticket references T-085 or
 depends on the review-table shape.
 
+### Rework round 1 (2026-08-13) — scoped to F1, F2, N1, N5
+
+Same branch, two atomic commits. Prose only; the no-Go-code guard still prints nothing.
+
+| finding | fixed | where |
+|---|---|---|
+| **F1** | **yes** | `docs/user-manual/concepts/tickets.adoc:94-101` — the History bullet listed three line kinds and now lists four: the creation source is described as leading with a provenance class, `plan amended inline` is named as required after a ticket leaves `2-ready/`, and the length limit is scoped to transition and merge lines only (matching `internal/audit/audit.go:209`). `docs/user-manual/concepts/lifecycle.adoc:107-122` — two paragraphs added after the disposition table: the `class` axis (named, said to be carried by blocking findings too, and **pointed** at `review-protocol.md` §5 rather than restated, per decision 4) and the two closing summary lines including `cost: estimated …, actual …` with the do-not-rewrite-the-frontmatter rule. Commit `df89011`. |
+| **F2** | **yes** | `skill/SKILL.md:157-165` — *make it a ticket* step 5 now states that `ticket new` scaffolds a `source: pickle ticket new` **placeholder**, that it must be overwritten with the classed form (drawing the explicit parallel to the `## Outcome` placeholder the amendment invoked), gives the five-value form inline, and points at rules §1 for the definitions. The `review` class is tied to `spawned-by:` on the same line. No Go change, so decision 1 holds. Commit `3b5cb12`. |
+| **N1** | **yes** | `skill/resources/TEMPLATE.md:143` — `resources/review-protocol.md §5` → `review-protocol.md §5`, matching the sibling-file convention line 141 sets. Commit `3b5cb12`. |
+| **N5** | **yes** | `skill/SKILL.md:116-121` (rules summary, retitled *severity, then class, then disposition*) and `:255-260` (validate step 1) — both now name `class` and point at the protocol without restating the eight values. Commit `3b5cb12`. |
+| N2, N3 | deferred by disposition | *new ticket*, batched — filed at the concluding review, not in this scoped pass. |
+| N4 | deferred by disposition | *noted* — no action. |
+
+Re-verification: `just build && just test && just lint && just docs-check` all green (the docs
+build is the load-bearing one this round, since two `.adoc` files changed);
+`git diff --name-only main...HEAD | grep -E '^(internal|cmd)/|\.go$'` → no output; acceptance
+checks 1–5 all hold, including check 2 (`spec-unclear` still appears only in
+`review-protocol.md`, so the added SKILL.md prose did not duplicate the vocabulary). E2E re-run
+in a fresh `$(mktemp -d)` with the rebuilt binary: `board audit` → 0 errors, the scaffolded
+`source:` placeholder unchanged, and the installed `SKILL.md` carries the new step 5 — confirming
+the F2 fix actually ships in the payload rather than only existing in the repo.
+
 ### Notes on what was *not* found
 
 - The eight-value vocabulary survived its first real use: all 7 findings classed without
@@ -570,3 +592,11 @@ depends on the review-table shape.
   instead; checks 1–5 already confirm the five-class form is documented
 - 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-13 — IN REVIEW → REWORK: review: 2 blocking (F1 user-manual coverage, F2 provenance class absent from the authoring procedure); 5 non-blocking dispositioned
+- 2026-08-13 — note: the feature branch was pushed to `origin` before the review verdict, ahead
+  of the publish gate. Raised at review step 9; the user confirmed the push was **approved by
+  exception**. No merge request was open at the time. Recorded so the deviation is in the record
+  rather than inferred later from the reflog
+- 2026-08-13 — rework round 1: F1 and F2 fixed, N1 and N5 taken by their *fixed inline*
+  dispositions; N2/N3 (*new ticket*, batched) and N4 (*noted*) untouched by design. Two atomic
+  commits (`df89011`, `3b5cb12`), prose only — the no-Go-code guard still prints nothing
+- 2026-08-13 — REWORK → IN REVIEW: rework round 1: F1, F2, N1, N5 fixed; all checks green
