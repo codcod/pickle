@@ -541,3 +541,11 @@ pass cost less than the review that found it.
 - 2026-08-13 — IN REVIEW → REWORK: review: 1 blocking (F1: fresh install still writes '# Ticket flow' as the AGENTS.md/CLAUDE.md H1), 6 non-blocking — 2 fixed inline (F2, F7), 4 noted (F3–F6)
 - 2026-08-13 — REWORK → IN REVIEW: findings fixed: F1 (blocking) fixed by routing injectMarker's title through one MarkerTitle constant; F7 fallout amended inline (pickle-test binary name, widened stale-name grep)
 - 2026-08-13 — IN REVIEW → DONE: scoped re-review PASS: F1 verified fixed (mutation-tested on 3 mutations, live on both install and upgrade paths); 1 new non-blocking finding F8 fixed inline. Cumulative: 1 blocking fixed, 3 fixed inline, 4 noted
+- 2026-08-13 — PUBLISHED: user-approved. `origin main` pushed first (8 bookkeeping commits,
+  `cae21ff..f6f61b5`), so the base-behind check re-ran clean and the feature branch's range
+  carries no `tickets/` path — the T-073 failure mode this repo has already hit once. Then
+  `feat/T-074-rename-skill-dir-to-brine` pushed with its 7 tidied atomic commits (root-path
+  child: history kept, not squashed) and **PR #44** opened against `main`
+  (https://github.com/codcod/pickle/pull/44, 31 files, +550/−94, MERGEABLE). Merging is the
+  human's; append the MERGED line here afterwards, which also clears `board audit`'s
+  outstanding no-merge-line warning
