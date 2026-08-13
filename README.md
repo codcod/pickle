@@ -3,7 +3,7 @@
 `pickle` installs and operates **brine**. Brine is a ticket-based workflow for
 software development, designed to be used with any coding agent.
 
-Brine is a name of this particular SDLC. Pickle is a command-line tool that
+Brine is the name of this particular SDLC. Pickle is a command-line tool that
 installs brine.
 
 Run `pickle install` in a project and a coding agent understands requests like
