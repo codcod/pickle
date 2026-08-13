@@ -118,7 +118,7 @@ func TestCheckHooksAbsentIsNotAFinding(t *testing.T) {
 
 func TestCheckHooksOwnedAndStale(t *testing.T) {
 	root := gitFixture(t)
-	if _, err := hook.Install(root, false); err != nil {
+	if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
 		t.Fatalf("hook.Install: %v", err)
 	}
 
@@ -191,7 +191,7 @@ func TestCheckSelfHostLinkStillReportsIncapablePATHPickle(t *testing.T) {
 	if err := os.Symlink(target, skillPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := hook.Install(root, false); err != nil {
+	if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
 		t.Fatalf("hook.Install: %v", err)
 	}
 	bin := stubPickle(t, 2) // mirrors an older pickle's exit 2 on the (then) unknown `hooks` verb
@@ -213,7 +213,7 @@ func TestCheckSelfHostLinkStillReportsIncapablePATHPickle(t *testing.T) {
 func TestCheckHooksProbesPATH(t *testing.T) {
 	t.Run("incapable pickle on PATH warns and is inert", func(t *testing.T) {
 		root := gitFixture(t)
-		if _, err := hook.Install(root, false); err != nil {
+		if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
 			t.Fatalf("hook.Install: %v", err)
 		}
 		bin := stubPickle(t, 2) // mirrors an older pickle's exit 2 on the (then) unknown `hooks` verb
@@ -229,7 +229,7 @@ func TestCheckHooksProbesPATH(t *testing.T) {
 
 	t.Run("capable pickle on PATH passes", func(t *testing.T) {
 		root := gitFixture(t)
-		if _, err := hook.Install(root, false); err != nil {
+		if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
 			t.Fatalf("hook.Install: %v", err)
 		}
 		pinPATH(t, stubPickle(t, 0))
@@ -244,7 +244,7 @@ func TestCheckHooksProbesPATH(t *testing.T) {
 
 	t.Run("no pickle at all on PATH warns", func(t *testing.T) {
 		root := gitFixture(t)
-		if _, err := hook.Install(root, false); err != nil {
+		if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
 			t.Fatalf("hook.Install: %v", err)
 		}
 		pinPATH(t) // git only — no `pickle` anywhere on PATH
@@ -262,6 +262,38 @@ func TestCheckHooksProbesPATH(t *testing.T) {
 			t.Errorf("an unarmed guard produced findings from an unrelated incapable PATH pickle: warnings=%v errors=%v", res.Warnings, res.Errors)
 		}
 	})
+}
+
+// TestCheckHooksReportsBothHooks pins T-082: pre-commit and pre-push are both
+// installed, both reported, and the PATH-capability probe — a per-binary
+// question, not a per-hook one (decision 6) — fires at most once, not once
+// per owned hook.
+func TestCheckHooksReportsBothHooks(t *testing.T) {
+	root := gitFixture(t)
+	for _, name := range hook.Names() {
+		if _, err := hook.Install(root, name, false); err != nil {
+			t.Fatalf("hook.Install(%s): %v", name, err)
+		}
+	}
+	pinPATH(t, stubPickle(t, 0))
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if len(res.Warnings) != 0 {
+		t.Errorf("both hooks current and a capable PATH pickle still warned: %v", res.Warnings)
+	}
+	for _, name := range hook.Names() {
+		if !hasPassedContaining(res.Passed, string(name)+" guard installed and current") {
+			t.Errorf("%s not reported as installed and current: %v", name, res.Passed)
+		}
+	}
+	n := 0
+	for _, p := range res.Passed {
+		if strings.Contains(p, "can run it") {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("PATH-capability line appeared %d time(s), want exactly 1 (probed once per binary, not per hook): %v", n, res.Passed)
+	}
 }
 
 // TestCheckHooksWithoutAGitRepo is the shape of every other fixture in this

@@ -104,12 +104,14 @@ Setup commands:
   doctor                  Verify install integrity (skill, symlinks, markers, child paths).
   uninstall [--dry-run]   Remove skill/symlinks/markers; leave tickets/ and pickle.toml
                           intact. --dry-run (-n) lists what would go, changing nothing.
-  hooks install [--force]     Install the pre-commit guard that refuses ticket
-                              bookkeeping staged on a feature branch. Once per clone.
-  hooks uninstall [--dry-run] Remove pickle's pre-commit hook (a foreign hook is left alone).
-  hooks status                Report the hook's state and resolved path.
-  hooks run pre-commit        Run the guard (the installed shim's entry point).
-                              Exits 1 only for a violation.
+  hooks install [--force]     Install the pre-commit and pre-push guards that refuse
+                              ticket bookkeeping staged (or pushed) on a feature branch.
+                              Once per clone.
+  hooks uninstall [--dry-run] Remove pickle's hooks (a foreign hook is left alone).
+  hooks status                Report each hook's state and resolved path.
+  hooks run pre-commit        Run the pre-commit guard (the installed shim's entry point).
+  hooks run pre-push          Run the pre-push guard (the installed shim's entry point).
+                              Both exit 1 only for a violation.
 
 Flow commands:
   ticket new "<title>" --project <name> [--impact .. --complexity .. --cost ..]

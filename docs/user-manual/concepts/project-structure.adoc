@@ -157,8 +157,11 @@ What that changes in practice:
   recorded status disagrees with where the files actually are.
 * Nothing about `git add tickets` *looks* wrong on a feature branch, which is
   why `pickle hooks install` exists: it installs a `pre-commit` hook that
-  refuses staged `tickets/` paths while a feature branch is checked out. Hooks
-  are per-clone (see <<cmd-hooks>>).
+  refuses staged `tickets/` paths while a feature branch is checked out, and a
+  `pre-push` hook that catches the same bookkeeping at publish time — the
+  range a feature-branch push carries against the remote base — the one
+  moment `pre-commit` structurally cannot see. Hooks are per-clone (see
+  <<cmd-hooks>>).
 * Commit hygiene therefore matters more, not less: stage with explicit
   pathspecs (`git add <paths>`, never `git add -A`) so a code commit does not
   sweep up an unrelated board regeneration, and keep ticket/board bookkeeping

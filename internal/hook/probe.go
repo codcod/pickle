@@ -117,7 +117,7 @@ func probeCapable(path string) bool {
 	}
 	defer os.RemoveAll(dir)
 
-	cmd := exec.CommandContext(ctx, path, "hooks", "run", HookName)
+	cmd := exec.CommandContext(ctx, path, "hooks", "run", string(PreCommit))
 	cmd.Dir = dir
 	// Strip repo-pinning variables (finding F8's lesson, reused here): an
 	// inherited GIT_DIR/GIT_INDEX_FILE from the calling hook must not point

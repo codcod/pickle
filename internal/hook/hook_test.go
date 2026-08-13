@@ -114,50 +114,84 @@ func stageCode(t *testing.T, root, name string) {
 	mustGit(t, root, "add", name)
 }
 
-// preCommitIn runs PreCommit with cwd set to dir, the way git runs a hook.
+// preCommitIn runs CheckPreCommit with cwd set to dir, the way git runs a hook.
 func preCommitIn(t *testing.T, dir string, cfg *config.Config) (bool, string) {
 	t.Helper()
 	t.Chdir(dir)
 	var msg bytes.Buffer
-	ok, err := PreCommit(cfg, &msg)
+	ok, err := CheckPreCommit(cfg, &msg)
 	if err != nil {
-		t.Fatalf("PreCommit: %v", err)
+		t.Fatalf("CheckPreCommit: %v", err)
 	}
 	return ok, msg.String()
 }
 
 func TestInstallWritesAnExecutableOwnedShim(t *testing.T) {
+	for _, name := range Names() {
+		t.Run(string(name), func(t *testing.T) {
+			root := newRepo(t, "main", "")
+
+			res, err := Install(root, name, false)
+			if err != nil {
+				t.Fatalf("Install: %v", err)
+			}
+			if !res.Changed {
+				t.Fatalf("Install reported no change: %+v", res)
+			}
+			fi, err := os.Stat(res.Path)
+			if err != nil {
+				t.Fatalf("stat hook: %v", err)
+			}
+			if fi.Mode().Perm() != 0o755 {
+				t.Errorf("hook mode = %v, want 0755 (git ignores a non-executable hook)", fi.Mode().Perm())
+			}
+			body, err := os.ReadFile(res.Path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(body), marker()) {
+				t.Errorf("hook does not carry the ownership marker %q:\n%s", marker(), body)
+			}
+
+			// Re-install is idempotent and says so rather than rewriting.
+			again, err := Install(root, name, false)
+			if err != nil {
+				t.Fatalf("re-Install: %v", err)
+			}
+			if again.Changed || again.Skipped != "current" {
+				t.Errorf("re-Install = %+v, want unchanged/current", again)
+			}
+		})
+	}
+}
+
+// TestInstallAllInstallsEveryHook covers the plural entry point every caller
+// uses (T-082): both hooks land, in Names() order, each carrying its own
+// current shim.
+func TestInstallAllInstallsEveryHook(t *testing.T) {
 	root := newRepo(t, "main", "")
-
-	res, err := Install(root, false)
+	results, err := InstallAll(root, false)
 	if err != nil {
-		t.Fatalf("Install: %v", err)
+		t.Fatalf("InstallAll: %v", err)
 	}
-	if !res.Changed {
-		t.Fatalf("Install reported no change: %+v", res)
+	if len(results) != len(Names()) {
+		t.Fatalf("InstallAll returned %d result(s), want %d", len(results), len(Names()))
 	}
-	fi, err := os.Stat(res.Path)
-	if err != nil {
-		t.Fatalf("stat hook: %v", err)
-	}
-	if fi.Mode().Perm() != 0o755 {
-		t.Errorf("hook mode = %v, want 0755 (git ignores a non-executable hook)", fi.Mode().Perm())
-	}
-	body, err := os.ReadFile(res.Path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(body), marker()) {
-		t.Errorf("hook does not carry the ownership marker %q:\n%s", marker(), body)
-	}
-
-	// Re-install is idempotent and says so rather than rewriting.
-	again, err := Install(root, false)
-	if err != nil {
-		t.Fatalf("re-Install: %v", err)
-	}
-	if again.Changed || again.Skipped != "current" {
-		t.Errorf("re-Install = %+v, want unchanged/current", again)
+	for i, name := range Names() {
+		res := results[i]
+		if res.Name != name {
+			t.Errorf("result %d has Name %q, want %q", i, res.Name, name)
+		}
+		if !res.Changed {
+			t.Errorf("InstallAll did not install %s: %+v", name, res)
+		}
+		body, err := os.ReadFile(res.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "pickle hooks run "+string(name)) {
+			t.Errorf("%s shim does not invoke its own hook name:\n%s", name, body)
+		}
 	}
 }
 
@@ -166,19 +200,34 @@ func TestInstallWritesAnExecutableOwnedShim(t *testing.T) {
 // the unknown `hooks` verb) degrades to no guard instead of blocking every
 // commit. Asserting on the text is deliberate — this is a shipped contract.
 func TestShimBlocksOnlyExitCodeOne(t *testing.T) {
-	s := Shim()
-	for _, want := range []string{
-		"command -v pickle >/dev/null 2>&1 || {",
-		"pickle not found on PATH",
-		`[ "$rc" -eq 1 ] && exit 1`,
-		"exit 0\n",
-	} {
-		if !strings.Contains(s, want) {
-			t.Errorf("shim missing %q:\n%s", want, s)
-		}
+	for _, name := range Names() {
+		t.Run(string(name), func(t *testing.T) {
+			s := Shim(name)
+			for _, want := range []string{
+				"command -v pickle >/dev/null 2>&1 || {",
+				"pickle not found on PATH",
+				`[ "$rc" -eq 1 ] && exit 1`,
+				"pickle hooks run " + string(name),
+				"exit 0\n",
+			} {
+				if !strings.Contains(s, want) {
+					t.Errorf("shim missing %q:\n%s", want, s)
+				}
+			}
+			if strings.Contains(s, "|| exit 1\n") {
+				t.Errorf("shim is fail-closed on version skew (`|| exit 1`); see T-057 finding B3:\n%s", s)
+			}
+		})
 	}
-	if strings.Contains(s, "|| exit 1\n") {
-		t.Errorf("shim is fail-closed on version skew (`|| exit 1`); see T-057 finding B3:\n%s", s)
+}
+
+// TestPrePushShimForwardsArgvAndStdin pins the one way pre-push's shim differs
+// from pre-commit's: it must forward $@ (git's own <remote-name>
+// [<remote-url>]) to `hooks run`.
+func TestPrePushShimForwardsArgvAndStdin(t *testing.T) {
+	s := Shim(PrePush)
+	if !strings.Contains(s, `pickle hooks run pre-push "$@"`) {
+		t.Errorf("pre-push shim does not forward argv:\n%s", s)
 	}
 }
 
@@ -187,51 +236,55 @@ func TestShimBlocksOnlyExitCodeOne(t *testing.T) {
 // degraded paths — an old binary and no binary at all — both say so on
 // stderr instead of failing silently.
 func TestShimExitCodes(t *testing.T) {
-	isolate(t)
-	dir := t.TempDir()
-	shim := filepath.Join(dir, "pre-commit")
-	if err := writeExecutable(shim, Shim()); err != nil {
-		t.Fatal(err)
-	}
+	for _, name := range Names() {
+		t.Run(string(name), func(t *testing.T) {
+			isolate(t)
+			dir := t.TempDir()
+			shim := filepath.Join(dir, string(name))
+			if err := writeExecutable(shim, Shim(name)); err != nil {
+				t.Fatal(err)
+			}
 
-	for _, tc := range []struct {
-		name       string
-		stub       string // body of the fake `pickle` on PATH, "" for none
-		wantExit   int
-		wantStderr string // substring to require on stderr, "" = don't check
-	}{
-		{"violation", "#!/bin/sh\nexit 1\n", 1, ""},
-		{"allowed", "#!/bin/sh\nexit 0\n", 0, ""},
-		{"old binary, unknown verb", "#!/bin/sh\nexit 2\n", 0, "hooks run exited 2"},
-		{"internal error", "#!/bin/sh\nexit 7\n", 0, "hooks run exited 7"},
-		{"not on PATH", "", 0, "pickle not found on PATH"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			bin := t.TempDir()
-			if tc.stub != "" {
-				if err := writeExecutable(filepath.Join(bin, "pickle"), tc.stub); err != nil {
-					t.Fatal(err)
-				}
-			}
-			cmd := exec.Command(shim)
-			cmd.Dir = dir
-			cmd.Env = []string{"PATH=" + bin}
-			var errBuf bytes.Buffer
-			cmd.Stderr = &errBuf
-			err := cmd.Run()
-			got := 0
-			var ee *exec.ExitError
-			if err != nil {
-				if !errorAs(err, &ee) {
-					t.Fatalf("run shim: %v", err)
-				}
-				got = ee.ExitCode()
-			}
-			if got != tc.wantExit {
-				t.Errorf("shim exit = %d, want %d", got, tc.wantExit)
-			}
-			if tc.wantStderr != "" && !strings.Contains(errBuf.String(), tc.wantStderr) {
-				t.Errorf("shim stderr = %q, want it to contain %q", errBuf.String(), tc.wantStderr)
+			for _, tc := range []struct {
+				name       string
+				stub       string // body of the fake `pickle` on PATH, "" for none
+				wantExit   int
+				wantStderr string // substring to require on stderr, "" = don't check
+			}{
+				{"violation", "#!/bin/sh\nexit 1\n", 1, ""},
+				{"allowed", "#!/bin/sh\nexit 0\n", 0, ""},
+				{"old binary, unknown verb", "#!/bin/sh\nexit 2\n", 0, "hooks run exited 2"},
+				{"internal error", "#!/bin/sh\nexit 7\n", 0, "hooks run exited 7"},
+				{"not on PATH", "", 0, "pickle not found on PATH"},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					bin := t.TempDir()
+					if tc.stub != "" {
+						if err := writeExecutable(filepath.Join(bin, "pickle"), tc.stub); err != nil {
+							t.Fatal(err)
+						}
+					}
+					cmd := exec.Command(shim)
+					cmd.Dir = dir
+					cmd.Env = []string{"PATH=" + bin}
+					var errBuf bytes.Buffer
+					cmd.Stderr = &errBuf
+					err := cmd.Run()
+					got := 0
+					var ee *exec.ExitError
+					if err != nil {
+						if !errorAs(err, &ee) {
+							t.Fatalf("run shim: %v", err)
+						}
+						got = ee.ExitCode()
+					}
+					if got != tc.wantExit {
+						t.Errorf("shim exit = %d, want %d", got, tc.wantExit)
+					}
+					if tc.wantStderr != "" && !strings.Contains(errBuf.String(), tc.wantStderr) {
+						t.Errorf("shim stderr = %q, want it to contain %q", errBuf.String(), tc.wantStderr)
+					}
+				})
 			}
 		})
 	}
@@ -266,48 +319,63 @@ func TestShimPassesShellcheck(t *testing.T) {
 		t.Skip("shellcheck not installed")
 	}
 
-	path := filepath.Join(t.TempDir(), "pre-commit")
-	if err := os.WriteFile(path, []byte(Shim()), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	for _, name := range Names() {
+		t.Run(string(name), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), string(name))
+			if err := os.WriteFile(path, []byte(Shim(name)), 0o644); err != nil {
+				t.Fatal(err)
+			}
 
-	out, err := exec.Command("shellcheck", "-s", "sh", path).CombinedOutput()
-	if err != nil {
-		t.Errorf("shellcheck flagged the pre-commit shim:\n%s", out)
+			out, err := exec.Command("shellcheck", "-s", "sh", path).CombinedOutput()
+			if err != nil {
+				t.Errorf("shellcheck flagged the %s shim:\n%s", name, out)
+			}
+		})
 	}
 }
 
 func TestInstallRefusesAForeignHookUnlessForced(t *testing.T) {
-	root := newRepo(t, "main", "")
-	dir, err := HooksDir(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(dir, HookName)
-	foreign := "#!/bin/sh\n# husky\nexit 0\n"
-	if err := writeExecutable(path, foreign); err != nil {
-		t.Fatal(err)
-	}
+	for _, name := range Names() {
+		t.Run(string(name), func(t *testing.T) {
+			root := newRepo(t, "main", "")
+			dir, err := HooksDir(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, string(name))
+			foreign := "#!/bin/sh\n# husky\nexit 0\n"
+			if err := writeExecutable(path, foreign); err != nil {
+				t.Fatal(err)
+			}
 
-	res, err := Install(root, false)
-	if err == nil {
-		t.Fatalf("Install replaced a foreign hook: %+v", res)
-	}
-	if !strings.Contains(err.Error(), "--force") {
-		t.Errorf("refusal does not mention --force: %v", err)
-	}
-	if got, _ := os.ReadFile(path); string(got) != foreign {
-		t.Errorf("foreign hook was modified:\n%s", got)
-	}
+			res, err := Install(root, name, false)
+			if err == nil {
+				t.Fatalf("Install replaced a foreign hook: %+v", res)
+			}
+			if !strings.Contains(err.Error(), "--force") {
+				t.Errorf("refusal does not mention --force: %v", err)
+			}
+			// T-082 finding F4: the refusal Result must carry Skipped, the same
+			// way Uninstall reports a foreign hook — a caller that only checks
+			// Path != "" (as `hooks install`/`install --hooks` both do) must not
+			// print an empty parenthetical.
+			if res.Skipped == "" {
+				t.Errorf("refusal Result carries no Skipped reason: %+v", res)
+			}
+			if got, _ := os.ReadFile(path); string(got) != foreign {
+				t.Errorf("foreign hook was modified:\n%s", got)
+			}
 
-	if _, err := Install(root, true); err != nil {
-		t.Fatalf("Install --force: %v", err)
-	}
-	if got, _ := os.ReadFile(path); !strings.Contains(string(got), marker()) {
-		t.Errorf("--force did not install the shim:\n%s", got)
+			if _, err := Install(root, name, true); err != nil {
+				t.Fatalf("Install --force: %v", err)
+			}
+			if got, _ := os.ReadFile(path); !strings.Contains(string(got), marker()) {
+				t.Errorf("--force did not install the shim:\n%s", got)
+			}
+		})
 	}
 }
 
@@ -319,7 +387,7 @@ func TestInstallHonoursCoreHooksPath(t *testing.T) {
 	custom := filepath.Join(root, ".githooks")
 	mustGit(t, root, "config", "core.hooksPath", custom)
 
-	res, err := Install(root, false)
+	res, err := Install(root, PreCommit, false)
 	if err != nil {
 		t.Fatalf("Install: %v", err)
 	}
@@ -328,65 +396,69 @@ func TestInstallHonoursCoreHooksPath(t *testing.T) {
 	if realpath(filepath.Dir(res.Path)) != realpath(custom) {
 		t.Errorf("hook installed at %s, want it under %s", res.Path, custom)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".git", "hooks", HookName)); err == nil {
+	if _, err := os.Stat(filepath.Join(root, ".git", "hooks", string(PreCommit))); err == nil {
 		t.Error(".git/hooks/pre-commit was written even though core.hooksPath redirects hooks")
 	}
 }
 
 func TestUninstallOnlyRemovesPickleOwnedHooks(t *testing.T) {
-	root := newRepo(t, "main", "")
+	for _, name := range Names() {
+		t.Run(string(name), func(t *testing.T) {
+			root := newRepo(t, "main", "")
 
-	// Absent: nothing to do, no error.
-	res, err := Uninstall(root, false)
-	if err != nil {
-		t.Fatalf("Uninstall (absent): %v", err)
-	}
-	if res.Changed || res.Kind != KindAbsent {
-		t.Errorf("Uninstall (absent) = %+v", res)
-	}
+			// Absent: nothing to do, no error.
+			res, err := Uninstall(root, name, false)
+			if err != nil {
+				t.Fatalf("Uninstall (absent): %v", err)
+			}
+			if res.Changed || res.Kind != KindAbsent {
+				t.Errorf("Uninstall (absent) = %+v", res)
+			}
 
-	if _, err := Install(root, false); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(mustHooksDir(t, root), HookName)
+			if _, err := Install(root, name, false); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(mustHooksDir(t, root), string(name))
 
-	// Dry run mutates nothing.
-	res, err = Uninstall(root, true)
-	if err != nil {
-		t.Fatalf("Uninstall (dry-run): %v", err)
-	}
-	if !res.Would || res.Changed {
-		t.Errorf("Uninstall (dry-run) = %+v, want Would without Changed", res)
-	}
-	if _, err := os.Stat(path); err != nil {
-		t.Errorf("dry-run removed the hook: %v", err)
-	}
+			// Dry run mutates nothing.
+			res, err = Uninstall(root, name, true)
+			if err != nil {
+				t.Fatalf("Uninstall (dry-run): %v", err)
+			}
+			if !res.Would || res.Changed {
+				t.Errorf("Uninstall (dry-run) = %+v, want Would without Changed", res)
+			}
+			if _, err := os.Stat(path); err != nil {
+				t.Errorf("dry-run removed the hook: %v", err)
+			}
 
-	res, err = Uninstall(root, false)
-	if err != nil {
-		t.Fatalf("Uninstall: %v", err)
-	}
-	if !res.Changed {
-		t.Errorf("Uninstall = %+v, want Changed", res)
-	}
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Errorf("hook still present after uninstall: %v", err)
-	}
+			res, err = Uninstall(root, name, false)
+			if err != nil {
+				t.Fatalf("Uninstall: %v", err)
+			}
+			if !res.Changed {
+				t.Errorf("Uninstall = %+v, want Changed", res)
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Errorf("hook still present after uninstall: %v", err)
+			}
 
-	// A foreign hook survives.
-	foreign := "#!/bin/sh\nexit 0\n"
-	if err := writeExecutable(path, foreign); err != nil {
-		t.Fatal(err)
-	}
-	res, err = Uninstall(root, false)
-	if err != nil {
-		t.Fatalf("Uninstall (foreign): %v", err)
-	}
-	if res.Changed || res.Kind != KindForeign {
-		t.Errorf("Uninstall (foreign) = %+v", res)
-	}
-	if got, _ := os.ReadFile(path); string(got) != foreign {
-		t.Errorf("foreign hook was touched:\n%s", got)
+			// A foreign hook survives.
+			foreign := "#!/bin/sh\nexit 0\n"
+			if err := writeExecutable(path, foreign); err != nil {
+				t.Fatal(err)
+			}
+			res, err = Uninstall(root, name, false)
+			if err != nil {
+				t.Fatalf("Uninstall (foreign): %v", err)
+			}
+			if res.Changed || res.Kind != KindForeign {
+				t.Errorf("Uninstall (foreign) = %+v", res)
+			}
+			if got, _ := os.ReadFile(path); string(got) != foreign {
+				t.Errorf("foreign hook was touched:\n%s", got)
+			}
+		})
 	}
 }
 
@@ -400,55 +472,93 @@ func mustHooksDir(t *testing.T, root string) string {
 }
 
 func TestStatusAndRefresh(t *testing.T) {
+	for _, name := range Names() {
+		t.Run(string(name), func(t *testing.T) {
+			root := newRepo(t, "main", "")
+			path := filepath.Join(mustHooksDir(t, root), string(name))
+
+			if st, err := Status(root, name); err != nil || st.Kind != KindAbsent {
+				t.Fatalf("Status (absent) = %+v, %v", st, err)
+			}
+			if _, err := Install(root, name, false); err != nil {
+				t.Fatal(err)
+			}
+			st, err := Status(root, name)
+			if err != nil || st.Kind != KindOwned || st.Stale || st.Version != ShimVersion {
+				t.Fatalf("Status (owned) = %+v, %v", st, err)
+			}
+
+			// Refresh leaves a current shim alone.
+			if res, err := Refresh(root, name); err != nil || res.Changed {
+				t.Errorf("Refresh (current) = %+v, %v", res, err)
+			}
+
+			// A shim from an older pickle is stale, and Refresh rewrites exactly it.
+			stale := strings.Replace(Shim(name), marker(), markerPrefix+"0", 1)
+			if err := writeExecutable(path, stale); err != nil {
+				t.Fatal(err)
+			}
+			st, err = Status(root, name)
+			if err != nil || st.Kind != KindOwned || !st.Stale || st.Version != 0 {
+				t.Fatalf("Status (stale) = %+v, %v", st, err)
+			}
+			res, err := Refresh(root, name)
+			if err != nil || !res.Changed {
+				t.Fatalf("Refresh (stale) = %+v, %v", res, err)
+			}
+			if got, _ := os.ReadFile(path); string(got) != Shim(name) {
+				t.Errorf("Refresh did not rewrite the shim:\n%s", got)
+			}
+
+			// Refresh never adopts a foreign hook and never installs an absent one.
+			foreign := "#!/bin/sh\nexit 0\n"
+			if err := writeExecutable(path, foreign); err != nil {
+				t.Fatal(err)
+			}
+			if res, err := Refresh(root, name); err != nil || res.Changed {
+				t.Errorf("Refresh (foreign) = %+v, %v", res, err)
+			}
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			if res, err := Refresh(root, name); err != nil || res.Changed {
+				t.Errorf("Refresh (absent) = %+v, %v — the guard is opt-in", res, err)
+			}
+		})
+	}
+}
+
+// TestStatusAllDedupesNoRepo pins the whole-repository property (T-082): a
+// missing repository must be reported once, not once per hook, or a caller
+// printing one line per State would print "no git repository" twice.
+func TestStatusAllDedupesNoRepo(t *testing.T) {
+	isolate(t)
+	dir := t.TempDir()
+	states, err := StatusAll(dir)
+	if err != nil {
+		t.Fatalf("StatusAll: %v", err)
+	}
+	if len(states) != 1 || states[0].Kind != KindNoRepo {
+		t.Fatalf("StatusAll (no repo) = %+v, want exactly one KindNoRepo State", states)
+	}
+}
+
+// TestStatusAllReportsEveryHook is the ordinary case's mirror: a real
+// repository with no hooks installed reports one State per hook, in Names()
+// order.
+func TestStatusAllReportsEveryHook(t *testing.T) {
 	root := newRepo(t, "main", "")
-	path := filepath.Join(mustHooksDir(t, root), HookName)
-
-	if st, err := Status(root); err != nil || st.Kind != KindAbsent {
-		t.Fatalf("Status (absent) = %+v, %v", st, err)
+	states, err := StatusAll(root)
+	if err != nil {
+		t.Fatalf("StatusAll: %v", err)
 	}
-	if _, err := Install(root, false); err != nil {
-		t.Fatal(err)
+	if len(states) != len(Names()) {
+		t.Fatalf("StatusAll returned %d state(s), want %d", len(states), len(Names()))
 	}
-	st, err := Status(root)
-	if err != nil || st.Kind != KindOwned || st.Stale || st.Version != ShimVersion {
-		t.Fatalf("Status (owned) = %+v, %v", st, err)
-	}
-
-	// Refresh leaves a current shim alone.
-	if res, err := Refresh(root); err != nil || res.Changed {
-		t.Errorf("Refresh (current) = %+v, %v", res, err)
-	}
-
-	// A shim from an older pickle is stale, and Refresh rewrites exactly it.
-	stale := strings.Replace(Shim(), marker(), markerPrefix+"0", 1)
-	if err := writeExecutable(path, stale); err != nil {
-		t.Fatal(err)
-	}
-	st, err = Status(root)
-	if err != nil || st.Kind != KindOwned || !st.Stale || st.Version != 0 {
-		t.Fatalf("Status (stale) = %+v, %v", st, err)
-	}
-	res, err := Refresh(root)
-	if err != nil || !res.Changed {
-		t.Fatalf("Refresh (stale) = %+v, %v", res, err)
-	}
-	if got, _ := os.ReadFile(path); string(got) != Shim() {
-		t.Errorf("Refresh did not rewrite the shim:\n%s", got)
-	}
-
-	// Refresh never adopts a foreign hook and never installs an absent one.
-	foreign := "#!/bin/sh\nexit 0\n"
-	if err := writeExecutable(path, foreign); err != nil {
-		t.Fatal(err)
-	}
-	if res, err := Refresh(root); err != nil || res.Changed {
-		t.Errorf("Refresh (foreign) = %+v, %v", res, err)
-	}
-	if err := os.Remove(path); err != nil {
-		t.Fatal(err)
-	}
-	if res, err := Refresh(root); err != nil || res.Changed {
-		t.Errorf("Refresh (absent) = %+v, %v — the guard is opt-in", res, err)
+	for i, name := range Names() {
+		if states[i].Name != name || states[i].Kind != KindAbsent {
+			t.Errorf("state %d = %+v, want {Name: %s, Kind: KindAbsent}", i, states[i], name)
+		}
 	}
 }
 
@@ -597,15 +707,15 @@ func TestPreCommitDegradesWithoutGit(t *testing.T) {
 	t.Run("Status and Refresh without a repository", func(t *testing.T) {
 		isolate(t)
 		dir := t.TempDir()
-		st, err := Status(dir)
+		st, err := Status(dir, PreCommit)
 		if err != nil || st.Kind != KindNoRepo {
 			t.Errorf("Status = %+v, %v; want KindNoRepo without an error", st, err)
 		}
-		res, err := Refresh(dir)
+		res, err := Refresh(dir, PreCommit)
 		if err != nil || res.Changed {
 			t.Errorf("Refresh = %+v, %v; want a silent no-op", res, err)
 		}
-		if _, err := Install(dir, false); err == nil {
+		if _, err := Install(dir, PreCommit, false); err == nil {
 			t.Error("Install succeeded outside a git repository; the user asked for a hook and cannot have one")
 		}
 	})

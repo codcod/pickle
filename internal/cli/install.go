@@ -26,7 +26,7 @@ func runInstall(args []string) int {
 	noClaude := fs.Bool("no-claude", false, "deprecated: use --agent to choose agents (drops claude from the set)")
 	claudeSymlink := fs.Bool("claude-symlink", false, "make CLAUDE.md a symlink to AGENTS.md instead of a marker block")
 	agentSpec := fs.String("agent", "", `comma-separated agents to wire up: claude, opencode, pi (default "claude")`)
-	hooks := fs.Bool("hooks", false, "also install the pre-commit bookkeeping guard (same as `pickle hooks install`)")
+	hooks := fs.Bool("hooks", false, "also install the bookkeeping guard hooks (same as `pickle hooks install`)")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
@@ -107,21 +107,37 @@ func runInstall(args []string) int {
 		noteIfStageable(cfg.Root(), *p)
 	}
 
-	// The hook is opt-in and deliberately not part of a plain install: it writes
-	// outside the install root (into .git/) and only helps in a repo that carries
-	// both the code and the board. A failure here is a warning, never a failed
-	// install — the scaffolding is already on disk and correct.
+	// The hooks are opt-in and deliberately not part of a plain install: they
+	// write outside the install root (into .git/) and only help in a repo that
+	// carries both the code and the board. A failure here is a warning, never a
+	// failed install — the scaffolding is already on disk and correct.
 	if *hooks {
-		if hres, herr := hook.Install(root, false); herr != nil {
-			fmt.Fprintf(os.Stderr, "pickle install: hooks install skipped: %v\n", herr)
-		} else {
+		// Report every attempted hook regardless of herr (T-082 finding F4): a
+		// per-hook failure (a foreign hook without --force) must not swallow the
+		// report of a sibling hook InstallAll already wrote — only ErrNoRepo
+		// (ErrNoRepo) leaves results empty, the same shape a lone hook.Install
+		// call would report as a bare error.
+		results, herr := hook.InstallAll(root, false)
+		anyArmed := false
+		for _, hres := range results {
 			if hres.Changed {
 				fmt.Printf("  + %s\n", hres.Path)
-			} else {
+				anyArmed = true
+			} else if hres.Path != "" {
 				fmt.Printf("  = %s (%s)\n", hres.Path, hres.Skipped)
 			}
-			// Same PATH-capability check `hooks install` runs on its own (T-068):
-			// this is the other moment the evidence exists and the user is looking.
+		}
+		if herr != nil {
+			fmt.Fprintf(os.Stderr, "pickle install: hooks install skipped: %v\n", herr)
+		}
+		// Same PATH-capability check `hooks install` runs on its own (T-068):
+		// this is the other moment the evidence exists and the user is looking.
+		// Runs whenever every hook installed cleanly, or at least one still
+		// landed despite a sibling failure (a foreign hook refused without
+		// --force) — a per-hook error must not suppress the sibling's report
+		// (T-082 finding F4). Neither holds when the repository did not exist
+		// at all (ErrNoRepo): nothing was ever armed to have an opinion about.
+		if herr == nil || anyArmed {
 			warnIfInert("pickle install")
 		}
 	}

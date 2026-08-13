@@ -43,7 +43,7 @@ func joined(list []string) string { return strings.Join(list, "\n") }
 // a shim from an older binary is refreshed in place.
 func TestUpgradeRefreshesAStaleHook(t *testing.T) {
 	root := gitRepoFixture(t)
-	if _, err := hook.Install(root, false); err != nil {
+	if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
 		t.Fatalf("hook.Install: %v", err)
 	}
 	path := filepath.Join(root, ".git", "hooks", "pre-commit")
@@ -62,20 +62,66 @@ func TestUpgradeRefreshesAStaleHook(t *testing.T) {
 	if !strings.Contains(joined(res.Created), "pre-commit (refreshed)") {
 		t.Errorf("upgrade did not report the refreshed hook:\n%s", joined(res.Created))
 	}
-	if got, _ := os.ReadFile(path); string(got) != hook.Shim() {
+	if got, _ := os.ReadFile(path); string(got) != hook.Shim(hook.PreCommit) {
 		t.Errorf("hook not refreshed:\n%s", got)
 	}
 }
 
-// TestUpgradeNeverArmsAnAbsentHook: the guard is opt-in, and an upgrade that
-// silently started rejecting commits would be a surprise nobody asked for.
+// TestUpgradeRefreshesBothStaleHooks pins T-082: RefreshAll bumps every owned
+// hook's shim, not just pre-commit, and leaves a foreign one alone even when
+// its sibling hook is pickle-owned and stale.
+func TestUpgradeRefreshesBothStaleHooks(t *testing.T) {
+	root := gitRepoFixture(t)
+	if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
+		t.Fatalf("hook.Install(pre-commit): %v", err)
+	}
+	precommitPath := filepath.Join(root, ".git", "hooks", "pre-commit")
+	body, err := os.ReadFile(precommitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := strings.Replace(string(body), fmt.Sprintf("pickle:hook v%d", hook.ShimVersion), "pickle:hook v0", 1)
+	if err := os.WriteFile(precommitPath, []byte(stale), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// pre-push: a foreign hook, which must survive untouched.
+	prepushPath := filepath.Join(root, ".git", "hooks", "pre-push")
+	foreign := "#!/bin/sh\n# lefthook\nexit 0\n"
+	if err := os.WriteFile(prepushPath, []byte(foreign), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := Upgrade(os.DirFS(payloadRoot()), root, "v2")
+	if err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+	if !strings.Contains(joined(res.Created), "pre-commit (refreshed)") {
+		t.Errorf("upgrade did not report the refreshed pre-commit hook:\n%s", joined(res.Created))
+	}
+	if strings.Contains(joined(res.Created), "pre-push") {
+		t.Errorf("upgrade touched the foreign pre-push hook:\n%s", joined(res.Created))
+	}
+	if got, _ := os.ReadFile(precommitPath); string(got) != hook.Shim(hook.PreCommit) {
+		t.Errorf("pre-commit hook not refreshed:\n%s", got)
+	}
+	if got, _ := os.ReadFile(prepushPath); string(got) != foreign {
+		t.Errorf("foreign pre-push hook was modified:\n%s", got)
+	}
+}
+
+// TestUpgradeNeverArmsAnAbsentHook: hooks are opt-in, and an upgrade that
+// silently started rejecting commits or pushes would be a surprise nobody
+// asked for. Covers both hooks, not just pre-commit.
 func TestUpgradeNeverArmsAnAbsentHook(t *testing.T) {
 	root := gitRepoFixture(t)
 	if _, err := Upgrade(os.DirFS(payloadRoot()), root, "v2"); err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".git", "hooks", "pre-commit")); !os.IsNotExist(err) {
-		t.Errorf("upgrade installed a hook that was not there: %v", err)
+	for _, name := range hook.Names() {
+		if _, err := os.Stat(filepath.Join(root, ".git", "hooks", string(name))); !os.IsNotExist(err) {
+			t.Errorf("upgrade installed %s, which was not there: %v", name, err)
+		}
 	}
 }
 
@@ -94,32 +140,39 @@ func TestUpgradeWithoutAGitRepo(t *testing.T) {
 
 func TestUninstallRemovesAnOwnedHook(t *testing.T) {
 	root := gitRepoFixture(t)
-	if _, err := hook.Install(root, false); err != nil {
-		t.Fatalf("hook.Install: %v", err)
+	for _, name := range hook.Names() {
+		if _, err := hook.Install(root, name, false); err != nil {
+			t.Fatalf("hook.Install(%s): %v", name, err)
+		}
 	}
-	path := filepath.Join(root, ".git", "hooks", "pre-commit")
 
-	// Dry run lists it and changes nothing.
+	// Dry run lists both hooks and changes nothing.
 	res, err := Uninstall(os.DirFS(payloadRoot()), root, UninstallOptions{DryRun: true})
 	if err != nil {
 		t.Fatalf("Uninstall (dry-run): %v", err)
 	}
-	if !strings.Contains(joined(res.Removed), "pre-commit (dry-run)") {
-		t.Errorf("dry-run did not list the hook:\n%s", joined(res.Removed))
-	}
-	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("dry-run removed the hook: %v", err)
+	for _, name := range hook.Names() {
+		if !strings.Contains(joined(res.Removed), string(name)+" (dry-run)") {
+			t.Errorf("dry-run did not list %s:\n%s", name, joined(res.Removed))
+		}
+		path := filepath.Join(root, ".git", "hooks", string(name))
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("dry-run removed %s: %v", name, err)
+		}
 	}
 
 	res, err = Uninstall(os.DirFS(payloadRoot()), root, UninstallOptions{})
 	if err != nil {
 		t.Fatalf("Uninstall: %v", err)
 	}
-	if !strings.Contains(joined(res.Removed), "pre-commit") {
-		t.Errorf("uninstall did not report the hook:\n%s", joined(res.Removed))
-	}
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Errorf("hook survived uninstall: %v", err)
+	for _, name := range hook.Names() {
+		if !strings.Contains(joined(res.Removed), string(name)) {
+			t.Errorf("uninstall did not report %s:\n%s", name, joined(res.Removed))
+		}
+		path := filepath.Join(root, ".git", "hooks", string(name))
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("%s survived uninstall: %v", name, err)
+		}
 	}
 }
 
