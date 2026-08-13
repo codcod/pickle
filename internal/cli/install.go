@@ -160,6 +160,12 @@ func runUpgrade(args []string) int {
 	prevVersion := before.PayloadVersion
 
 	res, err := install.Upgrade(Payload, root, Version)
+	// Removed first: a pre-brine legacy path swept away (T-074) is the one
+	// thing here that is not a routine refresh, so it reads before the
+	// created/skipped lines rather than being buried under them.
+	for _, r := range res.Removed {
+		fmt.Printf("  - %s\n", r)
+	}
 	for _, c := range res.Created {
 		fmt.Printf("  + %s\n", c)
 	}

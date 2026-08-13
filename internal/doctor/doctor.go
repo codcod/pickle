@@ -50,6 +50,7 @@ func Check(root, version string, payload fs.FS) Result {
 
 	selfHost := install.SkillLinked(root)
 
+	checkLegacyPaths(root, &r)
 	cfg := checkConfig(root, &r)
 	checkSkill(root, selfHost, &r)
 	checkClaudeView(root, &r)
@@ -65,6 +66,29 @@ func Check(root, version string, payload fs.FS) Result {
 	sort.Strings(r.Warnings)
 	sort.Strings(r.Passed)
 	return r
+}
+
+// checkLegacyPaths errors while either pre-brine install path (T-074) is still
+// present: a project that has upgraded only partially, or not at all, is
+// carrying a stale skill copy that some agents (native .agents/skills
+// discovery) would prefer over the current one — a state doctor must not wave
+// through as green. A pure filesystem read, so it runs even when pickle.toml
+// fails to parse. Delete alongside install.sweepLegacySkill at 1.0 (T-074).
+func checkLegacyPaths(root string, r *Result) {
+	found := false
+	if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(install.LegacySkillDir))); err == nil {
+		found = true
+		r.errf("skill: legacy %s still present (renamed to %s in T-074) — run `pickle upgrade`",
+			install.LegacySkillDir, install.SkillDir)
+	}
+	if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(install.LegacyClaudeSkillLink))); err == nil {
+		found = true
+		r.errf("claude: legacy %s still present (renamed to %s in T-074) — run `pickle upgrade`",
+			install.LegacyClaudeSkillLink, install.ClaudeSkillLink)
+	}
+	if !found {
+		r.ok("no legacy skill path present (" + install.LegacySkillDir + ")")
+	}
 }
 
 // checkConfig loads pickle.toml. A parse/validate failure is a finding, not a

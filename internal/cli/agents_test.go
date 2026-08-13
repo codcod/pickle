@@ -44,8 +44,8 @@ func TestInstallAgentFlag(t *testing.T) {
 			"opencode.jsonc",
 			".pi/extensions/docs-readability.ts",
 			".pi/extensions/pickle-guardrails.ts",
-			".claude/skills/ticket-flow",
-			".agents/skills/ticket-flow/resources/docs-readability.prompt.md",
+			".claude/skills/brine",
+			".agents/skills/brine/resources/docs-readability.prompt.md",
 		} {
 			if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(f))); err != nil {
 				t.Errorf("expected %s after --agent claude,opencode,pi: %v", f, err)
@@ -61,7 +61,7 @@ func TestInstallAgentFlag(t *testing.T) {
 				t.Fatalf("exit = %d, want %d", code, exitOK)
 			}
 		})
-		if _, err := os.Lstat(filepath.Join(root, ".claude/skills/ticket-flow")); err != nil {
+		if _, err := os.Lstat(filepath.Join(root, ".claude/skills/brine")); err != nil {
 			t.Errorf("default install missing the claude view: %v", err)
 		}
 		if _, err := os.Lstat(filepath.Join(root, "opencode.jsonc")); !os.IsNotExist(err) {

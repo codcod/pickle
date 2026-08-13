@@ -55,7 +55,7 @@ func TestInstallAgentScaffolds(t *testing.T) {
 	}
 
 	// The reviewer prompt ships with the skill payload itself.
-	mustExist(t, filepath.Join(root, ".agents/skills/ticket-flow/resources/docs-readability.prompt.md"))
+	mustExist(t, filepath.Join(root, ".agents/skills/brine/resources/docs-readability.prompt.md"))
 
 	// opencode.jsonc is written whole from the embedded template.
 	got, err := os.ReadFile(filepath.Join(root, OpencodeConfigFile))

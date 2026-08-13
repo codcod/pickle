@@ -5,10 +5,10 @@ status. No feature is built directly from a chat message or a raw idea — work 
 ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it
 earns a **disposition** (rules §5), and most are resolved without a new ticket.
 
-- The flow engine is the **brine skill** at `.agents/skills/ticket-flow/`. It holds
+- The flow engine is the **brine skill** at `.agents/skills/brine/`. It holds
   the rules (`resources/tickets-README.md`), the ticket template
   (`resources/TEMPLATE.md`), and the review protocol
-  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/ticket-flow`.
+  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/brine`.
   The directory is pickle-owned — `pickle upgrade` replaces it wholesale, so keep
   hand-written notes outside it.
 - Triggers: "make it a ticket", "refine ticket T-NNN", "implement ticket T-NNN", "rework ticket

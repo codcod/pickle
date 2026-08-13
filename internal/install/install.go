@@ -1,4 +1,4 @@
-// Package install implements `pickle install`: it lays the ticket flow into a
+// Package install implements `pickle install`: it lays the brine flow into a
 // project — the embedded skill payload, the tickets/ board scaffold, the
 // AGENTS.md/CLAUDE.md marker blocks, the Claude view symlink, and a pickle.toml
 // registering the first child-project. It is per-project (never writes to ~/ or
@@ -40,11 +40,11 @@ const (
 	MarkerEnd   = "<!-- pickle:end -->"
 
 	// SkillDir is the installed skill payload location (relative to the project root).
-	SkillDir = ".agents/skills/ticket-flow"
+	SkillDir = ".agents/skills/brine"
 	// ClaudeSkillLink is the Claude Code view of the skill; ClaudeSkillTarget is the
 	// relative symlink target it points at (SkillDir, from inside .claude/skills/).
-	ClaudeSkillLink   = ".claude/skills/ticket-flow"
-	ClaudeSkillTarget = "../../.agents/skills/ticket-flow"
+	ClaudeSkillLink   = ".claude/skills/brine"
+	ClaudeSkillTarget = "../../.agents/skills/brine"
 
 	// OpencodeConfigFile is the opencode config `--agent opencode` scaffolds
 	// (whole-file, only when absent — pickle never parses or merges JSONC);
@@ -55,8 +55,19 @@ const (
 	PiExtensionsDir = ".pi/extensions"
 )
 
+// Legacy install paths from before T-074 renamed the installed skill directory
+// to brine. install/upgrade never write these paths; Upgrade and Uninstall
+// call sweepLegacySkill to remove them (or, for a self-host symlink, re-link it
+// at the new name — see sweepLegacySkill), and doctor errors while either is
+// still present. Delete this block, sweepLegacySkill, checkLegacyPaths and
+// their call sites and tests at 1.0 (T-074).
+const (
+	LegacySkillDir        = ".agents/skills/ticket-flow"
+	LegacyClaudeSkillLink = ".claude/skills/ticket-flow"
+)
+
 // SkillLinked reports whether the installed skill directory is a symlink: the
-// dev/self-host arrangement in which .agents/skills/ticket-flow points at the
+// dev/self-host arrangement in which .agents/skills/brine points at the
 // payload source (this repo's skill/) instead of holding a copy of it. install
 // and upgrade never overwrite through such a link, and uninstall removes the
 // link itself rather than RemoveAll-ing the tree it points at; doctor uses it
@@ -285,6 +296,71 @@ func RefreshMarkers(root string, cfg *config.Config) (Result, error) {
 	return res, nil
 }
 
+// legacySweep reports what sweepLegacySkill found and removed. LinkTarget is
+// non-empty when the legacy skill dir was itself a self-host symlink (so the
+// caller can re-create it at the new name instead of letting copyPayload
+// write a real directory over it); ClaudeLink reports whether the legacy
+// Claude view was present and removed, so a caller can decide whether the new
+// Claude view needs (re)creating even though it never existed under the new
+// name. Delete alongside sweepLegacySkill at 1.0 (T-074).
+type legacySweep struct {
+	Found      bool
+	LinkTarget string
+	ClaudeLink bool
+}
+
+// sweepLegacySkill removes the pre-brine install paths (LegacySkillDir,
+// LegacyClaudeSkillLink) left by a pickle older than T-074. A legacy real
+// directory is RemoveAll'd; a legacy symlink is removed and its target
+// reported in LinkTarget rather than deleted-and-recopied, protecting a
+// self-host arrangement (SkillLinked) from being silently converted into an
+// installed copy. dryRun mirrors Uninstall's convention: labels are recorded
+// and nothing is mutated. Delete this function, its call sites, the Legacy*
+// constants and their tests at 1.0 (T-074).
+func sweepLegacySkill(root string, dryRun bool, res *Result) (legacySweep, error) {
+	var sw legacySweep
+
+	legacyDir := filepath.Join(root, filepath.FromSlash(LegacySkillDir))
+	if fi, err := os.Lstat(legacyDir); err == nil {
+		sw.Found = true
+		switch {
+		case dryRun:
+			res.removed(LegacySkillDir + " (dry-run)")
+		case fi.Mode()&os.ModeSymlink != 0:
+			target, err := os.Readlink(legacyDir)
+			if err != nil {
+				return sw, fmt.Errorf("read legacy skill symlink: %w", err)
+			}
+			if err := os.Remove(legacyDir); err != nil {
+				return sw, fmt.Errorf("remove legacy skill symlink: %w", err)
+			}
+			sw.LinkTarget = target
+			res.removed(LegacySkillDir + " (symlink)")
+		default:
+			if err := os.RemoveAll(legacyDir); err != nil {
+				return sw, fmt.Errorf("remove legacy skill dir: %w", err)
+			}
+			res.removed(LegacySkillDir + "/")
+		}
+	}
+
+	legacyClaudeLink := filepath.Join(root, filepath.FromSlash(LegacyClaudeSkillLink))
+	if _, err := os.Lstat(legacyClaudeLink); err == nil {
+		sw.Found = true
+		sw.ClaudeLink = true
+		if dryRun {
+			res.removed(LegacyClaudeSkillLink + " (dry-run)")
+		} else {
+			if err := os.Remove(legacyClaudeLink); err != nil {
+				return sw, fmt.Errorf("remove legacy claude skill symlink: %w", err)
+			}
+			res.removed(LegacyClaudeSkillLink)
+		}
+	}
+
+	return sw, nil
+}
+
 // Upgrade refreshes the installed skill payload and the AGENTS.md/CLAUDE.md
 // marker block(s) to payloadVersion, and stamps payloadVersion into pickle.toml
 // by rewriting that single line, leaving the rest of the file (comments
@@ -293,6 +369,8 @@ func RefreshMarkers(root string, cfg *config.Config) (Result, error) {
 // It never reads or writes anything under tickets/ or the board. Idempotent:
 // re-running at the current version still refreshes payload/markers (so drift
 // is corrected) and reports the version as unchanged rather than erroring.
+// It also sweeps away any pre-brine install left by an older pickle
+// (sweepLegacySkill, T-074) before refreshing the current-name payload.
 func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 	var res Result
 
@@ -301,11 +379,25 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		return res, err
 	}
 
+	// Sweep the legacy install first, so the refresh below writes into a tree
+	// with no stale duplicate under the old name.
+	swept, err := sweepLegacySkill(root, false, &res)
+	if err != nil {
+		return res, err
+	}
+
 	// Refresh the skill payload: a real dir is wiped and re-copied so files
 	// removed from the new payload don't linger; a self-host symlink is left
-	// alone (copyPayload already skips it via the Lstat/ModeSymlink guard).
+	// alone (copyPayload already skips it via the Lstat/ModeSymlink guard). A
+	// legacy self-host symlink is re-created at the new name instead — the
+	// same protection, one name later.
 	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
-	if !SkillLinked(root) {
+	switch {
+	case swept.LinkTarget != "":
+		if err := ensureSymlink(dst, swept.LinkTarget, &res); err != nil {
+			return res, err
+		}
+	case !SkillLinked(root):
 		if err := os.RemoveAll(dst); err != nil {
 			return res, fmt.Errorf("refresh skill payload: %w", err)
 		}
@@ -321,8 +413,11 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 	res.Created = append(res.Created, refreshed.Created...)
 	res.Skipped = append(res.Skipped, refreshed.Skipped...)
 
+	// The new Claude view is (re)created when it already exists under the new
+	// name, or when the legacy Claude view just got swept away — an upgraded
+	// legacy install must not lose its Claude view entirely.
 	claudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
-	if _, err := os.Lstat(claudeLink); err == nil {
+	if _, err := os.Lstat(claudeLink); err == nil || swept.ClaudeLink {
 		if err := ensureSymlink(claudeLink, ClaudeSkillTarget, &res); err != nil {
 			return res, err
 		}
@@ -408,6 +503,12 @@ type UninstallOptions struct {
 // removed.
 func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error) {
 	var res Result
+
+	// Sweep any pre-brine install left by an older pickle, so a new binary can
+	// still fully remove an install made by an old one (T-074).
+	if _, err := sweepLegacySkill(root, opts.DryRun, &res); err != nil {
+		return res, err
+	}
 
 	skillDir := filepath.Join(root, filepath.FromSlash(SkillDir))
 	if fi, err := os.Lstat(skillDir); err == nil {
@@ -540,7 +641,7 @@ func uninstallMarkerFile(path string, opts UninstallOptions, res *Result) error 
 	return stripMarker(path, res)
 }
 
-// copyPayload writes the embedded skill tree into root/.agents/skills/ticket-flow
+// copyPayload writes the embedded skill tree into root/.agents/skills/brine
 // as real files. If that path already exists as a symlink (a dev/self-host link),
 // it is left untouched.
 func copyPayload(payload fs.FS, root string, res *Result) error {
@@ -912,10 +1013,10 @@ func MarkerBlock(cfg *config.Config) string {
 		"ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it\n" +
 		"earns a **disposition** (rules §5), and most are resolved without a new ticket.\n" +
 		"\n" +
-		"- The flow engine is the **brine skill** at `.agents/skills/ticket-flow/`. It holds\n" +
+		"- The flow engine is the **brine skill** at `.agents/skills/brine/`. It holds\n" +
 		"  the rules (`resources/tickets-README.md`), the ticket template\n" +
 		"  (`resources/TEMPLATE.md`), and the review protocol\n" +
-		"  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/ticket-flow`.\n" +
+		"  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/brine`.\n" +
 		"  The directory is pickle-owned — `pickle upgrade` replaces it wholesale, so keep\n" +
 		"  hand-written notes outside it.\n" +
 		"- Triggers: \"make it a ticket\", \"refine ticket T-NNN\", \"implement ticket T-NNN\", \"rework ticket\n" +
@@ -959,10 +1060,10 @@ const ticketsReadme = "# `tickets/` — the ticket-based feature flow\n\n" +
 	"- **Hand-written planning notes live in [`NOTES.md`](NOTES.md)** — the board cannot\n" +
 	"  carry them.\n" +
 	"- **The rules, ticket template, and review protocol live in the brine skill:**\n" +
-	"  - rules: `.agents/skills/ticket-flow/resources/tickets-README.md` (so `§N` references\n" +
+	"  - rules: `.agents/skills/brine/resources/tickets-README.md` (so `§N` references\n" +
 	"    resolve there)\n" +
-	"  - template: `.agents/skills/ticket-flow/resources/TEMPLATE.md`\n" +
-	"  - review protocol: `.agents/skills/ticket-flow/resources/review-protocol.md`\n" +
+	"  - template: `.agents/skills/brine/resources/TEMPLATE.md`\n" +
+	"  - review protocol: `.agents/skills/brine/resources/review-protocol.md`\n" +
 	"- **Build target:** every ticket targets a registered child-project (see `../pickle.toml`).\n\n" +
 	"This directory holds **instance data only** (the tickets, the generated board, the notes).\n" +
 	"See `../AGENTS.md` for the project configuration and commit policy.\n"

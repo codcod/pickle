@@ -35,8 +35,8 @@ func TestRunProducesInstall(t *testing.T) {
 		t.Error("expected created entries")
 	}
 
-	mustExist(t, filepath.Join(root, ".agents/skills/ticket-flow/SKILL.md"))
-	mustExist(t, filepath.Join(root, ".agents/skills/ticket-flow/resources/TEMPLATE.md"))
+	mustExist(t, filepath.Join(root, ".agents/skills/brine/SKILL.md"))
+	mustExist(t, filepath.Join(root, ".agents/skills/brine/resources/TEMPLATE.md"))
 	mustExist(t, filepath.Join(root, "tickets/BOARD.md"))
 	mustExist(t, filepath.Join(root, "tickets/NOTES.md"))
 	mustExist(t, filepath.Join(root, "tickets/README.md"))
@@ -45,8 +45,8 @@ func TestRunProducesInstall(t *testing.T) {
 	mustExist(t, filepath.Join(root, "pickle.toml"))
 
 	// Claude view symlink resolves to the .agents skill dir.
-	link := filepath.Join(root, ".claude/skills/ticket-flow")
-	if target, err := os.Readlink(link); err != nil || target != "../../.agents/skills/ticket-flow" {
+	link := filepath.Join(root, ".claude/skills/brine")
+	if target, err := os.Readlink(link); err != nil || target != "../../.agents/skills/brine" {
 		t.Errorf("claude symlink = %q, %v", target, err)
 	}
 
@@ -138,7 +138,7 @@ func TestRunIsIdempotent(t *testing.T) {
 
 func TestSelfHostSymlinkGuard(t *testing.T) {
 	root := t.TempDir()
-	skillPath := filepath.Join(root, ".agents/skills/ticket-flow")
+	skillPath := filepath.Join(root, ".agents/skills/brine")
 	os.MkdirAll(filepath.Dir(skillPath), 0o755)
 	if err := os.Symlink("../../skill", skillPath); err != nil {
 		t.Fatal(err)
@@ -184,7 +184,7 @@ func TestUpgrade(t *testing.T) {
 	if cfg.PayloadVersion != "v2" {
 		t.Errorf("payload_version = %q, want v2", cfg.PayloadVersion)
 	}
-	mustExist(t, filepath.Join(root, ".agents/skills/ticket-flow/SKILL.md"))
+	mustExist(t, filepath.Join(root, ".agents/skills/brine/SKILL.md"))
 	if _, err := os.Stat(junk); !os.IsNotExist(err) {
 		t.Error("stale file in skill dir survived upgrade")
 	}
@@ -351,6 +351,189 @@ func TestUninstallSelfHostSymlinkGuard(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(external, "SKILL.md")); err != nil {
 		t.Error("external symlink target was removed by uninstall")
 	}
+}
+
+// legacyInstallFixture installs at the current names via Run, then renames the
+// skill dir and re-creates the Claude view under the pre-T-074 legacy names —
+// simulating an install made by a pickle older than the brine rename, without
+// hand-rolling every other artifact Run also writes (pickle.toml, tickets/,
+// markers). Returns the legacy skill dir and legacy Claude link paths.
+func legacyInstallFixture(t *testing.T) (root, legacySkill, legacyClaudeLink string) {
+	t.Helper()
+	root = t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	newSkill := filepath.Join(root, filepath.FromSlash(SkillDir))
+	legacySkill = filepath.Join(root, filepath.FromSlash(LegacySkillDir))
+	if err := os.Rename(newSkill, legacySkill); err != nil {
+		t.Fatal(err)
+	}
+	newClaudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
+	legacyClaudeLink = filepath.Join(root, filepath.FromSlash(LegacyClaudeSkillLink))
+	if err := os.Remove(newClaudeLink); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../../"+LegacySkillDir, legacyClaudeLink); err != nil {
+		t.Fatal(err)
+	}
+	return root, legacySkill, legacyClaudeLink
+}
+
+// T-074: Upgrade sweeps a legacy real directory (and its Claude view) left by
+// a pre-brine pickle, and leaves a normal current-name install in its place.
+func TestUpgradeSweepsLegacyRealDirectory(t *testing.T) {
+	root, legacySkill, legacyClaudeLink := legacyInstallFixture(t)
+	payload := os.DirFS(payloadRoot())
+
+	res, err := Upgrade(payload, root, "v2")
+	if err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+
+	var sweptDir, sweptLink bool
+	for _, r := range res.Removed {
+		if strings.HasPrefix(r, LegacySkillDir) {
+			sweptDir = true
+		}
+		if strings.HasPrefix(r, LegacyClaudeSkillLink) {
+			sweptLink = true
+		}
+	}
+	if !sweptDir || !sweptLink {
+		t.Errorf("Upgrade did not report sweeping both legacy paths: %v", res.Removed)
+	}
+
+	if _, err := os.Lstat(legacySkill); !os.IsNotExist(err) {
+		t.Error("legacy skill dir still present after upgrade")
+	}
+	if _, err := os.Lstat(legacyClaudeLink); !os.IsNotExist(err) {
+		t.Error("legacy claude symlink still present after upgrade")
+	}
+	mustExist(t, filepath.Join(root, filepath.FromSlash(SkillDir), "SKILL.md"))
+	newClaudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
+	if target, err := os.Readlink(newClaudeLink); err != nil || target != ClaudeSkillTarget {
+		t.Errorf("new claude symlink = %q, %v", target, err)
+	}
+}
+
+// T-074 decision 5: a legacy skill path that is itself a self-host symlink is
+// re-linked at the new name, never deleted-and-recopied — deleting it and
+// letting copyPayload write a real directory would silently turn a
+// self-hosting checkout into an installed copy.
+func TestUpgradeRelinksLegacySelfHostSymlink(t *testing.T) {
+	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	newSkill := filepath.Join(root, filepath.FromSlash(SkillDir))
+	if err := os.RemoveAll(newSkill); err != nil {
+		t.Fatal(err)
+	}
+	external := t.TempDir()
+	if err := os.WriteFile(filepath.Join(external, "SKILL.md"), []byte("external"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	legacySkill := filepath.Join(root, filepath.FromSlash(LegacySkillDir))
+	if err := os.Symlink(external, legacySkill); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Upgrade(payload, root, "v2"); err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+
+	if _, err := os.Lstat(legacySkill); !os.IsNotExist(err) {
+		t.Error("legacy skill symlink still present after upgrade")
+	}
+	fi, err := os.Lstat(newSkill)
+	if err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("new-name skill path is not a symlink after upgrade")
+	}
+	if target, err := os.Readlink(newSkill); err != nil || target != external {
+		t.Errorf("re-linked target = %q, %v", target, err)
+	}
+	if _, err := os.Stat(filepath.Join(external, "SKILL.md")); err != nil {
+		t.Error("external symlink target was modified/removed by upgrade")
+	}
+}
+
+// T-074: absent legacy paths are a no-op — an ordinary upgrade of a
+// current-name install reports no legacy sweep activity.
+func TestUpgradeNoLegacyIsNoOp(t *testing.T) {
+	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := Upgrade(payload, root, "v2")
+	if err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+	for _, r := range res.Removed {
+		if strings.Contains(r, "ticket-flow") {
+			t.Errorf("unexpected legacy sweep activity on a tree with no legacy path: %v", res.Removed)
+		}
+	}
+}
+
+// T-074: a new binary can still fully remove an install made by an old one.
+func TestUninstallSweepsLegacyPaths(t *testing.T) {
+	root, legacySkill, legacyClaudeLink := legacyInstallFixture(t)
+	payload := os.DirFS(payloadRoot())
+
+	res, err := Uninstall(payload, root, UninstallOptions{})
+	if err != nil {
+		t.Fatalf("Uninstall: %v", err)
+	}
+	if _, err := os.Lstat(legacySkill); !os.IsNotExist(err) {
+		t.Error("legacy skill dir still present after uninstall")
+	}
+	if _, err := os.Lstat(legacyClaudeLink); !os.IsNotExist(err) {
+		t.Error("legacy claude symlink still present after uninstall")
+	}
+	var sweptDir bool
+	for _, r := range res.Removed {
+		if strings.HasPrefix(r, LegacySkillDir) {
+			sweptDir = true
+		}
+	}
+	if !sweptDir {
+		t.Errorf("Uninstall did not report sweeping the legacy dir: %v", res.Removed)
+	}
+}
+
+// T-074: --dry-run lists both legacy paths and mutates nothing.
+func TestUninstallDryRunListsLegacyPathsAndMutatesNothing(t *testing.T) {
+	root, legacySkill, legacyClaudeLink := legacyInstallFixture(t)
+	payload := os.DirFS(payloadRoot())
+
+	res, err := Uninstall(payload, root, UninstallOptions{DryRun: true})
+	if err != nil {
+		t.Fatalf("Uninstall dry-run: %v", err)
+	}
+	var listedDir, listedLink bool
+	for _, r := range res.Removed {
+		if strings.HasPrefix(r, LegacySkillDir) {
+			listedDir = true
+		}
+		if strings.HasPrefix(r, LegacyClaudeSkillLink) {
+			listedLink = true
+		}
+	}
+	if !listedDir || !listedLink {
+		t.Errorf("dry-run did not list both legacy paths: %v", res.Removed)
+	}
+	mustExist(t, legacySkill)
+	mustExist(t, legacyClaudeLink)
 }
 
 // The regression test for T-018: a refresh must not cost the user their
