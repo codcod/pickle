@@ -4,7 +4,7 @@
 software development, designed to be used with any coding agent.
 
 Brine is the name of this particular SDLC. Pickle is a command-line tool that
-installs brine.
+installs Brine.
 
 Run `pickle install` in a project and a coding agent understands requests like
 *"create a feature to enable dark theme"*: it authors a correctly-formatted
@@ -13,6 +13,10 @@ this is possible because `install` laid down the workflow skill, the board, and
 the agent-instruction markers. Judgment (what a ticket says, how it is graded,
 refined, reviewed) stays with the agent; the deterministic mechanics (id
 allocation, atomic moves, board rendering, invariant audits) are CLI commands.
+
+Use `pickle serve` to visualize the board in a browser.
+
+![Board with tickets](https://raw.githubusercontent.com/codcod/pickle/main/docs/board.png)
 
 For the best UX use `pickle` with [Pi](https://pi.dev).
 
