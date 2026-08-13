@@ -28,7 +28,10 @@ check the first time a second instance is found in a review.*
 
 **That trigger has fired, and the evidence is stronger than "n=2".** T-098's refinement ran a
 deliberate sweep across all five payload files and declared the payload clean at three sites. Two
-more have surfaced since, each found by a different reader after the sweep:
+more have surfaced since, each found by a different reader after the sweep. **Both are already
+fixed on T-098's branch** — they are cited here as the evidence for building the check, not as
+cleanup still owed. This ticket is a *regression guard*, and the two sites below are its first
+two test cases:
 
 1. **At pickup** — `tickets-README.md:320` cited `pickle`'s own `skill/resources/TEMPLATE.md`, a
    path that only resolves in this repo (installed workspaces have
@@ -101,3 +104,8 @@ Soft couplings only:
   pre-registered criterion the reader does not have, found at review — and neither is catchable
   by the four `rg` patterns that sweep left behind, which is the actual argument for machinery
   over a third sweep
+- 2026-08-13 — patched by T-098's impact sweep (review step 8): T-098 shipped, so both cited
+  instances are now fixed on its branch and the line numbers above (`tickets-README.md:320`,
+  `review-protocol.md:157`) refer to the pre-fix text — read them as test cases for the check,
+  not as outstanding cleanup. Scope and design questions are otherwise unchanged; nothing here
+  was re-graded

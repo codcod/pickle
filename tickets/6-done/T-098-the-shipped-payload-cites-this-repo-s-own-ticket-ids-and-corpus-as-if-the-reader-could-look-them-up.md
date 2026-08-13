@@ -482,6 +482,40 @@ class". The specific divergence F2 found — the hotfix-exception ticket — now
 guard silent, checks 1–6 pass including both over-correction guards, fresh e2e install into a
 throwaway workspace clean, `board audit` 0/0/0 in the install target.
 
+### Scoped re-review of round 2 — F2 resolved, verdict DONE
+
+**F2: fixed.** Glosses and worked example now state one criterion (the ticket's product), and
+`rg -n 'surfaced while|noticed during|operating this|found using' skill/` returns nothing — no
+activity framing survives anywhere in the payload. `SKILL.md:161` and `TEMPLATE.md:153,171`
+carry the token list with pointer-only parentheticals deferring to rules §1, so nothing
+elsewhere contradicts the new definitions. Acceptance test re-run verbatim and green: checks
+1–6 pass, six id keepers intact, tokens 1/1/2, `class` table `diff`-identical, no Go code.
+
+One observation surfaced while verifying F2, recorded rather than actioned:
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| N8 | non-blocking | spec-unclear | noted | The five provenance classes now sit on **two different axes**. On `main` all five were source-phrased ("found…", "found…", "spawned from…", "from…", "from…"); F2's fix made `field-use`/`self-host` **product**-phrased while `review`/`audit`/`chat` stayed **source**-phrased. Where both axes fire, no precedence is stated | **Self-evidencing:** T-099, filed by this ticket's own review, has a product that changes the flow's tooling (`self-host` by the new test) *and* was spawned from a review finding (`review` by source). It was classed `review` — correctly, but by instinct, not by a stated rule | Add one clause giving the specific-origin classes precedence: `review`, `audit` and `chat` name a concrete triggering event and win when they apply; `field-use` vs `self-host` decides the rest |
+
+**Why N8 is `noted` and not another round.** The overlap is **not introduced** by this branch —
+under the old gloss `self-host` ("found operating this repo's own flow") a review-spawned flow
+ticket fitted both classes just as it does now; F2's fix sharpened the axis mismatch without
+creating the ambiguity. The ticket's Outcome is about `field-use`-vs-`self-host` assignability by
+a foreign reader, and that is met and blind-verified. A reader also has a natural resolution and
+reaches it unaided — as this review did with T-099. Per rules §5 it stays in this table with its
+evidence, promotable by a later reviewer citing this row.
+
+**Verdict: no blocking findings → `6-done/`.** Three rounds: 4 sites fixed, 1 blocking finding
+from round 1 (F1), 1 from round 2 (F2), 8 non-blocking findings dispositioned across the three
+passes (6 fixed inline, 2 noted, 1 new ticket → T-099).
+
+**Final disposition summary:** 9 findings across all passes — 2 blocking (F1, F2, both fixed and
+verified); 7 non-blocking: 5 *fixed inline* (N1–N5), 2 *noted* (N6, N8), 1 *new ticket* (N7 →
+T-099).
+
+`cost: estimated S, actual M — three rounds on an S-sized prose ticket; the four sites were
+cheap, but the definitional passage took two attempts to make self-consistent`
+
 **Disposition summary:** 7 findings — 1 blocking (F1 → rework); 6 non-blocking: 5 *fixed inline*
 (N1, N2, N3, N4, N5 — all branch-authored prose, applied in the rework pass), 1 *noted* (N6),
 1 *new ticket* (N7 → T-099, batched as the single guard-check theme).
@@ -569,3 +603,4 @@ the wrong instrument. That is what T-099 exists to replace.
 - 2026-08-13 — REWORK → IN REVIEW: findings fixed
 - 2026-08-13 — IN REVIEW → REWORK: scoped re-review: F1 + N1,N2,N4,N5 verified fixed; F2 blocking (N3's fix left the provenance glosses contradicting their own tie-break)
 - 2026-08-13 — REWORK → IN REVIEW: F2 fixed
+- 2026-08-13 — IN REVIEW → DONE: scoped re-review clean: F2 verified fixed; 9 findings total (2 blocking fixed, 5 fixed inline, 2 noted, 1 -> T-099)
