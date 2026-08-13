@@ -113,12 +113,14 @@ WIP limits, and an optional per-child review addendum. Defaults:
   errors on a ticket already past the gate with one still missing. The check is structural
   only — it proves a step is present, never that it is *good* — so the plan's actual soundness
   is still the agent's call.
-- **Findings — severity, then disposition.** A review gives every finding a severity (blocking →
-  `5-rework/` for a scoped fix; non-blocking → the ticket proceeds) and every non-blocking
-  finding exactly one of **four dispositions** defined in rules §5, recorded in the ticket's
-  `## Review` table. The default is to note and close; a follow-up ticket must pass §5's
-  promotion test and is **batched by theme**, never one per finding. The same four apply at the
-  pickup applicability gate and to refinement splits.
+- **Findings — severity, then class, then disposition.** A review gives every finding a severity
+  (blocking → `5-rework/` for a scoped fix; non-blocking → the ticket proceeds), a **class**
+  naming what kind of defect it was (a closed vocabulary defined once in
+  `resources/review-protocol.md` §5, carried by blocking findings too), and — for every
+  non-blocking finding — exactly one of **four dispositions** defined in rules §5, all recorded
+  in the ticket's `## Review` table. The default is to note and close; a follow-up ticket must
+  pass §5's promotion test and is **batched by theme**, never one per finding. The same four
+  apply at the pickup applicability gate and to refinement splits.
 - **Board rule.** `BOARD.md` is **generated** — regenerated wholesale from the ticket files by
   `pickle ticket new`, `pickle ticket move` and `pickle board sync`. Never edit it by hand;
   hand-written planning notes go in `tickets/NOTES.md`.
@@ -153,10 +155,14 @@ When asked to turn an idea, finding, or request into a ticket:
 4. **Grade it** (impact / complexity / cost) **against the existing backlog** — re-grade
    neighbours if the comparison shifts them.
 5. Note any soft couplings (including cross-child ones) in the Description; hard `depends-on:`
-   only with user sign-off. Record where the ticket came from: the `created … source: …`
-   History line in prose, and — whenever the source is another ticket — that ticket's id in
-   `spawned-by:` (lineage; it never blocks pickup, so it needs no sign-off). Confirm the
-   `created` History line is present and the tree is clean (`pickle board audit`).
+   only with user sign-off. **Record where the ticket came from.** `ticket new` scaffolds a
+   placeholder `created (TO DO). source: pickle ticket new` — overwrite it, exactly as you just
+   overwrote the `## Outcome` placeholder, with a **provenance class** followed by the prose
+   reason: `created (TO DO). source: <field-use|self-host|review|audit|chat>: <prose>` (the five
+   classes are defined in rules §1). Whenever the source is another ticket, also put that
+   ticket's id in `spawned-by:` (lineage; it never blocks pickup, so it needs no sign-off) and
+   use the `review` class on the same line. Confirm the `created` History line is present, is
+   classed, and the tree is clean (`pickle board audit`).
 
 ## Procedure: refine a ticket
 
@@ -250,8 +256,9 @@ child). In short:
    (running the child's configured commands); classify each finding **blocking** (→
    `5-rework/`, scoped re-review after the fix) vs **non-blocking** (→ one of the four
    dispositions in the rules §5, whose default is to note and close; the original proceeds to
-   `6-done/`). A follow-up ticket is the exception, is batched by theme, and is filed with
-   `--spawned-by "<reviewed ticket id>"`.
+   `6-done/`), and give every finding — blocking ones included — a **class** from the closed
+   vocabulary in `resources/review-protocol.md` §5. A follow-up ticket is the exception, is
+   batched by theme, and is filed with `--spawned-by "<reviewed ticket id>"`.
 2. Findings go into the ticket's own `## Review` section — no separate file.
 3. On a concluding verdict, **move the ticket** (`pickle ticket move …`).
 4. **Present the child-project commit message** (and merge-request attributes) **to the user

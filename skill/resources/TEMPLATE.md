@@ -140,7 +140,7 @@ non-empty body, so deleting it fails that check instead of satisfying it.>
 
 <Empty until IN REVIEW. Filled in by the review protocol (`review-protocol.md`): first the
 findings table, using the canonical column skeleton and `class` vocabulary defined once in
-`resources/review-protocol.md §5` (do not restate the column list or the `class` values here).
+`review-protocol.md` §5 (do not restate the column list or the `class` values here).
 Legal disposition values, and which one is the default, are defined in `tickets/README.md §5`.
 Then add a one-line disposition summary, a `cost: estimated …, actual …` line beneath it, the
 verdict, notes from any scoped re-review, and the id of any ticket a finding was spawned into or
