@@ -370,3 +370,4 @@ that guardrail permits by construction, and was verified to pass it during this 
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
 - 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-13 — IN REVIEW → DONE: review passed: 5 non-blocking (all noted), 0 blocking
+- 2026-08-13 — merged to main (PR #39, 7e60dce, https://github.com/codcod/pickle/commit/7e60dce); merge commit, 1 commit kept
