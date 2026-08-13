@@ -10,6 +10,17 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Added
 
+- **The review findings table gains a `class` column** — one of eight closed values
+  (`correctness`, `test-gap`, `docs-gap`, `stale-xref`, `plan-wrong`, `spec-unclear`, `design`,
+  `other`) naming what *kind* of defect a finding was, alongside its severity and disposition.
+  The table now has one canonical, pasteable skeleton in `review-protocol.md`, replacing two
+  drifting prose restatements of its column list. The review's disposition-summary line now has
+  a companion `cost: estimated …, actual …` line. A ticket's `created … source:` History line
+  now leads with a provenance class (`field-use`/`self-host`/`review`/`audit`/`chat`). The
+  previously unspecified `plan amended inline` History line is now defined and required whenever
+  `## Implementation Plan` is edited after a ticket leaves `2-ready/`. Prose-only: no new `board
+  audit` check, no backfill of existing findings (T-085).
+
 - **`pickle ticket move`** and **`pickle ticket new`** now print a ready-to-paste `git add`
   line naming every path they wrote. For a move, that means both the new and the removed
   ticket path plus `tickets/BOARD.md`. Rules §0 requires bookkeeping commits to use explicit
