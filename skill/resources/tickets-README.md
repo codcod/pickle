@@ -120,8 +120,15 @@ referenced, not copied.
 A ticket's status **is the directory it lives in**. There is **no `status:` field in the
 ticket body** — a second source of truth would drift. Status transitions are recorded only as
 dated lines in the ticket's **History** section, in the form
-`YYYY-MM-DD — OLD → NEW: one-clause reason` (first line: `created (TO DO). source: …`; a
-human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>[, <commit>])` — the
+`YYYY-MM-DD — OLD → NEW: one-clause reason` (first line:
+`created (TO DO). source: <field-use|self-host|review|audit|chat>: <prose>`. The leading class
+token is the provenance class, a closed vocabulary: `field-use` (found using pickle on another
+project), `self-host` (found operating this repo's own flow), `review` (spawned from a review
+finding — pairs with `spawned-by:`), `audit` (from `board audit` or a board-audit pass), `chat`
+(from discussion, with no triggering incident). It weights every other signal the ticket record
+carries: a single-repo corpus is exactly what one would overfit to, so knowing which findings
+came from real field use versus self-host versus idle chat matters more than any other axis.
+A human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>[, <commit>])` — the
 commit reference (short SHA, and a full commit link where the remote resolves to a known
 hosting URL) is recommended alongside the MR ref so the line traces straight to what shipped,
 but is not a machine-checked shape. Keep the short SHA even when you add the link: the board's
@@ -131,6 +138,16 @@ move the file + one appended History line; the board regenerates from the result
 `pickle board audit` warns when a transition or merge line runs well past what
 "one-clause" implies — move the analysis into the Description or `tickets/NOTES.md` instead;
 `created` lines and other free-form dated notes carry no such shape and are never flagged.
+
+A plan can also change after the ticket left `2-ready/` — at the applicability gate (skill
+procedure *implement a ticket*, step 3) or mid-build. Any such edit to `## Implementation Plan`
+is recorded as a dated, **non-transition** History line:
+`YYYY-MM-DD — plan amended inline: <what changed and why>`. It is not a transition line and
+carries no `OLD → NEW`, so the over-long-line warning above (scoped to transition and merge
+lines only) does not apply to it. This line is **mandatory** whenever the plan is amended after
+leaving `2-ready/` — not merely a convention. When the amendment retracts a *confirmed design
+decision* the READY gate had certified, the matching review finding is classed `plan-wrong`
+(§5) — the join that makes this line and that finding class one measurement, not two.
 
 ## 2. Statuses
 
@@ -242,8 +259,9 @@ All other transitions are forward-only, as diagrammed.
   Never fold a "created because of" relationship into `depends-on:` to make it visible:
   that would wrongly block pickup. Set at creation and left alone thereafter (like the History
   `source:` line, which it complements rather than replaces — the History line keeps the prose
-  reason, `spawned-by:` makes the link queryable). `pickle ticket new --spawned-by "T-NNN"`
-  fills it in.
+  reason, `spawned-by:` makes the link queryable; a ticket spawned from a finding pairs this
+  frontmatter with the `review` provenance class on that same History line, §1). `pickle ticket
+  new --spawned-by "T-NNN"` fills it in.
   Because follow-up tickets are **batched by theme** (§5), one `spawned-by:` link routinely stands
   for several findings: the link records *which ticket* a follow-up was born from, and the
   parent's Review table is the itemised record of *which findings* it carries. Never split a
@@ -331,7 +349,9 @@ non-blocking — a **disposition**.
 
 **Disposition** decides what happens to the finding. The four are **exhaustive** — every
 non-blocking finding gets exactly one, recorded in a `disposition` column of the ticket's
-Review table:
+Review table, alongside a `class` column naming what *kind* of defect the finding was (a closed
+vocabulary of its own, orthogonal to disposition and never a replacement for it) — defined once,
+in `resources/review-protocol.md` §5, not restated here.
 
 | disposition | when |
 |---|---|

@@ -91,5 +91,11 @@ Five sections, always in this order (the template is the authoring guide):
    executable prompt an implementer runs top-to-bottom (see <<lifecycle>>).
 4. `## Review` — empty until reviewed; findings land here, never in a separate
    file.
-5. `## History` — append-only, dated, newest last: every status transition
-   (`OLD → NEW: reason`), the creation source, and the human's merge record.
+5. `## History` — append-only, dated, newest last. Four line kinds: every
+   status transition (`OLD → NEW: reason`); the creation source, which leads
+   with a provenance class (`field-use`, `self-host`, `review`, `audit` or
+   `chat`) so the record says *how* the work was found, not only that it was;
+   a `plan amended inline: <what changed and why>` line, required whenever the
+   Implementation Plan is edited after the ticket leaves `2-ready/`; and the
+   human's merge record. Only transition and merge lines are held to a length
+   limit — the other two are free prose.

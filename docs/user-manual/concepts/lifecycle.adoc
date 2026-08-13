@@ -104,6 +104,23 @@ The same four dispositions apply at every gate that can spawn a ticket — the
 pickup applicability gate and refinement splits use the same vocabulary and
 the same default (§5).
 
+Every finding also carries a *class* — one word from a closed vocabulary naming
+what *kind* of defect it was, orthogonal to severity and disposition and
+recorded in the same table. Blocking findings carry one too (they take no
+disposition, but the kind-of-defect axis matters most on them). The vocabulary
+and the table's canonical column skeleton are defined once, in the skill's
+`resources/review-protocol.md` §5 — paste the skeleton rather than restating
+the columns. The point is aggregation: severity and disposition say how a
+finding was handled, class says what kept going wrong, and a class that recurs
+is a specification for a `pickle board audit` check.
+
+A review closes with two one-line summaries under the table: the *disposition
+summary*, counting each disposition and naming the ids involved, and a
+`cost: estimated <S|M|L|XL>, actual <S|M|L|XL>` line. The estimate is copied
+verbatim from the ticket's `cost:` frontmatter, which is *not* rewritten — the
+divergence between estimate and actual is the datum, and overwriting the
+estimate would erase it.
+
 == Done ≠ merged
 
 DONE records the review verdict. *Merging is always the human's* and may lag —

@@ -138,25 +138,34 @@ non-empty body, so deleting it fails that check instead of satisfying it.>
 
 ## Review
 
-<Empty until IN REVIEW. Filled in by the review protocol (`review-protocol.md`): a findings
-table with the columns id, severity (blocking/non-blocking), disposition, description, evidence
-and suggestion — legal disposition values, and which one is the default, are defined in
-`tickets/README.md §5`; then a one-line disposition summary, the verdict, notes from any scoped
-re-review, and the id of any ticket a finding was spawned into or absorbed by.>
+<Empty until IN REVIEW. Filled in by the review protocol (`review-protocol.md`): first the
+findings table, using the canonical column skeleton and `class` vocabulary defined once in
+`review-protocol.md` §5 (do not restate the column list or the `class` values here).
+Legal disposition values, and which one is the default, are defined in `tickets/README.md §5`.
+Then add a one-line disposition summary, a `cost: estimated …, actual …` line beneath it, the
+verdict, notes from any scoped re-review, and the id of any ticket a finding was spawned into or
+absorbed by.>
 
 ## History
 
 <!-- append-only; newest last. One line per status transition, dated YYYY-MM-DD, in the form
-     `OLD → NEW: one-clause reason`. The first line is `created (TO DO). source: …`; a human
-     merge is recorded as `merged to <base> (<MR ref>[, <commit>])` — a commit reference (short
-     SHA, and a full commit link where the remote resolves to a known hosting URL) is
-     recommended alongside the MR ref so the line traces straight to what shipped. Examples:
+     `OLD → NEW: one-clause reason`. The first line is
+     `created (TO DO). source: <field-use|self-host|review|audit|chat>: …` (the provenance
+     class vocabulary is defined in `tickets/README.md §1`); a human merge is recorded as
+     `merged to <base> (<MR ref>[, <commit>])` — a commit reference (short SHA, and a full
+     commit link where the remote resolves to a known hosting URL) is recommended alongside the
+     MR ref so the line traces straight to what shipped. A plan edit made after the ticket left
+     `2-ready/` is its own non-transition line, `plan amended inline: <what changed and why>`
+     (`tickets/README.md §1`) — it carries no `OLD → NEW` and is never flagged by the
+     over-long-line warning that applies to transition/merge lines. Examples:
      - 2026-07-13 — TO DO → READY: implementation plan complete
      - 2026-07-14 — READY → IN DEVELOPMENT: picked up, branch feat/T-NNN-<slug>
+     - 2026-07-14 — plan amended inline: dropped task 3, the config file it targeted was removed
+       by T-KKK after this ticket went READY
      - 2026-07-15 — IN DEVELOPMENT → IN REVIEW: acceptance test green
      - 2026-07-16 — IN REVIEW → DONE: review clean; 6 non-blocking, all dispositioned
        (3 fixed in review, 2 absorbed by T-KKK, 1 → T-MMM)
      - 2026-07-17 — merged to main (MR !12, a1b2c3d)
 -->
 
-- YYYY-MM-DD — created (TO DO). source: <chat | review of T-xxx | audit | idea>
+- YYYY-MM-DD — created (TO DO). source: <field-use|self-host|review|audit|chat>: <prose>
