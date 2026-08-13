@@ -545,6 +545,12 @@ dispositions: 2 non-blocking — 1 new ticket (F11 → **T-100**, carrying F6, F
 citing their rows), 1 fixed inline (F12, `ce88d60`); 0 blocking.
 cost: estimated M, actual M — the rework added four small fixes, none of which shifted the band.
 
+**The guard refused this ticket's own merge request.** At step 9, with `origin/main` two
+bookkeeping commits behind local `main`, `pickle hooks run pre-push origin` on this branch exited
+1 and named all five `tickets/` paths the MR range would have carried, printing `git push origin
+main` as the first remedy — which is exactly the sequence rules §0 prescribes. The feature caught,
+on itself, the class of failure it was filed for.
+
 **Verdict: DONE.** All four blocking findings are resolved, each with a test that fails without
 its fix. The guard does what the ticket set out to make it do: it refuses the push T-073 actually
 shipped, on a plain `git push` and on a second push where the stdin range would have waved it
