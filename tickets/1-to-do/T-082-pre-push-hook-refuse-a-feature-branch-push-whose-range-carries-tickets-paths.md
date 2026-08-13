@@ -102,6 +102,14 @@ repair. It would equally have caught T-068's.
   reporting.
 - **T-066** — CLI-surface documentation gaps; item 6's `cli-reference.adoc` re-wording lands in
   the same tree.
+- **T-091** — same family (git hygiene around bookkeeping), different failure: T-091 fixed an
+  *incomplete* bookkeeping commit on the right branch by making `ticket move`/`ticket new` print
+  the full stage set, while this ticket catches bookkeeping on the **wrong** branch. T-091
+  **note-and-closed a second line of defence to this ticket**: a `pre-commit` check that a staged
+  ticket add whose id also exists at another status path in `HEAD` carries a matching staged
+  delete. It runs on the same staged-path data this ticket's guard already reads, so decide at
+  refinement whether it comes along for the ride — building it separately would duplicate the
+  plumbing. Not a dependency in either direction.
 
 ## Implementation Plan
 
@@ -124,3 +132,7 @@ repair. It would equally have caught T-068's.
 - 2026-08-09 — T-084's review impact sweep: noted in the Description that the rebase/keep-history
   default for a root-path child changes the failure's *shape* (preserved, not folded) without
   changing this ticket's scope or its three-dot `origin/<base>...HEAD` check.
+- 2026-08-13 — T-091's review impact sweep: recorded the soft coupling to T-091 and, with it, the
+  `pre-commit` add-without-delete check T-091 note-and-closed to this ticket's staged-path
+  plumbing — a hand-off that until now existed only in T-091's own Description. Scope, grading
+  and open questions unchanged; refinement decides whether to absorb the extra check.
