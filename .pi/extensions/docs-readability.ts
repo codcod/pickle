@@ -1,6 +1,6 @@
 /**
  * docs-readability — Pi extension scaffolded by `pickle install --agent pi`:
- * an optional AsciiDoc/Markdown readability reviewer for ticket-flow reviews
+ * an optional AsciiDoc/Markdown readability reviewer for brine reviews
  * (review protocol Step 4b).
  *
  * Exposes an AI readability reviewer two ways, sharing one core helper:
@@ -16,7 +16,7 @@
  * and returns a list of suggestions. It never edits files — the flow agent
  * applies approved edits with its own tools. This mirrors the opencode
  * `docs-readability` subagent (opencode.jsonc); both share ONE prompt, shipped
- * with the skill at `.agents/skills/ticket-flow/resources/docs-readability.prompt.md`.
+ * with the skill at `.agents/skills/brine/resources/docs-readability.prompt.md`.
  *
  * Mechanism: Pi has no in-process "call model X" primitive, so — like Pi's own
  * examples/extensions/subagent — it spawns a model-pinned `pi` subprocess in
@@ -47,8 +47,8 @@ const PROVIDER = process.env.DOCS_READABILITY_PROVIDER ?? "github-copilot";
 const MODEL = process.env.DOCS_READABILITY_MODEL ?? "gpt-5.4";
 
 // Canonical reviewer prompt — SHARED with the opencode docs-readability agent;
-// shipped with the installed ticket-flow skill.
-const PROMPT_PATH = ".agents/skills/ticket-flow/resources/docs-readability.prompt.md";
+// shipped with the installed brine skill.
+const PROMPT_PATH = ".agents/skills/brine/resources/docs-readability.prompt.md";
 
 // Guard the single-arg prompt size passed to the subprocess.
 const MAX_INPUT_BYTES = 200_000;
@@ -112,7 +112,7 @@ export default function (pi: ExtensionAPI) {
     description:
       "Ask an AI reviewer for readability-only suggestions on the given AsciiDoc " +
       "or Markdown files. Suggestions only — never edits files. Use during a " +
-      "ticket-flow review on the .adoc/.md files the ticket changed.",
+      "ticket review on the .adoc/.md files the ticket changed.",
     promptSnippet:
       "Get docs readability suggestions for changed AsciiDoc/Markdown files (ticket review)",
     promptGuidelines: [

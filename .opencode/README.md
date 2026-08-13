@@ -33,11 +33,11 @@ On first run, authenticate with a provider:
 | Item | Source | Mechanism |
 |---|---|---|
 | Project rules / flow | `AGENTS.md` | Native `AGENTS.md` discovery (cwd → git root) |
-| Ticket-flow engine | `.agents/skills/ticket-flow/` (→ `skill/`) | **Native** `.agents/skills/<name>/SKILL.md` discovery |
+| Brine engine | `.agents/skills/brine/` (→ `skill/`) | **Native** `.agents/skills/<name>/SKILL.md` discovery |
 | Guardrails | `opencode.jsonc` (`permission.bash`) | Declarative config, loaded at startup — no plugin code |
 | Docs-readability reviewer | `opencode.jsonc` (`agent.docs-readability`) | **Native** read-only AI subagent |
 
-`.claude/skills/ticket-flow` is also read (Claude Code compatibility) — same
+`.claude/skills/brine` is also read (Claude Code compatibility) — same
 skill, same name, so this is harmless double discovery, not a conflict.
 
 ## Guardrails (`opencode.jsonc` → `permission.bash`)
