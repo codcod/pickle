@@ -140,7 +140,8 @@ Write directly into the ticket's own **`## Review`** section (no separate file).
 
 A **findings table**, with severity and disposition as **separate columns**. This is the
 canonical skeleton — paste it in and fill rows, rather than restating the column list in prose
-(prose-only drifted into 13 header variants across the corpus before this skeleton existed):
+(a column list restated in prose lets every author reinvent the header, and a findings table that
+is not parsed the same way twice cannot be counted at all):
 
 | id | severity | class | disposition | description | evidence | suggestion |
 |---|---|---|---|---|---|---|
@@ -167,9 +168,10 @@ Each value carries a one-line test:
 | `design` | asymmetry, narrowing, dead code, or performance — no behaviour change |
 | `other` | none of the above; if this exceeds ~10% of rows, the vocabulary is wrong — say so |
 
-Worked examples from `tickets/6-done/`: `T-090 F1` (a byte-widened `unicode.IsSpace` scan
-emitting invalid UTF-8) is `correctness`; `T-084 F2` (a scope rule satisfying both its own
-branches) is `spec-unclear`.
+Two worked examples. A byte-widened `unicode.IsSpace` scan that emits invalid UTF-8 is
+`correctness` — it ships wrong output, regardless of how it reads. A scope rule that is satisfied
+by both of its own branches is `spec-unclear`, not `docs-gap` — the documentation exists, it just
+cannot be executed against.
 
 - **Blocking** — breaks the golden path, ships wrong behaviour, contradicts a locked decision,
   or is missing required docs coverage (4a.1). **Do not fix it inline**, and leave the
