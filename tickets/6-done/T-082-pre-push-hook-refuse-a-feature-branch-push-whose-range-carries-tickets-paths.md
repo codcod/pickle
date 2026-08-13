@@ -606,4 +606,6 @@ through, while never refusing the base branch.
   branch. **PR #45** opened against `main`, keep-history (root-path default). The forge's own
   diff for #45 carries no `tickets/` path — the invariant this ticket mechanizes, verified on
   the merge request it shipped in. Merging is the human's
+- 2026-08-14 — merged to main (PR #45, 6d11b4b, https://github.com/codcod/pickle/commit/6d11b4b);
+  merge commit, 2 commits kept
 
