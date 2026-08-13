@@ -484,3 +484,11 @@ configured commands were re-run green afterwards, and the F2 mutation re-verifie
   detail
 - 2026-08-12 — IN DEVELOPMENT → IN REVIEW: acceptance green: just build/test/lint/docs-check clean; on-repo doctor now 0 error(s), 0 warning(s) (was 1 warning); negative-case throwaway install still warns as before
 - 2026-08-12 — IN REVIEW → DONE: review: 0 blocking, 5 fixed inline, 2 folded into T-042, 3 noted
+- 2026-08-12 — published on approval: 4 atomic commits on `feat/T-046-self-host-aware-doctor`
+  (`dd4b06c` the predicate + upgrade routing, `bbcec7d` doctor's skip + tests, `c691320` docs,
+  `79ab742` the review's five inline fixes), 9 files, history **kept** rather than squashed
+  (rules §0, root-path child). **PR #38** open against `main`. Pre-push gate initially *failed* —
+  `origin/main` was 4 bookkeeping commits behind, so the branch's ancestry carried
+  `tickets/` paths into the push range; resolved exactly as §0 prescribes by pushing `origin main`
+  first, after which the range re-checked clean (9 files, no `tickets/`). **Merging is the
+  human's**; add the `merged:` line here once #38 lands
