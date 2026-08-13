@@ -20,11 +20,10 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-13
 
 | id | title | open findings |
 |---|---|---|
+| T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | review: 4 blocking (F1 marker-block/AGENTS.md docs sites undone, F2 HEAD:refs/heads/feat push bypasses the guard, F3 ho… |
 
 ## READY (impact order, per child)
 

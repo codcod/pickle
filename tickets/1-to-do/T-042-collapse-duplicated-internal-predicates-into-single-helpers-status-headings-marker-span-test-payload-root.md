@@ -97,6 +97,27 @@ different bases (`installFixture` vs `gitFixture`) and so cannot compose — but
 `linkSkill(t, root)` taking the root would serve both. Natural to do alongside item 3, which
 already reworks these two test files' shared payload-root helper.
 
+### 5. The bookkeeping-guard offender scan — two copies, one per hook (T-082 review)
+
+**Folded here by T-082's review (2026-08-14), non-blocking.**
+
+T-082 added a second rule to `internal/hook` (`pre-push` beside `pre-commit`) and, with it, a
+verbatim second copy of the offender scan both rules end with: split the `-z` output of a
+`git diff` on `NUL`, then keep every path where
+`p == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(p, prefix)`.
+
+| site | rule |
+|---|---|
+| `internal/hook/hook.go:505-515` | `CheckPreCommit`, over `git diff --cached --name-only -z` |
+| `internal/hook/prepush.go:129-139` | `CheckPrePush`, over `git diff --name-only -z <base>...<sha>` |
+
+The two differ only in which `git diff` produced the bytes, so the collapse is a helper taking
+the diff output and the prefix and returning the offenders — `ticketsPrefix` and
+`maxListedPaths` are already shared, which is exactly why T-082's refinement concluded the
+shared code "needs no new plumbing"; the conclusion was right about the plumbing and silent
+about the copy. Worth doing because a third hook, or any change to what counts as a `tickets/`
+path, would otherwise have to be made twice — the same argument as items 1 and 4.
+
 ### Sequencing
 
 - **T-043** (test harness + coverage) **landed first** (2026-08-06, D5): it owns `TestMain` and
@@ -168,3 +189,6 @@ already reworks these two test files' shared payload-root helper.
   `Lstat`'s existence answer as T-046's plan asserted — plus a justified-but-collapsible
   self-host-symlink fixture duplication across the two `internal/doctor` test files. Both are
   `folded` dispositions from that review, no new ticket
+- 2026-08-14 — patched by **T-082's review impact sweep**: gained **item 5** (the bookkeeping-guard
+  offender scan, now written once per hook in `internal/hook`). A `folded` disposition from that
+  review, no new ticket. Scope grows by one small item; not re-graded (still low/low/S)

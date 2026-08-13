@@ -126,3 +126,18 @@ assertion closes it.
   branch" to sequence around: this ticket's ground is untouched, and the only overlap left is the
   file itself plus that one new test living beside `TestCheckHooksProbesPATH`, which this ticket
   should expect to see when it edits the probe's assertions
+- 2026-08-14 — patched by **T-082's review impact sweep** (step 8): T-082 generalized
+  `internal/hook` to a `Name`-keyed set and rewrote `doctor`'s `checkHooks` around
+  `hook.StatusAll`, which touches two of this ticket's assumptions without changing its scope.
+  (1) The warning this ticket quotes verbatim — `hooks: …/.git/hooks/pre-commit is installed and
+  current, but the pickle on PATH cannot run the guard …` — **no longer names a hook path**: the
+  probe now runs once after the per-hook loop, so the text is `hooks: installed and current,
+  but …`. The quotation stays accurate as the T-068 measurement it records; treat it as history,
+  not as a string to match against. T-082's own review filed a follow-up wording finding (F9) on
+  that same line, so re-read it after T-082's rework lands rather than trusting either form.
+  (2) Item 2 (a chained foreign hook is never probed) now spans **two** hooks — `cli-reference.adoc`
+  recommends `pickle hooks run pre-push "$@" || exit 1` alongside the `pre-commit` chain line — so
+  whatever this ticket does about `KindForeign` should be decided for the set, not for one name.
+  `probeCapable` itself is **unchanged and still probes with `pre-commit`** (T-082 decision 6
+  deliberately kept it out of this ticket's function), so no collision in either order. Scope and
+  grade unchanged
