@@ -18,8 +18,10 @@ therefore live out here where `pickle upgrade` will not overwrite them:
   the repo's own `AGENTS.md`, `pickle.toml` and skill link is testing in production. Instead:
   - Marker-block changes are made **by hand**, mirroring `install.go`'s `markerBlock()`, inside
     the ticket's diff — so review catches them.
-  - **Test installs go to a throwaway dir with the binary copied in**
-    (`D=$(mktemp -d) && cp pickle "$D/pk" && cd "$D" && ./pk install …`) — never reference the
+  - **Test installs go to a throwaway dir with the binary copied in, always renamed to
+    `pickle-test`** (`D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" &&
+    ./pickle-test install …`) — use this exact name every time, so repeated test binaries
+    read as the same known tool instead of a new one each session — and never reference the
     repo-built binary by its in-repo path from elsewhere.
   - The one legitimate self-upgrade is a **human action**: after a merge, a clean-built
     `pickle upgrade` from `main` may re-stamp `payload_version` and verify the marker block
