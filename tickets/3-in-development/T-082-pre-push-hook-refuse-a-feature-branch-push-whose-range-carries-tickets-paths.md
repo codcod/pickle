@@ -222,6 +222,16 @@ function so the two do not collide in either order.
 - `KindNoRepo` is a whole-repository property: `StatusAll` must not report it once per hook. Emit
   it once and short-circuit.
 
+> **Plan amended inline (implementation):** the constant `PreCommit Name = "pre-commit"` this
+> task specifies collides with the package's pre-existing `func PreCommit(cfg *config.Config, w
+> io.Writer) (bool, error)` (the commit-time rule itself) — Go does not allow a const and a func
+> to share one top-level identifier — and Task 2's own proposed `func PrePush(...)` would collide
+> with the sibling `PrePush Name = "pre-push"` constant the same way. Resolved by renaming the two
+> rule functions to `CheckPreCommit` and `CheckPrePush`, keeping the `Name` constants exactly as
+> specified (they are what CLI dispatch and the shim text read). Every reference below to
+> `PreCommit(cfg, w)` / `PrePush(cfg, remote, refs, w)` as a *function* means `CheckPreCommit` /
+> `CheckPrePush`; `PreCommit` / `PrePush` alone still mean the `Name` constants.
+
 #### Task 2 — the pre-push rule
 
 New `internal/hook/prepush.go`:
@@ -337,26 +347,25 @@ Then the behaviour, in a **throwaway directory with the binary copied in** (neve
 path — `AGENTS.md` self-modify policy):
 
 ```sh
-D=$(mktemp -d) && cp pickle "$D/pk" && cd "$D"
+D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D"
 export PATH="$D:$PATH"
 
 # a bare remote plus a clone, so origin/main is a real remote-tracking ref
 git init -q --bare remote.git
 git clone -q remote.git work && cd work
-./../pk >/dev/null 2>&1 || true          # (binary is on PATH as `pk`; use `pk` below)
-pk install --project pickle . >/dev/null
-git add -A && git commit -qm init && git push -q origin main
-pk hooks install
+pickle-test install --project pickle . >/dev/null
+git add -- $(git status --porcelain | sed 's/^...//') && git commit -qm init && git push -q origin main
+pickle-test hooks install
 
 # 1. feature branch carrying bookkeeping — REFUSED
 git checkout -qb feat/T-999-demo
 mkdir -p tickets/1-to-do && echo x > tickets/1-to-do/T-999-demo.md
-git add tickets && git commit -q --no-verify -m 'board: T-999 demo'
+git add tickets/1-to-do/T-999-demo.md && git commit -q --no-verify -m 'board: T-999 demo'
 git push origin feat/T-999-demo    # expect: non-zero, rejection naming tickets/1-to-do/T-999-demo.md
 
 # 2. the base branch carrying bookkeeping — ALLOWED (decision 3)
 git checkout -q main && echo y > tickets/1-to-do/T-998-demo.md
-git add tickets && git commit -qm 'board: T-998 demo'
+git add tickets/1-to-do/T-998-demo.md && git commit -qm 'board: T-998 demo'
 git push origin main               # expect: exit 0, no output from the guard
 
 # 3. feature branch carrying only code — ALLOWED
@@ -369,9 +378,13 @@ git checkout -q feat/T-999-demo
 git push --no-verify origin feat/T-999-demo   # expect: exit 0
 
 # 5. both hooks are reported
-pk hooks status                    # expect: one line each for pre-commit and pre-push, both v3
-pk doctor -v                       # expect: both hooks reported, probe warning at most once
+pickle-test hooks status           # expect: one line each for pre-commit and pre-push, both v3
+pickle-test doctor -v              # expect: both hooks reported, probe warning at most once
 ```
+
+(Note: the binary must resolve as literally `pickle` on `PATH` for the installed shim's own
+`pickle hooks run <name>` call to find it — a symlink `"$D/pickle" -> pickle-test` placed
+alongside the throwaway copy satisfies this without ever referencing the in-repo path.)
 
 Expected results are the inline comments. Case 1 is the ticket (T-073's real failure), case 2 is
 the way to get the guard wrong, and case 4 proves the guard stayed bypassable.
@@ -442,3 +455,11 @@ this repo's `AGENTS.md` by hand, `CHANGELOG.md`, and `DESIGN.md`. `just docs-che
   six-file doc sweep is not an S
 - 2026-08-13 — TO DO → READY: plan complete: pre-push hook, range = <remote>/<base>...<local>
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
+- 2026-08-13 — plan amended inline: Task 1's `PreCommit`/`PrePush` `Name` constants collide with
+  the pre-existing `PreCommit` rule function and Task 2's proposed `PrePush` rule function (a
+  const and a func cannot share one identifier in Go); renamed the two rule functions to
+  `CheckPreCommit`/`CheckPrePush` and kept the `Name` constants as specified. Also switched the
+  acceptance test's throwaway binary name from `pk` to `pickle-test` to match `AGENTS.md`'s
+  self-modify policy, with a same-directory `pickle` symlink so the installed shim's own `pickle
+  hooks run <name>` call resolves it. Neither changes scope, grading, or any confirmed design
+  decision.
