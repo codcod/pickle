@@ -363,3 +363,4 @@ re-open them:
   narrow but real — it is the check that would have caught T-087's script-injection finding
   automatically.
 - 2026-08-13 — TO DO → READY: plan complete: actionlint+shellcheck in a ci-surface job and just lint, shim shellchecked, three workflows hygiene; cost S -> M
+- 2026-08-13 — READY → IN DEVELOPMENT: picked up
