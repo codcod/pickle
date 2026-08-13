@@ -38,6 +38,18 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Fixed
 
+- **The installed skill no longer addresses its reader as though they were pickle's own repo.**
+  The review protocol's worked examples pointed into a `tickets/6-done/` for ticket ids that
+  exist only here, and justified the findings-table skeleton with a header-variant count from a
+  corpus the reader cannot see; the `field-use`/`self-host` provenance classes were defined as
+  "another project" versus "this repo's own flow", which is unassignable in any project that does
+  not host this flow itself — leaving the two busiest classes to be filled inconsistently. The
+  examples are now self-contained and say *why* each maps to its class, the skeleton's warrant
+  states the mechanism rather than a number, and the two classes are defined as using the flow to
+  ship something else versus working on the flow itself. Prose only: the five provenance tokens
+  and the eight `class` values are byte-identical, and the legitimate uses of a ticket id (syntax
+  filler, provenance tags) are deliberately kept (T-098).
+
 - **`pickle changelog check`** no longer mistakes an id-shaped non-ticket token (`SHA-256`,
   `UTF-8`, `RFC-7231`, `CVE-2024`, ...) for a ticket id. Every id-recognition site now shares
   one predicate, restricted to the ticket-id prefixes the project actually registers in
