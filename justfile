@@ -14,10 +14,17 @@ build:
 test:
     go test ./...
 
-# vet + gofmt check
-lint:
+# vet + gofmt check, plus the CI surface (actionlint/shellcheck) when installed
+lint: lint-ci-surface
     go vet ./...
     @test -z "$(gofmt -l .)" || (echo "gofmt needed:"; gofmt -l .; exit 1)
+
+# Static-check the CI surface: workflow YAML + shell scripts. Both tools are
+# optional locally (a bare checkout needs only Go) and mandatory in ci.yml's
+# ci-surface job, which is where a finding actually blocks a merge (T-088).
+lint-ci-surface:
+    @if command -v actionlint >/dev/null 2>&1; then actionlint; else echo "warning: actionlint not installed — skipping workflow lint (CI still runs it)"; fi
+    @if command -v shellcheck >/dev/null 2>&1; then shellcheck .github/scripts/*.sh; else echo "warning: shellcheck not installed — skipping shell lint (CI still runs it)"; fi
 
 # Validate the AsciiDoc manual via snowball (broken includes/xrefs fail the check)
 docs-check:

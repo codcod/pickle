@@ -15,6 +15,12 @@ on:
 permissions:
   contents: write
 
+# Never cancel a release in progress: a half-cancelled release is worse than a
+# queued one.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest

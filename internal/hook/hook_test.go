@@ -247,6 +247,36 @@ func errorAs(err error, target **exec.ExitError) bool {
 	return false
 }
 
+// TestShimPassesShellcheck runs shellcheck over the actual shim text (Shim()),
+// with -s sh — not the default dialect inference — because the shebang is
+// #!/bin/sh and the shim's portability is the point: it runs on whatever
+// /bin/sh a user has, so it must not contain bashisms shellcheck would only
+// catch under -s sh.
+//
+// This exists because Shim() is a Go string literal, not a .sh file, so it is
+// the one piece of shell source in the repo that `shellcheck **/*.sh` (or
+// lint-ci-surface, T-088) can never see. It is also the highest-stakes shell
+// in the project: it is written into every user's .git/hooks/pre-commit and
+// runs on every one of their commits, and its exit-code handling is load-
+// bearing (T-057 decision 3 — only exit 1 blocks a commit, everything else is
+// reported and waved through). A regression here ships to every installed
+// hook, so it gets its own check rather than riding along on eyeball review.
+func TestShimPassesShellcheck(t *testing.T) {
+	if _, err := exec.LookPath("shellcheck"); err != nil {
+		t.Skip("shellcheck not installed")
+	}
+
+	path := filepath.Join(t.TempDir(), "pre-commit")
+	if err := os.WriteFile(path, []byte(Shim()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := exec.Command("shellcheck", "-s", "sh", path).CombinedOutput()
+	if err != nil {
+		t.Errorf("shellcheck flagged the pre-commit shim:\n%s", out)
+	}
+}
+
 func TestInstallRefusesAForeignHookUnlessForced(t *testing.T) {
 	root := newRepo(t, "main", "")
 	dir, err := HooksDir(root)
