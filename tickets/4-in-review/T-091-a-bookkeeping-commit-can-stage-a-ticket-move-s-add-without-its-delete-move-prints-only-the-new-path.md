@@ -312,3 +312,4 @@ it is the check the worktree audit cannot perform.
   deliberately not absorbed here
 - 2026-08-13 — TO DO → READY: plan complete: shape 1 confirmed (move+new print the full stage set), cost collapsed to S
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
+- 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green

@@ -13,18 +13,18 @@ Last updated: 2026-08-13
 
 ## IN DEVELOPMENT
 
+### pickle (0/1)
+
+| id | title | depends-on |
+|---|---|---|
+
+## IN REVIEW
+
 ### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
 | T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | [] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | depends-on |
-|---|---|---|
 
 ## REWORK
 
