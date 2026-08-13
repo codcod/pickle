@@ -20,11 +20,10 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | [] |
 
 ## REWORK
 
@@ -64,6 +63,7 @@ Last updated: 2026-08-13
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-055 | serve: the board's at-limit WIP badge is never highlighted (.count overrides .wip-full) | low | low | S | [] |  |
+| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | low | low | S | [] |  |
 
 ## DONE
 
@@ -113,6 +113,7 @@ Last updated: 2026-08-13
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | yes — merged to main (PR #30, 904e460, https://github.com/codcod/pickle/commit/904e460); merge commit, 8 commits kept |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
+| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | no — publish-gated |
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
 | T-087 | release CI: make the user-manual build visible and testable without cutting a release | yes — merged to main (PR #25, 084ff7e) |
 | T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | yes — merged to main (PR #41, 64a3794) |

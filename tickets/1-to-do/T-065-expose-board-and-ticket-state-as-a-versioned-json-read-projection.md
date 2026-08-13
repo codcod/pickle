@@ -53,8 +53,11 @@ format as they stand.
 `ticket show --json` as scoped above projects frontmatter, status, slug/path and **parsed
 History** — but nothing from the `## Review` section. That section holds the repo's largest
 structured dataset (**347 dispositioned findings across 53 done tickets**), in a table whose
-columns `TEMPLATE.md` already fixes: id, severity, disposition, description, evidence,
-suggestion. Every cross-ticket question anyone has actually asked of this corpus — the T-045
+columns are fixed by a canonical, pasteable skeleton in `skill/resources/review-protocol.md` §5
+(T-085): id, severity, **class**, disposition, description, evidence, suggestion. Note that
+`TEMPLATE.md` no longer states the column list — it points at that skeleton, so the projection
+has exactly one shape to parse against rather than the 13 header variants the corpus drifted
+into before T-085. Every cross-ticket question anyone has actually asked of this corpus — the T-045
 spawn rate, the rework rate, the review yield — is a group-by over that table, and each was
 answered by hand-grepping markdown.
 
@@ -176,3 +179,10 @@ default to (a) because the ticket is already on the board.
   question this ticket's T-052 soft-coupling note had left open (`board.Drift` —
   `DriftNone`/`DriftLayout`/`DriftRows` — replaces the old single "stale or hand-edited"
   conflation); the note now says what to reuse instead of what to agree on
+- 2026-08-13 — patched by T-085's review impact sweep (step 8): T-085 shipped the `class` column
+  and, more importantly for this ticket, a **single canonical table skeleton** — so the open
+  scope question's claim that "`TEMPLATE.md` already fixes" the columns is now false in both
+  halves (TEMPLATE.md points rather than states, and the list is seven columns led by `class`).
+  The assumption is *strengthened*, not invalidated: the middle option this ticket already
+  costed — project the closed-vocabulary columns only — now has a fixed shape to parse against
+  instead of 13 header variants. Wording corrected; nothing re-graded
