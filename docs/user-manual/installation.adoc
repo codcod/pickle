@@ -59,17 +59,20 @@ pickle hooks install  # optional: guard ticket bookkeeping (once per clone)
 pickle version
 ----
 
-`pickle hooks install` arms a `pre-commit` guard that refuses ticket and board
-bookkeeping staged on a feature branch — the one flow rule nothing else can
-enforce. Hooks live in `.git/` and are never cloned or pushed, so run it once
-in **each** clone you work from, including a fresh clone of a project that
-already uses it. See <<cmd-hooks>>.
+`pickle hooks install` arms two guards. A `pre-commit` guard refuses ticket
+and board bookkeeping staged on a feature branch, and a `pre-push` guard
+refuses pushing such a branch when its range against the remote base still
+carries the same bookkeeping. Together they enforce the one flow rule nothing
+else can: at both commit time and publish time. Hooks live in `.git/` and are
+never cloned or pushed, so run this
+once in **each** clone you work from, including a fresh clone of a project
+that already uses it. See <<cmd-hooks>>.
 
-The guard runs whatever `pickle` is first on your `PATH`, not necessarily the
+Both guards run whatever `pickle` is first on your `PATH`, not necessarily the
 binary that just ran `hooks install` — if you installed from a freshly built
 binary while `PATH` still resolves an older release (Homebrew lag, a second
 clone, `go install` alongside a packaged copy), `pickle doctor` will tell you
-the guard is inert instead of reporting it as healthy
+the guards are inert instead of reporting them as healthy
 (<<hooks-version-skew,version skew>>).
 
 Continue with <<your-first-project>>.

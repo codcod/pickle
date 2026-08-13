@@ -8,6 +8,18 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle hooks` gains a `pre-push` guard** alongside the existing `pre-commit` one. It refuses
+  a push of a feature branch whose range against the remote base (`<remote>/<base>...<local>`,
+  the same three-dot form a forge diffs) still carries a `tickets/` path — the one gap the
+  `pre-commit` hook and the existing `origin/<base>...HEAD` prose check both left open at publish
+  time. `internal/hook` generalized from a single hook to a `Name`-keyed set (`Names()`,
+  `StatusAll`/`InstallAll`/`UninstallAll`/`RefreshAll`), sharing one `ShimVersion` (2 → 3). The
+  base is resolved from remote-tracking refs already on disk, with no network I/O, so a stale ref
+  only ever widens the checked range. Fail-open contract, marker-prefix ownership and the
+  `--no-verify` bypass are unchanged (T-082).
+
 ## [0.7.0] - 2026-08-13
 
 ### Added

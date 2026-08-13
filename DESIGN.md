@@ -230,6 +230,19 @@ built — §13.4). What survives is what the manual doesn't cover:
   calling `pickle hooks run pre-commit`, so the rule tracks each child's configured
   `branch_prefix` instead of baking it into a script; `internal/hook` is one of only two packages
   that shell out to git (the other is `internal/vcs`, T-051).
+- **The same rule, at publish time (`pickle hooks`, T-082).** `pre-commit` is structurally blind
+  to bookkeeping that lands correctly on the base branch but leaks into a feature branch's MR
+  because the remote base was behind at rebase/MR-open time (measured against T-073's real
+  publish incident: `origin/main` at `152fea8`, branch head at `850ea3c`, 7 `tickets/` paths in
+  the three-dot diff). `pre-push` closes it: `internal/hook` generalized from one hook to a
+  `Name`-keyed set (`Names()`, `*All` wrappers over `StatusAll`/`InstallAll`/`UninstallAll`/
+  `RefreshAll`, one shared `ShimVersion`, now 3), and the new rule measures
+  `<remote>/<base>...<local-sha>` — never the stdin range, which is all-zero on a new branch and
+  last-pushed…local afterwards, neither of which is what a forge diffs. The base is resolved
+  from remote-tracking refs already on disk (`HEAD`, then `main`, then `master`) with no network
+  I/O, so a stale ref only ever widens the range — the fail-open direction stays the safe one.
+  The prose check in `tickets-README.md` §0 remains the rule; the hook is its local, bypassable
+  enforcement, not a replacement.
 - **A current shim is not the same guarantee as a working guard (T-068).** The shim resolves
   `pickle` from `PATH` at commit time, which can be an older binary than the one that wrote it
   (Homebrew lag, a second clone, `go install` alongside a packaged copy) — T-057's fail-open

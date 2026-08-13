@@ -1054,8 +1054,9 @@ func MarkerBlock(cfg *config.Config) string {
 		"  bookkeeping is committed on the base branch**, never on a feature branch — a squash-merge\n" +
 		"  folds or drops it and the board then disagrees with the tickets it indexes. This covers a\n" +
 		"  review's own moves too, and it is why a reviewer on a feature branch reads the ticket from\n" +
-		"  the base branch. `pickle hooks install` enforces it locally, once per clone (bypass a\n" +
-		"  single commit with `git commit --no-verify`).\n" +
+		"  the base branch. `pickle hooks install` enforces it locally, once per clone: a `pre-commit`\n" +
+		"  hook refuses the commit, and a `pre-push` hook refuses the push if it still slipped through\n" +
+		"  (bypass either with `--no-verify`).\n" +
 		"\n" +
 		"### Board rule\n" +
 		"\n" +
