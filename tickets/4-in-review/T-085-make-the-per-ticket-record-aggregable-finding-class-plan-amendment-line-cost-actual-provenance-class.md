@@ -473,3 +473,4 @@ nearest comparable payload change — set that precedent. `just docs-check` must
   it a ticket"* procedure's step 5, mirroring how `## Outcome`'s placeholder (T-083) is filled in
   post-scaffold, not emitted by the CLI. The E2E check now asserts the placeholder is unchanged
   instead; checks 1–5 already confirm the five-class form is documented
+- 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
