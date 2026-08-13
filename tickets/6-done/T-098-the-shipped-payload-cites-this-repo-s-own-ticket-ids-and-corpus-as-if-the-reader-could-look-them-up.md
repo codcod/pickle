@@ -604,3 +604,14 @@ the wrong instrument. That is what T-099 exists to replace.
 - 2026-08-13 — IN REVIEW → REWORK: scoped re-review: F1 + N1,N2,N4,N5 verified fixed; F2 blocking (N3's fix left the provenance glosses contradicting their own tie-break)
 - 2026-08-13 — REWORK → IN REVIEW: F2 fixed
 - 2026-08-13 — IN REVIEW → DONE: scoped re-review clean: F2 verified fixed; 9 findings total (2 blocking fixed, 5 fixed inline, 2 noted, 1 -> T-099)
+- 2026-08-13 — published with user approval: bookkeeping pushed to `main` first — the §0 pre-push
+  gate fired exactly as designed, `origin/main...HEAD` carrying `tickets/` paths because
+  `origin/main` was 8 bookkeeping commits behind; pushing the base cleared it and the re-check
+  came back empty. Branch then pushed and MR
+  [#43](https://github.com/codcod/pickle/pull/43) opened against `main` at `9c5539f`
+  (5 commits kept rather than squashed — the root-path default, so both rework rounds stay
+  visible; 4 files, +51/-15). CI green: `build-test`, `ci-surface`, `goreleaser-check` all pass.
+  `manual-smoke` correctly did **not** run — it is path-filtered to `docs/**`, `snowball.yaml`
+  and the build script, none of which this branch touches. PR is MERGEABLE / CLEAN. Awaiting the
+  human merge — append the `merged to main (#43, <sha>)` line and run `pickle board sync` once it
+  lands, which also clears `board audit`'s standing DONE-without-MERGED warning
