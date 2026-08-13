@@ -140,8 +140,8 @@ Write directly into the ticket's own **`## Review`** section (no separate file).
 
 A **findings table**, with severity and disposition as **separate columns**. This is the
 canonical skeleton — paste it in and fill rows, rather than restating the column list in prose
-(a column list restated in prose lets every author reinvent the header, and a findings table that
-is not parsed the same way twice cannot be counted at all):
+(a prose list lets every author reinvent the header, and reviews whose tables are not shaped the
+same way twice cannot be compared):
 
 | id | severity | class | disposition | description | evidence | suggestion |
 |---|---|---|---|---|---|---|
@@ -153,9 +153,9 @@ restate it elsewhere.
 
 ### The `class` column — closed vocabulary
 
-One word per row, from this closed list only (do not add, rename or re-order it — the
-pre-registered criterion this column exists to test needs a fixed vocabulary to count against).
-Each value carries a one-line test:
+One word per row, from this closed list only (do not add, rename or re-order it — its value is
+comparability across reviews, which a vocabulary that shifts under you destroys). Each value
+carries a one-line test:
 
 | class | test |
 |---|---|
@@ -169,9 +169,9 @@ Each value carries a one-line test:
 | `other` | none of the above; if this exceeds ~10% of rows, the vocabulary is wrong — say so |
 
 Two worked examples. A byte-widened `unicode.IsSpace` scan that emits invalid UTF-8 is
-`correctness` — it ships wrong output, regardless of how it reads. A scope rule that is satisfied
-by both of its own branches is `spec-unclear`, not `docs-gap` — the documentation exists, it just
-cannot be executed against.
+`correctness`, even if the surrounding code and its comments read as correct. A scope rule that is
+satisfied by both of its own branches is `spec-unclear`, not `docs-gap` — the documentation
+exists, it just cannot be executed against.
 
 - **Blocking** — breaks the golden path, ships wrong behaviour, contradicts a locked decision,
   or is missing required docs coverage (4a.1). **Do not fix it inline**, and leave the
