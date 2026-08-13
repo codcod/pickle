@@ -396,4 +396,24 @@ pass.
   `cp pickle` picks up a stale binary unless `just build` has run first (the acceptance test
   already orders it that way). Audit otherwise confirmed the plan: all quoted sites verbatim at
   the stated lines, zero board delta since READY, and every read-only check behaving as predicted
-- 2026-08-13 — READY → IN DEVELOPMENT: picked up
+- 2026-08-13 — implemented. **Four sites fixed, prose only**, in three atomic commits (root-path
+  child, history kept): `f03e6e9` the two `review-protocol.md` edits — worked examples now
+  self-contained and carrying the `spec-unclear`-not-`docs-gap` contrast that does the
+  discriminating work the bare ids never did, and the skeleton's warrant restated as the
+  mechanism (a header reinvented per author cannot be counted) with no number; `dafaf0c` the
+  `field-use`/`self-host` glosses redefined as *using the flow to ship something else* versus
+  *working on the flow itself*, plus the pickup audit's fourth site (the repo-only path
+  `skill/resources/TEMPLATE.md` → "this skill's own `resources/TEMPLATE.md`"); `f644f52`
+  `AGENTS.md` + `CHANGELOG.md`. **Nothing over-corrected:** the five provenance tokens are
+  byte-identical (1/1/2 hits), the eight `class` values `diff` clean against `main`, and all
+  **six legitimate id references survive** — four provenance tags and two lines of syntax filler,
+  none of which asks the reader to resolve anything. No Go code: the
+  `git diff --name-only main...HEAD | grep -E '^(internal|cmd)/|\.go$'` guard prints nothing.
+  `just build`/`test`/`lint`/`docs-check` all green. The Outcome was verified from the reader's
+  position rather than this repo's — a fresh `./pk install` into a throwaway dir gives a
+  workspace whose `.agents/skills/ticket-flow/` matches neither `tickets/6-done/T-[0-9]` nor
+  `the corpus|this repo`, with `board audit` clean. `NOTES.md` (Task 5) records the sweep, the
+  six deliberate keepers, the n=2 pre-registered trigger and the four `rg` patterns — plus the
+  fifth shape that escapes all of them, the repo-only path, which is exactly how site four
+  survived refinement
+- 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
