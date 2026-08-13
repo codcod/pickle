@@ -64,10 +64,25 @@ func runTicketMove(args []string) int {
 		return errf("%v", err)
 	}
 	fmt.Printf("moved %s: %s → %s  (%s)\n", id, res.From, res.To, res.Path)
+	fmt.Printf("  removed  %s\n", res.OldPath)
+	fmt.Printf("  stage:   %s\n", stageLine(res.Path, res.OldPath))
 	for _, w := range res.Warnings {
 		fmt.Printf("  warning: %s\n", w)
 	}
 	return exitOK
+}
+
+// stageLine renders the ready-to-paste `git add` for the paths a writing
+// command just touched — rules §0 requires bookkeeping commits to name explicit
+// pathspecs, and naming them from memory is how a rename lands add-without-delete
+// (T-091). Order is fixed: new path, removed path (if any), then the board.
+func stageLine(newPath, oldPath string) string {
+	paths := []string{newPath}
+	if oldPath != "" {
+		paths = append(paths, oldPath)
+	}
+	paths = append(paths, filepath.Join("tickets", "BOARD.md"))
+	return "git add " + strings.Join(paths, " ")
 }
 
 func runTicketNew(args []string) int {
@@ -147,6 +162,7 @@ func runTicketNew(args []string) int {
 		return errf("%v", err)
 	}
 	fmt.Printf("created %s  (%s)\n", id, rel)
+	fmt.Printf("  stage:   %s\n", stageLine(rel, ""))
 	return exitOK
 }
 

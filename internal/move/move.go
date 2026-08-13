@@ -25,6 +25,7 @@ type Result struct {
 	From     string // source status display name
 	To       string // target status display name
 	Path     string // new path, relative to root
+	OldPath  string // previous path, relative to root (the file this move removed)
 	Warnings []string
 }
 
@@ -131,10 +132,12 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 	if err := os.WriteFile(newPath, []byte(newText), 0o644); err != nil {
 		return res, err
 	}
+	oldRel := filepath.Join("tickets", from.Dir, t.Base()+".md")
 	if err := os.Remove(t.Path); err != nil {
 		return res, err
 	}
 	res.Path = newRel
+	res.OldPath = oldRel
 
 	if err := board.Regenerate(def, root, cfg); err != nil {
 		return res, fmt.Errorf("moved file but failed to regenerate board: %w", err)

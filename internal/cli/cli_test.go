@@ -592,6 +592,69 @@ func TestTicketNewSpawnedBy(t *testing.T) {
 	}
 }
 
+// TestTicketMovePrintsStageLine is the T-091 regression: a move is a rename, so
+// the printed summary must name both the new and the removed path plus the
+// board, as a literal ready-to-paste `git add` — a bookkeeping commit made
+// with rules §0's explicit pathspecs can otherwise stage the add without the
+// delete. The first line must stay byte-identical (decision 2).
+func TestTicketMovePrintsStageLine(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"ticket", "move", "T-001", "dropped", "--reason", "test fixture"}); got != exitOK {
+			t.Fatalf("ticket move = %d", got)
+		}
+	})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) < 3 {
+		t.Fatalf("expected at least 3 lines, got %d:\n%s", len(lines), out)
+	}
+	wantFirst := "moved T-001: TO DO → DROPPED  (tickets/7-dropped/T-001-fixture.md)"
+	if lines[0] != wantFirst {
+		t.Errorf("first line = %q, want %q", lines[0], wantFirst)
+	}
+	wantRemoved := "  removed  tickets/1-to-do/T-001-fixture.md"
+	if lines[1] != wantRemoved {
+		t.Errorf("removed line = %q, want %q", lines[1], wantRemoved)
+	}
+	wantStage := "  stage:   git add tickets/7-dropped/T-001-fixture.md tickets/1-to-do/T-001-fixture.md tickets/BOARD.md"
+	if lines[2] != wantStage {
+		t.Errorf("stage line = %q, want %q", lines[2], wantStage)
+	}
+}
+
+// TestTicketNewPrintsStageLine is T-091's other half: `ticket new` also writes
+// two paths (the ticket and the regenerated board), so its stage line must name
+// both and must not print a `removed` line — it removes nothing. The first
+// line must stay byte-identical (decision 2).
+func TestTicketNewPrintsStageLine(t *testing.T) {
+	newProject(t)
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+			t.Fatalf("ticket new = %d", got)
+		}
+	})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected exactly 2 lines (no removed line), got %d:\n%s", len(lines), out)
+	}
+	wantFirst := "created T-001  (tickets/1-to-do/T-001-fixture.md)"
+	if lines[0] != wantFirst {
+		t.Errorf("first line = %q, want %q", lines[0], wantFirst)
+	}
+	wantStage := "  stage:   git add tickets/1-to-do/T-001-fixture.md tickets/BOARD.md"
+	if lines[1] != wantStage {
+		t.Errorf("stage line = %q, want %q", lines[1], wantStage)
+	}
+	for _, ln := range lines {
+		if strings.Contains(ln, "removed") {
+			t.Errorf("ticket new printed a removed line, want none:\n%s", out)
+		}
+	}
+}
+
 // TestTicketNewUsesChildPrefix pins T-058 end to end: a child registered with a
 // ticket_prefix gets ids under that prefix, numbered independently of the default
 // "T" child, and the resulting tree audits clean.

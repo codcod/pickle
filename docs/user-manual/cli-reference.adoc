@@ -464,6 +464,16 @@ filed is legal input. Repeated ids are de-duplicated. The agent fills the
 Description prose afterwards; the full `TEMPLATE.md` (installed with the
 skill) is the authoring guide.
 
+Because it writes both the new ticket file and the regenerated `BOARD.md`, the
+command prints a second, ready-to-paste `git add` line naming both — rules §0
+requires bookkeeping commits to use explicit pathspecs, and a board update
+named from memory is easy to leave out:
+
+----
+created T-099  (tickets/1-to-do/T-099-example.md)
+  stage:   git add tickets/1-to-do/T-099-example.md tickets/BOARD.md
+----
+
 [#cmd-ticket-move]
 == `pickle ticket move`
 
@@ -512,6 +522,20 @@ backward/abort:  in-development → ready,  ready → to-do,  (any non-terminal)
 
 After applying, `ticket move` runs `board audit` as a self-check and fails
 loudly if the tree is no longer clean.
+
+A move is a *rename*: it writes the ticket at its new status path and removes
+the old one. The printed summary therefore names **both** halves, plus the
+regenerated `BOARD.md`, as a ready-to-paste `git add` — the old path is the
+one rules §0's explicit-pathspec rule needs but is easy to leave out from
+memory, and a bookkeeping commit that stages the add without the delete lands
+a duplicate ticket id in git history that a worktree-based `board audit`
+cannot see:
+
+----
+moved T-081: IN REVIEW → DONE  (tickets/6-done/T-081-example.md)
+  removed  tickets/4-in-review/T-081-example.md
+  stage:   git add tickets/6-done/T-081-example.md tickets/4-in-review/T-081-example.md tickets/BOARD.md
+----
 
 [#cmd-board-audit]
 == `pickle board audit`

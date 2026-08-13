@@ -8,6 +8,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle ticket move`** and **`pickle ticket new`** now print a ready-to-paste `git add`
+  line naming every path they wrote. For a move, that means both the new and the removed
+  ticket path plus `tickets/BOARD.md`. Rules §0 requires bookkeeping commits to use explicit
+  pathspecs, and the old path is the one most easily omitted from memory — letting a rename's
+  add land without its delete, and corrupting git history in a way the worktree-based
+  `board audit` cannot see (T-091).
+
 ### Changed
 
 - **`pickle doctor`** no longer warns about `payload_version` in a self-hosting checkout

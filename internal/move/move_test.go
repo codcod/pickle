@@ -256,6 +256,24 @@ func TestMoveIsWriteNewThenRemoveOld(t *testing.T) {
 	}
 }
 
+// TestMoveOldPathIsSourceStatusPath is the T-091 regression: a move's Result
+// carries the removed file's own path, not just the new one, so a caller
+// naming both paths from the Result can never stage the add without the
+// delete — the pairing is the point.
+func TestMoveOldPathIsSourceStatusPath(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	res := mustMove(t, root, cfg, "T-001", "ready", "")
+
+	wantOld := filepath.Join("tickets", "1-to-do", "T-001-alpha.md")
+	if res.OldPath != wantOld {
+		t.Errorf("OldPath = %q, want %q", res.OldPath, wantOld)
+	}
+	if _, err := os.Stat(filepath.Join(root, res.OldPath)); !os.IsNotExist(err) {
+		t.Errorf("OldPath %q still exists after move: %v", res.OldPath, err)
+	}
+}
+
 // TestMoveRegeneratesWIPCounts is the T-014·1 regression: a move refreshes the
 // whole board, so the (n/limit) counts can never go stale.
 func TestMoveRegeneratesWIPCounts(t *testing.T) {
