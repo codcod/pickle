@@ -423,6 +423,45 @@ against `main`); a fresh e2e install into a throwaway dir matches neither
 `tickets/6-done/T-[0-9]` nor `the corpus|this repo`, `board audit` clean. Scope held at exactly
 F1 + N1–N5 — no new finding surfaced during the fix pass.
 
+### Scoped re-review of round 1 — 5 of 6 verified, 1 not resolved
+
+Re-verified only the six rows the rework was scoped to, per the protocol's scoped-re-review
+rule. Mechanical state is green throughout: `just build`/`test`/`lint`/`docs-check` clean, the
+no-Go-code guard silent, checks 1–6 pass (six id keepers, tokens 1/1/2, `class` table
+`diff`-identical against `main`).
+
+| finding | verdict |
+|---|---|
+| F1 | **fixed.** `rg -n 'pre-registered' skill/` now returns nothing; the warrant reads "its value is comparability across reviews, which a vocabulary that shifts under you destroys" — true in any project, cites nothing the reader lacks |
+| N1 | **fixed.** Applied verbatim; the echo is gone and the sentence is shorter |
+| N2 | **fixed.** Applied verbatim; direction corrected, superlative gone |
+| N3 | **not resolved** — see F2 |
+| N4 | **fixed.** Example 1 now carries its own contrast rather than restating the `correctness` row |
+| N5 | **fixed.** "Four shapes", path shape enumerated and flagged as the most easily missed |
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F2 | blocking | spec-unclear | — | **N3's fix replaced an ambiguity with a contradiction.** The parenthetical glosses still define `field-use`/`self-host` by **activity** ("surfaced while…"), but the tie-break added beneath them says "the test is the ticket's own *product*, **not the activity it was noticed during**" — which repudiates the criterion the glosses are written in. The two halves give different answers, and the glosses are what a reader actually applies, since they sit attached to the tokens | `skill/resources/tickets-README.md:125-133`. Blind test: a reader given only this paragraph and four scenarios reported it "decidable, but not consistent as written", found the glosses "mis-sort three of four cases" read alone, and isolated a **clean unresolved divergence** the worked example does not cover — *"the READY gate blocked a legitimate hotfix, file a ticket proposing an exception path"*: the `field-use` gloss ("by-product of real work") says `field-use`, the tie-break says `self-host` | Phrase **both glosses by product** so gloss and tie-break state one criterion, then delete the tie-break sentence as redundant: `field-use` (the ticket's product changes what you ship, not the flow — the finding is a by-product of real work), `self-host` (the ticket's product changes the flow itself, its tooling or its own docs). Keep one short example *agreeing* with the glosses: "a slow `board audit` spotted mid-feature is `self-host` — fixing it changes the tooling." This is net **shorter** than what is there now |
+
+**Disposition summary:** 1 finding — 1 blocking (F2 → rework round 2); 0 non-blocking. F1 and
+N1–N5 all verified fixed; no finding outside the round-1 scope was raised, and the review did
+not re-audit the feature.
+
+`cost: estimated S, actual M — three rounds on one S-sized prose ticket; the sites were cheap,
+but the definitional passage needed more care than "reword two glosses" implied`
+
+**Why F2 blocks rather than being fixed inline.** Rework round 1 authored the contradiction, so
+by rules §5 it *is* eligible for *fixed inline* — the bar is causation, and this branch caused it.
+It is nonetheless blocking, on this ticket's own stated standard: the Description calls the
+`field-use`/`self-host` axis "the most consequential of the three" sites and argues that an
+unassignable vocabulary "silently produces a signal nobody can trust, which is worse than having
+none". Glosses that mis-sort three of four cases when read alone fail that bar. Nor should the
+ticket's headline passage be rewritten by the reviewer's own hand and shipped unre-verified —
+that is precisely the content that earns a second pair of eyes.
+
+**Round 2 scope is F2 alone**, and the suggestion above is the whole fix. The two prior rounds
+found sites; this one is a single contained passage with the replacement text already written.
+
 **Disposition summary:** 7 findings — 1 blocking (F1 → rework); 6 non-blocking: 5 *fixed inline*
 (N1, N2, N3, N4, N5 — all branch-authored prose, applied in the rework pass), 1 *noted* (N6),
 1 *new ticket* (N7 → T-099, batched as the single guard-check theme).
@@ -508,3 +547,4 @@ the wrong instrument. That is what T-099 exists to replace.
   acceptance test re-run and green, including both over-correction guards. Scope held exactly
   at F1 + N1–N5
 - 2026-08-13 — REWORK → IN REVIEW: findings fixed
+- 2026-08-13 — IN REVIEW → REWORK: scoped re-review: F1 + N1,N2,N4,N5 verified fixed; F2 blocking (N3's fix left the provenance glosses contradicting their own tie-break)
