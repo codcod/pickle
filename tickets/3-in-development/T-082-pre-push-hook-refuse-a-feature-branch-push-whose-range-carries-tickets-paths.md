@@ -441,3 +441,4 @@ this repo's `AGENTS.md` by hand, `CHANGELOG.md`, and `DESIGN.md`. `just docs-che
   the backlog and confirmed unchanged at medium/medium/M — the six-function generalization plus a
   six-file doc sweep is not an S
 - 2026-08-13 — TO DO → READY: plan complete: pre-push hook, range = <remote>/<base>...<local>
+- 2026-08-13 — READY → IN DEVELOPMENT: picked up
