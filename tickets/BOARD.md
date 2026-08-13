@@ -20,11 +20,10 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-13
 
 | id | title | open findings |
 |---|---|---|
+| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | review: 1 blocking (F1 pre-registered-criterion warrant still repo-only); 6 non-blocking dispositioned (5 fixed inline,… |
 
 ## READY (impact order, per child)
 
@@ -55,6 +55,7 @@ Last updated: 2026-08-13
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
+| T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
