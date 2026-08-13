@@ -35,7 +35,8 @@ import (
 
 // ShimVersion is the version of the shim this binary writes. It is recorded in
 // the marker line so `pickle doctor` can spot an older shim and `pickle
-// upgrade` can refresh it.
+// upgrade` can refresh it. Both hooks share one version: a bump refreshes
+// both, and there is no per-hook version to keep in sync.
 //
 // v2 (T-068): the guard-absent branch prints a one-line stderr notice instead
 // of exiting silently — the same reasoning as the unexpected-exit-code line
@@ -43,10 +44,27 @@ import (
 // prevent. The bump also fixes a cosmetic defect in v1's own marker line (a
 // doubled `#`, see marker()/Shim() below) — both are shim-text changes, so
 // both ride the same version bump `pickle upgrade` already refreshes on.
-const ShimVersion = 2
+//
+// v3 (T-082): a second hook, pre-push, joined pre-commit. Adding a hook is
+// itself a shim-text change (a new shim body exists where none did), so it
+// rides the same version bump rather than growing a hook-specific counter.
+const ShimVersion = 3
 
-// HookName is the only hook pickle installs.
-const HookName = "pre-commit"
+// Name identifies one of the git hooks pickle installs.
+type Name string
+
+// The hooks pickle installs. Names iterates them in the order every plural
+// operation (StatusAll, InstallAll, UninstallAll, RefreshAll) uses — the only
+// place that ordering is decided, so no caller grows its own loop or its own
+// order.
+const (
+	PreCommit Name = "pre-commit"
+	PrePush   Name = "pre-push"
+)
+
+// Names returns every hook pickle installs, in the order plural operations
+// process them.
+func Names() []Name { return []Name{PreCommit, PrePush} }
 
 // markerPrefix identifies a pickle-owned hook. Ownership is recorded in the
 // file rather than in pickle.toml (T-057 decision 6): the file on disk is the
@@ -60,34 +78,50 @@ const markerPrefix = "# pickle:hook v"
 // hook and cannot have one (T-057 decision 12).
 var ErrNoRepo = errors.New("not a git repository (or git is unavailable)")
 
-// Shim returns the text of the pre-commit hook.
+// Shim returns the text of the named hook.
 //
 // The exit-code handling is the whole of T-057 decision 3 and must not be
-// "simplified" to `pickle hooks run pre-commit || exit 1`: an *older* pickle
+// "simplified" to `pickle hooks run <name> || exit 1`: an *older* pickle
 // first on PATH exits 2 on the unknown `hooks` verb, and treating any non-zero
-// exit as a violation would block every commit in the repository. Only exit 1
-// means "violation". Anything else is reported and waved through, because a
-// guard that cannot run must never stop a commit — and a guard that is silently
-// dead is the exact failure this hook exists to prevent, so it says so.
+// exit as a violation would block every commit or push in the repository.
+// Only exit 1 means "violation". Anything else is reported and waved through,
+// because a guard that cannot run must never stop a commit or push — and a
+// guard that is silently dead is the exact failure this hook exists to
+// prevent, so it says so.
 //
 // The guard-absent branch (T-068, ShimVersion 2) is held to the same rule: it
 // must never grow an `exit 1` — a missing `pickle` is exactly the degraded
 // state the fail-open contract exists for — but it must not stay silent
 // either, for the same reason the unexpected-exit-code line below isn't
 // silent.
-func Shim() string {
+//
+// Only the one-line description comment and the invocation vary by hook
+// (T-082): pre-push additionally forwards argv (`"$@"`, git's own
+// `<remote-name> [<remote-url>]`) and inherits stdin unchanged, which a shell
+// call does by default when neither is redirected.
+func Shim(name Name) string {
+	var desc, invocation string
+	switch name {
+	case PrePush:
+		desc = "# Refuses to push a feature branch whose range still carries tickets/ paths. The rule\n" +
+			"# lives in the binary so it tracks pickle.toml. Bypass one push with `git push --no-verify`.\n"
+		invocation = "pickle hooks run " + string(PrePush) + " \"$@\"\n"
+	default: // PreCommit
+		desc = "# Refuses ticket bookkeeping (tickets/) staged on a feature branch. The rule lives in the\n" +
+			"# binary so it tracks pickle.toml. Bypass one commit with `git commit --no-verify`.\n"
+		invocation = "pickle hooks run " + string(PreCommit) + "\n"
+	}
 	return "#!/bin/sh\n" +
 		marker() + " — installed by `pickle hooks install`, removed by `pickle hooks uninstall`.\n" +
-		"# Refuses ticket bookkeeping (tickets/) staged on a feature branch. The rule lives in the\n" +
-		"# binary so it tracks pickle.toml. Bypass one commit with `git commit --no-verify`.\n" +
+		desc +
 		"command -v pickle >/dev/null 2>&1 || {\n" +
-		"  echo \"pickle: bookkeeping guard skipped (pickle not found on PATH)\" >&2\n" +
+		"  echo \"pickle: " + string(name) + " guard skipped (pickle not found on PATH)\" >&2\n" +
 		"  exit 0                                        # guard absent, never blocking\n" +
 		"}\n" +
-		"pickle hooks run " + HookName + "\n" +
+		invocation +
 		"rc=$?\n" +
 		"[ \"$rc\" -eq 1 ] && exit 1                     # 1 = violation, and only 1\n" +
-		"[ \"$rc\" -ne 0 ] && echo \"pickle: bookkeeping guard skipped (hooks run exited $rc)\" >&2\n" +
+		"[ \"$rc\" -ne 0 ] && echo \"pickle: " + string(name) + " guard skipped (hooks run exited $rc)\" >&2\n" +
 		"exit 0\n"
 }
 
@@ -174,16 +208,17 @@ func HooksDir(root string) (string, error) {
 // Kind is what pickle found at the hook path.
 type Kind string
 
-// The states a pre-commit hook can be in, from pickle's point of view.
+// The states a hook can be in, from pickle's point of view.
 const (
 	KindNoRepo  Kind = "no-repo" // not a git repository, or git unavailable
-	KindAbsent  Kind = "absent"  // no pre-commit hook at all
+	KindAbsent  Kind = "absent"  // no hook of this name at all
 	KindOwned   Kind = "owned"   // written by pickle (carries the marker)
 	KindForeign Kind = "foreign" // someone else's hook — never touched
 )
 
-// State describes the installed hook.
+// State describes one installed hook.
 type State struct {
+	Name    Name
 	Kind    Kind
 	Path    string // resolved hook path (empty when there is no repository)
 	Version int    // shim version from the marker, when Kind is KindOwned
@@ -195,6 +230,7 @@ type State struct {
 // Kind is the state the call found, so callers can branch on it without parsing
 // Skipped.
 type Result struct {
+	Name    Name
 	Path    string
 	Kind    Kind
 	Changed bool   // the file was written or removed
@@ -202,29 +238,49 @@ type Result struct {
 	Skipped string // why nothing happened, for the caller to report verbatim
 }
 
-// Status inspects the pre-commit hook of the repository at root. A missing
+// Status inspects the named hook of the repository at root. A missing
 // repository is reported as KindNoRepo, not as an error.
-func Status(root string) (State, error) {
+func Status(root string, name Name) (State, error) {
 	dir, err := HooksDir(root)
 	if err != nil {
 		if errors.Is(err, ErrNoRepo) {
-			return State{Kind: KindNoRepo}, nil
+			return State{Name: name, Kind: KindNoRepo}, nil
 		}
-		return State{}, err
+		return State{Name: name}, err
 	}
-	path := filepath.Join(dir, HookName)
+	path := filepath.Join(dir, string(name))
 	body, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return State{Kind: KindAbsent, Path: path}, nil
+			return State{Name: name, Kind: KindAbsent, Path: path}, nil
 		}
-		return State{Path: path}, err
+		return State{Name: name, Path: path}, err
 	}
 	v, ok := markerVersion(string(body))
 	if !ok {
-		return State{Kind: KindForeign, Path: path}, nil
+		return State{Name: name, Kind: KindForeign, Path: path}, nil
 	}
-	return State{Kind: KindOwned, Path: path, Version: v, Stale: v != ShimVersion}, nil
+	return State{Name: name, Kind: KindOwned, Path: path, Version: v, Stale: v != ShimVersion}, nil
+}
+
+// StatusAll inspects every hook pickle installs, in Names() order.
+//
+// KindNoRepo is a whole-repository property, not a per-hook one: the first
+// hook to observe it short-circuits the rest, so a caller printing one line
+// per State never prints "no git repository" once per hook.
+func StatusAll(root string) ([]State, error) {
+	var out []State
+	for _, name := range Names() {
+		st, err := Status(root, name)
+		if err != nil {
+			return out, err
+		}
+		if st.Kind == KindNoRepo {
+			return []State{st}, nil
+		}
+		out = append(out, st)
+	}
+	return out, nil
 }
 
 // markerVersion extracts the shim version from a pickle-owned hook.
@@ -248,37 +304,60 @@ func markerVersion(body string) (int, bool) {
 	return v, true
 }
 
-// Install writes the shim. A foreign pre-commit hook is refused rather than
-// overwritten — someone else's hook is not pickle's to replace — unless force
-// is set. Not being a git repository is an error here and nowhere else: the
-// user asked for a hook.
-func Install(root string, force bool) (Result, error) {
-	st, err := Status(root)
+// Install writes the named shim. A foreign hook of that name is refused
+// rather than overwritten — someone else's hook is not pickle's to replace —
+// unless force is set. Not being a git repository is an error here and
+// nowhere else: the user asked for a hook.
+func Install(root string, name Name, force bool) (Result, error) {
+	st, err := Status(root, name)
 	if err != nil {
-		return Result{}, err
+		return Result{Name: name}, err
 	}
 	if st.Kind == KindNoRepo {
-		return Result{}, fmt.Errorf("%w: %s", ErrNoRepo, root)
+		return Result{Name: name}, fmt.Errorf("%w: %s", ErrNoRepo, root)
 	}
 	if st.Kind == KindForeign && !force {
-		return Result{Path: st.Path, Kind: st.Kind}, fmt.Errorf(
+		return Result{Name: name, Path: st.Path, Kind: st.Kind, Skipped: "not pickle's — left in place"}, fmt.Errorf(
 			"%s already exists and was not written by pickle; left untouched.\n"+
 				"Re-run with --force to replace it, or chain the guard from your own hook:\n"+
 				"    pickle hooks run %s || exit 1",
-			st.Path, HookName)
+			st.Path, name)
 	}
 	if st.Kind == KindOwned && !st.Stale {
-		if cur, err := os.ReadFile(st.Path); err == nil && string(cur) == Shim() {
-			return Result{Path: st.Path, Kind: st.Kind, Skipped: "current"}, nil
+		if cur, err := os.ReadFile(st.Path); err == nil && string(cur) == Shim(name) {
+			return Result{Name: name, Path: st.Path, Kind: st.Kind, Skipped: "current"}, nil
 		}
 	}
 	if err := os.MkdirAll(filepath.Dir(st.Path), 0o755); err != nil {
-		return Result{Path: st.Path, Kind: st.Kind}, err
+		return Result{Name: name, Path: st.Path, Kind: st.Kind}, err
 	}
-	if err := writeExecutable(st.Path, Shim()); err != nil {
-		return Result{Path: st.Path, Kind: st.Kind}, err
+	if err := writeExecutable(st.Path, Shim(name)); err != nil {
+		return Result{Name: name, Path: st.Path, Kind: st.Kind}, err
 	}
-	return Result{Path: st.Path, Kind: KindOwned, Changed: true}, nil
+	return Result{Name: name, Path: st.Path, Kind: KindOwned, Changed: true}, nil
+}
+
+// InstallAll installs every hook pickle ships, in Names() order. A repository
+// that does not exist at all is a single error, exactly as a single Install
+// call would report — trying the second hook after the first already failed
+// that way would just repeat the same error. A per-hook failure past that
+// point (a foreign hook without force) does not stop the rest: every hook is
+// still attempted, and every attempt's Result is returned, so the caller can
+// report each one and the caller decides how to surface the combined error.
+func InstallAll(root string, force bool) ([]Result, error) {
+	var out []Result
+	var errs []error
+	for _, name := range Names() {
+		res, err := Install(root, name, force)
+		out = append(out, res)
+		if err != nil {
+			if errors.Is(err, ErrNoRepo) {
+				return out, err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return out, errors.Join(errs...)
 }
 
 // writeExecutable writes body to path with mode 0o755. WriteFile does not
@@ -291,54 +370,86 @@ func writeExecutable(path, body string) error {
 	return os.Chmod(path, 0o755)
 }
 
-// Uninstall removes a pickle-owned hook. A foreign hook, an absent hook and a
-// missing repository are all reported as skipped, never as errors: uninstall is
-// called from `pickle uninstall` on trees that may never have had a hook.
-func Uninstall(root string, dryRun bool) (Result, error) {
-	st, err := Status(root)
+// Uninstall removes a pickle-owned hook of the given name. A foreign hook, an
+// absent hook and a missing repository are all reported as skipped, never as
+// errors: uninstall is called from `pickle uninstall` on trees that may never
+// have had a hook.
+func Uninstall(root string, name Name, dryRun bool) (Result, error) {
+	st, err := Status(root, name)
 	if err != nil {
-		return Result{}, err
+		return Result{Name: name}, err
 	}
 	switch st.Kind {
 	case KindNoRepo:
-		return Result{Kind: st.Kind, Skipped: "no git repository"}, nil
+		return Result{Name: name, Kind: st.Kind, Skipped: "no git repository"}, nil
 	case KindAbsent:
-		return Result{Path: st.Path, Kind: st.Kind, Skipped: "absent"}, nil
+		return Result{Name: name, Path: st.Path, Kind: st.Kind, Skipped: "absent"}, nil
 	case KindForeign:
-		return Result{Path: st.Path, Kind: st.Kind, Skipped: "not pickle's — left in place"}, nil
+		return Result{Name: name, Path: st.Path, Kind: st.Kind, Skipped: "not pickle's — left in place"}, nil
 	}
 	if dryRun {
-		return Result{Path: st.Path, Kind: st.Kind, Would: true}, nil
+		return Result{Name: name, Path: st.Path, Kind: st.Kind, Would: true}, nil
 	}
 	if err := os.Remove(st.Path); err != nil {
-		return Result{Path: st.Path, Kind: st.Kind}, err
+		return Result{Name: name, Path: st.Path, Kind: st.Kind}, err
 	}
-	return Result{Path: st.Path, Kind: st.Kind, Changed: true}, nil
+	return Result{Name: name, Path: st.Path, Kind: st.Kind, Changed: true}, nil
+}
+
+// UninstallAll removes every hook pickle owns, in Names() order. A missing
+// repository is reported once (Status already turns it into a per-hook
+// KindNoRepo Result carrying no error), so this still returns one Result per
+// hook — unlike StatusAll, there is no exec cost to dedupe here, and callers
+// already handle KindNoRepo as an ordinary skip per hook.
+func UninstallAll(root string, dryRun bool) ([]Result, error) {
+	var out []Result
+	for _, name := range Names() {
+		res, err := Uninstall(root, name, dryRun)
+		out = append(out, res)
+		if err != nil {
+			return out, err
+		}
+	}
+	return out, nil
 }
 
 // Refresh rewrites an owned shim that an older pickle wrote. It never installs
 // a hook that is absent (the hook is opt-in, and `pickle upgrade` must not
 // arm a guard the user did not ask for) and never touches a foreign one.
-func Refresh(root string) (Result, error) {
-	st, err := Status(root)
+func Refresh(root string, name Name) (Result, error) {
+	st, err := Status(root, name)
 	if err != nil {
-		return Result{}, err
+		return Result{Name: name}, err
 	}
 	if st.Kind != KindOwned || !st.Stale {
-		return Result{Path: st.Path, Kind: st.Kind}, nil
+		return Result{Name: name, Path: st.Path, Kind: st.Kind}, nil
 	}
-	if err := writeExecutable(st.Path, Shim()); err != nil {
-		return Result{Path: st.Path, Kind: st.Kind}, err
+	if err := writeExecutable(st.Path, Shim(name)); err != nil {
+		return Result{Name: name, Path: st.Path, Kind: st.Kind}, err
 	}
-	return Result{Path: st.Path, Kind: st.Kind, Changed: true}, nil
+	return Result{Name: name, Path: st.Path, Kind: st.Kind, Changed: true}, nil
+}
+
+// RefreshAll refreshes every stale, owned hook pickle installs, in Names()
+// order.
+func RefreshAll(root string) ([]Result, error) {
+	var out []Result
+	for _, name := range Names() {
+		res, err := Refresh(root, name)
+		out = append(out, res)
+		if err != nil {
+			return out, err
+		}
+	}
+	return out, nil
 }
 
 // maxListedPaths caps the offending paths quoted in a rejection message.
 const maxListedPaths = 10
 
-// PreCommit is the rule: reject a commit that stages ticket bookkeeping while
-// HEAD is a feature branch of any registered child. It reports ok=false only
-// for a real violation; every other outcome — detached HEAD, a merge in
+// CheckPreCommit is the rule: reject a commit that stages ticket bookkeeping
+// while HEAD is a feature branch of any registered child. It reports ok=false
+// only for a real violation; every other outcome — detached HEAD, a merge in
 // progress, no git, an unreadable index — is ok=true, because a guard that
 // cannot decide must not block (T-057 decision 4).
 //
@@ -346,10 +457,15 @@ const maxListedPaths = 10
 // current working directory through gitHere, which is the index git is actually
 // about to commit. cfg supplies the branch prefixes and the tickets/ location.
 //
+// Named CheckPreCommit, not PreCommit, because Name's own PreCommit constant
+// (this file) already claims that identifier — the two are easy to conflate
+// but answer different questions ("which hook is this" vs "is this commit a
+// violation").
+//
 // Not covered, by design: `git commit --amend` of a commit that *already*
 // contains tickets/ paths. The hook does run, but `git diff --cached` compares
 // the index with HEAD and so reports nothing to object to.
-func PreCommit(cfg *config.Config, w io.Writer) (bool, error) {
+func CheckPreCommit(cfg *config.Config, w io.Writer) (bool, error) {
 	// symbolic-ref, never `rev-parse --abbrev-ref HEAD`: on an unborn branch (a
 	// fresh `git init`, which is exactly where `pickle install` lands) rev-parse
 	// exits 128 and prints the literal "HEAD", which reads as a detached HEAD

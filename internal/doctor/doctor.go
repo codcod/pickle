@@ -267,56 +267,70 @@ func checkAgentScaffolds(root string, payload fs.FS, r *Result) {
 	}
 }
 
-// checkHooks reports the state of the pre-commit bookkeeping guard.
+// checkHooks reports the state of every bookkeeping guard hook (T-082:
+// pre-commit and pre-push).
 //
-// The guard is opt-in, so its absence is never a finding — only a line saying
+// A hook is opt-in, so its absence is never a finding — only a line saying
 // how to arm it, which is also the answer for the case a pickle.toml key was
 // once considered for: hooks live in .git/ and are never cloned, so a fresh
 // clone of a project that uses the guard starts without one. Only a stale
 // pickle-owned shim earns a warning, mirroring the agent-scaffold drift check.
-// A tree that is not a git repository says so and stops: `checkChildren` already
-// owns that verdict as a real check, and duplicating it here would report the
-// same broken install twice.
+// A tree that is not a git repository says so once, for the repository, and
+// stops: `checkChildren` already owns that verdict as a real check, and
+// duplicating it here (once per hook) would report the same broken install
+// twice, or worse, N times.
+//
+// hook.Probe() answers a per-binary question — can the `pickle` on PATH
+// dispatch `hooks run` at all — not a per-hook one, since both hooks ship in
+// the same binary (T-082 decision 6). It is therefore called at most once,
+// after every hook has been reported, and only when at least one hook is
+// KindOwned and current: an absent/foreign/stale guard either has nothing to
+// probe or already has a warning to give, so none of those states pays the
+// exec cost.
 func checkHooks(root string, r *Result) {
-	st, err := hook.Status(root)
+	states, err := hook.StatusAll(root)
 	if err != nil {
 		r.warnf("hooks: %v", err)
 		return
 	}
-	switch st.Kind {
-	case hook.KindNoRepo:
-		r.ok("pre-commit guard not applicable (no git repository at the install root)")
-	case hook.KindAbsent:
-		r.ok("pre-commit guard not installed (optional — `pickle hooks install` arms it; hooks are per-clone)")
-	case hook.KindForeign:
-		r.ok(fmt.Sprintf("pre-commit hook present but not pickle's (%s) — left alone", st.Path))
-	case hook.KindOwned:
-		if st.Stale {
-			r.warnf("hooks: %s was written by an older pickle (shim v%d, this binary ships v%d) — run `pickle upgrade`",
-				st.Path, st.Version, hook.ShimVersion)
+	needsProbe := false
+	for _, st := range states {
+		switch st.Kind {
+		case hook.KindNoRepo:
+			r.ok("hooks not applicable (no git repository at the install root)")
 			return
+		case hook.KindAbsent:
+			r.ok(fmt.Sprintf("%s guard not installed (optional — `pickle hooks install` arms it; hooks are per-clone)", st.Name))
+		case hook.KindForeign:
+			r.ok(fmt.Sprintf("%s hook present but not pickle's (%s) — left alone", st.Name, st.Path))
+		case hook.KindOwned:
+			if st.Stale {
+				r.warnf("hooks: %s was written by an older pickle (shim v%d, this binary ships v%d) — run `pickle upgrade`",
+					st.Path, st.Version, hook.ShimVersion)
+				continue
+			}
+			needsProbe = true
+			r.ok(fmt.Sprintf("%s guard installed and current (%s)", st.Name, st.Path))
 		}
-		// The shim on disk is current, but that only matters if the `pickle` the
-		// shim actually resolves from PATH can run it (T-068) — probed only here,
-		// for an owned+current shim, so an absent/foreign/stale guard (already
-		// handled above, and free of the exec cost) never pays for it either.
-		// The exec itself lives entirely behind internal/hook (T-057 decision 12):
-		// this package never spawns a process directly, and still only returns
-		// findings rather than printing or exiting. It does now *cause* an exec
-		// through hook.Probe, which is why that call is confined to this one
-		// branch. checkChildren below causes the only other exec, confined the
-		// same way behind internal/vcs (T-051) — every other doctor check
-		// remains a pure filesystem read.
+	}
+	// The exec itself lives entirely behind internal/hook (T-057 decision 12):
+	// this package never spawns a process directly, and still only returns
+	// findings rather than printing or exiting. It does now *cause* an exec
+	// through hook.Probe, which is why that call is confined to this one spot.
+	// checkChildren below causes the only other exec, confined the same way
+	// behind internal/vcs (T-051) — every other doctor check remains a pure
+	// filesystem read.
+	if needsProbe {
 		if p := hook.Probe().Problem(); p != "" {
-			r.warnf("hooks: %s is installed and current, but %s", st.Path, p)
-			return
+			r.warnf("hooks: installed and current, but %s", p)
+		} else {
+			r.ok("hooks: the pickle on PATH can run it")
 		}
-		r.ok(fmt.Sprintf("pre-commit guard installed and current (%s), and the pickle on PATH can run it", st.Path))
 	}
 	// Nothing else in the tree earns this treatment (T-068 decision 10): `pickle
 	// serve`, the pi scaffolds and opencode.jsonc are all "pickle wrote a file
 	// something else reads", but none of them re-executes through PATH the way
-	// the shim calls back into `pickle hooks run` — only the hook has a
+	// a shim calls back into `pickle hooks run` — only the hooks have a
 	// version-coupled contract with the binary.
 }
 
