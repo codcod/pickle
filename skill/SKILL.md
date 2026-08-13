@@ -212,9 +212,10 @@ When asked to implement ticket T-NNN:
         target from `2-ready/`), with user confirmation.
      4. Only non-blocking findings remain → disposition each per the rules §5 (default:
         note-and-close); proceed to step 4.
-   - An amendment to the plan being picked up takes the inline disposition (edit the plan, record
-     it in the ticket's History); adjacent work earns a ticket only by passing §5's promotion
-     test, batched by theme.
+   - An amendment to the plan being picked up takes the inline disposition: edit the plan and
+     record a dated `plan amended inline: <what changed and why>` History line (rules §1) —
+     mandatory whenever `## Implementation Plan` is edited after the ticket left `2-ready/`.
+     Adjacent work earns a ticket only by passing §5's promotion test, batched by theme.
 4. **Move** the ticket: `pickle ticket move T-NNN in-development --reason "picked up"`.
 5. **Create the feature branch** `feat/T-NNN-<slug>` **inside the target child-project's repo**
    (from the agreed base, default `main`).
