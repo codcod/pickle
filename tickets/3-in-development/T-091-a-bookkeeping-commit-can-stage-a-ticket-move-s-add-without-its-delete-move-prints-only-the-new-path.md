@@ -311,3 +311,4 @@ it is the check the worktree audit cannot perform.
   both. Adjacent T-082 (`medium`/`medium`/`M`) is the same family but a distinct failure, and is
   deliberately not absorbed here
 - 2026-08-13 — TO DO → READY: plan complete: shape 1 confirmed (move+new print the full stage set), cost collapsed to S
+- 2026-08-13 — READY → IN DEVELOPMENT: picked up
