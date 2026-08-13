@@ -355,3 +355,4 @@ id-shaped token exists in this history, so the only legal difference is none).
   now documented, so a strict-count fix has to keep both it and the `(+N …)` clause coherent
 - 2026-08-13 — TO DO → READY: plan complete: prefix-aware id predicate at every recognition site; cost S -> M
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
+- 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
