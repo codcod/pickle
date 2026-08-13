@@ -13,10 +13,11 @@ Last updated: 2026-08-13
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | [T-073] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-13
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | medium | medium | M | [T-073] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
