@@ -463,6 +463,37 @@ the stdin range — verified), and a tag push and a branch deletion both pass th
 dispositions: 4 blocking (F1–F4, not dispositioned — fixed in rework); 6 non-blocking — 2 fixed inline (F5, F10, both in `b05f8bd`), 1 folded (F7 → T-042), 3 noted (F6, F8, F9); 0 new tickets.
 cost: estimated M, actual M
 
+### 2026-08-14 — rework: F1–F4 fixed
+
+- **F1** — `internal/install/install.go`'s rendered marker block and the hand-edited `AGENTS.md`
+  both now name the `pre-push` hook and both bypasses (`git commit --no-verify` /
+  `git push --no-verify`); golden fixture regenerated (`066212d`).
+- **F2** — `CheckPrePush` no longer skips a `git push <remote> HEAD:refs/heads/feat/T-x`
+  push: `branchBeingPushed` falls back to `RemoteRef` (always fully qualified) when `LocalRef`
+  is the literal `HEAD`. A tag push's `RemoteRef` is `refs/tags/...`, so it still falls outside
+  `refs/heads/` and stays skipped. Verified against a real push of that shape carrying
+  `tickets/`, both before (silently allowed) and after (refused, naming the branch from
+  `RemoteRef`) (`1c0788c`).
+- **F3** — `hooks status` probes `hook.Probe()` at most once now (hoisted into
+  `runHooksStatus`, matching `checkHooks`' existing shape), not once per owned hook; the
+  PATH-capability line still prints per hook, matching the doc's own phrasing (`d429ec7`).
+- **F4** — `hook.Install`'s foreign-hook refusal now sets `Skipped`, so a caller that only
+  checks `Path != ""` no longer prints an empty parenthetical; both `hooks install` and
+  `install --hooks` now report every attempted hook and run the inert-PATH check regardless of
+  a sibling hook's refusal (`d429ec7`).
+
+Re-ran the acceptance test's five throwaway-dir cases verbatim (all still pass) plus the F2 and
+F4 regressions by hand against the real binary. `just build`, `just test`, `just lint`,
+`just docs-check` all clean. New regression tests: `TestBranchBeingPushed`, two `TestCheckPrePush`
+cases (`HEAD:refs/heads/...`, a tag push), `TestHooksStatusProbesPathOnce` (counts real execs via
+a counting stub), `TestHooksInstallReportsSiblingHookDespiteAForeignOne`,
+`TestInstallHooksReportsSiblingHookDespiteAForeignOne`, and a `Skipped`-is-set assertion added to
+the existing foreign-hook test in `internal/hook`.
+
+No new findings; the four non-blocking dispositions from the first review (F5–F10) are
+unchanged and already closed. Ready for the scoped re-review.
+
+
 **What the four blocking findings have in common** is worth saying, because the rule itself is
 sound: the guard's core — the three-dot range, the base-branch exemption, the fail-open contract,
 the no-network resolution — is right, tested, and demonstrably catches T-073's real failure,
@@ -512,3 +543,4 @@ local, and independently testable.
   decision.
 - 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-13 — IN REVIEW → REWORK: review: 4 blocking (F1 marker-block/AGENTS.md docs sites undone, F2 HEAD:refs/heads/feat push bypasses the guard, F3 hooks status probes per hook against its own doc, F4 InstallAll partial-failure misreports), 6 non-blocking (2 fixed inline, 1 folded to T-042, 3 noted)
+- 2026-08-13 — REWORK → IN REVIEW: F1-F4 fixed on the same branch, findings F5-F10 unchanged
