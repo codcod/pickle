@@ -636,3 +636,8 @@ the F2 fix actually ships in the payload rather than only existing in the repo.
   commits (`df89011`, `3b5cb12`), prose only — the no-Go-code guard still prints nothing
 - 2026-08-13 — REWORK → IN REVIEW: rework round 1: F1, F2, N1, N5 fixed; all checks green
 - 2026-08-13 — IN REVIEW → DONE: scoped re-review clean: F1, F2, N1, N5 verified fixed; 5 non-blocking dispositioned (2 fixed inline, 2 -> T-098, 1 noted)
+- 2026-08-13 — published with user approval: branch and bookkeeping pushed, MR
+  [#42](https://github.com/codcod/pickle/pull/42) open against `main` at `83d6485` (7 commits,
+  7 files, +152/-40); all four CI checks green (`build-test`, `ci-surface`, `goreleaser-check`,
+  `smoke`). Awaiting the human merge — append the `merged to main (#42, <sha>)` line and run
+  `pickle board sync` once it lands
