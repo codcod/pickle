@@ -20,11 +20,10 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | [] |
 
 ## REWORK
 
@@ -116,6 +115,7 @@ Last updated: 2026-08-13
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
 | T-087 | release CI: make the user-manual build visible and testable without cutting a release | yes — merged to main (PR #25, 084ff7e) |
+| T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | yes — merged to main (PR #41, 64a3794) |
 | T-089 | Record a commit reference alongside the merge History line | yes — merged to main (PR #26, 1ceaead, https://github.com/codcod/pickle/commit/1ceaead); |
 | T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | yes — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept |
 | T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | yes — merged to main (PR #39, 7e60dce, https://github.com/codcod/pickle/commit/7e60dce); merge commit, 1 commit kept |
