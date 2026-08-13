@@ -390,3 +390,14 @@ pre-1.0 breaking change, and the superseded-decision pointer in `DESIGN.md`. Thi
   27 files**, not ~85. Re-graded complexity high → medium and cost L → M, since the migration
   was the multi-session part
 - 2026-08-13 — TO DO → READY: plan complete: full rename, legacy sweep instead of migration
+- 2026-08-13 — pickup applicability gate (fresh sub-agent audit): 0 blocking, 2 non-blocking,
+  both noted and closed. (1) AGENTS.md drifted the same day as refinement (T-098 landed a new
+  paragraph): Task 10's `:42,:45` marker-body citation is stale — the block now starts at line
+  52 and its `ticket-flow` mentions are at `:60,:63`; the out-of-block citations `:13,:27` are
+  still correct. Harmless: Task 10 is a by-hand edit per the self-modify policy, so the
+  implementer reads the live file rather than trusting the line numbers. (2) Task 5's
+  instruction to fix doc-comment prose in `doctor.go`'s `checkSkill`/`checkVersion` is vacuous —
+  neither spells the old path literally, both go through `install.SkillDir`. No other line
+  number, helper name or occurrence count in the plan has drifted; `just build/test/lint/
+  docs-check` all pass on current `main`; WIP clear (0/1 both gates); no ticket landed since
+  refinement touches the same files at the cited spots
