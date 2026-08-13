@@ -615,3 +615,6 @@ the wrong instrument. That is what T-099 exists to replace.
   and the build script, none of which this branch touches. PR is MERGEABLE / CLEAN. Awaiting the
   human merge — append the `merged to main (#43, <sha>)` line and run `pickle board sync` once it
   lands, which also clears `board audit`'s standing DONE-without-MERGED warning
+- 2026-08-13 — merged to main (PR #43, ee85bf3, https://github.com/codcod/pickle/commit/ee85bf3);
+  merge commit, 5 commits kept rather than squashed — the root-path default (rules §0), so both
+  rework rounds stay visible in history

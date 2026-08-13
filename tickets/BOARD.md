@@ -126,7 +126,7 @@ Last updated: 2026-08-13
 | T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | yes — merged to `main` (`eed6b3e`, PR #35): the rework loop closed, history kept |
 | T-096 | replace the pinned docs-readability model gemini-2.5-pro with github-copilot/gpt-5.4 | yes — merged to `main` (`bf02f33`, PR #36): 2 commits kept, CI green |
 | T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | yes — merged to main (PR #40, 801b09b, https://github.com/codcod/pickle/commit/801b09b); merge commit, 3 commits kept |
-| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | no — publish-gated |
+| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | yes — merged to main (PR #43, ee85bf3, https://github.com/codcod/pickle/commit/ee85bf3); |
 
 ## DROPPED
 
