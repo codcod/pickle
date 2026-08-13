@@ -549,3 +549,5 @@ pass cost less than the review that found it.
   (https://github.com/codcod/pickle/pull/44, 31 files, +550/−94, MERGEABLE). Merging is the
   human's; append the MERGED line here afterwards, which also clears `board audit`'s
   outstanding no-merge-line warning
+- 2026-08-13 — MERGED: PR #44 (`feat/T-074-rename-skill-dir-to-brine`, kept history, not
+  squashed) → main (21d4906), user-approved; branch deleted
