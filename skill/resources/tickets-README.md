@@ -122,12 +122,16 @@ ticket body** — a second source of truth would drift. Status transitions are r
 dated lines in the ticket's **History** section, in the form
 `YYYY-MM-DD — OLD → NEW: one-clause reason` (first line:
 `created (TO DO). source: <field-use|self-host|review|audit|chat>: <prose>`. The leading class
-token is the provenance class, a closed vocabulary: `field-use` (found using pickle on another
-project), `self-host` (found operating this repo's own flow), `review` (spawned from a review
-finding — pairs with `spawned-by:`), `audit` (from `board audit` or a board-audit pass), `chat`
-(from discussion, with no triggering incident). It weights every other signal the ticket record
-carries: a single-repo corpus is exactly what one would overfit to, so knowing which findings
-came from real field use versus self-host versus idle chat matters more than any other axis.
+token is the provenance class, a closed vocabulary: `field-use` (the ticket's product changes
+what you ship, not the flow — the finding is a by-product of real work), `self-host` (the
+ticket's product changes the flow itself, its tooling or its own docs), `review` (spawned from a
+review finding — pairs with `spawned-by:`), `audit` (from `board audit` or a board-audit pass),
+`chat` (from discussion, with no triggering incident). A slow `board audit` spotted mid-feature is
+`self-host`, not `field-use` — fixing it changes the tooling, even though it was noticed while
+shipping something else. It weights every other signal the ticket record carries: a backlog
+drifts toward whatever its authors happened to be doing when they filed, so knowing which
+findings came from real use, which from working on the flow itself, and which from idle chat
+matters more than any other axis.
 A human merge is recorded as `YYYY-MM-DD — merged to <base> (<MR ref>[, <commit>])` — the
 commit reference (short SHA, and a full commit link where the remote resolves to a known
 hosting URL) is recommended alongside the MR ref so the line traces straight to what shipped,
@@ -317,8 +321,8 @@ every item below:
 Until all seven hold, the ticket stays in `1-to-do/`.
 
 **All seven are mechanically checked, not only judged.** Each is a required `### ` heading
-inside `## Implementation Plan` (`pickle`'s own `skill/resources/TEMPLATE.md` ships exactly
-these seven), and `pickle ticket move T-NNN ready` **refuses** the move outright when one is
+inside `## Implementation Plan` (this skill's own `resources/TEMPLATE.md` ships exactly these
+seven), and `pickle ticket move T-NNN ready` **refuses** the move outright when one is
 missing or empty — the same table `board audit` re-checks on every ticket already past the gate
 (an unmet item there is an **error**, not only a warning, since a ticket sitting in READY or
 later with an incomplete plan is a broken invariant). Refusal is the plan's own escape hatch:

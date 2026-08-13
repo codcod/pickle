@@ -30,6 +30,24 @@ therefore live out here where `pickle upgrade` will not overwrite them:
     stamps `payload_version` in that mode — it refreshes everything else it owns — so `doctor`
     and `upgrade` agree by construction and `doctor` never sends you to the `upgrade` this
     policy forbids running from a feature branch.
+- **The foreign-workspace test** (T-098). Everything under `skill/` is read by projects that are
+  not pickle, in workspaces where this repo does not exist. Before shipping a sentence into the
+  payload, ask: *would this help a project that is not pickle?* Four shapes fail it — a **ticket
+  id the reader is told to go and look up** (`tickets/6-done/T-090` is a well-formed path that
+  means something else in their repo), a **count or claim drawn from a corpus they do not have**
+  ("13 header variants across the corpus" — whose?), **"this repo" meaning ours** (the
+  `field-use`/`self-host` split was once defined as "another project" versus "this repo's own
+  flow", which no foreign team can assign), and a **path that only resolves in pickle's own
+  source tree** (`skill/resources/TEMPLATE.md` exists here; an installed workspace has
+  `.agents/skills/ticket-flow/resources/TEMPLATE.md`) — the shape most easily missed, since it is
+  neither a ticket id nor a first-person claim. Two uses of a ticket id stay legitimate, because
+  neither asks the reader to resolve it: **syntax filler** in a grammar example
+  (`board: T-084 ready → in development`) and a **provenance tag** naming which ticket introduced
+  a rule ("(T-083)"). The fix is never to sterilise every `T-` in sight — it is to make the
+  sentence stand on its own, or to phrase a path relative to the skill the reader is holding
+  (`this skill's own resources/TEMPLATE.md`, not `skill/resources/TEMPLATE.md`). This is why the
+  test lives here and not in the payload: a rule about how to write the payload, shipped inside
+  the payload, is the very defect it warns against.
 
 <!-- pickle:begin -->
 ## Brine (start here)
