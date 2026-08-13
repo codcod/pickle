@@ -38,6 +38,7 @@ Last updated: 2026-08-13
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -55,7 +56,6 @@ Last updated: 2026-08-13
 | T-074 | rename the installed skill directory to brine, with upgrade migration and dual-name doctor | medium | high | L | [T-073] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 | T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | medium | low | S-M | [] |  |
-| T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | medium | low | S-M | [] |  |
 | T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
