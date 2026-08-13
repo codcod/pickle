@@ -138,16 +138,45 @@ and never move a ticket to `tickets/5-rework/`.
 
 Write directly into the ticket's own **`## Review`** section (no separate file).
 
-A **findings table**, with severity and disposition as **separate columns**: id, **severity**
-(blocking / non-blocking), **disposition**, description, evidence, suggestion. Both vocabularies
-are defined in **the rules §5**, which is their single source of truth — do not restate the list
-of dispositions here.
+A **findings table**, with severity and disposition as **separate columns**. This is the
+canonical skeleton — paste it in and fill rows, rather than restating the column list in prose
+(prose-only drifted into 13 header variants across the corpus before this skeleton existed):
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+<!-- | F1 | blocking | correctness | — | one-line description | file:line or command output | what to do | -->
+
+`severity` and `disposition` are defined in **the rules §5**, which is their single source of
+truth — do not restate the list of dispositions here. `class` is defined once, here — do not
+restate it elsewhere.
+
+### The `class` column — closed vocabulary
+
+One word per row, from this closed list only (do not add, rename or re-order it — the
+pre-registered criterion this column exists to test needs a fixed vocabulary to count against).
+Each value carries a one-line test:
+
+| class | test |
+|---|---|
+| `correctness` | ships wrong behaviour or wrong output |
+| `test-gap` | coverage missing, deleted, or tautological (a test that cannot fail) |
+| `docs-gap` | user-facing docs missing, wrong, or in the wrong place (includes `CHANGELOG.md`) |
+| `stale-xref` | a reference this branch made false: line anchors, cross-references, comments, or plan prose describing behaviour that changed |
+| `plan-wrong` | **reserved** — a *confirmed design decision* was false or unworkable. Plan prose merely made stale by the branch is `stale-xref`, not this |
+| `spec-unclear` | shipped prose that is self-contradictory, ambiguous, or under-specified for execution |
+| `design` | asymmetry, narrowing, dead code, or performance — no behaviour change |
+| `other` | none of the above; if this exceeds ~10% of rows, the vocabulary is wrong — say so |
+
+Worked examples from `tickets/6-done/`: `T-090 F1` (a byte-widened `unicode.IsSpace` scan
+emitting invalid UTF-8) is `correctness`; `T-084 F2` (a scope rule satisfying both its own
+branches) is `spec-unclear`.
 
 - **Blocking** — breaks the golden path, ships wrong behaviour, contradicts a locked decision,
   or is missing required docs coverage (4a.1). **Do not fix it inline**, and leave the
-  disposition cell `—`: a blocking finding is not dispositioned, it is fixed. The ticket moves to
-  `tickets/5-rework/` (step 6a) for a scoped fix, then back to `tickets/4-in-review/` for a
-  scoped re-review.
+  disposition cell `—`: a blocking finding is not dispositioned, it is fixed. It still carries a
+  `class` — the kind-of-defect axis is most valuable precisely on the blocking rows. The ticket
+  moves to `tickets/5-rework/` (step 6a) for a scoped fix, then back to `tickets/4-in-review/`
+  for a scoped re-review.
 - **Non-blocking** — quality/consistency/polish that doesn't block shipping. Give each one
   **exactly one** disposition per the rules §5, and record it. The default is to note and close;
   a follow-up ticket must pass that section's promotion test — *"would this actually be
@@ -162,6 +191,18 @@ Close with a one-line **disposition summary** under the table, counting each dis
 naming the ids involved — so the shape of the review is legible without reading every row. It is
 also the number to watch: a review that mints a ticket per finding is not reviewing, it is
 deferring.
+
+Directly under the disposition summary, add a second one-line closer recording cost actual vs
+estimate:
+
+```
+cost: estimated <S|M|L|XL>, actual <S|M|L|XL>[ — <one clause, only when they differ>]
+```
+
+The reviewer writes this line, having just re-run the acceptance test and read the branch. The
+estimate is copied verbatim from the ticket's `cost:` frontmatter; the frontmatter itself is
+**not** rewritten — the divergence between estimate and actual is the datum, and overwriting the
+estimate would erase it.
 
 ## 6. Move the ticket
 
@@ -231,7 +272,7 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
 - [ ] Consistency audit (step 4)
 - [ ] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a, if the project ships docs)
 - [ ] Docs-readability pass on the ticket's changed `.adoc`/`.md` files, or a conscious skip recorded (step 4b, optional)
-- [ ] Findings recorded in the ticket's `## Review` with severity **and** disposition per the rules §5; disposition summary line present (step 5)
+- [ ] Findings recorded in the ticket's `## Review` with severity, **class**, **and** disposition per the rules §5; disposition summary line present, and a `cost: estimated …, actual …` line beneath it (step 5)
 - [ ] Ticket moved to `tickets/6-done/` or `tickets/5-rework/`; `## History` appended (step 6)
 - [ ] Other references updated if needed; board regenerated by the move (step 7)
 - [ ] Remaining-tickets impact sweep done (step 8)
