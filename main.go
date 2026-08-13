@@ -1,5 +1,5 @@
 // Command pickle is a CLI that installs and operates a ticket-based, board-driven
-// feature flow (the "ticket flow") into any project, with support for several
+// feature flow ("brine") into any project, with support for several
 // connected child-projects under one overarching project.
 //
 // The command surface is implemented across the phased build plan (P1–P5); see
