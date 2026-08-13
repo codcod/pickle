@@ -109,3 +109,14 @@ Soft couplings only:
   `review-protocol.md:157`) refer to the pre-fix text — read them as test cases for the check,
   not as outstanding cleanup. Scope and design questions are otherwise unchanged; nothing here
   was re-graded
+- 2026-08-13 — patched by **T-074's review impact sweep**. T-074 renames the installed skill
+  directory `ticket-flow` → `brine`, so two live claims in this ticket's Description are about to
+  be false: the parenthetical at `:24` ("installed into other people's projects as
+  `.agents/skills/ticket-flow/`") and, more importantly, test case 1 at `:38`, whose whole point
+  is the contrast between pickle's own `skill/resources/TEMPLATE.md` and the path an installed
+  workspace actually has — which becomes `.agents/skills/brine/resources/TEMPLATE.md`. The test
+  case is *not* invalidated (the defect shape is unchanged: a path that resolves only in this
+  repo); only the correct right-hand side moves. The "Cheaper if T-074 lands first" note at
+  `:85-87` still holds and is now nearly settled — T-074 is in `5-rework/` as of this sweep, with
+  one blocking finding that touches no path. Refinement should re-read the payload for the new
+  name rather than trusting these strings

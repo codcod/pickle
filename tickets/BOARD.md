@@ -20,11 +20,10 @@ Last updated: 2026-08-13
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | [T-073] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-13
 
 | id | title | open findings |
 |---|---|---|
+| T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | review: 1 blocking (F1: fresh install still writes '# Ticket flow' as the AGENTS.md/CLAUDE.md H1), 6 non-blocking — 2 f… |
 
 ## READY (impact order, per child)
 

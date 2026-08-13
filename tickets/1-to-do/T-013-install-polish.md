@@ -156,3 +156,15 @@ All items are input-hardening / polish on the install surface, hence non-blockin
 - 2026-07-25 — re-anchored by the T-018 S1 re-review: install.go refs (:126 -> :129, :130 -> :133, :162 -> :168, :180-191 -> :173-184, :163-168 -> :165-167)
 - 2026-07-26 — item 4 rewritten by the T-009 review (impact sweep): the "--agent is a no-op" premise is obsolete; replaced with the folded F4 finding (`pickle help` says "detected agents", contradicting T-009's no-autodetection decision). Line refs in items 6–10 may have shifted (~200 lines added to internal/install/install.go by T-009); re-anchor at refinement
 - 2026-07-26 — patched by the T-047 review (impact sweep): README passage it cited moved to docs/user-manual/cli-reference.adoc
+- 2026-08-13 — patched by **T-074's review impact sweep**, which touches item 8 twice. (1) The
+  string item 8 quotes as `upgrade`'s misleading output is now `+ .agents/skills/brine/`, not
+  `+ .agents/skills/ticket-flow/` — the premise (a byte-identical payload still reported as
+  created) is unchanged, only the path. Likewise the `uninstall`-damage example at `:119`. (2)
+  T-074 gave `runUpgrade` a **new** output class: it prints `res.Removed` as `- <path>` lines
+  ahead of the created/skipped ones, for the legacy sweep. So the created-vs-refreshed
+  distinction item 8 asks for now has a third label to stay consistent with, and the removed
+  lines are a worked example of `upgrade` reporting an action it genuinely took. Item 8's line
+  anchors have also moved: `Upgrade`'s `os.RemoveAll`/`copyPayload` pair is no longer at
+  `internal/install/install.go:129`/`:133` — the function grew a legacy-sweep prologue and a
+  three-way switch — so re-anchor by searching the text at refinement, as the 2026-07-26 note
+  above already advises for items 6–10
