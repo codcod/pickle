@@ -248,9 +248,12 @@ Paths in the shipped scaffolds, and "ticket flow"/"ticket-flow skill" prose:
 
 2. **No stale name outside its two sanctioned homes** — the only surviving matches must be the
    `Legacy*` constants block, the `doctor` legacy check and its tests, `CHANGELOG.md`'s historical
-   entries, and `DESIGN.md`'s historical prose:
+   entries, `DESIGN.md`'s historical prose, and the F1 regression test's own literal (which
+   asserts the name's *absence* from generated output). The grep matches the bare name, not only
+   the path — a path-only grep is exactly how F1 (review, rework pass) shipped a fresh install
+   that still wrote "# Ticket flow" as its `AGENTS.md`/`CLAUDE.md` H1:
    ```
-   grep -rn "skills/ticket-flow" --include='*.go' --include='*.ts' --include='*.jsonc' \
+   grep -rniE "ticket[- ]flow" --include='*.go' --include='*.ts' --include='*.jsonc' \
      --include='*.adoc' --include='*.md' --include='*.golden' . | grep -v '^./tickets/'
    ```
 
@@ -261,24 +264,25 @@ Paths in the shipped scaffolds, and "ticket flow"/"ticket-flow skill" prose:
    grep -c "name: brine" skill/SKILL.md                                 # 1
    ```
 
-4. **Fresh install, throwaway dir** (never against this repo):
+4. **Fresh install, throwaway dir** (never against this repo — always the binary renamed to
+   `pickle-test`, per the self-modify policy in `AGENTS.md`):
    ```
-   D=$(mktemp -d) && cp pickle "$D/pk" && cd "$D" && git init -q .
-   ./pk install --project demo --agent claude,opencode,pi
+   D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" && git init -q .
+   ./pickle-test install --project demo --agent claude,opencode,pi
    test -f .agents/skills/brine/SKILL.md && readlink .claude/skills/brine
    ! test -e .agents/skills/ticket-flow
-   ./pk doctor -v          # exit 0; shows the "no legacy skill path" passed line
+   ./pickle-test doctor -v          # exit 0; shows the "no legacy skill path" passed line
    ```
 
 5. **Legacy install swept by `upgrade`** (same throwaway dir, simulating an old install):
    ```
    mv .agents/skills/brine .agents/skills/ticket-flow
    rm .claude/skills/brine && ln -s ../../.agents/skills/ticket-flow .claude/skills/ticket-flow
-   ./pk doctor;  echo "exit=$?"     # exit 1, error names the legacy path and `pickle upgrade`
-   ./pk upgrade                    # reports both legacy paths removed
+   ./pickle-test doctor;  echo "exit=$?"     # exit 1, error names the legacy path and `pickle upgrade`
+   ./pickle-test upgrade                    # reports both legacy paths removed
    ! test -e .agents/skills/ticket-flow && ! test -e .claude/skills/ticket-flow
    test -f .agents/skills/brine/SKILL.md && readlink .claude/skills/brine
-   ./pk doctor;  echo "exit=$?"     # exit 0
+   ./pickle-test doctor;  echo "exit=$?"     # exit 0
    ```
 
 6. **Self-host legacy link is re-linked, not copied** (decision 5):
@@ -286,7 +290,7 @@ Paths in the shipped scaffolds, and "ticket flow"/"ticket-flow skill" prose:
    rm -rf .agents/skills/brine && mkdir -p payload/resources
    cp <a SKILL.md> payload/ && cp <a tickets-README.md> payload/resources/
    ln -s ../../payload .agents/skills/ticket-flow
-   ./pk upgrade
+   ./pickle-test upgrade
    test -L .agents/skills/brine                     # still a link…
    readlink .agents/skills/brine                    # …to ../../payload
    test -f payload/SKILL.md                         # the linked tree survived
@@ -294,9 +298,9 @@ Paths in the shipped scaffolds, and "ticket flow"/"ticket-flow skill" prose:
 
 7. **`uninstall` removes an old install, and `--dry-run` lies about nothing:**
    ```
-   ./pk uninstall -n | grep ticket-flow             # both legacy paths listed
+   ./pickle-test uninstall -n | grep ticket-flow             # both legacy paths listed
    test -e .agents/skills/ticket-flow               # still there after the dry run
-   ./pk uninstall && ! test -e .agents/skills/ticket-flow
+   ./pickle-test uninstall && ! test -e .agents/skills/ticket-flow
    ```
 
 8. **Board invariants:** `./pickle board audit` exits 0.
@@ -409,6 +413,29 @@ source hygiene, and F6 describes a state pickle cannot produce — none passes t
 
 cost: estimated M, actual M
 
+### Rework — F1 fixed
+
+Fixed on `feat/T-074-rename-skill-dir-to-brine` (`a25a53e`), scoped to F1 only per the rework
+procedure — no other finding was in scope, and none was touched:
+
+- Added `MarkerTitle = "Brine"` next to `MarkerBegin`/`MarkerEnd` in `internal/install/install.go`
+  and routed all four `injectMarker(…, "Ticket flow", …)` call sites (`Run` x2, `RefreshMarkers`
+  x2, at `:194,207,287,292`) through it — the flow's on-disk name now has one declaration site.
+- Extended `TestRunProducesInstall` to assert the H1 of a freshly-created `AGENTS.md`/`CLAUDE.md`
+  is `# Brine` and that neither file contains the string "Ticket flow".
+- Re-ran the full acceptance test (all 8 steps) against the fix, plus
+  `just build && just test && just lint && just docs-check`: all green. `head -1 AGENTS.md` /
+  `CLAUDE.md` after a fresh install now read `# Brine`, before and after `upgrade`.
+
+**Plan amended inline** (mandatory whenever `## Implementation Plan` is edited after the ticket
+left `2-ready/`) — F7's fallout, not a new finding: acceptance steps 2, 4, 5, 6 and 7 above were
+rewritten to use the binary name `pickle-test` (the self-modify policy landed on `main` as
+`1114190` mid-review, superseding the `pk` name every one of those steps used) and step 2's grep
+was widened from the path `skills/ticket-flow` to the bare name `ticket[- ]flow`, per F1's own
+suggestion — a path-only grep is exactly how F1 passed review undetected the first time. Both
+edits were re-verified live in a throwaway dir (`pickle-test`, all 8 acceptance steps) before this
+History line was written.
+
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
@@ -469,3 +496,4 @@ cost: estimated M, actual M
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
 - 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green: full rename + legacy sweep, 4 commits, build/test/lint/docs-check clean
 - 2026-08-13 — IN REVIEW → REWORK: review: 1 blocking (F1: fresh install still writes '# Ticket flow' as the AGENTS.md/CLAUDE.md H1), 6 non-blocking — 2 fixed inline (F2, F7), 4 noted (F3–F6)
+- 2026-08-13 — REWORK → IN REVIEW: findings fixed: F1 (blocking) fixed by routing injectMarker's title through one MarkerTitle constant; F7 fallout amended inline (pickle-test binary name, widened stale-name grep)
