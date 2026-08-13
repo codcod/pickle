@@ -463,3 +463,4 @@ this repo's `AGENTS.md` by hand, `CHANGELOG.md`, and `DESIGN.md`. `just docs-che
   self-modify policy, with a same-directory `pickle` symlink so the installed shim's own `pickle
   hooks run <name>` call resolves it. Neither changes scope, grading, or any confirmed design
   decision.
+- 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
