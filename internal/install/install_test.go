@@ -68,8 +68,11 @@ func TestRunProducesInstall(t *testing.T) {
 		if !strings.Contains(string(b), MarkerBegin) {
 			t.Errorf("%s missing marker", f)
 		}
-		if !strings.HasPrefix(string(b), "# "+MarkerTitle+"\n") {
-			t.Errorf("%s H1 = %q, want prefix %q", f, firstLine(string(b)), "# "+MarkerTitle)
+		// The expected H1 is spelled out, not built from MarkerTitle: asserting
+		// against the constant the production code already uses would move with
+		// any edit to it and so could never fail.
+		if !strings.HasPrefix(string(b), "# Brine\n") {
+			t.Errorf("%s H1 = %q, want %q", f, firstLine(string(b)), "# Brine")
 		}
 		if strings.Contains(string(b), "Ticket flow") {
 			t.Errorf("%s still contains the pre-rename name \"Ticket flow\"", f)
