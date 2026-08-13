@@ -1,7 +1,7 @@
 /**
  * pickle-guardrails — Pi extension scaffolded by `pickle install --agent pi`.
  *
- * Pi ships no built-in permission gates ("primitives, not features"), so the
+ * Pi ships no built-in permission gates ("primitives, not features"), so
  * brine's non-negotiable git rules (see the AGENTS.md marker block →
  * Commit policy) are encoded here as a `tool_call` gate:
  *
