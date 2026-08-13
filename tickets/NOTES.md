@@ -904,3 +904,42 @@ awk -F'|' '
 
 Divide each count by the total non-blocking-row count (`disposition` column not `—`) to get the
 percentage the criterion above tests against.
+
+### T-098's payload sweep, and the guard test deliberately not built
+
+Run 2026-08-13 (T-098) across all five payload files — `skill/SKILL.md` and the four under
+`skill/resources/` — asking three questions: which sentences cite a ticket id, which cite a body
+of evidence the reader does not have, and which say "this repo". **Four sites**, all fixed by
+T-098: the review protocol's worked examples (`tickets/6-done/T-090 F1`, `T-084 F2`), the
+findings-skeleton warrant ("13 header variants across the corpus"), the `field-use`/`self-host`
+glosses ("another project" versus "this repo's own flow"), and a repo-only path
+(`pickle`'s own `skill/resources/TEMPLATE.md`). The payload is otherwise clean: T-085 was the
+first ticket to reach for a local example, and **six id references are legitimate** and were kept
+deliberately — syntax filler in a commit-grammar example and provenance tags naming which ticket
+introduced a rule. Neither asks the reader to resolve anything. The constraint itself lives in
+`AGENTS.md` (above the marker block), not in the payload, because a rule about writing the
+payload does not belong inside it.
+
+**A mechanical check was deliberately not built**, on T-085's own discipline: machinery waits for
+recurrence, and this theme stands at n=1 — one ticket, one author, one afternoon. The sweep was
+the guard, run once.
+
+> **Pre-registered trigger.** File the check the **first** time a second instance is found in any
+> review — i.e. a new lookup-shaped payload reference reaching `4-in-review/`. At n=2 the pattern
+> is real and a ~20-line check pays for itself. Until then, do not re-propose it.
+
+The patterns, so whoever files it does not re-derive them (the first two are the check; the third
+and fourth are the **over-correction guards**, and matter just as much — a check that deletes the
+six legitimate references is worse than no check):
+
+```sh
+rg -n 'tickets/6-done/T-[0-9]|T-[0-9]{3} F[0-9]' skill/   # lookup-shaped ticket reference
+rg -n 'the corpus|this repo' skill/                        # unattributed corpus, first-person repo
+rg -n 'T-[0-9]+' skill/ | grep -v 'T-NNN\|T-MMM\|T-KKK\|T-xxx'   # expect exactly the 6 keepers
+rg -cF '<field-use|self-host|review|audit|chat>' skill/    # tokens byte-identical: 1, 1, 2
+```
+
+A fifth shape escapes all four and needs the eye, not `rg`: a **path** that only resolves in this
+repo (`skill/resources/…`, where an installed workspace has
+`.agents/skills/ticket-flow/resources/…`). That is the one the T-098 refinement sweep missed and
+the pickup audit caught.
