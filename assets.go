@@ -4,10 +4,10 @@ import "embed"
 
 // payloadFS is the embedded install payload:
 //
-//   - skill/  — the canonical ticket-flow skill (skill/SKILL.md plus
+//   - skill/  — the canonical brine skill (skill/SKILL.md plus
 //     skill/resources/: the rules, the ticket template, the review protocol,
 //     and the shared docs-readability reviewer prompt) that `pickle install`
-//     writes into a project's .agents/skills/ticket-flow/. The tree mirrors
+//     writes into a project's .agents/skills/brine/. The tree mirrors
 //     the installed skill layout so SKILL.md's "resources/..." references
 //     resolve.
 //   - agents/ — the per-agent scaffolds `pickle install --agent …` lays down:

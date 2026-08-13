@@ -10,7 +10,7 @@ therefore live out here where `pickle upgrade` will not overwrite them:
 - The sole registered child-project is **this repo itself**, at the root (`.`) — see
   [`pickle.toml`](pickle.toml). Every ticket's requirements, tasks, and acceptance tests
   describe the `pickle` binary.
-- `.agents/skills/ticket-flow/` is a symlink to [`skill/`](skill/), which is also the payload
+- `.agents/skills/brine/` is a symlink to [`skill/`](skill/), which is also the payload
   embedded in the binary. Editing the skill here changes what `pickle install` ships — and it
   is why `upgrade` leaves this repo's skill directory alone instead of replacing it.
 - **Self-modify policy.** Never run `pickle install|upgrade|uninstall` against this repo from
@@ -26,7 +26,7 @@ therefore live out here where `pickle upgrade` will not overwrite them:
   - The one legitimate self-upgrade is a **human action**: after a merge, a clean-built
     `pickle upgrade` from `main` may re-stamp `payload_version` and verify the marker block
     round-trips, reviewing `git diff` before committing.
-  - `pickle doctor` is self-host-aware (T-046): it detects the `.agents/skills/ticket-flow`
+  - `pickle doctor` is self-host-aware (T-046): it detects the `.agents/skills/brine`
     symlink and skips the `payload_version`-vs-binary comparison entirely, reporting the skip
     as an informational passed line under `-v` instead of a warning. `pickle upgrade` still
     stamps `payload_version` in that mode — it refreshes everything else it owns — so `doctor`
@@ -41,7 +41,7 @@ therefore live out here where `pickle upgrade` will not overwrite them:
   `field-use`/`self-host` split was once defined as "another project" versus "this repo's own
   flow", which no foreign team can assign), and a **path that only resolves in pickle's own
   source tree** (`skill/resources/TEMPLATE.md` exists here; an installed workspace has
-  `.agents/skills/ticket-flow/resources/TEMPLATE.md`) — the shape most easily missed, since it is
+  `.agents/skills/brine/resources/TEMPLATE.md`) — the shape most easily missed, since it is
   neither a ticket id nor a first-person claim. Two uses of a ticket id stay legitimate, because
   neither asks the reader to resolve it: **syntax filler** in a grammar example
   (`board: T-084 ready → in development`) and a **provenance tag** naming which ticket introduced
@@ -59,10 +59,10 @@ status. No feature is built directly from a chat message or a raw idea — work 
 ticket whose Implementation Plan has met the READY gate. A *review finding* is different: it
 earns a **disposition** (rules §5), and most are resolved without a new ticket.
 
-- The flow engine is the **brine skill** at `.agents/skills/ticket-flow/`. It holds
+- The flow engine is the **brine skill** at `.agents/skills/brine/`. It holds
   the rules (`resources/tickets-README.md`), the ticket template
   (`resources/TEMPLATE.md`), and the review protocol
-  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/ticket-flow`.
+  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/brine`.
   The directory is pickle-owned — `pickle upgrade` replaces it wholesale, so keep
   hand-written notes outside it.
 - Triggers: "make it a ticket", "refine ticket T-NNN", "implement ticket T-NNN", "rework ticket

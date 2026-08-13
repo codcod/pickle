@@ -1,5 +1,5 @@
 ---
-name: ticket-flow
+name: brine
 description: Operate a ticket-based, board-driven feature flow (installed by the `pickle` CLI) across one or more connected child-projects. Use when asked to "make it a ticket", "refine ticket T-NNN" (make it ready), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses. One markdown ticket per feature; a ticket's status is the directory it lives in; each ticket targets one registered child-project via `project:` frontmatter; a generated BOARD.md is the live index (never hand-edited; prose goes in tickets/NOTES.md); reviews classify findings by severity (blocking vs non-blocking) and then disposition each non-blocking one, defaulting to note-and-close; publishing a child-project follows the project's configured commit policy (defaulting to explicit user approval).
 ---
 
@@ -50,7 +50,7 @@ hand-written planning prose lives in `tickets/NOTES.md` (created by `pickle inst
 `pickle install` (run once in the overarching project) creates `tickets/` with the seven
 ordered status directories (`1-to-do/` … `7-dropped/`), renders a fresh `tickets/BOARD.md`,
 scaffolds `tickets/NOTES.md`, writes the `tickets/README.md` pointer, installs this skill for the
-detected agents (`.agents/skills/ticket-flow/`, symlinked into `.claude/skills/` for Claude
+detected agents (`.agents/skills/brine/`, symlinked into `.claude/skills/` for Claude
 Code), injects the `AGENTS.md`/`CLAUDE.md` marker block, writes `pickle.toml`, and registers
 the first child-project. Register more connected children with
 `pickle project add <name> <path>`. Install scope is **per-project** — nothing is written to
@@ -308,7 +308,7 @@ Fix every error it reports — an error is a broken invariant, not a judgement c
 
 ## Notes
 
-`pickle` installs this skill **per project** (into `.agents/skills/ticket-flow/`, symlinked for
+`pickle` installs this skill **per project** (into `.agents/skills/brine/`, symlinked for
 Claude Code); it does not install globally, and each project pins its own payload version.
 `pickle upgrade` refreshes the installed skill + marker block from the binary without touching
 tickets.

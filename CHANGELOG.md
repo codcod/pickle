@@ -30,8 +30,25 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Changed
 
+- **BREAKING: the installed skill directory is renamed `ticket-flow` → `brine`** (pre-1.0), so
+  the tool (`pickle`), the flow (`brine`) and the on-disk skill id are not three different
+  names for two things. The skill now installs at `.agents/skills/brine/`
+  (`.claude/skills/brine`), and `SKILL.md`'s `name:` frontmatter — the agent-visible discovery
+  name — is now `brine`, so the invocation is `/skill:brine`. **There is no migration**: an
+  existing install is fixed by running `pickle upgrade`, which now *sweeps away* the old
+  `.agents/skills/ticket-flow/` directory and `.claude/skills/ticket-flow` symlink before
+  refreshing the new-name payload (a legacy path that was itself a self-host symlink is
+  re-linked at the new name, not deleted-and-recopied); `pickle uninstall` sweeps the same
+  legacy paths, so a current binary can still fully remove an old install. `pickle doctor` now
+  **errors** — not warns — while either legacy path is still present, naming `pickle upgrade`
+  as the fix, so a partially-upgraded project carrying both names is never reported as healthy.
+  One thing the sweep does not fix: a user-edited `opencode.jsonc` that still hardcodes the old
+  `.agents/skills/ticket-flow/resources/docs-readability.prompt.md` prompt path is user-owned
+  after creation and must be edited by hand to the `brine` path — `doctor` performs no
+  opencode checks and this change adds none (T-074).
+
 - **`pickle doctor`** no longer warns about `payload_version` in a self-hosting checkout
-  (`.agents/skills/ticket-flow` is a symlink to the payload source): the comparison is skipped
+  (`.agents/skills/brine` is a symlink to the payload source): the comparison is skipped
   and reported as an informational passed line under `--verbose` instead, since the payload
   is the linked source, not an installed copy. `pickle upgrade` keeps stamping
   `payload_version` in that mode — it still refreshes everything else it owns (T-046).

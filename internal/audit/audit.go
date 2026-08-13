@@ -1,4 +1,4 @@
-// Package audit implements `pickle board audit`: a pure check of the ticket-flow
+// Package audit implements `pickle board audit`: a pure check of the brine flow's
 // invariants over a tickets/ tree + pickle.toml. It never prints or exits — it
 // returns findings so it stays fixture-testable.
 package audit

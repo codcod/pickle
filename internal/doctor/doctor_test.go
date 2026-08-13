@@ -36,7 +36,7 @@ func installFixture(t *testing.T) string {
 
 // selfHostFixture is installFixture with the installed skill dir replaced by a
 // symlink to a real payload tree — the self-hosting arrangement of pickle's
-// own repo (.agents/skills/ticket-flow -> ../../skill). The link points at an
+// own repo (.agents/skills/brine -> ../../skill). The link points at an
 // absolute path, mirroring TestUpgradeSelfHostSymlinkGuard in the install
 // package, so checkSkill still resolves SKILL.md and
 // resources/tickets-README.md through it.
@@ -184,6 +184,70 @@ func TestCheckHealthyInstall(t *testing.T) {
 	}
 	if len(res.Passed) == 0 {
 		t.Error("expected some passed checks")
+	}
+}
+
+// T-074: no legacy skill path present earns a passed line, visible under -v,
+// mirroring T-046's self-host skip line.
+func TestCheckNoLegacyPathIsPassed(t *testing.T) {
+	root := installFixture(t)
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Passed, "no legacy skill path present") {
+		t.Errorf("expected a passed entry for no legacy skill path, got: %v", res.Passed)
+	}
+}
+
+// T-074: a legacy skill directory still present is an error naming
+// `pickle upgrade`, not a warning — a tree carrying both names is serving a
+// stale skill copy some agents would discover ahead of the current one.
+func TestCheckLegacySkillDirErrors(t *testing.T) {
+	root := installFixture(t)
+	newSkill := filepath.Join(root, filepath.FromSlash(install.SkillDir))
+	legacySkill := filepath.Join(root, filepath.FromSlash(install.LegacySkillDir))
+	if err := os.Rename(newSkill, legacySkill); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Errors, "pickle upgrade") || !hasErrContaining(res.Errors, install.LegacySkillDir) {
+		t.Errorf("expected an error naming the legacy skill dir and `pickle upgrade`, got: %v", res.Errors)
+	}
+}
+
+// T-074: a legacy Claude view still present is likewise an error.
+func TestCheckLegacyClaudeLinkErrors(t *testing.T) {
+	root := installFixture(t)
+	newClaudeLink := filepath.Join(root, filepath.FromSlash(install.ClaudeSkillLink))
+	legacyClaudeLink := filepath.Join(root, filepath.FromSlash(install.LegacyClaudeSkillLink))
+	if err := os.Rename(newClaudeLink, legacyClaudeLink); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Errors, "pickle upgrade") || !hasErrContaining(res.Errors, install.LegacyClaudeSkillLink) {
+		t.Errorf("expected an error naming the legacy claude link and `pickle upgrade`, got: %v", res.Errors)
+	}
+}
+
+// T-074: checkLegacyPaths is a pure filesystem read, so it still runs (and
+// still errors) when pickle.toml itself fails to parse.
+func TestCheckLegacyPathRunsWithUnparseableConfig(t *testing.T) {
+	root := installFixture(t)
+	newSkill := filepath.Join(root, filepath.FromSlash(install.SkillDir))
+	legacySkill := filepath.Join(root, filepath.FromSlash(install.LegacySkillDir))
+	if err := os.Rename(newSkill, legacySkill); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, config.FileName), []byte("not = [valid"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Errors, "pickle.toml:") {
+		t.Errorf("expected the config parse error too, got: %v", res.Errors)
+	}
+	if !hasErrContaining(res.Errors, install.LegacySkillDir) {
+		t.Errorf("expected the legacy skill dir error despite the unparseable config, got: %v", res.Errors)
 	}
 }
 

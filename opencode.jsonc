@@ -12,7 +12,7 @@
   // Copilot login (`opencode auth login` -> GitHub Copilot). Its system prompt
   // is the SAME shared file the Pi extension (.pi/extensions/docs-readability.ts)
   // uses, so both backends behave identically. The prompt SHIPS in the skill
-  // payload (skill/resources/, reached here via the .agents/skills/ticket-flow
+  // payload (skill/resources/, reached here via the .agents/skills/brine
   // self-host symlink) — `pickle install` scaffolds this same reviewer into
   // projects (T-009). Confirm/adjust the model id
   // with `opencode models github-copilot`.
@@ -22,7 +22,7 @@
       "mode": "subagent",
       "model": "github-copilot/gpt-5.4",
       "temperature": 0.2,
-      "prompt": "{file:./.agents/skills/ticket-flow/resources/docs-readability.prompt.md}",
+      "prompt": "{file:./.agents/skills/brine/resources/docs-readability.prompt.md}",
       "permission": {
         "edit": "deny",
         "bash": "deny",

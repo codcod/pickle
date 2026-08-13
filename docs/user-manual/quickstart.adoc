@@ -31,7 +31,7 @@ cd your-repo
 pickle install
 ----
 
-This lays down the {flow} skill (`.agents/skills/ticket-flow/`), the
+This lays down the {flow} skill (`{skill-dir}/`), the
 `tickets/` directory with its generated `BOARD.md`, an agent-instruction marker
 block in `AGENTS.md`, and `pickle.toml` registering your project as the first
 child-project. It is idempotent — safe to re-run. Details: <<cmd-install>>.

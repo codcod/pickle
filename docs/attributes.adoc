@@ -3,5 +3,5 @@
 :product: pickle
 :repo-url: https://github.com/codcod/pickle
 :homebrew-tap: codcod/taps
-:skill-dir: .agents/skills/ticket-flow
+:skill-dir: .agents/skills/brine
 :flow: brine

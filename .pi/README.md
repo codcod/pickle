@@ -21,7 +21,7 @@ On first run:
 1. `/login` for Anthropic (or export `ANTHROPIC_API_KEY` before starting).
 2. **Trust the project** when prompted — required before `.pi/` extensions and
    `.agents/skills/` load.
-3. Confirm the flow engine loaded: `/skill:ticket-flow`.
+3. Confirm the flow engine loaded: `/skill:brine`.
 4. Sanity-check the build: `just build && ./pickle board audit` (expect 0 errors).
 
 ## What Pi picks up automatically
@@ -29,12 +29,12 @@ On first run:
 | Item | Source | Mechanism |
 |---|---|---|
 | Project rules / flow / commit policy | `AGENTS.md` | Native AGENTS.md loading (cwd + ancestors to git root) |
-| Ticket-flow engine | `.agents/skills/ticket-flow/` (→ `skill/`) | Native `.agents/skills` discovery + `/skill:ticket-flow` |
+| Brine engine | `.agents/skills/brine/` (→ `skill/`) | Native `.agents/skills` discovery + `/skill:brine` |
 | Guardrails | `.pi/extensions/workspace-guardrails.ts` | Auto-loaded after trust; `/reload` to refresh |
 | Docs-readability reviewer | `.pi/extensions/docs-readability.ts` | Read-only `docs_readability` tool + `/docs-readability` command (via Copilot) |
 | Skill commands | `.pi/settings.json` (`enableSkillCommands`) | `/skill:name` |
 
-`.claude/skills/ticket-flow` and the `CLAUDE.md` view are for Claude Code / Zed and are ignored
+`.claude/skills/brine` and the `CLAUDE.md` view are for Claude Code / Zed and are ignored
 by Pi — Pi reads `AGENTS.md`.
 
 ## Resuming work
