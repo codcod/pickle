@@ -402,3 +402,4 @@ pre-1.0 breaking change, and the superseded-decision pointer in `DESIGN.md`. Thi
   docs-check` all pass on current `main`; WIP clear (0/1 both gates); no ticket landed since
   refinement touches the same files at the cited spots
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
+- 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green: full rename + legacy sweep, 4 commits, build/test/lint/docs-check clean
