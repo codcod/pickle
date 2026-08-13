@@ -4,8 +4,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/codcod/pickle/internal/config"
 )
 
 // gitCommit commits every already-`git add`ed change with subject as the
@@ -469,5 +472,23 @@ func TestChangelogCheckUsageErrors(t *testing.T) {
 	}
 	if got := Run(nil, "test", []string{"changelog", "check", "extra-positional"}); got != exitUsage {
 		t.Fatalf("changelog check extra-positional = %d, want %d", got, exitUsage)
+	}
+}
+
+// TestTicketPrefixes (T-097): the changelog.Check prefix set is the
+// deduplicated union of every registered child's effective ticket-id
+// prefix, in registration order — one child left at the "T" default,
+// another with an explicit ticket_prefix, and no duplicate when two
+// children share a prefix.
+func TestTicketPrefixes(t *testing.T) {
+	cfg := &config.Config{Projects: []config.Project{
+		{Name: "pickle", Path: "."},
+		{Name: "ops", Path: "ops", TicketPrefix: "OPS"},
+		{Name: "ops2", Path: "ops2", TicketPrefix: "OPS"},
+	}}
+	got := ticketPrefixes(cfg)
+	want := []string{"T", "OPS"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ticketPrefixes = %v, want %v", got, want)
 	}
 }
