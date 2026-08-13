@@ -57,7 +57,7 @@ Hand-edits are always preserved on load.
 * `wip_in_development` / `wip_in_review` (default 1);
 * optional per-child `review_addendum`.
 
-The shipped {flow} skill (`.agents/skills/ticket-flow/`) states only the
+The shipped {flow} skill (`{skill-dir}/`) states only the
 flow's *defaults* for the ticket-id prefix, the branch prefix, the WIP limits
 and the commit policy, deferring to the project's actual configuration. The
 `AGENTS.md` marker block is the authoritative render of what is actually

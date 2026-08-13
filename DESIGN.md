@@ -290,7 +290,11 @@ child-project the feature targets** rather than guessing.
 - Keep the flow's own vocabulary intact (`tickets/`, `T-NNN`, `BOARD.md`, the seven status
   dirs, impact/complexity/cost) — it's proven and the skill is written against it. Make the
   id prefix configurable but default `T-`.
-- Skill name stays `ticket-flow` (the discovery name agents match on).
+- Skill name stays `ticket-flow` (the discovery name agents match on). **Superseded by
+  T-074**: the installed skill directory, the Claude symlink, and `SKILL.md`'s `name:`
+  frontmatter were renamed to `brine` (pre-1.0 breaking change) so the tool, the flow and the
+  on-disk id are not three different names for two things; see T-073 for the flow's proper
+  name and T-074 for the disk rename.
 - New multi-project vocabulary: **child-project** (a registered, connected build target with
   its own repo), the ticket `project:` frontmatter field, the board's per-child `### <child>`
   sub-groups, and `pickle project add/list/remove`.

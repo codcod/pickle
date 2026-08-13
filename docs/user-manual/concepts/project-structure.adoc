@@ -19,10 +19,10 @@ my-app/                           ← overarching project — pickle.toml lives 
 ├── opencode.jsonc                ← --agent opencode: reviewer subagent + bash guardrails
 ├── .agents/
 │   └── skills/
-│       └── ticket-flow/          ← the skill payload — SKILL.md + resources/
+│       └── brine/                ← the skill payload — SKILL.md + resources/
 ├── .claude/
 │   └── skills/
-│       └── ticket-flow           ← --agent claude: symlink to the payload above
+│       └── brine                 ← --agent claude: symlink to the payload above
 ├── .pi/
 │   └── extensions/               ← --agent pi: pickle-guardrails.ts, docs-readability.ts
 ├── tickets/
@@ -36,14 +36,14 @@ my-app/                           ← overarching project — pickle.toml lives 
 └── backend/                      ← another
 ----
 
-Only `pickle.toml`, `AGENTS.md`, `.agents/skills/ticket-flow/` and `tickets/`
+Only `pickle.toml`, `AGENTS.md`, `{skill-dir}/` and `tickets/`
 are unconditional; the rest depend on `--agent` and on how many children you
 register.
 
 == Three kinds of file
 
 pickle-owned::
-  `.agents/skills/ticket-flow/`, the `.claude` symlink, the `.pi` scaffolds,
+  `{skill-dir}/`, the `.claude` symlink, the `.pi` scaffolds,
   and the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region inside
   `AGENTS.md`/`CLAUDE.md`. `pickle upgrade` replaces these wholesale — keep
   hand-written notes *outside* them (above the markers, in `AGENTS.md`'s case).
@@ -82,11 +82,11 @@ ordinary stageable directory like any other. `pickle project add` and
   is regenerated *into a file you own* — commit it so a fresh clone briefs the
   agent identically.
 
-| `.agents/skills/ticket-flow/`
+| `{skill-dir}/`
 | Real files, not a fetched dependency. Committing them pins the exact rules
   in force, and turns `pickle upgrade` into a reviewable diff.
 
-| `.claude/skills/ticket-flow`
+| `.claude/skills/brine`
 | Git tracks symlinks; without it the Claude wiring is missing on a clone.
 
 | `.pi/extensions/*.ts`, `opencode.jsonc`
@@ -122,7 +122,7 @@ git checkout --ours tickets/BOARD.md && pickle board sync
 
 A commit that only changes ticket/board state (a ticket file, `BOARD.md`) uses its own compact
 form instead of Conventional Commits — `board: T-NNN <verb phrase>` — since a ticket-state
-change isn't a product change; see the ticket-flow skill's `tickets-README.md` §0 for the exact
+change isn't a product change; see the brine skill's `tickets-README.md` §0 for the exact
 grammar. This applies to every project, with any number of children, not only the single-repo
 case below.
 

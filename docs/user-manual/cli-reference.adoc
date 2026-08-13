@@ -64,7 +64,7 @@ pickle install [--project <name>] [--path <path>] [--build/--test/--lint/--docs 
 
 Run once in a project to lay down the flow. It:
 
-* copies the embedded skill payload into `.agents/skills/ticket-flow/` (real
+* copies the embedded skill payload into `{skill-dir}/` (real
   files) — including `resources/docs-readability.prompt.md`, the shared system
   prompt for the optional docs-readability reviewer (review protocol Step 4b);
 * scaffolds `tickets/` (the seven ordered status dirs, each with a
@@ -85,7 +85,7 @@ Run once in a project to lay down the flow. It:
 
 `--agent` takes a comma-separated set of `claude`, `opencode`, `pi` (default:
 `claude`). There is *no autodetection* — the set is exactly what you name.
-Every agent reads the same `AGENTS.md` + `.agents/skills/ticket-flow/` core;
+Every agent reads the same `AGENTS.md` + `{skill-dir}/` core;
 the per-agent artifacts are:
 
 [cols="1,3,1"]
@@ -93,7 +93,7 @@ the per-agent artifacts are:
 | Agent | Artifacts | Ownership
 
 | `claude`
-| `.claude/skills/ticket-flow` symlink + `CLAUDE.md` marker block
+| `.claude/skills/brine` symlink + `CLAUDE.md` marker block
   (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md` instead)
 | pickle-owned
 
@@ -135,7 +135,7 @@ conscious skip.
 safe to re-run*: the payload and marker block are refreshed in place while
 instance data (`BOARD.md`, `NOTES.md`, tickets, `pickle.toml`) is preserved
 once present. After installing, a post-install `board audit` self-check must
-pass. An existing `.agents/skills/ticket-flow` *symlink* (a dev/self-host
+pass. An existing `{skill-dir}` *symlink* (a dev/self-host
 link) is left untouched.
 
 [#cmd-project]
@@ -197,7 +197,7 @@ pickle upgrade
 ----
 
 Refreshes an existing install to the running binary's payload. It re-copies
-the embedded skill payload into `.agents/skills/ticket-flow/` (removing files
+the embedded skill payload into `{skill-dir}/` (removing files
 that the new payload dropped), re-injects the `AGENTS.md` marker block, and
 stamps `payload_version` in `pickle.toml`. Takes no flags and no arguments.
 
@@ -205,8 +205,8 @@ stamps `payload_version` in `pickle.toml`. Takes no flags and no arguments.
 are instance data and are not upgrade's business. Only artifacts that already
 exist are refreshed: `CLAUDE.md` is re-injected only if it is a regular file
 (a `CLAUDE.md -> AGENTS.md` symlink is left alone), and the
-`.claude/skills/ticket-flow` view is re-linked only if it is already there. A
-self-host *symlinked* `.agents/skills/ticket-flow` is left untouched, never
+`.claude/skills/brine` view is re-linked only if it is already there. A
+self-host *symlinked* `{skill-dir}` is left untouched, never
 followed and overwritten. The `payload_version` stamp **is** still updated in
 that case whenever it actually differs (an already-current version is a no-op,
 as below): `upgrade` refreshed everything else it owns — the marker block, the
@@ -235,7 +235,7 @@ line alone, and refuses outright if it cannot do so safely (see
   Because that block is what an agent reads first, the `[commit]` keys decide
   whether it is told to hold a child-project back pending your approval or to
   push as the work needs.
-* the skill directory `.agents/skills/ticket-flow/`, which is pickle-owned and
+* the skill directory `{skill-dir}/`, which is pickle-owned and
   re-copied in full. Do not keep hand-written files there (a self-host
   _symlink_ is left untouched).
 
@@ -244,6 +244,25 @@ Agent scaffolds follow the same probe-what-exists rule: the pickle-owned
 sibling extension files — `doctor` warns when a pickle-owned one drifts),
 while `opencode.jsonc` is user-owned after creation and is *never* touched by
 upgrade.
+
+[IMPORTANT]
+====
+*Upgrading from before the skill directory was renamed to `brine` (T-074,
+pre-1.0 breaking change):* `upgrade` first *sweeps away* the old
+`.agents/skills/ticket-flow/` directory and the `.claude/skills/ticket-flow`
+symlink, then refreshes `{skill-dir}/` as usual — there is no dual-name
+period, and the swept paths are reported alongside the usual `created`/
+`refreshed` lines. A legacy path that was itself a *self-host symlink* (a dev
+checkout that had not yet renamed its own link) is *re-linked* at the new name
+rather than deleted-and-recopied, so a self-hosting checkout is never turned
+into an installed copy by the sweep. One thing the sweep does *not* fix: a
+user-edited `opencode.jsonc` that still hardcodes
+`.agents/skills/ticket-flow/resources/docs-readability.prompt.md` keeps that
+stale path — `opencode.jsonc` is user-owned after creation and pickle never
+parses or merges JSONC, so `upgrade` cannot repair it. Edit that one line to
+`.agents/skills/brine/resources/docs-readability.prompt.md` by hand; a fresh
+`opencode.jsonc` scaffolded by a current `install` already has it right.
+====
 
 [#cmd-doctor]
 == `pickle doctor`
@@ -255,9 +274,9 @@ pickle doctor [--verbose|-v]
 Verifies install integrity and exits non-zero on any error. It checks that:
 
 * `pickle.toml` parses;
-* the skill directory `.agents/skills/ticket-flow/` resolves to a directory
+* the skill directory `{skill-dir}/` resolves to a directory
   and holds every payload file;
-* the `.claude/skills/ticket-flow` symlink (when present) is a symlink and not
+* the `.claude/skills/brine` symlink (when present) is a symlink and not
   broken;
 * `AGENTS.md` (and a regular-file `CLAUDE.md`) carry the pickle marker block,
   and its content matches what `pickle.toml` renders today — a block that
@@ -268,6 +287,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
 * pickle-owned agent scaffolds (`.pi/extensions/*.ts`) match the shipped
   version — a drifted file is a *warning* pointing at `pickle upgrade`
   (customizations belong in sibling files);
+* *neither* pre-brine legacy path (T-074) is still present —
+  `.agents/skills/ticket-flow/` or `.claude/skills/ticket-flow`. Unlike the
+  payload-version check below, this is an *error*, not a warning: a tree
+  carrying both names is serving a stale skill copy that some agents
+  discover ahead of the current one, which `pickle upgrade` fixes by
+  sweeping the old paths away (see the note under <<cmd-upgrade>>);
 * the state of the pre-commit guard (<<cmd-hooks>>) is reported. The guard is
   opt-in, so an absent hook is *not* a finding — just a line naming
   `pickle hooks install`, which is also the answer after a fresh clone, since
@@ -291,7 +316,7 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   warning points at `pickle upgrade`; if `upgrade` would refuse (see
   <<configuration>>), the warning gives that reason and tells you to edit
   `payload_version` by hand instead — it never sends you to a command that
-  cannot succeed. When `.agents/skills/ticket-flow` is a self-host symlink
+  cannot succeed. When `{skill-dir}` is a self-host symlink
   (a dev checkout pointing straight at the payload source, not an installed
   copy), this comparison is skipped entirely — there is nothing to
   compare — and the skip is reported as a passed line under `--verbose`,
@@ -306,8 +331,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
 pickle uninstall [--dry-run|-n]
 ----
 
-Detaches the flow from the project, leaving your work behind. It removes
-`.agents/skills/ticket-flow/`, the `.claude/skills/ticket-flow` symlink, the
+Detaches the flow from the project, leaving your work behind. It also sweeps
+any pre-brine legacy paths (T-074, `.agents/skills/ticket-flow/`,
+`.claude/skills/ticket-flow`) left by an older install, so a current binary
+can still fully remove one — the swept paths are reported alongside the
+usual removals below. Otherwise it removes
+`{skill-dir}/`, the `.claude/skills/brine` symlink, the
 `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block from
 `AGENTS.md`/`CLAUDE.md` (a `CLAUDE.md` that is a symlink to `AGENTS.md` is
 removed outright; a regular file keeps everything outside the markers, and the
