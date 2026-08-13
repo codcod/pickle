@@ -119,3 +119,13 @@ globs inside backticks while it is open.
   listed as a third bullet under item 1. T-073 also renamed prose across six `.adoc` files and
   added a `:flow:` attribute to `docs/attributes.adoc`, so **every line reference in this ticket
   must be re-verified at refinement** rather than trusted
+- 2026-08-13 — patched by **T-074's review impact sweep**. T-074 added 29 lines to
+  `docs/user-manual/cli-reference.adoc`, all below ~`:245`: an `[IMPORTANT]` block under
+  `upgrade` describing the legacy sweep, a `doctor` bullet for the new legacy-path error, and a
+  sentence under `uninstall`. Consequences for this ticket's anchors: the
+  `<<cmd-ticket-new>>` synopsis citation `cli-reference.adoc:277` is stale (it had already
+  drifted before T-074 — the synopsis now sits near `:438` pre-merge, `:467` post-merge), while
+  `cli-reference.adoc:140-142` (the `project add|list|remove` flag gap) is **above** the
+  insertion point and still correct. Neither documentation gap this ticket exists to close was
+  filled by T-074 — it documented only its own new behaviour — so the scope is unchanged.
+  Re-anchor by searching the heading text at refinement rather than trusting either number
