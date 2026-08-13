@@ -7,10 +7,11 @@ import (
 
 func TestClassifySubject(t *testing.T) {
 	cases := []struct {
-		name    string
-		subject string
-		kind    CommitKind
-		id      string
+		name     string
+		subject  string
+		prefixes []string // nil means []string{"T"}
+		kind     CommitKind
+		id       string
 	}{
 		{
 			name:    "child-project commit with trailing ticket reference",
@@ -66,10 +67,31 @@ func TestClassifySubject(t *testing.T) {
 			kind:    Unclassified,
 			id:      "T-050",
 		},
+		{
+			// T-097: before the prefix-aware predicate, this classified as
+			// ChildProject with a fabricated id "RFC-7231" — a candidate no
+			// changelog entry could ever clear.
+			name:    "a trailing non-ticket id-shaped token is not a ticket id (T-097)",
+			subject: "fix(http): handle chunked encoding (RFC-7231)",
+			kind:    Neither,
+			id:      "",
+		},
+		{
+			// T-097: before the prefix-aware predicate, this classified as
+			// Unclassified with a fabricated id "CVE-2024".
+			name:    `a revert with a parenthesised non-ticket id-shaped token is Neither (T-097)`,
+			subject: `Revert "x (CVE-2024)"`,
+			kind:    Neither,
+			id:      "",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			kind, id := ClassifySubject(c.subject)
+			prefixes := c.prefixes
+			if prefixes == nil {
+				prefixes = []string{"T"}
+			}
+			kind, id := ClassifySubject(c.subject, prefixes)
 			if kind != c.kind || id != c.id {
 				t.Fatalf("ClassifySubject(%q) = (%v, %q), want (%v, %q)", c.subject, kind, id, c.kind, c.id)
 			}
@@ -101,7 +123,7 @@ const fixtureChangelog = `# Changelog
 
 func TestCheckBoardOnlyTicketExcluded(t *testing.T) {
 	subjects := []string{"board: T-091 file a finding"}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +144,7 @@ func TestCheckBoardOnlyTicketExcluded(t *testing.T) {
 // Exclusion.IDs, not just the id immediately after "board:".
 func TestCheckMultiIDBoardCommitCapturesEveryID(t *testing.T) {
 	subjects := []string{"board: T-010, T-011 re-aimed after review"}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +161,7 @@ func TestCheckMultiIDBoardCommitCapturesEveryID(t *testing.T) {
 // a grammar-strict parser would silently drop them.
 func TestCheckBoardCommitWithIDsOutsideLeadingListStillCapturesAll(t *testing.T) {
 	subjects := []string{"board: T-080 review findings recorded, moved to rework; T-042, T-070, T-081 patched by the sweep"}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +176,7 @@ func TestCheckBoardCommitWithIDsOutsideLeadingListStillCapturesAll(t *testing.T)
 // is what makes it count toward printExclusions' "no ticket id" clause.
 func TestCheckBoardCommitWithNoIDHasEmptyIDs(t *testing.T) {
 	subjects := []string{"board: file the skill gaps found while releasing"}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +190,7 @@ func TestCheckBoardCommitWithNoIDHasEmptyIDs(t *testing.T) {
 // report it once.
 func TestCheckBoardCommitDeduplicatesRepeatedID(t *testing.T) {
 	subjects := []string{"board: T-050 re-aimed; see T-050's own history for why"}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +202,7 @@ func TestCheckBoardCommitDeduplicatesRepeatedID(t *testing.T) {
 
 func TestCheckChildProjectCommitIsShipped(t *testing.T) {
 	subjects := []string{"fix(serve): harden linkify (T-090)"}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +218,7 @@ func TestCheckMultiLineBulletContinuationLineCounts(t *testing.T) {
 	// T-070's reference sits on the bullet's *second* line, the exact shape
 	// this ticket's own filing miscounted with a first-line-only grep.
 	subjects := []string{"feat(x): something (T-070)"}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +232,7 @@ func TestCheckMultiLineBulletContinuationLineCounts(t *testing.T) {
 
 func TestCheckShippedAndMentionedYieldsNoCandidate(t *testing.T) {
 	subjects := []string{"feat(x): something (T-080)"}
-	res, err := Check(subjects, fixtureChangelog, "0.5.0")
+	res, err := Check(subjects, fixtureChangelog, "0.5.0", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +246,7 @@ func TestCheckMentionedButUnshippedYieldsNothing(t *testing.T) {
 	// 4: the check is one direction only (shipped-but-unmentioned), so an
 	// unshipped-but-mentioned ticket must never surface as a candidate or in
 	// any other reported field.
-	res, err := Check(nil, fixtureChangelog, "0.4.0")
+	res, err := Check(nil, fixtureChangelog, "0.4.0", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +259,7 @@ func TestCheckMentionedButUnshippedYieldsNothing(t *testing.T) {
 }
 
 func TestCheckUnknownSectionErrors(t *testing.T) {
-	if _, err := Check(nil, fixtureChangelog, "9.9.9"); err == nil {
+	if _, err := Check(nil, fixtureChangelog, "9.9.9", []string{"T"}); err == nil {
 		t.Fatal("Check with an absent section = nil error, want one")
 	}
 }
@@ -248,7 +270,7 @@ func TestCheckUnknownSectionErrors(t *testing.T) {
 // bookkeeping commit either).
 func TestCheckUnclassifiedSubjectIsNeitherShippedNorExcluded(t *testing.T) {
 	subjects := []string{`Revert "feat(x): add a thing (T-050)"`}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,12 +291,99 @@ func TestCheckDeduplicatesShippedIDs(t *testing.T) {
 		"fix(serve): part one (T-090)",
 		"fix(serve): part two (T-090)",
 	}
-	res, err := Check(subjects, fixtureChangelog, "Unreleased")
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(res.Shipped, []string{"T-090"}) {
 		t.Fatalf("Shipped = %v, want a deduplicated [T-090]", res.Shipped)
+	}
+}
+
+// TestNonTicketTokensAreNotIDs (T-097): a board: subject naming no ticket
+// but containing an id-shaped non-ticket token (SHA-256) must report an
+// empty IDs — the exact reproduction from the ticket's Description — which
+// is what restores printExclusions' "(+N with no ticket id)" clause. Before
+// this ticket, SHA-256 matched the permissive idRE and silenced it.
+func TestNonTicketTokensAreNotIDs(t *testing.T) {
+	subjects := []string{"board: note the SHA-256 subject handling"}
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Excluded) != 1 {
+		t.Fatalf("Excluded = %+v, want exactly one exclusion", res.Excluded)
+	}
+	if len(res.Excluded[0].IDs) != 0 {
+		t.Fatalf("Excluded[0].IDs = %v, want empty — SHA-256 is not a ticket id", res.Excluded[0].IDs)
+	}
+}
+
+// TestMultiPrefixRecognition (T-097 decision 5): with more than one
+// registered prefix, a subject naming ids from every registered prefix must
+// yield all of them; restricting the prefix set narrows recognition
+// accordingly — an accepted, documented blind spot, not a bug.
+func TestMultiPrefixRecognition(t *testing.T) {
+	subjects := []string{"board: T-001, OPS-7 both re-aimed"}
+
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", []string{"T", "OPS"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"T-001", "OPS-7"}
+	if !reflect.DeepEqual(res.Excluded[0].IDs, want) {
+		t.Fatalf("Excluded[0].IDs = %v, want %v", res.Excluded[0].IDs, want)
+	}
+
+	res, err = Check(subjects, fixtureChangelog, "Unreleased", []string{"T"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = []string{"T-001"}
+	if !reflect.DeepEqual(res.Excluded[0].IDs, want) {
+		t.Fatalf("Excluded[0].IDs = %v, want %v (OPS-7 unregistered, so invisible)", res.Excluded[0].IDs, want)
+	}
+}
+
+// TestEmptyPrefixesFallBackToT (T-097 decision 7): a nil/empty prefix slice
+// must fall back to recognising only "T", never to the old unrestricted
+// match — a future caller cannot silently reinstate the bug this ticket
+// removes.
+func TestEmptyPrefixesFallBackToT(t *testing.T) {
+	subjects := []string{"board: T-001 and SHA-256 both mentioned"}
+	res, err := Check(subjects, fixtureChangelog, "Unreleased", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"T-001"}
+	if !reflect.DeepEqual(res.Excluded[0].IDs, want) {
+		t.Fatalf("Excluded[0].IDs = %v, want %v", res.Excluded[0].IDs, want)
+	}
+}
+
+// TestSectionIDsDoesNotHarvestNonTicketTokens (T-097): a changelog body
+// legitimately containing prose like "SHA-256" must not be read as
+// mentioning a ticket by that name — only the real shipped id (T-001)
+// should ever surface as a candidate-clearing mention.
+func TestSectionIDsDoesNotHarvestNonTicketTokens(t *testing.T) {
+	changelogText := `# Changelog
+
+## [Unreleased]
+
+### Added
+
+- uses SHA-256 for content addressing (T-001)
+`
+	subjects := []string{"fix(x): something (T-001)"}
+	res, err := Check(subjects, changelogText, "Unreleased", []string{"T"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(res.Mentioned, []string{"T-001"}) {
+		t.Fatalf("Mentioned = %v, want [T-001] — SHA-256 must not appear", res.Mentioned)
+	}
+	if len(res.Candidates) != 0 {
+		t.Fatalf("Candidates = %v, want empty — T-001 is mentioned", res.Candidates)
 	}
 }
 
