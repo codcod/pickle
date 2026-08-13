@@ -438,3 +438,4 @@ candidate under a `T-` id — still recognised, so nothing to patch. No sweep ed
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
 - 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-13 — IN REVIEW → DONE: review passed, 5 non-blocking noted (note-and-close ×5), no new tickets
+- 2026-08-13 — merged to main (PR #40, 801b09b, https://github.com/codcod/pickle/commit/801b09b); merge commit, 3 commits kept

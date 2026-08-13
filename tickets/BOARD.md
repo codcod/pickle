@@ -124,7 +124,7 @@ Last updated: 2026-08-13
 | T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | yes — merged to main (PR #33, 876e63d, https://github.com/codcod/pickle/commit/876e63d); merge commit, 4 commits kept |
 | T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | yes — merged to `main` (`eed6b3e`, PR #35): the rework loop closed, history kept |
 | T-096 | replace the pinned docs-readability model gemini-2.5-pro with github-copilot/gpt-5.4 | yes — merged to `main` (`bf02f33`, PR #36): 2 commits kept, CI green |
-| T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | no — publish-gated |
+| T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | yes — merged to main (PR #40, 801b09b, https://github.com/codcod/pickle/commit/801b09b); merge commit, 3 commits kept |
 
 ## DROPPED
 
