@@ -13,10 +13,11 @@ Last updated: 2026-08-13
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | [] |
 
 ## IN REVIEW
 
@@ -40,7 +41,6 @@ Last updated: 2026-08-13
 |---|---|---|---|---|---|---|
 | T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | medium | medium | M | [T-073] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
-| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 

@@ -213,6 +213,14 @@ Check whether `skill/SKILL.md:161` and `skill/resources/TEMPLATE.md:153,171` nee
 touch: they carry the token list but, at filing, no glosses — if that holds, they need no edit,
 and the acceptance test's byte-identical token check covers them.
 
+**Also in this task (added at pickup — see History):** `skill/resources/tickets-README.md:320`
+reads "(`pickle`'s own `skill/resources/TEMPLATE.md` ships exactly these seven)". `skill/` is a
+path that exists only in pickle's repo; in an installed workspace the file is at
+`.agents/skills/ticket-flow/resources/TEMPLATE.md`. Reword to name the file **relative to the
+skill the reader is holding** — "this skill's own `resources/TEMPLATE.md`" — which is both
+correct everywhere and shorter. The pickup audit found this site; it escapes all four acceptance
+greps, which is why it survived the refinement sweep.
+
 #### Task 4 — the foreign-workspace test, recorded where it binds
 
 `AGENTS.md`, in the hand-written region **above** `<!-- pickle:begin -->` (line ~34), alongside
@@ -375,3 +383,17 @@ pass.
   axis carries no pre-registered criterion — that criterion governs the findings `class` column,
   a different field. Grades unchanged at low/low/S
 - 2026-08-13 — TO DO → READY: plan complete: 3 sites from the sweep, prose only, guards both ways
+- 2026-08-13 — READY → IN DEVELOPMENT: picked up
+- 2026-08-13 — plan amended inline: pickup applicability audit found a **fourth** site the
+  refinement sweep missed — `tickets-README.md:320` cites `skill/resources/TEMPLATE.md`, a
+  pickle-repo-only path, where an installed workspace has
+  `.agents/skills/ticket-flow/resources/TEMPLATE.md`. It escapes all four acceptance greps (it is
+  neither a ticket id, nor "the corpus"/"this repo", nor a token-list line), which is exactly why
+  the sweep did not see it. Folded into Task 3 as a one-line reword rather than a new ticket:
+  same theme, same file, same commit. Three further findings noted and closed as imprecision:
+  this ticket's `NOTES.md` line cites are off by ~5 (actual `862-870` and `~880-887`), the worked
+  examples span `review-protocol.md:170-172` not `:170-171`, and the end-to-end block's
+  `cp pickle` picks up a stale binary unless `just build` has run first (the acceptance test
+  already orders it that way). Audit otherwise confirmed the plan: all quoted sites verbatim at
+  the stated lines, zero board delta since READY, and every read-only check behaving as predicted
+- 2026-08-13 — READY → IN DEVELOPMENT: picked up
