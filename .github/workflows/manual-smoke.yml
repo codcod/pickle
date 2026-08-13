@@ -30,6 +30,14 @@ on:
 permissions:
   contents: read
 
+# The inputs.ref key is the point: without it a routine docs/** push would cancel
+# an in-flight workflow_dispatch backfill for an older tag, which is a ~4-minute
+# job someone started deliberately. 'self' covers the push-event case, where
+# inputs is undefined.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.ref || 'self' }}
+  cancel-in-progress: true
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
