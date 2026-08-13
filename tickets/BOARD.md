@@ -39,6 +39,7 @@ Last updated: 2026-08-13
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | medium | medium | M | [T-073] |  |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
@@ -54,7 +55,6 @@ Last updated: 2026-08-13
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
-| T-074 | rename the installed skill directory to brine, with upgrade migration and dual-name doctor | medium | high | L | [T-073] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
