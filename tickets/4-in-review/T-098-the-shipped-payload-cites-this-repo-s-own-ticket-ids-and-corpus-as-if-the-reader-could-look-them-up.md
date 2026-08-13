@@ -395,6 +395,34 @@ this ticket's own defect. "its documentation" was used instead.
 | N6 | non-blocking | other | noted | The adversarial reviewer argued the four `(T-083)`-style provenance tags are the same defect as the deleted worked-example ids and should also go. **Decision upheld, not adopted:** plan decision 7 locks them as legitimate and acceptance check 2 asserts their presence. A provenance tag is opaque-but-harmless to a foreign reader; "Worked examples from `tickets/6-done/`" instructed a lookup. Recorded so a later reviewer can promote it by citing this row rather than re-deriving the argument | `skill/SKILL.md:304`, `skill/resources/tickets-README.md:239`, `:430`, `review-protocol.md:242` | none — keep as is |
 | N7 | non-blocking | other | new ticket | **The pre-registered guard-test trigger has fired.** `NOTES.md` (written by this ticket's own Task 5) says to file the mechanical check the first time a second instance is found in a review. Two further instances have now surfaced *after* the refinement sweep declared the payload clean: the repo-only path caught at pickup, and F1 caught here. The sweep is demonstrably not self-checking, and both misses escaped all four `rg` patterns | this review (F1) + the pickup audit's fourth site; trigger recorded in `tickets/NOTES.md` | Filed as **T-099** (`--spawned-by T-098`). Must catch the two shapes greps currently miss: repo-only paths, and definite-article appeals to evidence the reader lacks |
 
+### Rework round 1 — fixes applied, verbatim per each suggestion
+
+All on the same branch, one commit (`eed05ea`):
+
+- **F1** — `review-protocol.md:156-157`. Replaced the pre-registered-criterion warrant with
+  "its value is comparability across reviews, which a vocabulary that shifts under you
+  destroys." `pre-registered` no longer appears anywhere under `skill/`.
+- **N1** — `review-protocol.md:142-144`. Parenthetical replaced verbatim per the suggestion:
+  "a prose list lets every author reinvent the header, and reviews whose tables are not shaped
+  the same way twice cannot be compared."
+- **N2** — `tickets-README.md:129-131`. Sentence replaced verbatim per the suggestion: "a
+  backlog drifts toward whatever its authors happened to be doing when they filed…"
+- **N3** — `tickets-README.md:125-128`. Added the explicit tie-break: `self-host` is when the
+  ticket that would carry the finding changes the flow, its tooling or its own docs;
+  `field-use` is everything else surfaced while shipping.
+- **N4** — `review-protocol.md:171-172`. Example 1 now reads "is `correctness`, even if the
+  surrounding code and its comments read as correct" — its own contrast, not the table row
+  restated.
+- **N5** — `AGENTS.md:33-48`. "Three shapes" → "Four shapes", the repo-only path promoted to
+  its own enumerated item and flagged as "the shape most easily missed."
+
+**Re-verified: the full acceptance test, re-run verbatim.** `just build`/`test`/`lint`/
+`docs-check` clean; the no-Go-code guard prints nothing; checks 1–6 all pass including both
+over-correction guards (six id keepers intact, tokens 1/1/2, `class` table `diff`-identical
+against `main`); a fresh e2e install into a throwaway dir matches neither
+`tickets/6-done/T-[0-9]` nor `the corpus|this repo`, `board audit` clean. Scope held at exactly
+F1 + N1–N5 — no new finding surfaced during the fix pass.
+
 **Disposition summary:** 7 findings — 1 blocking (F1 → rework); 6 non-blocking: 5 *fixed inline*
 (N1, N2, N3, N4, N5 — all branch-authored prose, applied in the rework pass), 1 *noted* (N6),
 1 *new ticket* (N7 → T-099, batched as the single guard-check theme).
@@ -474,3 +502,9 @@ the wrong instrument. That is what T-099 exists to replace.
   survived refinement
 - 2026-08-13 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-13 — IN REVIEW → REWORK: review: 1 blocking (F1 pre-registered-criterion warrant still repo-only); 6 non-blocking dispositioned (5 fixed inline, 1 noted, 1 -> T-099)
+- 2026-08-13 — rework round 1: F1 fixed (the class vocabulary's warrant no longer cites
+  pickle's own pre-registered criterion); N1–N5 fixed inline verbatim per their suggestions.
+  One commit (`eed05ea`), prose only — the no-Go-code guard still prints nothing. Full
+  acceptance test re-run and green, including both over-correction guards. Scope held exactly
+  at F1 + N1–N5
+- 2026-08-13 — REWORK → IN REVIEW: findings fixed
