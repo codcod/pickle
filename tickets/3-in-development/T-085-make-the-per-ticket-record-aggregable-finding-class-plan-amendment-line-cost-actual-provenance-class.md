@@ -382,11 +382,20 @@ D=$(mktemp -d) && cp pickle "$D/pk" && cd "$D"
 ./pk install --project demo . >/dev/null
 ./pk ticket new "probe" --project demo
 ./pk board audit          # expect: clean — no new gate row was added (decision 2)
-grep -n 'source:' tickets/1-to-do/T-001-probe.md   # expect: the new five-class seed line
+grep -n 'source:' tickets/1-to-do/T-001-probe.md   # expect: `source: pickle ticket new` (unchanged — see note)
 ```
 
 The `board audit` line is the load-bearing one: a clean audit on a fresh ticket proves this
 ticket added no mechanical check, which decision 2 requires.
+
+**Note (plan amended inline, applicability-gate finding):** `internal/ticket/ticket.go`'s
+`Scaffold()` hardcodes `source: pickle ticket new` and is not driven by `TEMPLATE.md` — decision
+1 forbids touching it. The five-class `source:` form is authored by hand, overwriting that
+placeholder, during the *"make it a ticket"* procedure's step 5 ("record where the ticket came
+from ... in prose"), exactly like the `## Outcome` TODO placeholder T-083 introduced. The E2E
+check therefore verifies the CLI-scaffolded placeholder is unchanged (proving no Go code was
+touched) rather than asserting the five-class form appears pre-authoring; checks 1–5 above
+already confirm the five-class form is documented everywhere an author would read it.
 
 ### Docs update (mandatory when user-facing)
 
@@ -457,3 +466,10 @@ nearest comparable payload change — set that precedent. `just docs-check` must
   cheapness argument. Cost collapsed S-M → **S**; impact/complexity unchanged
 - 2026-08-13 — TO DO → READY: plan complete: prose-only, 8-value class vocabulary, cost collapsed to S
 - 2026-08-13 — READY → IN DEVELOPMENT: picked up
+- 2026-08-13 — plan amended inline: acceptance test's E2E check corrected — it asserted
+  `pickle ticket new`'s raw output would already show the five-class `source:` seed line, which
+  requires editing `internal/ticket/ticket.go`'s hardcoded `Scaffold()` string and so contradicts
+  decision 1 (prose only, no Go code). The five-class form is authored by hand during the *"make
+  it a ticket"* procedure's step 5, mirroring how `## Outcome`'s placeholder (T-083) is filled in
+  post-scaffold, not emitted by the CLI. The E2E check now asserts the placeholder is unchanged
+  instead; checks 1–5 already confirm the five-class form is documented

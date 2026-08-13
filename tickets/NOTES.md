@@ -878,3 +878,29 @@ measurement is supposed to establish is the inversion T-045 was dropped for.
 - **A scheduled retro ceremony.** Run it as a pass, like the two `impact` recalibrations, not as
   a feature.
 - **Anything touching ordering, ranking, scoring or gating.** T-045 / T-063 / T-064.
+
+### T-085's pre-registered criterion — recorded so the 8th review after it ships can find it
+
+Filed 2026-08-07, refined and pinned 2026-08-13 (T-085). The `class` column is a bet, not a
+permanent field, and its outcome is decided by counting, not by re-debating:
+
+> **After 8 further reviews carrying the `class` column:** if any single class accounts for
+> **≥25%** of non-blocking findings, promote that class to a `board audit` check or a payload
+> rule. If the distribution is flat — **no class above 15%** — remove the column and drop the
+> direction.
+
+Recipe to count `class` values across `tickets/6-done/` once enough reviews carry the column
+(one row per `|`-delimited findings-table line, `class` is the 3rd pipe-field of the skeleton in
+`skill/resources/review-protocol.md §5`: `id | severity | class | disposition | …`):
+
+```sh
+awk -F'|' '
+  /\|.*severity.*\|.*class.*\|.*disposition.*\|/ { intable=1; next }   # header row
+  intable && /^[ \t]*\|[-: ]+\|/ { next }                               # separator row
+  intable && NF < 5 { intable=0; next }                                 # blank line ends the table
+  intable { gsub(/^[ \t]+|[ \t]+$/, "", $4); if ($4 != "") print $4 }  # $4 = class column
+' tickets/6-done/*.md | sort | uniq -c | sort -rn
+```
+
+Divide each count by the total non-blocking-row count (`disposition` column not `—`) to get the
+percentage the criterion above tests against.

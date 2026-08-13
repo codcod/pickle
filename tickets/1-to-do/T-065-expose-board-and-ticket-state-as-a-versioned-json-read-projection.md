@@ -52,7 +52,7 @@ format as they stand.
 
 `ticket show --json` as scoped above projects frontmatter, status, slug/path and **parsed
 History** — but nothing from the `## Review` section. That section holds the repo's largest
-structured dataset (**≈165 dispositioned findings across 36 done tickets**), in a table whose
+structured dataset (**347 dispositioned findings across 53 done tickets**), in a table whose
 columns `TEMPLATE.md` already fixes: id, severity, disposition, description, evidence,
 suggestion. Every cross-ticket question anyone has actually asked of this corpus — the T-045
 spawn rate, the rework rate, the review yield — is a group-by over that table, and each was
@@ -66,8 +66,8 @@ defensible and the ticket should not drift into one by omission:
   measurement substrate rather than a status mirror.
 - **Exclude** — it is free-prose-heavy (`description`, `evidence` and `suggestion` are
   sentences, not values), parsing it means a markdown-table reader that nothing else needs, and
-  malformed or absent tables are common (a `Disposition summary` line is present in only **23 of
-  36** done tickets).
+  malformed or absent tables are common (a `Disposition summary` line is present in only **40 of
+  53** done tickets).
 
 A middle option worth costing: project the **counts and the closed-vocabulary columns only**
 (id, severity, disposition, and the `class` column T-085 proposes), skipping the three prose
