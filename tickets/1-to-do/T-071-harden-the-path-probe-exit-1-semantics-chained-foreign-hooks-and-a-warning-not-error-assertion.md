@@ -149,3 +149,9 @@ assertion closes it.
   that one-line wording change — so if T-100 lands first, expect that string to have moved, and
   if this ticket lands first, T-100's item 2 re-reads whatever this leaves behind. Item 2's
   chained-foreign-hook scope still spans both hooks. Scope and grade unchanged
+- 2026-08-14 — patched by **T-100's review** (step 8): T-100 landed first, so the caveat above
+  resolves in its first branch. The PATH-capability pass line now reads `hooks: the pickle on
+  PATH can run the installed guards`, and the two `internal/doctor/hooks_test.go` assertions
+  match on `can run the installed guards`. T-100 confined itself to that one string, leaving
+  `checkHooks`' structure untouched, so this ticket's `probeCapable`/`checkHooks` scope is
+  unchanged — only the literal to re-read has moved. Scope and grade unchanged

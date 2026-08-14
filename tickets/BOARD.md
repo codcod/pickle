@@ -20,11 +20,10 @@ Last updated: 2026-08-14
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | [] |
 
 ## REWORK
 
@@ -130,6 +129,7 @@ Last updated: 2026-08-14
 | T-096 | replace the pinned docs-readability model gemini-2.5-pro with github-copilot/gpt-5.4 | yes — merged to `main` (`bf02f33`, PR #36): 2 commits kept, CI green |
 | T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | yes — merged to main (PR #40, 801b09b, https://github.com/codcod/pickle/commit/801b09b); merge commit, 3 commits kept |
 | T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | yes — merged to main (PR #43, ee85bf3, https://github.com/codcod/pickle/commit/ee85bf3); |
+| T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | no — publish-gated |
 
 ## DROPPED
 
