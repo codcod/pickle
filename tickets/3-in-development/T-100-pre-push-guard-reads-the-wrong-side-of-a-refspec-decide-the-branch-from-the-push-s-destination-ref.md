@@ -136,8 +136,8 @@ the two do not collide in either order. T-042 touches the offender scan, not the
    `<base>...<short LocalSHA>` when the two sides differ. Readable in the ordinary case, honest in
    the split-refspec case this ticket exists for. Nothing else in `writePushRejection` changes.
 7. **The degraded stderr line unifies on the per-hook name**: `pickle: <hook-name> guard skipped
-   (…)`, matching what the installed shims already emit. The six `bookkeeping guard skipped` sites
-   in `internal/cli/hooks.go` and the one in `prepush.go` adopt it.
+   (…)`, matching what the installed shims already emit. The five `bookkeeping guard skipped` sites
+   in `internal/cli/hooks.go` and the one in `prepush.go` adopt it — six in total.
    **`Shim()` is not touched and `ShimVersion` is not bumped** — the shims are already correct, and
    a bump would mark every installed hook stale for a change that does not affect them.
 8. **`doctor`'s PATH-capability line becomes
@@ -189,13 +189,13 @@ the two do not collide in either order. T-042 touches the offender scan, not the
 
 #### Task 3 — unify the degraded stderr wording
 
-- `internal/cli/hooks.go`: the four sites in `runHooksRunPrePush` (lines ~298, ~306, ~311 plus the
-  `hookConfig` one) and the two in `runHooksRunPreCommit` (~267, ~275) become
-  `pickle: %s guard skipped (%v)` with `hook.PrePush` / `hook.PreCommit` respectively. Each
-  function knows its own name — do not thread a parameter through `hookConfig`; format at the
-  call site.
+- `internal/cli/hooks.go`: the three sites in `runHooksRunPrePush` (~298, ~306, ~311 — the first
+  is the `hookConfig` error site, already inside that function) and the two in
+  `runHooksRunPreCommit` (~267, ~275) — five in total — become `pickle: %s guard skipped (%v)`
+  with `hook.PrePush` / `hook.PreCommit` respectively. Each function knows its own name — do not
+  thread a parameter through `hookConfig`; format at the call site.
 - `internal/hook/prepush.go:139` (the unresolvable-base line) becomes
-  `pickle: pre-push guard skipped (%v)`.
+  `pickle: pre-push guard skipped (%v)` — six sites in total across the two files.
 - Grep afterwards: `rg 'bookkeeping guard skipped' --glob '!CHANGELOG.md' --glob '!tickets/'`
   must print nothing. `CHANGELOG.md:332` is a historical entry for a shipped release and stays as
   written.
@@ -357,3 +357,10 @@ User-facing: the guard's rule changes and two stderr strings change.
   independently schedulable (rules §3); all live in the same two files. Grades held at
   medium/low/S: refinement confirmed the scope the grading assumed rather than moving it
 - 2026-08-14 — TO DO → READY: plan complete
+- 2026-08-14 — plan amended inline: applicability audit at pickup found Task 3 and decision 7
+  overcounted the `bookkeeping guard skipped` call sites ("four... plus the hookConfig one" /
+  "six" in `internal/cli/hooks.go` alone) — the true count is five in that file (three in
+  `runHooksRunPrePush`, two in `runHooksRunPreCommit`, the first of the three *being* the
+  hookConfig site, not additional to it) plus one in `prepush.go`, six total across both files.
+  Line numbers were already correct; only the prose arithmetic was off. No other findings
+- 2026-08-14 — READY → IN DEVELOPMENT: picked up

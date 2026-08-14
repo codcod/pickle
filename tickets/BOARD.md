@@ -13,10 +13,11 @@ Last updated: 2026-08-14
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-14
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | medium | low | S | [] |  |
-| T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | medium | low | S | [] |  |
 | T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | medium | medium | L | [] |  |
 
 ## TO DO (impact order, per child)
