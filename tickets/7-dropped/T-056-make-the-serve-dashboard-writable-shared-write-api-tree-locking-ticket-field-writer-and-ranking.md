@@ -17,6 +17,44 @@ After this ships, `pickle serve` can safely accept a second, concurrent writer �
 
 ## Description
 
+> **DROPPED 2026-08-14 — split at refinement; do not implement, do not re-file from this
+> text.** The audit below was re-verified against the tree on the day it was dropped and its
+> *substance* still holds (zero `flock|Mutex|O_EXCL` hits repo-wide, no frontmatter serializer,
+> no `internal/api`, nine bare `fmt.Errorf`s in `move.Move`, a GET-only mux). Its **line
+> references are stale** and every cited signature now also takes `def *flow.Definition`
+> (T-080/T-081, filed after this ticket): `move.go:62`→`:43`, `move.go:129`→`:132`,
+> `move.go:142-147`→`:147-151`, `move.go:118`→`:121-126`, `config.go:478`→`:915`,
+> `config.go:347`→`:524`/`:544`, `board.go:331`→`board.Regenerate` at `:457`,
+> `cli/ticket.go:124`→`:152`, `cli/ticket.go:154`→`:183`, `ticket.go:182`→`:243`,
+> `serve.go:62`→`:63-77`, `serve_test.go:416`→`:722`, `audit.go:86`→`:178-186`,
+> `project.go:38`→`:42`. Take the successor tickets' references, not these.
+>
+> **Why it was dropped:** it is an XL umbrella of six work areas that cannot pass the READY
+> gate (§4) as one plan, its central premise (a *writable dashboard*) has been downgraded twice
+> for unevidenced demand (`NOTES.md:127`, `:151`), and three of its six areas acquired
+> co-owners after it was filed. Split at the user's direction on 2026-08-14, one part per
+> destination:
+>
+> | work area | where it went |
+> |---|---|
+> | 2 — concurrency foundation (+ the live `BOARD.md` truncate race) | **T-101** (READY) — atomic writes, flock tree lock, `O_EXCL` id allocation |
+> | 4 — ticket field writer | **T-102** (TO DO) — surgical single-field edit behind a parse-back guard, shipped as a CLI verb |
+> | 5 — ranking | closed "don't rank at all" on 2026-08-01 (T-063); its one surviving residue is **T-103** (TO DO), the `cost` tiebreak, filed because the trigger recorded below has fired |
+> | 1 + 3 — `internal/api`, typed errors, CAS | **not filed.** Area 1's own text says to drop the extraction if a single audited write chokepoint is not the goal — it is not, while no second writer exists. **T-065** owns the read-projection seam it named. Re-file only when a real in-process caller appears. |
+> | 6 — write endpoints in `serve` (CSRF, `Origin`/`Sec-Fetch-Site`, replacing `TestServeNeverWrites`) | **folded into T-079**, which introduces the first non-GET route in `serve` and needs all of it anyway. The renegotiation of T-053's decisions 1 and 9 and both its non-goals goes with it. |
+>
+> **Errors and stale evidence in the text below, marked so they are not mined back out as
+> fact:**
+> - *"T-059's `family:` is set on 0 of 63 tickets"* — it is now set on **4 of 100** (all
+>   `family: T-075`). The conclusion it supported (weak demand for hand-curated order) is
+>   weakened but not reversed.
+> - *"`critical` and `high-critical` are unused across all 63 tickets"* — still unused, but the
+>   corpus is **100** tickets, and the `medium` group is 7 deep in TO DO (44 of 100 overall),
+>   well past the "≥5 deep" trigger the same paragraph sets. T-103 is that trigger firing.
+> - The *"a cheaper v1: have the UI shell out to the CLI"* option in work area 6 was never
+>   evaluated at refinement, because area 6 left with T-079. It is still the cheapest v1 and
+>   T-079 should weigh it.
+
 `pickle serve` (T-053) ships as a **read-only** view of the board, and that is not a
 stylistic choice — it is what makes the dashboard safe to run beside an agent. The roadmap
 is to grow it into a working surface: editing tickets from the browser, manual ranking, and
@@ -221,3 +259,8 @@ own merits regardless of the dashboard) → 1 → 3 → 4 → 5 → 6.
   separately means writing the same tests twice” hazard is resolved — the harness and the
   `ticket new` cli tests exist now, and this ticket should consume them rather than re-create them
   (the no-`t.Parallel()` rule in package `cli` comes with them)
+- 2026-08-14 — refined, and the refinement's verdict was a split: the six work areas went to
+  T-101 (area 2, refined to READY the same day), T-102 (area 4), T-103 (area 5's residue),
+  T-079 (area 6, folded) and nowhere (areas 1+3, deliberately not filed). Code claims
+  re-verified against v0.8.0-3-gca1390f; the corrections are in the DROPPED banner.
+- 2026-08-14 — TO DO → DROPPED: split at refinement into T-101/T-102/T-103, area 6 folded into T-079, areas 1+3 not filed

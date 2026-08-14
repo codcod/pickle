@@ -90,16 +90,20 @@ a fail-closed guard. It is unnecessary today because **no write path re-renders 
 `internal/ticket/ticket.go:529` `Scaffold()` is only ever called for brand-new files
 (`internal/cli/ticket.go:141`), while `parseFrontmatter` carries unknown keys through in
 `Front`. An unknown field cannot currently be dropped. File that guard **when, and only when, a
-frontmatter re-render path is proposed** — i.e. as a prerequisite inside T-056's ticket field
-writer (work area 4), which is what creates the hazard.
+frontmatter re-render path is proposed** — i.e. as a prerequisite inside the ticket field
+writer, which is what creates the hazard. That writer is now **T-102** (T-056 was dropped and
+split on 2026-08-14), and T-102's Description carries the pre-registration forward.
 
 ### Soft couplings (not `depends-on`)
 
-- **T-056, work area 1** — extracting a shared, audited core (`internal/api`). Lifting the
-  `serve` view structs into something both a CLI command and an HTTP handler can use **is that
-  extraction seam**. Doing this ticket and T-056 area 1 independently means building the
-  projection twice; the same duplication hazard T-056 already records against **T-043**.
-  Sequence them or fold one into the other — do not run them concurrently.
+- **T-056, work area 1 — resolved 2026-08-14: this ticket owns the seam now, and there is
+  nothing to sequence against.** T-056 was dropped and split; its areas 1 and 3 (`internal/api`,
+  typed errors, compare-and-swap) were **deliberately not filed**, on area 1's own stated
+  condition — the extraction only pays for itself if a single audited *write* chokepoint is the
+  goal, and it is not while no second writer exists. So the duplication hazard is gone: lifting
+  the `serve` view structs into something a CLI command can also use is this ticket's work
+  alone, and refinement option (b) (*"fold into T-056 area 1 and drop this"*) is off the table —
+  the honest choices are now (a) refine as scoped or (c) drop until a consumer is real.
 - **T-043** — CLI test harness: **landed 2026-08-06**. New subcommands are exactly what it
   covers, so a `board json`/`ticket json` verb arrives with a harness already in place
   (`capture(t, …)` for stdout/stderr, `newProject(t)` for a throwaway install, and the
@@ -126,9 +130,10 @@ to T-057, which had itself already concluded that a harness extension is the wro
 mechanism (*"a pi extension only guards a pi session"*). See `tickets/NOTES.md`, "Second
 postscript (2026-08-04)".
 
-What survives without it: pickle has **no machine-readable output at all**, and T-056 work
-area 1 would have to build this projection regardless. That is real but weaker than the case
-at filing time. Graded `low-medium` — enabling infrastructure with deferred, now less certain,
+What survives without it: pickle has **no machine-readable output at all**. (The second half of
+this argument — *"and T-056 work area 1 would have to build this projection regardless"* —
+**expired on 2026-08-14**: area 1 was not filed when T-056 was split, so no other ticket will
+build it. Weigh option (c) accordingly.) That is real but weaker than the case at filing time. Graded `low-medium` — enabling infrastructure with deferred, now less certain,
 payoff; it should not outrank tickets that fix measured field defects.
 
 **Second prospective consumer, and deliberately not a re-grade (2026-08-07).** T-085 wants this
@@ -152,8 +157,9 @@ default to (a) because the ticket is already on the board.
 - **That `--json` should be added to the existing read commands** (`doctor`, `board audit`,
   `project list`, `version`) as part of this. That is separable polish, it serves a different
   audience, and it is explicitly out of scope here — file it on its own merits if wanted.
-- **That the projection should be writable, or served over HTTP.** Read-only, CLI-only. Writes,
-  locking and an HTTP surface are T-056.
+- **That the projection should be writable, or served over HTTP.** Read-only, CLI-only. Locking
+  is **T-101**, the ticket field writer is **T-102**, and `serve`'s first write route is
+  **T-079** (all three inherited from T-056, dropped 2026-08-14).
 
 ## Implementation Plan
 

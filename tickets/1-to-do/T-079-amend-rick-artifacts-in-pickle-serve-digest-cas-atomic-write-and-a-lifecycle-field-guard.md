@@ -67,11 +67,53 @@ fix is an upstream ask — a deterministic `rick check artifact <path>` — reco
 hostage to another product's roadmap; local validation becomes a follow-up if that ask ever
 lands.
 
-Soft coupling: T-056 (make the serve dashboard writable — shared write API, tree locking,
-ticket field writer) solves the same class of problem for `tickets/`. This ticket writes to a
-*different* tree whose other writer is a Claude Code session pickle does not control, so it
-cannot simply wait for T-056's lock — but the two should share the atomic-write helper and
-the CAS vocabulary rather than inventing two. Refinement should check which lands first.
+### Folded in from T-056 (2026-08-14): this ticket owns `serve`'s first write route
+
+T-056 ("make the serve dashboard writable") was **dropped and split on 2026-08-14**. Its work
+area 6 — everything that turns `serve` from a proven non-writer into a server that accepts a
+POST — folds **into this ticket**, because `POST /fragments/preview` plus a save endpoint makes
+this the first non-GET route in `serve` whatever else happens. The work was always implicit
+here; folding it makes it explicit, so the `L` grade stands rather than rising.
+
+What comes with it:
+
+- **Two structural safety guarantees die on the day this ships, and both need replacing.**
+  (a) The **method-qualified mux** (`internal/serve/serve.go:63-77`) registers every route as
+  `GET /…`, so today anything but GET/HEAD is a 405 *before a handler is reached* — the comment
+  at `:63` says exactly that. (b) **`TestServeNeverWrites`** (`internal/serve/serve_test.go:722`)
+  is a sha256 snapshot of the whole tree taken around a full crawl.
+  **Replace that test, do not delete it:** the same snapshot, asserting that *only* the file the
+  request was allowed to touch changed. That is a strictly stronger invariant than "nothing
+  changed", and it is what catches a handler regenerating a board it had no business touching.
+- **CSRF tokens and `Origin`/`Sec-Fetch-Site` checks are required, not optional.** A write
+  endpoint on `127.0.0.1:8745` is reachable from any page the user has open: form POSTs are not
+  preflighted, and DNS rebinding defeats a naive `Host` check. Whatever middleware this lands
+  must be the one a later ticket inherits — do not let a second write route invent its own.
+- **T-053's contract must be overturned on the record, not left to rot.** Decision **1**
+  (*"Read-only, absolutely. No handler writes, moves, renames or regenerates anything … The CLI
+  stays the single writer. A test asserts this"*) is overturned outright; decision **9** and the
+  non-goal *"`serve` is a human surface, not something an agent is told to run"* is **narrowed**
+  (still human-only, but the payload's "the CLI is the only writer" framing must be re-checked);
+  the non-goals *"no ticket editing or moving from the browser, no authentication"* are
+  overturned in part — this ticket edits **artifacts, not tickets**, and CSRF/Origin is
+  authentication-adjacent, so a non-loopback `--addr` now needs a stronger warning than "no
+  authentication". T-053's decisions 2–8 and 10 survive untouched; say so explicitly at
+  refinement so the surviving ones are not assumed dead too.
+- **T-056's "cheaper v1: have the UI shell out to the CLI" does not transfer here.** That option
+  preserved "the CLI is the only writer" for `tickets/`, where CLI verbs exist. No pickle
+  command writes `docs/specs/**`, so there is nothing to shell out to. Weighed and declined —
+  but if a `pickle` verb for artifact amendment is ever proposed, re-weigh it.
+
+Soft coupling: **T-101** (READY as of 2026-08-14) ships the atomic-write helper this ticket's
+Scope describes — `internal/atomicfile.WriteFile`, lifted from `config.writePreservingMode` —
+plus a flock tree lock over `tickets/`. **Consume the helper; do not write a second temp-file +
+`os.Rename`.** T-101 lands first on any plausible ordering (it is READY and unblocked, this
+ticket sits three deep behind T-075/T-076/T-077), which answers the "check which lands first"
+question this paragraph used to ask. The **lock** does not transfer: this ticket writes a
+*different* tree whose other writer is a Claude Code session pickle does not control, which is
+why the digest-CAS above exists instead. **T-102** (the ticket-frontmatter field writer) is the
+`tickets/`-side sibling of the lifecycle-field guard — same inverted-`verifyOnlyPayloadVersion`
+pattern, different file format; compare notes rather than sharing code.
 
 ## Implementation Plan
 
@@ -84,3 +126,8 @@ the CAS vocabulary rather than inventing two. Refinement should check which land
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
+- 2026-08-14 — scope folded in from T-056 work area 6 (dropped and split that day): this ticket
+  now owns `serve`'s first write route and everything that implies — replacing the
+  method-qualified mux and the `TestServeNeverWrites` snapshot, CSRF/`Origin` checks, and the
+  on-the-record renegotiation of T-053's decisions 1 and 9. Grade unchanged (`L`): the work was
+  already implicit in `POST /fragments/preview`.
