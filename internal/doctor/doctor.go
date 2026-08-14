@@ -324,7 +324,7 @@ func checkHooks(root string, r *Result) {
 		if p := hook.Probe().Problem(); p != "" {
 			r.warnf("hooks: installed and current, but %s", p)
 		} else {
-			r.ok("hooks: the pickle on PATH can run it")
+			r.ok("hooks: the pickle on PATH can run the installed guards")
 		}
 	}
 	// Nothing else in the tree earns this treatment (T-068 decision 10): `pickle
