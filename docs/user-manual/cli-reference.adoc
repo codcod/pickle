@@ -375,13 +375,17 @@ machinery and sharing one marker version:
 
 * **`pre-commit`** **refuses a commit that stages `tickets/` paths while a
   feature branch is checked out.**
-* **`pre-push`** **refuses a push, from a feature branch, whose range against
-  the remote base still carries a `tickets/` path** — the same invariant a
-  forge computes an MR diff from (`<remote>/<base>...<local>`, three dots).
-  It catches what `pre-commit` structurally cannot: bookkeeping committed
-  correctly on the base branch that leaks into a feature branch's merge
-  request because the remote base was behind when the branch was rebased onto
-  it, or opened as an MR, before the base caught up.
+* **`pre-push`** **refuses a push whose destination is a feature branch, when
+  the range against the remote base still carries a `tickets/` path** — the
+  same invariant a forge computes an MR diff from (`<remote>/<base>...<local>`,
+  three dots). The branch is decided from the push's *destination* ref, not
+  its source, so `git push origin HEAD:refs/heads/feat/T-NNN-x` and
+  `git push origin main:refs/heads/feat/T-NNN-x` are both judged the same way
+  a forge would judge the resulting merge request. It catches what
+  `pre-commit` structurally cannot: bookkeeping committed correctly on the
+  base branch that leaks into a feature branch's merge request because the
+  remote base was behind when the branch was rebased onto it, or opened as an
+  MR, before the base caught up.
 
 Both exist because the flow puts code on a child's `feat/T-NNN-<slug>` branch
 and ticket/board bookkeeping on the base branch. Bookkeeping that rides along
@@ -389,8 +393,9 @@ on a feature branch is folded into a single commit — or dropped — by a
 squash-merge, after which `BOARD.md` indexes tickets whose recorded status
 disagrees with where the files are. Each guard's rejection message names the
 branch, the offending paths, and the way out. **Pushing the base branch itself
-is never refused** — it is `pre-push`'s single most important case to get
-right, since a project's bookkeeping legitimately lands there by design.
+is never refused, whatever ref the push's source spells** — it is `pre-push`'s
+single most important case to get right, since a project's bookkeeping
+legitimately lands there by design.
 
 `install` writes a short shim per hook, each calling back into
 `pickle hooks run <name>` (`pre-push` additionally forwards its own
@@ -496,7 +501,7 @@ that wants the guard already has it.
 * **Both fail open, always.** No `pickle` on `PATH`, no `pickle.toml`, an
   unparseable config, no git, an unresolvable base — each of those skips the
   check and allows the commit or push, with one line on stderr naming which
-  case it was (`pickle: … guard skipped (…)`) rather than staying
+  case it was (`pickle: <hook> guard skipped (…)`) rather than staying
   silent. `pickle hooks run pre-commit` and `pickle hooks run pre-push` each
   exit `1` for a violation and *only* for a violation, `0` when the
   commit/push is fine or the guard could not run, and `2` for a bad

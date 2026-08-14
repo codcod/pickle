@@ -8,6 +8,22 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Fixed
+
+- **The `pre-push` guard decides the pushed branch from the push's destination ref, not its
+  source.** It previously tried the source ref (`LocalRef`) first, so `git push origin
+  main:refs/heads/feat/T-NNN-x` (a base branch carrying unpushed bookkeeping, pushed to a feature
+  branch) escaped the guard entirely, and `git push origin feat/T-NNN-x:refs/heads/main` (a
+  feature branch's bookkeeping pushed to the base) was wrongly refused. `RemoteRef` alone now
+  decides it, with no fallback, in every case — the guard's invariant is about what a merge
+  request built from the *destination* would carry, and a tag destination stays skipped either
+  way. The rejection's `range:` line now names a short commit SHA instead of the destination
+  branch when the two sides of the refspec disagree, since that branch need not exist locally.
+  Also unifies the degraded-guard stderr line on `pickle: <hook> guard skipped (…)` (it
+  previously read `pickle: bookkeeping guard skipped (…)` at the binary's own call sites while
+  the installed shims already said `<hook-name>`), and gives `doctor`'s PATH-capability line
+  (`hooks: the pickle on PATH can run the installed guards`) back its dropped antecedent (T-100).
+
 ## [0.8.0] - 2026-08-14
 
 ### Added
