@@ -61,7 +61,12 @@ left out:
 
 - **No `internal/api`, no typed errors, no CAS.** The extraction only pays for itself if a
   second in-process caller exists; the only candidate read surface is T-065's JSON projection,
-  which owns that seam now. `move.Move`'s nine `fmt.Errorf`s stay strings.
+  which owns that seam now. `move.Move`'s nine `fmt.Errorf`s stay strings. The **one** exception
+  is Task 8, which *documents* the partial-failure contract `move.Move` already has — prose over
+  behaviour that ships today, changing no signature and adding no state. It is included here
+  because this ticket's lock is what makes that contract finally statable: with concurrent
+  pickle writers excluded, the remaining windows are crash and I/O failure, and those are
+  enumerable.
 - **No frontmatter serializer and no field writer** — that is T-102, which can be built on top
   of this without changing anything here.
 - **No write endpoints in `serve`.** The method-qualified mux (`internal/serve/serve.go:63-77`)
@@ -227,6 +232,33 @@ Confirm `pickle board audit` does not flag `.git/pickle-tree.lock` (it should no
 `ticket.LoadAll` reads only `tickets/<status>/` and filters on `filenameRE`). Add the check to
 the acceptance run rather than a new test if it is already structurally impossible.
 
+#### Task 8 — state `move.Move`'s partial-failure contract in its doc comment
+
+`move.Move` performs three writes with no rollback (new file `internal/move/move.go:132`, remove
+old `:134`, regenerate board `:141`) and then a post-condition `audit.Audit` (`:147-151`). Three
+of its failure paths return a **non-nil error after the move has already been applied**, and
+`Result` is partially populated in two of them — none of which the doc comment says. Write it
+down, in `move.Move`'s own comment (`move.go:32`), as the caller-observable states:
+
+1. **not applied** — any failure before the write at `:132` (unknown status, load problems,
+   ticket not found, illegal transition, WIP, dependency gate, and now a lock-acquisition
+   timeout). `Result` is zero.
+2. **applied, board stale** — `board.Regenerate` failed after the file moved (`:141-143`).
+   `Result.Path`/`OldPath` are set; the ticket *has* changed status and its History line *is*
+   written. Recovery is `pickle board sync`.
+3. **applied, tree dirty** — the post-move audit reported errors (`:147-151`).
+   `Result.Path`/`OldPath`/`Warnings` are set; the move stands and something else in the tree is
+   broken.
+4. **applied, clean** — nil error.
+
+The load-bearing sentence is that **a non-nil error does not mean nothing happened**: a caller
+must read `Result.Path` before concluding otherwise. Also say what the lock does *not* cover —
+D7's duplicate-id window (`move.go:121-126`) is a **crash** window, and no lock closes it.
+
+Documentation only: no signature change, no new state, no behaviour change, and deliberately
+**no** typed or sentinel errors — those were left unfiled with T-056 areas 1+3 and a caller who
+needs to branch on these states is the trigger to file them, not this comment.
+
 ### Acceptance test
 
 Run from the repo root, all must be green:
@@ -260,7 +292,11 @@ Then the concurrency checks:
    passing with the test file unmodified (`git diff --stat internal/serve/serve_test.go` shows
    no change to that test's body).
 
-5. **`serve` beside a writer stays coherent**, by hand: `./pickle-test serve` in the throwaway
+5. **The partial-failure contract is readable where a caller will look for it**:
+   `go doc github.com/codcod/pickle/internal/move Move` prints all four caller-observable states
+   from Task 8, including the "a non-nil error does not mean nothing happened" sentence.
+
+6. **`serve` beside a writer stays coherent**, by hand: `./pickle-test serve` in the throwaway
    install, then run `./pickle-test ticket move …` in a loop in another shell for ~30 s while
    the board page polls. Expect no blank page, no 500, and no duplicate-id error in the health
    banner.
@@ -284,7 +320,8 @@ holds the tree lock" error, and `pickle serve` is officially safe to run beside 
 1. Acceptance test green; `just build && just test && just lint && just docs-check` clean.
 2. Docs updated and registered (`docs-check` proves the includes resolve).
 3. Write a summary: files touched, the two new packages, and anything deferred (notably: no
-   typed errors, no CAS, no serializer — T-102 and T-065 own those).
+   typed errors, no CAS, no serializer — T-102 and T-065 own those; the partial-failure contract
+   is *documented* by Task 8, not changed).
 4. Suggested Conventional Commit message:
 
    ```
@@ -312,4 +349,7 @@ holds the tree lock" error, and `pickle serve` is officially safe to run beside 
 - 2026-08-14 — created (TO DO). source: chat: refinement split of T-056 (dropped the same day) —
   work area 2 plus the live BOARD.md truncate race, the one part with standalone value and no
   dependency on a writable dashboard
+- 2026-08-14 — plan gained Task 8 (document `move.Move`'s partial-failure contract) while still
+  in READY: the one fragment of T-056 work area 3 that costs a paragraph and needs no consumer.
+  Areas 1+3 otherwise stay unfiled.
 - 2026-08-14 — TO DO → READY: plan complete
