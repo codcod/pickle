@@ -968,7 +968,34 @@ Three decisions worth keeping, because each will be re-proposed otherwise:
   same three pieces could land in the existing packages instead". With no second writer, that
   condition fails. T-065 now owns the read-projection seam alone, which also kills T-065's
   refinement option (b) ("fold into T-056 area 1") and weakens its "T-056 would build this
-  anyway" fallback argument. **Re-file only when a real in-process caller exists.**
+  anyway" fallback argument.
+
+  > **Pre-registered trigger for areas 1+3.** File the write chokepoint (`internal/api`, typed
+  > errors, explicit `root`, CAS) the first time a **second caller mutates the ticket tree
+  > in-process** — any code outside `internal/cli` calling `move.Move` or a ticket create.
+  > **Not** a caller that only *reads* (that is T-065). **Not** a caller that shells out to the
+  > CLI (that is the cheap v1, and it deliberately keeps the writer count at one). Until then the
+  > honest number of writers is one, and a chokepoint for one writer is a rename. Three events
+  > would fire it, and they are what to watch rather than "demand" in general: **T-079**
+  > discovering it must move a *ticket* rather than only amend a `docs/specs/**` artifact;
+  > **T-065** shipping and someone then asking for `--json` on a *write* verb; a third pickle
+  > surface (the "road C" API-first extension above) being filed — in which case file the
+  > chokepoint *before* that ticket is refined, not during. Whoever next proposes `internal/api`
+  > should be asked which of the three happened.
+
+  **The one argument that claimed "now or never" is false, and that is why deferring is safe.**
+  T-056 area 3 held that CAS must be designed in early because *"retrofitting this later means
+  changing every signature"*. `move.Move` has **exactly one caller**
+  (`internal/cli/ticket.go`), so adding an `expectedStatus` parameter later is a one-line change
+  at one site. The premise only becomes true at three or so callers — by which point the trigger
+  above has already fired. Recorded because it is the argument that will otherwise be re-run
+  verbatim in six weeks.
+
+  What *was* taken from area 3, and all that was: **T-101 Task 8** documents `move.Move`'s
+  existing partial-failure contract (four caller-observable states; a non-nil error does not mean
+  nothing happened). Prose over shipped behaviour — no signature, no state, no sentinel errors.
+  It is in T-101 because T-101's lock is what makes the contract statable: with concurrent pickle
+  writers excluded, the remaining windows are crash and I/O failure, and those are enumerable.
 - **Area 6 went to T-079 without a grade change.** T-079 introduces `POST /fragments/preview`,
   so it is the first non-GET route in `serve` whatever else happens: it must already demolish the
   method-qualified mux (`serve.go:63-77`) and `TestServeNeverWrites` (`serve_test.go:722`), and
