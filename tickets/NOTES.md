@@ -943,3 +943,43 @@ A fifth shape escapes all four and needs the eye, not `rg`: a **path** that only
 repo (`skill/resources/…`, where an installed workspace has
 `.agents/skills/ticket-flow/resources/…`). That is the one the T-098 refinement sweep missed and
 the pickup audit caught.
+
+## T-056 split (2026-08-14) — the XL umbrella dropped, four destinations
+
+Refinement of T-056 ("make the serve dashboard writable") re-verified its write-layer audit
+against `v0.8.0-3-gca1390f` and then split it, at the user's direction. **The audit's substance
+held** — still zero `flock|Mutex|O_EXCL` hits repo-wide, still no frontmatter serializer, still
+no `internal/api`, nine bare `fmt.Errorf`s in `move.Move`, a GET-only mux — but every line
+reference had moved and every cited signature had grown a `def *flow.Definition` (T-080/T-081).
+The corrected references are in T-056's DROPPED banner; do not mine the body text for them.
+
+| T-056 work area | destination |
+|---|---|
+| 2 — concurrency foundation | **T-101**, refined to READY the same day |
+| 4 — ticket field writer | **T-102** (TO DO) |
+| 5 — ranking | closed 2026-08-01; residue filed as **T-103** (TO DO) |
+| 1 + 3 — `internal/api`, typed errors, CAS | **not filed** |
+| 6 — write endpoints in `serve` | **folded into T-079** |
+
+Three decisions worth keeping, because each will be re-proposed otherwise:
+
+- **Areas 1+3 were not filed, on area 1's own stated condition.** Its text said the extraction is
+  justified only as "one audited path every writer must pass through", and that otherwise "the
+  same three pieces could land in the existing packages instead". With no second writer, that
+  condition fails. T-065 now owns the read-projection seam alone, which also kills T-065's
+  refinement option (b) ("fold into T-056 area 1") and weakens its "T-056 would build this
+  anyway" fallback argument. **Re-file only when a real in-process caller exists.**
+- **Area 6 went to T-079 without a grade change.** T-079 introduces `POST /fragments/preview`,
+  so it is the first non-GET route in `serve` whatever else happens: it must already demolish the
+  method-qualified mux (`serve.go:63-77`) and `TestServeNeverWrites` (`serve_test.go:722`), and
+  it already needs CSRF/`Origin` checks. Folding made an implicit cost explicit rather than
+  adding work, so `L` stands. The renegotiation of T-053's decisions 1 and 9 rides along with it.
+- **T-103 exists because a pre-registered trigger fired**, not because ranking was reopened.
+  T-056 work area 5 said to file the `cost` tiebreak only if an `impact` recalibration left the
+  `medium` group ≥5 deep; two passes have been run and it is 7 deep (and `low-medium` is 7 too).
+  It is graded **`low`** because T-063's fatal finding still stands: fresh measurement over all
+  **294 revisions** of `tickets/BOARD.md` shows READY held 0 rows in 205 of them, 1 in 65, 2 in
+  22 and 3 in 2 — never more than three. Ordering TO DO improves a *reading* surface, not the
+  pickup queue. Two stale numbers in T-056's own evidence were corrected in passing: `family:` is
+  set on **4 of 100** tickets (all `family: T-075`), not 0 of 63, and `critical`/`high-critical`
+  remain unused across **100** tickets.
