@@ -130,8 +130,10 @@ func pushRefTo(srcBranch, dstBranch, head string) PushRef {
 	}
 }
 
-// TestBranchBeingPushed pins the fallback finding F2 fixed (T-082's first
-// review): LocalRef alone cannot name the branch for every push shape.
+// TestBranchBeingPushed pins the destination-ref precedence (T-100): the
+// push's RemoteRef alone names the branch, for every push shape and with no
+// fallback to LocalRef. It therefore also still pins finding F2 (T-082's
+// first review), the `HEAD:` spelling LocalRef cannot name at all.
 func TestBranchBeingPushed(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -140,15 +142,16 @@ func TestBranchBeingPushed(t *testing.T) {
 		wantOK     bool
 	}{
 		{
-			name:       "ordinary push: LocalRef names the branch",
+			name:       "ordinary push: source and destination name the same branch",
 			ref:        PushRef{LocalRef: "refs/heads/feat/T-1-x", RemoteRef: "refs/heads/feat/T-1-x"},
 			wantBranch: "feat/T-1-x",
 			wantOK:     true,
 		},
 		{
 			// `git push origin HEAD:refs/heads/feat/T-1-x`: LocalRef is the
-			// literal "HEAD", which has no ref name of its own.
-			name:       "HEAD:refs/heads/... push: falls back to RemoteRef",
+			// literal "HEAD", which has no ref name of its own — the spelling
+			// that escaped the guard entirely before T-082's rework (F2).
+			name:       "HEAD:refs/heads/... push: the destination names the branch",
 			ref:        PushRef{LocalRef: "HEAD", RemoteRef: "refs/heads/feat/T-1-x"},
 			wantBranch: "feat/T-1-x",
 			wantOK:     true,
@@ -159,9 +162,9 @@ func TestBranchBeingPushed(t *testing.T) {
 			wantOK: false,
 		},
 		{
-			// A HEAD-relative tag push: LocalRef falls back to RemoteRef, which
-			// is still outside refs/heads/, so this stays skipped too.
-			name:   "HEAD:refs/tags/... push: fallback still outside refs/heads/",
+			// A HEAD-relative tag push: the destination is still outside
+			// refs/heads/, so this stays skipped too.
+			name:   "HEAD:refs/tags/... push: the destination is still outside refs/heads/",
 			ref:    PushRef{LocalRef: "HEAD", RemoteRef: "refs/tags/v1.0.0"},
 			wantOK: false,
 		},

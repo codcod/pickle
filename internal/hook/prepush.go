@@ -107,9 +107,10 @@ func branchBeingPushed(ref PushRef) (string, bool) {
 	return strings.CutPrefix(ref.RemoteRef, refsHeadsPrefix)
 }
 
-// CheckPrePush is the rule: refuse a push whose local ref is a feature branch
-// of a registered child when the range against the remote base still carries
-// a tickets/ path. It reports ok=false only for a real violation; every other
+// CheckPrePush is the rule: refuse a push whose destination ref is a feature
+// branch of a registered child when the range against the remote base still
+// carries a tickets/ path (branchBeingPushed above explains why the
+// destination, and only the destination, decides that). It reports ok=false only for a real violation; every other
 // outcome — a deletion, the base branch itself, tickets/ outside this
 // repository, an unresolvable base, a git diff that errors — is ok=true,
 // because a guard that cannot decide must not block (decision 2, the same
@@ -149,7 +150,7 @@ func CheckPrePush(cfg *config.Config, remote string, refs []PushRef, w io.Writer
 			base, baseErr = resolveBase(remote)
 			baseTried = true
 			if baseErr != nil {
-				fmt.Fprintf(w, "pickle: pre-push guard skipped (%v)\n", baseErr)
+				fmt.Fprintf(w, "pickle: %s guard skipped (%v)\n", PrePush, baseErr)
 			}
 		}
 		if baseErr != nil {

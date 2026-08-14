@@ -61,8 +61,8 @@ pickle version
 
 `pickle hooks install` arms two guards. A `pre-commit` guard refuses ticket
 and board bookkeeping staged on a feature branch, and a `pre-push` guard
-refuses pushing such a branch when its range against the remote base still
-carries the same bookkeeping. Together they enforce the one flow rule nothing
+refuses a push whose destination is such a branch when the range against the
+remote base still carries the same bookkeeping. Together they enforce the one flow rule nothing
 else can: at both commit time and publish time. Hooks live in `.git/` and are
 never cloned or pushed, so run this
 once in **each** clone you work from, including a fresh clone of a project
