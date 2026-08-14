@@ -38,6 +38,7 @@ Last updated: 2026-08-14
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | medium | low | S | [] |  |
 | T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
@@ -53,7 +54,6 @@ Last updated: 2026-08-14
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-056 | make the serve dashboard writable: shared write API, tree locking, ticket field writer, and ranking | medium | high | XL | [] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
-| T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-065 | expose board and ticket state as a versioned JSON read projection | low-medium | medium | M | [] |  |
