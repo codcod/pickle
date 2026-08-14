@@ -478,3 +478,5 @@ recording the string's new text. `pickle board audit`: 103 tickets, 0 errors, 0 
   MR opened as PR #46 against `main`. `origin/main` was 9 bookkeeping commits behind at approval
   time, so the base was pushed first and the `origin/main...HEAD` check re-run clean before the
   branch went up — the exact leak this ticket's own guard exists to catch. Merge is the human's
+- 2026-08-14 — merged to main (PR #46, 1c55323, https://github.com/codcod/pickle/commit/1c55323);
+  merge commit, 4 commits kept
