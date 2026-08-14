@@ -365,3 +365,4 @@ Three internal touches instead:
   medium/low/S — the extra tree and the boundary care in rule 3 are absorbed by the S the two
   escapes already justified
 - 2026-08-14 — TO DO → READY: plan complete
+- 2026-08-14 — READY → IN DEVELOPMENT: picked up
