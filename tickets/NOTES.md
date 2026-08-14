@@ -941,8 +941,18 @@ rg -cF '<field-use|self-host|review|audit|chat>' skill/    # tokens byte-identic
 
 A fifth shape escapes all four and needs the eye, not `rg`: a **path** that only resolves in this
 repo (`skill/resources/…`, where an installed workspace has
-`.agents/skills/ticket-flow/resources/…`). That is the one the T-098 refinement sweep missed and
+`.agents/skills/brine/resources/…`). That is the one the T-098 refinement sweep missed and
 the pickup audit caught.
+
+**The trigger fired.** Two instances reached review after this sweep — the repo-only path above
+(found at pickup) and an appeal to "the pre-registered criterion" this same section names (found
+at review) — and neither was catchable by the four `rg` patterns above. T-099 built the check:
+`payload_lint_test.go` at the repo root, run by `just test`, walking `payloadFS` (both `skill/`
+and `agents/`) with four failing rules — this passage is now history, not instruction, and the
+patterns above live on as that file's rule 1 (generalised) and rule 2, plus two new rules (a
+repo-only-path check and a narrow invisible-evidence keyword list) for the two shapes that
+escaped. The count-based third pattern ("expect exactly the 6 keepers") is retired outright — the
+shape rules replace it.
 
 ## T-056 split (2026-08-14) — the XL umbrella dropped, four destinations
 
