@@ -93,10 +93,10 @@ referenced, not copied.
     tidy-up-before-approval obligation.
   - `pickle hooks install` enforces it locally: a `pre-commit` hook that refuses staged
     `tickets/` paths while HEAD is a feature branch, **and** a `pre-push` hook that refuses a
-    push of that branch whose range against the remote base still carries a `tickets/` path.
-    Hooks live in `.git/` and are never cloned, so it is once per clone. `git commit --no-verify`
-    / `git push --no-verify` bypass the matching hook for the rare commit or push whose *product*
-    is a file under `tickets/`.
+    push whose *destination* is a feature branch when the range against the remote base still
+    carries a `tickets/` path. Hooks live in `.git/` and are never cloned, so it is once per
+    clone. `git commit --no-verify` / `git push --no-verify` bypass the matching hook for the
+    rare commit or push whose *product* is a file under `tickets/`.
   - **The `pre-push` hook is the mechanical enforcement of the invariant this document states in
     prose: the MR carries no `tickets/` path.** It measures the same three-dot, merge-base range
     a forge computes an MR diff from — `<remote>/<base>...<local>` — not the range git hands the

@@ -2,6 +2,8 @@ package hook
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -101,8 +103,12 @@ func newRemoteRepo(t *testing.T, baseBranch string) (clone string, remoteName st
 }
 
 // pushRefFor builds the single PushRef a real `git push` would feed on stdin
-// for a normal (non-deleting, non-new-remote-ref) push of branch at head.
-func pushRefFor(t *testing.T, dir, branch, head string) PushRef {
+// for a normal (non-deleting, non-new-remote-ref) push of branch at head,
+// where the source and destination name the same branch. dir is unused (the
+// ref itself carries every field CheckPrePush needs) and was dropped at
+// T-100 (T-082 F8) — call sites pass the config's own root separately via
+// loadConfig.
+func pushRefFor(t *testing.T, branch, head string) PushRef {
 	t.Helper()
 	return PushRef{
 		LocalRef:  "refs/heads/" + branch,
@@ -112,8 +118,22 @@ func pushRefFor(t *testing.T, dir, branch, head string) PushRef {
 	}
 }
 
-// TestBranchBeingPushed pins the fallback finding F2 fixed (T-082's first
-// review): LocalRef alone cannot name the branch for every push shape.
+// pushRefTo builds the PushRef for a split refspec, where the source names
+// srcBranch and the destination names dstBranch — the shape T-100 exists
+// for, which pushRefFor cannot express since it assumes the two agree.
+func pushRefTo(srcBranch, dstBranch, head string) PushRef {
+	return PushRef{
+		LocalRef:  "refs/heads/" + srcBranch,
+		LocalSHA:  head,
+		RemoteRef: "refs/heads/" + dstBranch,
+		RemoteSHA: strings.Repeat("0", 40),
+	}
+}
+
+// TestBranchBeingPushed pins the destination-ref precedence (T-100): the
+// push's RemoteRef alone names the branch, for every push shape and with no
+// fallback to LocalRef. It therefore also still pins finding F2 (T-082's
+// first review), the `HEAD:` spelling LocalRef cannot name at all.
 func TestBranchBeingPushed(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -122,15 +142,16 @@ func TestBranchBeingPushed(t *testing.T) {
 		wantOK     bool
 	}{
 		{
-			name:       "ordinary push: LocalRef names the branch",
+			name:       "ordinary push: source and destination name the same branch",
 			ref:        PushRef{LocalRef: "refs/heads/feat/T-1-x", RemoteRef: "refs/heads/feat/T-1-x"},
 			wantBranch: "feat/T-1-x",
 			wantOK:     true,
 		},
 		{
 			// `git push origin HEAD:refs/heads/feat/T-1-x`: LocalRef is the
-			// literal "HEAD", which has no ref name of its own.
-			name:       "HEAD:refs/heads/... push: falls back to RemoteRef",
+			// literal "HEAD", which has no ref name of its own — the spelling
+			// that escaped the guard entirely before T-082's rework (F2).
+			name:       "HEAD:refs/heads/... push: the destination names the branch",
 			ref:        PushRef{LocalRef: "HEAD", RemoteRef: "refs/heads/feat/T-1-x"},
 			wantBranch: "feat/T-1-x",
 			wantOK:     true,
@@ -141,10 +162,42 @@ func TestBranchBeingPushed(t *testing.T) {
 			wantOK: false,
 		},
 		{
-			// A HEAD-relative tag push: LocalRef falls back to RemoteRef, which
-			// is still outside refs/heads/, so this stays skipped too.
-			name:   "HEAD:refs/tags/... push: fallback still outside refs/heads/",
+			// A HEAD-relative tag push: the destination is still outside
+			// refs/heads/, so this stays skipped too.
+			name:   "HEAD:refs/tags/... push: the destination is still outside refs/heads/",
 			ref:    PushRef{LocalRef: "HEAD", RemoteRef: "refs/tags/v1.0.0"},
+			wantOK: false,
+		},
+		{
+			// `git push origin main:refs/heads/feat/T-1-x`: the false pass under
+			// the old LocalRef-first precedence — LocalRef named "main", which
+			// is not a feature branch, so the ref was skipped before any range
+			// was measured. RemoteRef-only decides this is feat/T-1-x (T-100).
+			name:       "main:refs/heads/feat/... push: destination decides, not main",
+			ref:        PushRef{LocalRef: "refs/heads/main", RemoteRef: "refs/heads/feat/T-1-x"},
+			wantBranch: "feat/T-1-x",
+			wantOK:     true,
+		},
+		{
+			// `git push origin feat/T-1-x:refs/heads/main`: the false refusal
+			// under the old precedence. branchBeingPushed now names "main", and
+			// it is CheckPrePush's onFeatureBranch check — not this function —
+			// that lets the push through, because the base branch is
+			// bookkeeping's correct destination (T-082 decision 3).
+			name:       "feat/...:refs/heads/main push: destination decides, not the source branch",
+			ref:        PushRef{LocalRef: "refs/heads/feat/T-1-x", RemoteRef: "refs/heads/main"},
+			wantBranch: "main",
+			wantOK:     true,
+		},
+		{
+			// A mixed refspec: the source is a branch, but the actual
+			// destination is a tag. This is the row that FAILS under the
+			// rejected "prefer RemoteRef, fall back to LocalRef" design — that
+			// design would resolve LocalRef's "refs/heads/x" and wrongly treat
+			// a tag push as a branch push. RemoteRef-only, no fallback, keeps
+			// this skipped (decision 1 and decision 2).
+			name:   "refs/heads/x:refs/tags/... push: a tag destination stays skipped",
+			ref:    PushRef{LocalRef: "refs/heads/x", RemoteRef: "refs/tags/v1.0.0"},
 			wantOK: false,
 		},
 	} {
@@ -170,7 +223,7 @@ func TestCheckPrePush(t *testing.T) {
 
 		t.Chdir(root)
 		var msg bytes.Buffer
-		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{pushRefFor(t, root, "feat/T-001-x", head)}, &msg)
+		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{pushRefFor(t, "feat/T-001-x", head)}, &msg)
 		if err != nil {
 			t.Fatalf("CheckPrePush: %v", err)
 		}
@@ -235,7 +288,7 @@ func TestCheckPrePush(t *testing.T) {
 		head := mustGit(t, root, "rev-parse", "HEAD")
 
 		t.Chdir(root)
-		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{pushRefFor(t, root, "feat/T-001-x", head)}, &bytes.Buffer{})
+		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{pushRefFor(t, "feat/T-001-x", head)}, &bytes.Buffer{})
 		if err != nil {
 			t.Fatalf("CheckPrePush: %v", err)
 		}
@@ -253,7 +306,7 @@ func TestCheckPrePush(t *testing.T) {
 		head := mustGit(t, root, "rev-parse", "HEAD")
 
 		t.Chdir(root)
-		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{pushRefFor(t, root, "main", head)}, &bytes.Buffer{})
+		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{pushRefFor(t, "main", head)}, &bytes.Buffer{})
 		if err != nil {
 			t.Fatalf("CheckPrePush: %v", err)
 		}
@@ -277,7 +330,7 @@ func TestCheckPrePush(t *testing.T) {
 
 		t.Chdir(root)
 		var msg bytes.Buffer
-		ok, err := CheckPrePush(loadConfig(t, root), "origin", []PushRef{pushRefFor(t, root, "feat/T-001-x", head)}, &msg)
+		ok, err := CheckPrePush(loadConfig(t, root), "origin", []PushRef{pushRefFor(t, "feat/T-001-x", head)}, &msg)
 		if err != nil {
 			t.Fatalf("CheckPrePush: %v", err)
 		}
@@ -305,7 +358,7 @@ func TestCheckPrePush(t *testing.T) {
 		head := mustGit(t, child, "rev-parse", "HEAD")
 
 		t.Chdir(child)
-		ok, err := CheckPrePush(loadConfig(t, base), "origin", []PushRef{pushRefFor(t, child, "feat/T-001-x", head)}, &bytes.Buffer{})
+		ok, err := CheckPrePush(loadConfig(t, base), "origin", []PushRef{pushRefFor(t, "feat/T-001-x", head)}, &bytes.Buffer{})
 		if err != nil {
 			t.Fatalf("CheckPrePush: %v", err)
 		}
@@ -328,4 +381,92 @@ func TestCheckPrePush(t *testing.T) {
 			t.Error("a branch deletion was refused")
 		}
 	})
+
+	// destination is a feature branch, source is main: the false pass T-100
+	// fixes. Under the old LocalRef-first precedence this was allowed because
+	// LocalRef resolved to "main". The rejection must name the destination,
+	// feat/T-900-x, not the source.
+	t.Run("destination is a feature branch, source is main: refused and named correctly (T-100)", func(t *testing.T) {
+		root, remote := newRemoteRepo(t, "main")
+		stageTicket(t, root, "T-900-x.md")
+		mustGit(t, root, "commit", "-qm", "board: T-900 demo")
+		head := mustGit(t, root, "rev-parse", "HEAD")
+		ref := pushRefTo("main", "feat/T-900-x", head)
+
+		t.Chdir(root)
+		var msg bytes.Buffer
+		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{ref}, &msg)
+		if err != nil {
+			t.Fatalf("CheckPrePush: %v", err)
+		}
+		if ok {
+			t.Fatal("main:refs/heads/feat/T-900-x carrying tickets/ was allowed")
+		}
+		if !strings.Contains(msg.String(), "branch:  feat/T-900-x") {
+			t.Errorf("rejection does not name the destination branch:\n%s", msg.String())
+		}
+		if strings.Contains(msg.String(), "branch:  main") {
+			t.Errorf("rejection wrongly named the source branch:\n%s", msg.String())
+		}
+		// The range line honestly names what was diffed (decision 6): since
+		// LocalRef (main) disagrees with the destination branch, printing
+		// "...feat/T-900-x" would name a ref that need not exist locally, so
+		// it falls back to a short SHA instead.
+		if !strings.Contains(msg.String(), "..."+shortSHA(head)) {
+			t.Errorf("range line does not fall back to the short SHA on a split refspec:\n%s", msg.String())
+		}
+		if strings.Contains(msg.String(), "...feat/T-900-x") {
+			t.Errorf("range line named a ref (the destination branch) that need not exist locally:\n%s", msg.String())
+		}
+	})
+
+	// destination is main, source is a feature branch: the false refusal
+	// T-100 fixes. The base branch is bookkeeping's correct destination
+	// (T-082 decision 3) — this is the one place the rule exists to send
+	// bookkeeping to, not merely a safe direction to err in.
+	t.Run("destination is main, source is a feature branch: allowed (T-100, T-082 decision 3)", func(t *testing.T) {
+		root, remote := newRemoteRepo(t, "main")
+		mustGit(t, root, "checkout", "-qb", "feat/T-901-x")
+		stageTicket(t, root, "T-901-x.md")
+		mustGit(t, root, "commit", "-qm", "board: T-901 demo")
+		head := mustGit(t, root, "rev-parse", "HEAD")
+		ref := pushRefTo("feat/T-901-x", "main", head)
+
+		t.Chdir(root)
+		ok, err := CheckPrePush(loadConfig(t, root), remote, []PushRef{ref}, &bytes.Buffer{})
+		if err != nil {
+			t.Fatalf("CheckPrePush: %v", err)
+		}
+		if !ok {
+			t.Fatal("feat/T-901-x:refs/heads/main carrying bookkeeping was refused")
+		}
+	})
+}
+
+// TestCheckPrePushInALinkedWorktree is the pre-push half of finding F8 (the
+// other half, for pre-commit, is TestPreCommitInALinkedWorktree in
+// hook_test.go): both rules run through gitHere, not gitAt, and a hardcoded
+// root would inspect the main worktree's repository instead of the one being
+// pushed.
+func TestCheckPrePushInALinkedWorktree(t *testing.T) {
+	root, remote := newRemoteRepo(t, "main")
+
+	wt := filepath.Join(t.TempDir(), "wt")
+	mustGit(t, root, "worktree", "add", "-q", "-b", "feat/T-001-x", wt)
+	if err := os.MkdirAll(filepath.Join(wt, "tickets", "1-to-do"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stageTicket(t, wt, "T-001-x.md")
+	mustGit(t, wt, "commit", "-qm", "board: T-001 demo")
+	head := mustGit(t, wt, "rev-parse", "HEAD")
+
+	t.Chdir(wt)
+	var msg bytes.Buffer
+	ok, err := CheckPrePush(loadConfig(t, wt), remote, []PushRef{pushRefFor(t, "feat/T-001-x", head)}, &msg)
+	if err != nil {
+		t.Fatalf("CheckPrePush: %v", err)
+	}
+	if ok {
+		t.Errorf("guard missed the violation inside a linked worktree:\n%s", msg.String())
+	}
 }

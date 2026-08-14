@@ -237,7 +237,7 @@ func TestCheckHooksProbesPATH(t *testing.T) {
 		if len(res.Warnings) != 0 {
 			t.Errorf("a capable PATH pickle warned: %v", res.Warnings)
 		}
-		if !hasPassedContaining(res.Passed, "can run it") {
+		if !hasPassedContaining(res.Passed, "can run the installed guards") {
 			t.Errorf("capable PATH pickle not reported as such: %v", res.Passed)
 		}
 	})
@@ -287,7 +287,7 @@ func TestCheckHooksReportsBothHooks(t *testing.T) {
 	}
 	n := 0
 	for _, p := range res.Passed {
-		if strings.Contains(p, "can run it") {
+		if strings.Contains(p, "can run the installed guards") {
 			n++
 		}
 	}

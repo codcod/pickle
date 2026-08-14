@@ -264,7 +264,7 @@ func runHooksRunPreCommit(args []string) int {
 	}
 	cfg, err := hookConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pickle: bookkeeping guard skipped (%v)\n", err)
+		fmt.Fprintf(os.Stderr, "pickle: %s guard skipped (%v)\n", hook.PreCommit, err)
 		return exitOK
 	}
 	if cfg == nil {
@@ -272,7 +272,7 @@ func runHooksRunPreCommit(args []string) int {
 	}
 	ok, err := hook.CheckPreCommit(cfg, os.Stderr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pickle: bookkeeping guard skipped (%v)\n", err)
+		fmt.Fprintf(os.Stderr, "pickle: %s guard skipped (%v)\n", hook.PreCommit, err)
 		return exitOK
 	}
 	if !ok {
@@ -295,7 +295,7 @@ func runHooksRunPrePush(args []string) int {
 	}
 	cfg, err := hookConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pickle: bookkeeping guard skipped (%v)\n", err)
+		fmt.Fprintf(os.Stderr, "pickle: %s guard skipped (%v)\n", hook.PrePush, err)
 		return exitOK
 	}
 	if cfg == nil {
@@ -303,12 +303,12 @@ func runHooksRunPrePush(args []string) int {
 	}
 	refs, err := hook.ParsePushRefs(os.Stdin)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pickle: bookkeeping guard skipped (%v)\n", err)
+		fmt.Fprintf(os.Stderr, "pickle: %s guard skipped (%v)\n", hook.PrePush, err)
 		return exitOK
 	}
 	ok, err := hook.CheckPrePush(cfg, remote, refs, os.Stderr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pickle: bookkeeping guard skipped (%v)\n", err)
+		fmt.Fprintf(os.Stderr, "pickle: %s guard skipped (%v)\n", hook.PrePush, err)
 		return exitOK
 	}
 	if !ok {

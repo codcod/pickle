@@ -79,24 +79,38 @@ const refsHeadsPrefix = "refs/heads/"
 // branchBeingPushed names the branch a PushRef pushes, or reports ok=false
 // when the ref is not a branch push at all (a tag, say).
 //
-// LocalRef alone is not enough: `git push <remote> HEAD:refs/heads/feat/x`
-// sends the literal string "HEAD" as LocalRef (finding F2, T-082's first
-// review) — the ref being pushed "from" has no ref name of its own, only a
-// commit. RemoteRef is always the fully-qualified destination ref, for every
-// shape of push, so it is the reliable source: this falls back to it whenever
-// LocalRef does not resolve, and only then. A tag push's RemoteRef is
-// `refs/tags/...`, so it still falls outside refsHeadsPrefix and is still
-// skipped.
+// RemoteRef decides it — always, with no fallback to LocalRef (T-100). The
+// invariant this guard enforces is about what a merge request *built from the
+// destination branch* would carry, so the destination ref is the
+// semantically correct input in every case, not merely a rescue for the one
+// spelling where LocalRef fails to resolve. Two spellings were decided
+// wrongly under the old LocalRef-first precedence, both predating T-082's
+// rework: `git push origin main:refs/heads/feat/T-900-x` (local main carrying
+// unpushed bookkeeping) fell through as a false pass, because LocalRef
+// resolved to "main" and the ref was skipped before any range was measured;
+// `git push origin feat/T-901-x:refs/heads/main` (a feature branch pushed to
+// the base) was a false refusal, refusing the one destination bookkeeping is
+// correctly sent to (T-082 decision 3). RemoteRef alone resolves both, plus
+// the ordinary push and the `HEAD:refs/heads/...` push T-082's first review
+// already fixed (finding F2) — every shape lands on the same answer a forge
+// would compute from the destination ref.
+//
+// There is deliberately no LocalRef fallback. Every real git invocation of
+// this hook supplies a fully-qualified RemoteRef on stdin, so a fallback
+// could only ever fire on a mixed refspec such as
+// `git push origin refs/heads/x:refs/tags/v1` — where LocalRef *is* a branch
+// but the actual destination is a tag. Falling back there would treat a tag
+// push as a branch push and break the invariant below. A tag destination's
+// RemoteRef is `refs/tags/...`, so it stays outside refsHeadsPrefix and is
+// skipped, exactly as a tag push must be.
 func branchBeingPushed(ref PushRef) (string, bool) {
-	if branch, ok := strings.CutPrefix(ref.LocalRef, refsHeadsPrefix); ok {
-		return branch, true
-	}
 	return strings.CutPrefix(ref.RemoteRef, refsHeadsPrefix)
 }
 
-// CheckPrePush is the rule: refuse a push whose local ref is a feature branch
-// of a registered child when the range against the remote base still carries
-// a tickets/ path. It reports ok=false only for a real violation; every other
+// CheckPrePush is the rule: refuse a push whose destination ref is a feature
+// branch of a registered child when the range against the remote base still
+// carries a tickets/ path (branchBeingPushed above explains why the
+// destination, and only the destination, decides that). It reports ok=false only for a real violation; every other
 // outcome — a deletion, the base branch itself, tickets/ outside this
 // repository, an unresolvable base, a git diff that errors — is ok=true,
 // because a guard that cannot decide must not block (decision 2, the same
@@ -136,7 +150,7 @@ func CheckPrePush(cfg *config.Config, remote string, refs []PushRef, w io.Writer
 			base, baseErr = resolveBase(remote)
 			baseTried = true
 			if baseErr != nil {
-				fmt.Fprintf(w, "pickle: bookkeeping guard skipped (%v)\n", baseErr)
+				fmt.Fprintf(w, "pickle: %s guard skipped (%v)\n", PrePush, baseErr)
 			}
 		}
 		if baseErr != nil {
@@ -159,7 +173,7 @@ func CheckPrePush(cfg *config.Config, remote string, refs []PushRef, w io.Writer
 		if len(offenders) == 0 {
 			continue
 		}
-		writePushRejection(w, remote, branch, base, prefix, offenders)
+		writePushRejection(w, remote, branch, base, ref, prefix, offenders)
 		return false, nil
 	}
 	return true, nil
@@ -199,15 +213,37 @@ func resolveBase(remote string) (string, error) {
 	return "", fmt.Errorf("could not resolve a base branch for remote %q (tried %s)", remote, strings.Join(tried, ", "))
 }
 
+// shortSHA returns git's default short form (7 characters), or sha unchanged
+// if it is already no longer than that.
+func shortSHA(sha string) string {
+	if len(sha) > 7 {
+		return sha[:7]
+	}
+	return sha
+}
+
 // writePushRejection explains the refusal: what was pushed, why it matters,
 // and the three ways out — push the base first (the one that actually fixes a
 // real violation), fetch when the remote-tracking ref is stale (decision 5),
 // and --no-verify when the branch's own product genuinely lives under
 // tickets/. Shape mirrors writeRejection's.
-func writePushRejection(w io.Writer, remote, branch, base, prefix string, offenders []string) {
+//
+// branch names the destination — the ref branchBeingPushed decided from
+// ref.RemoteRef (T-100) — but the range actually diffed is
+// base...ref.LocalSHA. The two agree, and the range line names the branch,
+// whenever ref.LocalRef is that same branch's full ref; on a split refspec
+// (destination and source name different branches) LocalRef disagrees, so
+// naming the branch there would print a ref that need not exist locally. The
+// range line falls back to a short SHA in exactly that case, honest about
+// what was measured instead of implying a ref that may not resolve.
+func writePushRejection(w io.Writer, remote, branch, base string, ref PushRef, prefix string, offenders []string) {
 	fmt.Fprintf(w, "pickle: refusing to push ticket bookkeeping on a feature branch.\n\n")
 	fmt.Fprintf(w, "  branch:  %s\n", branch)
-	fmt.Fprintf(w, "  range:   %s...%s\n", base, branch)
+	rangeRHS := branch
+	if ref.LocalRef != refsHeadsPrefix+branch {
+		rangeRHS = shortSHA(ref.LocalSHA)
+	}
+	fmt.Fprintf(w, "  range:   %s...%s\n", base, rangeRHS)
 	shown := offenders
 	if len(shown) > maxListedPaths {
 		shown = shown[:maxListedPaths]
