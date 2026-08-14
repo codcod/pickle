@@ -252,3 +252,119 @@ func TestPayloadSpeaksToAForeignReader(t *testing.T) {
 	}
 	t.Fatal(b.String())
 }
+
+// TestPayloadLintRulesCatchTheEscapesTheySawInReview replays the ticket's
+// stated first two test cases: the two shapes that reached T-098's own review
+// after its hand sweep declared the payload clean, and that none of T-098's
+// four rg patterns could have caught. These are synthetic strings, not files
+// — the point is that these two specific sentences would have been caught.
+func TestPayloadLintRulesCatchTheEscapesTheySawInReview(t *testing.T) {
+	rules := payloadLintRules()
+	cases := []struct {
+		name     string
+		line     string
+		wantRule string
+	}{
+		{
+			name:     "escape 1 (found at pickup): a repo-only path",
+			line:     "see `skill/resources/TEMPLATE.md` for the shape",
+			wantRule: "repo-only-path",
+		},
+		{
+			name:     "escape 2 (found at review): an invisible-evidence appeal",
+			line:     "the **pre-registered criterion** this column exists to test",
+			wantRule: "invisible-evidence",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			findings := lintFile("synthetic.md", c.line, rules)
+			for _, f := range findings {
+				if f.rule == c.wantRule {
+					return
+				}
+			}
+			t.Fatalf("expected rule %q to flag %q; findings: %+v", c.wantRule, c.line, findings)
+		})
+	}
+}
+
+// TestPayloadLintRulesLeaveLegitimateShapesAlone is the over-correction
+// guard: a check that deletes the payload's legitimate references is worse
+// than no check. Every line here is a real shape drawn from the live payload
+// today (SKILL.md's (T-083) tag, tickets-README.md's grammar examples, the
+// installed TEMPLATE.md path, an ordinary tickets/ path, and the metasyntactic
+// placeholder id) and must produce zero findings across all four rules.
+func TestPayloadLintRulesLeaveLegitimateShapesAlone(t *testing.T) {
+	rules := payloadLintRules()
+	lines := []string{
+		"(T-083)",
+		"`board: T-084 ready → in development`",
+		".agents/skills/brine/resources/TEMPLATE.md",
+		"tickets/1-to-do/",
+		"T-NNN",
+		"resources/TEMPLATE.md",
+		"tickets/README.md",
+	}
+	for _, line := range lines {
+		t.Run(line, func(t *testing.T) {
+			if findings := lintFile("synthetic.md", line, rules); len(findings) != 0 {
+				t.Fatalf("expected %q to pass, got findings: %+v", line, findings)
+			}
+		})
+	}
+}
+
+// TestPayloadLintRule1LookupShapedReferences exercises rule 1 directly: the
+// shape it targets, the two exemption paths (backtick/fenced syntax filler,
+// provenance-tag closing paren) that let a legitimate use through unflagged,
+// and the metasyntactic ids that never reach the exemption logic at all
+// because the pattern requires digits.
+func TestPayloadLintRule1LookupShapedReferences(t *testing.T) {
+	rules := payloadLintRules()
+	one := func(name string) payloadLintRule {
+		for _, r := range rules {
+			if r.name == name {
+				return r
+			}
+		}
+		t.Fatalf("no rule named %q", name)
+		return payloadLintRule{}
+	}
+	rule1 := one("ticket-lookup")
+
+	t.Run("flags an unwrapped lookup-shaped reference", func(t *testing.T) {
+		line := "see tickets/6-done/T-090 F1 for the pattern"
+		if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) == 0 {
+			t.Fatalf("expected %q to be flagged", line)
+		}
+	})
+
+	t.Run("backtick span exempts a syntax-filler example of the bad shape", func(t *testing.T) {
+		line := "the shape to avoid: `tickets/6-done/T-090 F1`"
+		if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) != 0 {
+			t.Fatalf("expected backtick-wrapped %q to pass, got %+v", line, findings)
+		}
+	})
+
+	t.Run("fenced code block exempts a multi-line example", func(t *testing.T) {
+		content := "```\nsee tickets/6-done/T-090 F1\n```\n"
+		if findings := lintFile("s.md", content, []payloadLintRule{rule1}); len(findings) != 0 {
+			t.Fatalf("expected fenced block to pass, got %+v", findings)
+		}
+	})
+
+	t.Run("a closing paren treats the reference as a provenance tag", func(t *testing.T) {
+		line := "(see tickets/6-done/T-090)"
+		if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) != 0 {
+			t.Fatalf("expected %q to pass, got %+v", line, findings)
+		}
+	})
+
+	t.Run("metasyntactic id never matches: rule requires digits", func(t *testing.T) {
+		line := "tickets/6-done/T-NNN"
+		if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) != 0 {
+			t.Fatalf("expected metasyntactic %q to pass, got %+v", line, findings)
+		}
+	})
+}
