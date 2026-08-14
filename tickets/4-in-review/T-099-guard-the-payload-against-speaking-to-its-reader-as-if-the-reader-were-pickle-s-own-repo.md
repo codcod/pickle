@@ -366,3 +366,4 @@ Three internal touches instead:
   escapes already justified
 - 2026-08-14 — TO DO → READY: plan complete
 - 2026-08-14 — READY → IN DEVELOPMENT: picked up
+- 2026-08-14 — IN DEVELOPMENT → IN REVIEW: acceptance green
