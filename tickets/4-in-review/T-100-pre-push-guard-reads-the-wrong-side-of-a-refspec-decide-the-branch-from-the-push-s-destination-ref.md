@@ -364,3 +364,4 @@ User-facing: the guard's rule changes and two stderr strings change.
   hookConfig site, not additional to it) plus one in `prepush.go`, six total across both files.
   Line numbers were already correct; only the prose arithmetic was off. No other findings
 - 2026-08-14 — READY → IN DEVELOPMENT: picked up
+- 2026-08-14 — IN DEVELOPMENT → IN REVIEW: acceptance green
