@@ -20,11 +20,10 @@ Last updated: 2026-08-14
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-14
 
 | id | title | open findings |
 |---|---|---|
+| T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | 2 blocking: rule 1's provenance exemption opens a hole over its own target shape (F1); rule 3's .goreleaser.yaml altern… |
 
 ## READY (impact order, per child)
 
