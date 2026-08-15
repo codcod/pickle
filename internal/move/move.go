@@ -13,10 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codcod/pickle/internal/atomicfile"
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
+	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -30,7 +32,61 @@ type Result struct {
 }
 
 // Move performs the transition of ticket id to the status named by token.
+//
+// The whole operation — load, every gate check, both writes and the
+// post-move board regeneration and audit — runs behind the tree's exclusive
+// lock (T-101, internal/lock), so a concurrent `pickle` process never reads
+// the tree mid-decision or mid-write. The lock spans load→check→write, not
+// just the write: a lock around the write alone would leave every check it
+// guards racing against a concurrent mover. The lock excludes other *pickle*
+// processes; it is not a crash-recovery mechanism (see the partial-failure
+// contract below) and it is not a substitute for the write-new-then-remove-old
+// ordering decided below (D7) — no lock can close a window this process does
+// not survive to unlock.
+//
+// # Partial-failure contract
+//
+// Move performs up to three writes with no rollback (new file, remove old,
+// regenerate the board) and then a post-condition audit. A non-nil error
+// does NOT mean nothing happened: three of its failure paths return an error
+// after the move has already been applied, and Result is partially populated
+// in two of them. A caller must inspect Result, not just the error, to know
+// which of these four states it is in:
+//
+//  1. Not applied. Any failure before the new-file write below (an unknown
+//     status, a load problem, the ticket not found, an illegal transition, a
+//     missing --reason, an unmet gate, a WIP or dependency refusal, or now a
+//     lock-acquisition timeout). Result is the zero value.
+//  2. Applied, board stale. The new file was written and the old one removed,
+//     but board.Regenerate then failed. Result.Path and Result.OldPath are
+//     set; the ticket has genuinely changed status and its History line has
+//     genuinely been appended. Recovery is `pickle board sync`.
+//  3. Applied, tree dirty. The move and the board regeneration both
+//     succeeded, but the post-move audit reported errors elsewhere in the
+//     tree. Result.Path, Result.OldPath and Result.Warnings are all set; the
+//     move itself stands and something unrelated in the tree is broken.
+//  4. Applied, clean. Nil error.
+//
+// What the lock does not cover: D7's write-new-then-remove-old ordering
+// still exists because a crash between the two writes is a window the lock
+// cannot close (the lock is released the instant its holding process dies) —
+// a human recovers from that case by deleting the stale duplicate, per D7
+// below, exactly as before this ticket.
 func Move(root string, cfg *config.Config, id, token, reason string) (Result, error) {
+	var res Result
+	var err error
+	lockErr := lock.WithExclusive(root, func() error {
+		res, err = move(root, cfg, id, token, reason)
+		return nil // move's own error is returned via err, not the lock's
+	})
+	if lockErr != nil {
+		return res, lockErr
+	}
+	return res, err
+}
+
+// move is Move's body, run while the caller holds the exclusive tree lock.
+func move(root string, cfg *config.Config, id, token, reason string) (Result, error) {
 	var res Result
 	reason = sanitizeReason(reason)
 	def := flow.ForName(cfg.FlowName())
@@ -129,7 +185,7 @@ func Move(root string, cfg *config.Config, id, token, reason string) (Result, er
 	if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
 		return res, err
 	}
-	if err := os.WriteFile(newPath, []byte(newText), 0o644); err != nil {
+	if err := atomicfile.WriteFile(newPath, []byte(newText)); err != nil {
 		return res, err
 	}
 	oldRel := filepath.Join("tickets", from.Dir, t.Base()+".md")

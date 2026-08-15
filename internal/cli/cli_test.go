@@ -1269,3 +1269,89 @@ func TestProjectAddSilentOnRootSpelledDotSlash(t *testing.T) {
 		t.Errorf("doctor must not warn about the repo root registered as %q, got:\n%s", "./", doctorOut)
 	}
 }
+
+// TestCreateExclusiveRefusesWhenTargetExists is T-101 Task 5's direct,
+// deterministic regression for the os.Stat-then-os.WriteFile pair that
+// createExclusive replaced: given a path that already exists, it must
+// refuse with an os.IsExist error rather than silently overwriting, and
+// must never touch the existing file's content.
+func TestCreateExclusiveRefusesWhenTargetExists(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "T-001-fixture.md")
+	if err := os.WriteFile(path, []byte("original\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := createExclusive(path, "clobbered\n")
+	if err == nil {
+		t.Fatal("createExclusive succeeded against an existing file, want a refusal")
+	}
+	if !os.IsExist(err) {
+		t.Errorf("error = %v, want an os.IsExist error", err)
+	}
+	got, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(got) != "original\n" {
+		t.Errorf("existing file was modified: got %q, want unchanged %q", got, "original\n")
+	}
+}
+
+// TestConcurrentTicketNewGetsDistinctIDs is T-101's in-process regression for
+// the id-allocation TOCTOU: before the tree lock, two concurrent `ticket
+// new` calls could both read the same NextNum and each write a file, one of
+// them silently colliding on (or racing to create) the same id. Racing
+// through the public Run entry point — the same one a real second `pickle`
+// process would use — this asserts both calls succeed and land on distinct,
+// sequential ids, and that the resulting tree is audit-clean. This is the
+// in-process complement to the ticket's acceptance test 1, which proves the
+// same property across real OS processes.
+func TestConcurrentTicketNewGetsDistinctIDs(t *testing.T) {
+	root := newProject(t)
+
+	const n = 5
+	var wg sync.WaitGroup
+	results := make([]int, n)
+	captureStdout(t, func() {
+		for i := 0; i < n; i++ {
+			i := i
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				results[i] = Run(nil, "test", []string{"ticket", "new", fmt.Sprintf("concurrent %d", i), "--project", "demo"})
+			}()
+		}
+		wg.Wait()
+	})
+
+	for i, code := range results {
+		if code != exitOK {
+			t.Errorf("goroutine %d: ticket new exit = %d, want %d", i, code, exitOK)
+		}
+	}
+
+	entries, err := os.ReadDir(filepath.Join(root, "tickets", "1-to-do"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Name(), "T-") || !strings.HasSuffix(e.Name(), ".md") {
+			continue // e.g. .gitkeep
+		}
+		ids[e.Name()[:5]] = true // "T-NNN" prefix of "T-NNN-slug.md"
+	}
+	if len(ids) != n {
+		t.Errorf("got %d distinct ids, want %d (a duplicate means the lock did not serialise): %v", len(ids), n, ids)
+	}
+
+	auditOut := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"board", "audit"}); got != exitOK {
+			t.Errorf("board audit = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(auditOut, "0 error(s)") {
+		t.Errorf("board audit reported errors after concurrent creates:\n%s", auditOut)
+	}
+}

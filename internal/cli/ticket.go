@@ -10,6 +10,7 @@ import (
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/flow"
+	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/move"
 	"github.com/codcod/pickle/internal/ticket"
 )
@@ -145,25 +146,60 @@ func runTicketNew(args []string) int {
 	root := cfg.Root()
 	def := flow.ForName(cfg.FlowName())
 	prefix := cp.Prefix()
-	id := fmt.Sprintf("%s-%03d", prefix, ticket.NextNum(def, root, prefix))
-	slug := ticket.Slugify(title)
-	rel := filepath.Join("tickets", def.Initial().Dir, id+"-"+slug+".md")
-	path := filepath.Join(root, rel)
-	if _, err := os.Stat(path); err == nil {
-		return errf("%s already exists", rel)
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return errf("%v", err)
-	}
-	if err := os.WriteFile(path, []byte(ticket.Scaffold(id, title, *project, *impact, *complexity, *cost, lineage, fam)), 0o644); err != nil {
-		return errf("%v", err)
-	}
-	if err := board.Regenerate(def, root, cfg); err != nil {
+
+	// T-101: id allocation (NextNum), the existence check and the create are
+	// one critical section under the tree's exclusive lock, spanning
+	// load→check→write — not just the write — so two concurrent `ticket new`
+	// invocations can never compute the same NextNum and both succeed. The
+	// O_EXCL below is belt-and-braces on top of the lock, not a replacement
+	// for it: it is what still catches a collision from an older binary, or
+	// any future caller that forgets to take the lock.
+	var id, rel string
+	err = lock.WithExclusive(root, func() error {
+		id = fmt.Sprintf("%s-%03d", prefix, ticket.NextNum(def, root, prefix))
+		slug := ticket.Slugify(title)
+		rel = filepath.Join("tickets", def.Initial().Dir, id+"-"+slug+".md")
+		path := filepath.Join(root, rel)
+		if err := createExclusive(path, ticket.Scaffold(id, title, *project, *impact, *complexity, *cost, lineage, fam)); err != nil {
+			if os.IsExist(err) {
+				return fmt.Errorf("%s already exists", rel)
+			}
+			return err
+		}
+		return board.Regenerate(def, root, cfg)
+	})
+	if err != nil {
 		return errf("%v", err)
 	}
 	fmt.Printf("created %s  (%s)\n", id, rel)
 	fmt.Printf("  stage:   %s\n", stageLine(rel, ""))
 	return exitOK
+}
+
+// createExclusive creates path with content, refusing (with an os.IsExist
+// error, unwrapped) if it already exists. This is T-101 Task 5: it replaces
+// the former os.Stat-then-os.WriteFile pair, which left a window between the
+// check and the write for a second writer to land in. It is
+// belt-and-braces on top of runTicketNew's tree lock (which already makes
+// this collision structurally unreachable through pickle's own code paths —
+// two concurrent `ticket new` calls now serialise and always get distinct
+// ids), not a replacement for it: this is what still catches a collision
+// from an older binary, or any future caller that writes into tickets/
+// without taking the lock.
+func createExclusive(path, content string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	_, writeErr := f.Write([]byte(content))
+	closeErr := f.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
 }
 
 // validateTitle rejects titles that cannot be rendered safely. A newline is the
