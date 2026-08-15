@@ -249,19 +249,20 @@ type Spec struct {
 // mutate the flow by mutating what it was handed — the same guarantee
 // board.StatusOrder made of its own copy before this package existed.
 type Definition struct {
-	name        string
-	states      []State // lifecycle order
-	boardStates []State // board order
-	byDir       map[string]State
-	byName      map[string]State
-	transitions []Transition
-	allowed     map[string][]Transition // by From dir, in Transitions order
-	initial     State
-	depSat      State
-	pickup      State
-	wipStates   []State // board order, WIPKey != ""
-	byWIPKey    map[string]State
-	requires    map[string][]Requirement // by dir
+	name         string
+	states       []State // lifecycle order
+	boardStates  []State // board order
+	byDir        map[string]State
+	byName       map[string]State
+	transitions  []Transition
+	allowed      map[string][]Transition // by From dir, in Transitions order
+	initial      State
+	depSat       State
+	pickup       State
+	wipStates    []State // board order, WIPKey != ""
+	byWIPKey     map[string]State
+	requires     map[string][]Requirement // by dir
+	activeStates []State                  // lifecycle order, non-terminal, excluding Initial
 }
 
 // Name is the flow's configured name ("brine" today).
@@ -272,6 +273,15 @@ func (d *Definition) States() []State { return slices.Clone(d.states) }
 
 // BoardStates returns every state in board render order.
 func (d *Definition) BoardStates() []State { return slices.Clone(d.boardStates) }
+
+// ActiveStates returns every state that is neither the backlog entry point
+// (Initial) nor terminal, in lifecycle (States) order — brine's "work in
+// flight": READY, IN DEVELOPMENT, IN REVIEW, REWORK. It is defined by
+// exclusion rather than as an enumerated list so a caller (the dashboard's
+// per-child column layout, T-104) needs no state-name literals of its own and
+// keeps working unchanged if a future flow adds or renames a state: whatever
+// sits between the backlog and the archive is "active" by construction.
+func (d *Definition) ActiveStates() []State { return slices.Clone(d.activeStates) }
 
 // Transitions returns every legal transition, in Spec order.
 func (d *Definition) Transitions() []Transition { return slices.Clone(d.transitions) }
@@ -520,20 +530,29 @@ func New(spec Spec) (*Definition, error) {
 		requires[s.Dir] = slices.Clone(s.Requires)
 	}
 
+	activeStates := make([]State, 0, len(spec.States))
+	for _, s := range spec.States {
+		if s.Terminal || s.Dir == initial.Dir {
+			continue
+		}
+		activeStates = append(activeStates, s)
+	}
+
 	return &Definition{
-		name:        spec.Name,
-		states:      slices.Clone(spec.States),
-		boardStates: boardStates,
-		byDir:       byDir,
-		byName:      byName,
-		transitions: slices.Clone(spec.Transitions),
-		allowed:     allowed,
-		initial:     initial,
-		depSat:      depSat,
-		pickup:      pickup,
-		wipStates:   wipStates,
-		byWIPKey:    byWIPKey,
-		requires:    requires,
+		name:         spec.Name,
+		states:       slices.Clone(spec.States),
+		boardStates:  boardStates,
+		byDir:        byDir,
+		byName:       byName,
+		transitions:  slices.Clone(spec.Transitions),
+		allowed:      allowed,
+		initial:      initial,
+		depSat:       depSat,
+		pickup:       pickup,
+		wipStates:    wipStates,
+		byWIPKey:     byWIPKey,
+		requires:     requires,
+		activeStates: activeStates,
 	}, nil
 }
 

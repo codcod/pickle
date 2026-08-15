@@ -460,6 +460,45 @@ func TestAccessorsReturnCopies(t *testing.T) {
 	}
 }
 
+// TestActiveStates confirms brine's "work in flight" set (T-104: the
+// dashboard's per-child column layout) is derived correctly by exclusion:
+// every non-terminal state except Initial, in lifecycle order — not an
+// enumerated list this test could drift from silently.
+func TestActiveStates(t *testing.T) {
+	def := Default()
+	active := def.ActiveStates()
+
+	var got []string
+	for _, s := range active {
+		got = append(got, s.Dir)
+	}
+	want := []string{"2-ready", "3-in-development", "4-in-review", "5-rework"}
+	if len(got) != len(want) {
+		t.Fatalf("ActiveStates() dirs = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("ActiveStates()[%d] = %q, want %q (full: %v)", i, got[i], want[i], got)
+		}
+	}
+
+	// Excludes Initial (1-to-do) and both terminal states (6-done, 7-dropped).
+	for _, excluded := range []string{"1-to-do", "6-done", "7-dropped"} {
+		for _, s := range active {
+			if s.Dir == excluded {
+				t.Errorf("ActiveStates() includes %q, which must be excluded", excluded)
+			}
+		}
+	}
+
+	// Copy-safety, matching every other slice-returning accessor's contract
+	// (TestAccessorsReturnCopies).
+	active[0].Dir = "MANGLED"
+	if def.ActiveStates()[0].Dir == "MANGLED" {
+		t.Error("ActiveStates() exposed the definition's own slice")
+	}
+}
+
 // TestFlowNamesMatchConfigLegalValues keeps the flow registry and
 // internal/config's accepted flow names in agreement despite flow
 // deliberately not importing config to check that itself (it stays a leaf
