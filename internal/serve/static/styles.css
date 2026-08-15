@@ -183,8 +183,9 @@ code { font-family: var(--mono); font-size: 0.9em; }
 /* T-104 (absorbed T-055): .count is declared after .wip-full above, so a
    `class="count wip-full"` badge rendered muted instead of warning-colored
    — same specificity, later rule wins. Fix by specificity, not source order,
-   so the badge reads correctly wherever the two classes combine (health
-   banner, lane headings, section child-headings). */
+   so the badge reads correctly wherever the two classes combine: the lane
+   headings and the section child-headings. (The health banner's own badge
+   carries `wip-full` alone, so it was never affected.) */
 .count.wip-full { color: var(--warn); font-weight: 600; }
 .child-heading { margin: 0.5rem 0 0.3rem; font-size: 0.85rem; color: var(--muted); font-family: var(--mono); }
 .tickets { list-style: none; margin: 0; padding: 0; }
