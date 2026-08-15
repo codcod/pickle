@@ -122,6 +122,56 @@ code { font-family: var(--mono); font-size: 0.9em; }
 }
 .filter-btn.is-active .filter-count { color: var(--accent); }
 
+/* ---- board controls: filter bar + search (T-104) ---- */
+
+.board-controls {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 0.75rem; margin-bottom: 1.1rem;
+}
+.board-controls .filter-bar { margin-bottom: 0; }
+.search-input {
+  font: inherit; font-size: 0.85rem;
+  padding: 0.4rem 0.8rem; border-radius: 7px;
+  color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  min-width: 14rem; flex: 0 1 18rem;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.is-hidden { display: none !important; }
+
+/* ---- board: active-state lanes, one row per child (T-104) ---- */
+
+.lane-row { margin-bottom: 1.4rem; }
+.lane-row-heading {
+  margin: 0 0 0.5rem; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 0.3rem;
+}
+.lanes {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  overflow-x: auto; padding-bottom: 0.3rem;
+}
+.lane {
+  flex: 1 1 15rem; min-width: 13rem;
+  display: flex; flex-direction: column;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  max-height: 65vh;
+}
+.lane-heading {
+  margin: 0; padding: 0.5rem 0.7rem; font-size: 0.78rem;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: var(--panel-2); border-radius: 6px 6px 0 0;
+}
+.lane-body {
+  list-style: none; margin: 0; padding: 0.5rem; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.lane .empty { padding: 0 0.7rem 0.6rem; }
+/* The board-width row (baseline-aligned, title flexed to 24rem) wraps badly at
+   lane width; stack each card's fields instead, same tokens/markup otherwise. */
+.lane .ticket-row { flex-direction: column; align-items: flex-start; gap: 0.25rem; margin-bottom: 0; }
+.lane .ticket-title { flex: 1 1 auto; }
+
 /* ---- board ---- */
 
 .status { margin-bottom: 1.4rem; }
@@ -130,6 +180,13 @@ code { font-family: var(--mono); font-size: 0.9em; }
   color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 0.3rem;
 }
 .count { color: var(--muted); font-weight: 400; }
+/* T-104 (absorbed T-055): .count is declared after .wip-full above, so a
+   `class="count wip-full"` badge rendered muted instead of warning-colored
+   — same specificity, later rule wins. Fix by specificity, not source order,
+   so the badge reads correctly wherever the two classes combine: the lane
+   headings and the section child-headings. (The health banner's own badge
+   carries `wip-full` alone, so it was never affected.) */
+.count.wip-full { color: var(--warn); font-weight: 600; }
 .child-heading { margin: 0.5rem 0 0.3rem; font-size: 0.85rem; color: var(--muted); font-family: var(--mono); }
 .tickets { list-style: none; margin: 0; padding: 0; }
 .ticket-row {

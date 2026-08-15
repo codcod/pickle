@@ -8,7 +8,25 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **The `pickle serve` board page lays the active statuses out as side-by-side columns, and gains a
+  search box.** READY, IN DEVELOPMENT, IN REVIEW and REWORK now render as a row of columns per
+  registered child-project — the work actually in flight, visible together — while TO DO, DONE and
+  DROPPED keep the stacked, full-width sections below them. The column set is derived from the
+  flow definition (`Definition.ActiveStates()`: every non-terminal state except the initial one),
+  so no status name is hardcoded in the dashboard and a future flow inherits the layout. A search
+  field above the board filters it live by ticket id or title, composing with the existing
+  child-project filter; like that filter it lives outside the polled fragment, so both the typed
+  query and the selected child survive the five-second refresh. Ordering is untouched: every
+  column and section is still sorted by the same code `BOARD.md` uses (T-104).
+
 ### Fixed
+
+- **The board's at-limit WIP badge is now actually highlighted.** `.count` was declared after
+  `.wip-full` at equal specificity, so a `class="count wip-full"` badge rendered muted and the
+  at-limit warning never showed; `.count.wip-full` now wins by specificity rather than source
+  order (T-104, absorbing T-055).
 
 - **The `pre-push` guard decides the pushed branch from the push's destination ref, not its
   source.** It previously tried the source ref (`LocalRef`) first, so `git push origin

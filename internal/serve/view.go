@@ -41,6 +41,12 @@ type Entry struct {
 	Reason     string // last transition's reason (the board's DROPPED/REWORK cell)
 	Merged     string // merge History line, "" when unmerged
 	File       string // filename, for orientation
+	// Search is the lowercased "<id> <title>", precomputed so the board
+	// page's search box (T-104) is a dumb substring test in JS against a
+	// server-supplied attribute, rather than duplicating case-folding and
+	// field-concatenation logic in the template or client. Matches id/title
+	// only, deliberately (rules out reasons/merge lines/edges as noise).
+	Search string
 }
 
 // ChildGroup is one child-project's tickets within one status section.
@@ -59,6 +65,26 @@ type Section struct {
 	Total    int
 }
 
+// Lane is one child-project's tickets within one *active* status
+// (READY/IN DEVELOPMENT/IN REVIEW/REWORK for brine), rendered as one column
+// in the board page's side-by-side layout (T-104). It carries the same
+// fields as ChildGroup minus Child (already named by the enclosing ChildRow)
+// plus Status, so a lane's heading can render its own status name.
+type Lane struct {
+	Status  string
+	Entries []Entry
+	Count   int
+	Limit   int
+}
+
+// ChildRow is one child-project's row of lanes, in def.ActiveStates() order.
+// One row per registered child-project (T-104 decision 4) — today exactly
+// one, since only "pickle" is registered.
+type ChildRow struct {
+	Child string
+	Lanes []Lane
+}
+
 // ChildFilter is one entry in the board's child-project filter bar: a child's
 // name and its total ticket count across all statuses. The bar lets the viewer
 // collapse the board to a single child (T-061).
@@ -69,14 +95,48 @@ type ChildFilter struct {
 
 // BoardView is the dashboard's board page.
 type BoardView struct {
+	// Rows lays out the active states (def.ActiveStates()) as one row of
+	// side-by-side lanes per child-project (T-104).
+	Rows []ChildRow
+	// Sections carries every other board state (TO DO, DONE, DROPPED for
+	// brine) in def.BoardStates() order, unchanged from the pre-T-104 shape.
 	Sections []Section
 	Children []ChildFilter // filter-bar entries, in cfg.Projects order
 	Total    int
 }
 
-// buildBoard groups tickets by status and child in the board's own order: status
-// sections from def.BoardStates(), rows from board.Sort, WIP counts from
-// board.WIPCounts. Nothing here re-implements those rules (decision 3).
+// stateChildGroup collects one child-project's tickets in one status,
+// board.Sort-ordered, with its WIP count/limit when the status is WIP-limited
+// — the one grouping rule both the active-state lanes and the remaining
+// sections share (T-104), so it is written once rather than twice.
+func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.State, p config.Project, wip map[string]map[string]int, byID map[string]*ticket.Ticket) ChildGroup {
+	var group []*ticket.Ticket
+	for _, t := range tickets {
+		if t.Dir == st.Dir && t.Project() == p.Name {
+			group = append(group, t)
+		}
+	}
+	board.Sort(group, st, byID)
+
+	cg := ChildGroup{Child: p.Name, Count: len(group)}
+	if st.WIPKey != "" {
+		if limit, ok := p.WIPLimitFor(st.WIPKey); ok {
+			cg.Count, cg.Limit = wip[p.Name][st.Dir], limit
+		}
+	}
+	for _, t := range group {
+		cg.Entries = append(cg.Entries, newEntry(def, t, st.Name))
+	}
+	return cg
+}
+
+// buildBoard groups tickets by status and child in the board's own order: active
+// states (def.ActiveStates(), lifecycle order) become one row of lanes per child
+// (T-104), every other state (def.BoardStates() order, minus the active ones)
+// stays a stacked section exactly as before. Rows and Sections both delegate to
+// stateChildGroup for the actual grouping/sorting/WIP lookup, so board.Sort and
+// board.WIPCounts are still each called in exactly one place (decision 3: no
+// ordering rule is reimplemented or changed here).
 func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config) BoardView {
 	wip := board.WIPCounts(def, tickets)
 	// Whole-tree index for board.Sort's family-umbrella lookup (T-059); a member's
@@ -88,27 +148,34 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	}
 	view := BoardView{Total: len(tickets)}
 
+	active := def.ActiveStates()
+	activeDirs := make(map[string]bool, len(active))
+	for _, st := range active {
+		activeDirs[st.Dir] = true
+	}
+
+	// One row per registered child, lanes in lifecycle order (T-104 decisions 2, 4).
+	for _, p := range cfg.Projects {
+		row := ChildRow{Child: p.Name}
+		for _, st := range active {
+			cg := stateChildGroup(def, tickets, st, p, wip, byID)
+			row.Lanes = append(row.Lanes, Lane{
+				Status: st.Name, Entries: cg.Entries, Count: cg.Count, Limit: cg.Limit,
+			})
+		}
+		view.Rows = append(view.Rows, row)
+	}
+
+	// Every remaining state (TO DO, DONE, DROPPED for brine), in board order,
+	// stacked exactly as before T-104.
 	for _, st := range def.BoardStates() {
+		if activeDirs[st.Dir] {
+			continue
+		}
 		section := Section{Status: st.Name}
 		for _, p := range cfg.Projects {
-			var group []*ticket.Ticket
-			for _, t := range tickets {
-				if t.Dir == st.Dir && t.Project() == p.Name {
-					group = append(group, t)
-				}
-			}
-			board.Sort(group, st, byID)
-
-			cg := ChildGroup{Child: p.Name, Count: len(group)}
-			if st.WIPKey != "" {
-				if limit, ok := p.WIPLimitFor(st.WIPKey); ok {
-					cg.Count, cg.Limit = wip[p.Name][st.Dir], limit
-				}
-			}
-			for _, t := range group {
-				cg.Entries = append(cg.Entries, newEntry(def, t, st.Name))
-			}
-			section.Total += len(group)
+			cg := stateChildGroup(def, tickets, st, p, wip, byID)
+			section.Total += cg.Count
 			section.Children = append(section.Children, cg)
 		}
 		view.Sections = append(view.Sections, section)
@@ -130,12 +197,14 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 }
 
 func newEntry(def *flow.Definition, t *ticket.Ticket, statusName string) Entry {
+	title := t.Front["title"]
 	return Entry{
 		ID:         t.ID,
 		Num:        t.Num,
-		Title:      t.Front["title"],
+		Title:      title,
 		Project:    t.Project(),
 		Status:     statusName,
+		Search:     strings.ToLower(t.ID + " " + title),
 		Impact:     t.Front["impact"],
 		Complexity: t.Front["complexity"],
 		Cost:       t.Front["cost"],

@@ -939,11 +939,15 @@ What it serves:
 | Path | Page
 
 | `/`
-| The board: every status section, sub-grouped per child-project, in exactly the
-  order `BOARD.md` uses (impact descending, ties by id) — both views call the
-  same ordering code, so they cannot disagree. A filter bar above the board
-  narrows it to a single child-project (or `All`); the selection survives the
-  five-second refresh.
+| The board. The four active statuses — READY, IN DEVELOPMENT, IN REVIEW, REWORK —
+  render as side-by-side columns, one row of columns per registered
+  child-project; TO DO, DONE and DROPPED keep the stacked, full-width layout
+  below them. Every group, column or stacked alike, is still ordered in
+  exactly the order `BOARD.md` uses (impact descending, ties by id) — every
+  view calls the same ordering code, so none of them can disagree. A filter
+  bar narrows the board to a single child-project (or `All`), and a search box
+  narrows it further to tickets whose id or title matches what you type; both
+  selections survive the five-second refresh.
 
 | `/t/T-NNN`
 | One ticket: frontmatter as fields, the body rendered as Markdown, and *both*
