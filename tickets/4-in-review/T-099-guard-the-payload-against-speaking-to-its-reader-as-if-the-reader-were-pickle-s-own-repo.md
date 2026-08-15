@@ -405,6 +405,36 @@ the payload is hand-swept. Docs coverage is correct as planned — no user-facin
 `CHANGELOG.md` entry, `AGENTS.md` updated. The commit history is three atomic, correctly scoped
 commits, as the root-path finish step requires.
 
+### Fixed at rework (2026-08-15, `bd459ce` on `feat/T-099-payload-lint`)
+
+- **F1 — fixed exactly as suggested.** `isProvenanceTag` removed outright; `ticketRefExempt` now
+  carries only the backtick/fence exemption. The test previously named at `:357` ("a closing
+  paren treats the reference as a provenance tag", asserting the escape passed) is flipped to
+  assert both `"(see tickets/6-done/T-090)"` and `"the finding reference (T-090 F1)"` are now
+  flagged, plus a companion case confirming a genuinely bare tag (`"(T-083)"`,
+  `"(`## Outcome`, T-083)"`) still passes for the reason the finding gave — the pattern never
+  touches it. Re-verified live against `payloadFS`, not just synthetic strings: appending
+  `"as documented (tickets/6-done/T-090)"` to `tickets-README.md` now fails
+  `TestPayloadSpeaksToAForeignReader` naming `[ticket-lookup]`, where before this fix it passed
+  silently.
+- **F2 — fixed exactly as suggested.** `.goreleaser.yaml` moved out of the plain-`\b`-bounded
+  alternation into its own `(^|[^\w./-])\.goreleaser\.yaml\b` group, sharing the explicit
+  leading-boundary approach the directory alternatives already use. New
+  `TestPayloadLintRule3RepoOnlyPaths` covers the three previously-dead phrasings, confirms
+  `assets.go`/`justfile` (its word-initial siblings) still fire, and confirms
+  `.agents/skills/brine/resources/TEMPLATE.md` still passes (the boundary case the rule exists
+  to get right).
+- **N3 — applied during the review itself** (fix-inline, `665fbb0`, already on the branch before
+  this rework pass): "cannot judge a sentence's shape" → "cannot judge what a sentence *means*",
+  with the sentence split per the step-4b suggestion.
+- **N1, N2 — left as recorded** (note and close): the escape hatch is unchanged and still
+  untested; harmless while `escapeHatch` is empty, per the original disposition.
+
+Re-ran the full acceptance test after both fixes: `just build`, `just test`, `just lint`,
+`just docs-check` all clean; all three injections (escape 1, escape 2, and F1's own escape
+replayed live) fail naming file, line, rule and matched text, and the untouched payload is green.
+No new findings surfaced fixing these two — both changes are confined to `payload_lint_test.go`.
+
 ## History
 
 - 2026-08-13 — created (TO DO). source: review: T-098's review, finding N7, disposition *new
@@ -447,3 +477,4 @@ commits, as the root-path finish step requires.
 - 2026-08-14 — READY → IN DEVELOPMENT: picked up
 - 2026-08-14 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-14 — IN REVIEW → REWORK: 2 blocking: rule 1's provenance exemption opens a hole over its own target shape (F1); rule 3's .goreleaser.yaml alternative is dead (F2)
+- 2026-08-15 — REWORK → IN REVIEW: findings fixed
