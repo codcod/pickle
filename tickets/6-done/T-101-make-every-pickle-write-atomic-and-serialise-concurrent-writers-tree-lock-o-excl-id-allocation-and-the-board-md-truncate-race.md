@@ -419,6 +419,55 @@ race ×20, lock ×5, `TestServeNeverWrites` unmodified, `go doc` output, and a f
 serve-beside-writer session), all still met. F5–F8 unchanged — out of this rework's scope by
 design (only F1–F4 were blocking).
 
+### Scoped re-review (2026-08-15, commit `0a38b54`)
+
+Verified F1–F4 only, per the scoped-re-review rule — the feature was not re-audited from
+scratch. Each fix was re-derived independently rather than taken on the rework's word.
+
+| finding | verdict | how it was verified |
+|---|---|---|
+| F1 | **resolved** | Code: `regenerateBoard` (`internal/cli/project.go:133`) wraps `board.Regenerate` in `lock.WithExclusive`; both callers (`:109` add, `:231` remove) are top-level, so the no-nested-acquire claim holds — `grep -rn regenerateBoard` finds no third caller. Behaviour: held the lock from an outside process (`fcntl.flock`) and ran `project add` — it waited the full bound (**11 s elapsed**) and refused with `timed out after 10s waiting for the tree lock (…/.git/pickle-tree.lock)`, where before the fix it would have written straight through. Degradation is exactly as designed: registration still saved, `note: … run pickle board sync` printed, exit 0, and a later `board sync` rebuilt the board to an audit-clean state. `board.Regenerate`'s "every caller is already locked" comment is now **true**: its three callers are `move.go:198`, `cli/ticket.go:169` and `cli/project.go:134`, all locked (`install`'s `writeBoard` uses `board.Render` + `os.WriteFile`, not `Regenerate`) |
+| F2 | **resolved** | `CHANGELOG.md` carries an `[Unreleased] > Added` entry; `pickle changelog check --since v0.8.0` no longer names T-101 (only T-099, pre-existing and separately dispositioned). Entry wording corrected — see F10 |
+| F3 | **resolved** | Re-ran the review's own mutation myself (`WithShared` unconditionally creating the lock file): the fixed test now **fails** with `WithShared created files in dir/.git, where the lock file would land: [- pickle-tree.lock]`, where the old test passed under the same mutation. `lock.go` restored byte-identical afterwards (`git diff` empty). The added `lockPath(dir) != dir/.git/…` guard means the test also fails loudly if the resolution rule ever changes out from under it |
+| F4 | **resolved** | `internal/lock`'s package comment now carries the accepted-limitation paragraph. Its factual claims check out: the two acquisitions are `serve.go:144` and `view.go:461`, and the "re-polls every 5 seconds" claim matches `hx-trigger="every 5s"` in `templates/board.html` and `templates/activity.html` |
+
+Full suite re-run on the rework: `just build && just test && just lint && just docs-check` —
+all green.
+
+#### Findings from the re-review
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F9 | non-blocking | docs-gap | fixed inline | The manual's tree-lock paragraph claimed "Every command that writes to `tickets/`" takes the lock, but `install` writes `tickets/` and deliberately does not lock | `internal/install/install.go` writes the status dirs (`:701`), `BOARD.md` (`:721`), `NOTES.md` (`:745`) and `README.md` (`:759`); `grep -n "lock\." internal/install/install.go` returns nothing. Decision 2 excludes it on purpose ("a scaffold writes files that do not exist yet, into a tree no reader is watching") | Fixed in `0a38b54`: reworded to "Every command that **changes an existing** ticket tree", naming `install` as the stated exception and why it needs no lock |
+| F10 | non-blocking | docs-gap | fixed inline | The changelog entry claimed `project add`/`project remove` hold the lock "spanning their full load-check-write"; they hold it around the board re-render only | Demonstrated by the F1 probe above: with the lock held externally, `project add`'s **registration still succeeded** and only the board step failed — proving the `pickle.toml` registry write sits outside the locked section | Fixed in `0a38b54`: the entry now separates the two groups — `ticket new`/`ticket move`/`board sync` across their full load-check-write, `project add`/`remove` around the board re-render |
+| F11 | non-blocking | design | noted | The `pickle.toml` registry read-modify-write in `project add`/`project remove` is still unserialised, so two concurrent registrations could still lose one | Same probe as F10: the registry write completes outside the tree lock. Pre-existing — not made false by this branch, so per rules §5 it is `noted`, not `fixed inline` | Out of scope: this ticket's subject is the ticket tree, and `pickle.toml` is not in `tickets/`. Recorded alongside F6 as material for a future locking sweep, if one is ever scheduled |
+| F12 | non-blocking | test-gap | noted | Nothing mechanically enforces that `project add`/`remove` keep taking the lock — F1's fix has no automated regression | No test in `internal/cli` exercises the locked `regenerateBoard` path; the invariant lives only in `board.Regenerate`'s doc comment | Honest cost/benefit: an in-process test must either hold the lock for the full 10 s bound or reach into the timeout constant, and package `cli` forbids `t.Parallel()`. The behavioural probe in this re-review covers it once; recorded rather than scheduled, same treatment as F5 |
+
+Dispositions: 0 blocking; 4 non-blocking — 2 **fixed inline** (F9, F10), 2 **noted** (F11, F12);
+0 folded, 0 new tickets.
+
+cost: estimated L, actual L — one rework round for four blocking findings, none of which
+changed the design the plan locked down.
+
+#### Impact sweep (step 8)
+
+F8's deferred patches were applied now that the extraction is confirmed landing:
+
+- **T-102** — "the pattern to copy" re-pointed from `config.writePreservingMode` to
+  `internal/atomicfile.WriteFile`, noting it is now exported (so T-102 consumes it rather than
+  mirroring an unexported helper) and that the `verifyOnlyPayloadVersion` guard stays in
+  `internal/config`. History line added.
+- **T-013** — same re-point for its `injectMarker` permission-preservation item. History line
+  added.
+- **T-079** — no change needed: it already names `internal/atomicfile.WriteFile` and asks that
+  the two share one helper, which is exactly what shipped.
+- **T-065** — no change needed: it references T-101 only as a sequencing note, and the read
+  projection it plans is unaffected by the lock.
+
+No ticket in `2-ready/` (it is empty) or `1-to-do/` had an assumption invalidated beyond these.
+
+**Verdict: no blocking findings — T-101 proceeds to `6-done/`.**
+
 ### What is solid
 
 Recorded so the rework pass does not re-litigate it. The two new packages are well-shaped:
@@ -445,3 +494,4 @@ partial-failure contract (Task 8) is the strongest prose in the diff.
 - 2026-08-15 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-15 — IN REVIEW → REWORK: 4 blocking findings (F1-F4)
 - 2026-08-15 — REWORK → IN REVIEW: findings fixed
+- 2026-08-15 — IN REVIEW → DONE: re-review clean: F1-F4 resolved, 2 fixed inline, 2 noted

@@ -27,9 +27,10 @@ quoting, and silently last-wins a duplicated key — and the only writers are `t
 Re-grading a ticket, retitling one, or setting `family:`/`depends-on:` is therefore a hand edit
 in an editor, every time.
 
-The pattern to copy already exists and is proven: `config.writePreservingMode`
-(`internal/config/config.go:915`) plus `verifyOnlyPayloadVersion` (`config.go:544`, invoked at
-`:524`) — write a single intended field, re-parse the result, and **refuse** if any field other
+The pattern to copy already exists and is proven: `atomicfile.WriteFile`
+(`internal/atomicfile/atomicfile.go` — extracted from the former
+`config.writePreservingMode` by T-101) plus `verifyOnlyPayloadVersion` (`config.go:544`, invoked
+at `:524`) — write a single intended field, re-parse the result, and **refuse** if any field other
 than the intended one changed. That guard is what makes a surgical edit a testable claim rather
 than a hope.
 
@@ -98,3 +99,8 @@ reviewed.
 - 2026-08-14 — created (TO DO). source: chat: refinement split of T-056 (dropped the same day) —
   its work area 4, kept because a guarded single-field writer is schedulable on its own as a
   `pickle ticket set` verb, with no dashboard and no HTTP write path
+- 2026-08-15 — patched by T-101's review impact sweep: the pattern this plan says to copy moved.
+  `config.writePreservingMode` no longer exists — T-101 extracted it verbatim into
+  `internal/atomicfile.WriteFile`, which is exported, so this ticket consumes it rather than
+  mirroring an unexported helper. The `verifyOnlyPayloadVersion` parse-back guard is unchanged
+  and stays in `internal/config`.

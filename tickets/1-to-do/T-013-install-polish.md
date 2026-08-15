@@ -134,9 +134,9 @@ than in a new ticket):
     `:502`) call `os.WriteFile(..., 0o644)`, so every install/upgrade/uninstall silently resets a
     non-default permission on files the user owns. Same family as T-018 (silent loss of user
     state) but on this ticket's `injectMarker` surface, so T-018 deliberately left it alone.
-    `internal/config` now has an unexported atomic, mode-preserving `writePreservingMode` helper
-    (added by T-018) worth mirroring — see T-012 item 7, which proposes the same fix for
-    `config.Save`.
+    `internal/atomicfile.WriteFile` is now an exported atomic, mode-preserving write primitive
+    (added by T-018 as `config.writePreservingMode`, extracted to its own package by T-101)
+    worth mirroring — see T-012 item 7, which proposes the same fix for `config.Save`.
 
 All items are input-hardening / polish on the install surface, hence non-blocking.
 
@@ -168,3 +168,7 @@ All items are input-hardening / polish on the install surface, hence non-blockin
   `internal/install/install.go:129`/`:133` — the function grew a legacy-sweep prologue and a
   three-way switch — so re-anchor by searching the text at refinement, as the 2026-07-26 note
   above already advises for items 6–10
+- 2026-08-15 — patched by T-101's review impact sweep: item's reference to
+  `config.writePreservingMode` re-pointed at `internal/atomicfile.WriteFile`, which T-101
+  extracted it into. The helper is now exported, so `injectMarker` can call it directly instead
+  of mirroring it.
