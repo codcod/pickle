@@ -52,7 +52,10 @@ or also a `board audit` finding. The latter is tempting and probably wrong: `boa
 asserts *brine's* invariants, and a red audit caused by another product's file layout would
 violate T-075's fail-open invariant.
 
-Soft coupling: T-055 (the serve board's at-limit WIP badge) touches the same board templates.
+Soft coupling: T-104 (the board page's per-child column layout, which absorbed T-055's WIP-badge
+fix) rewrote the same board templates — a ticket's row is now the shared `ticket-item` template
+rendered by both the lanes and the stacked sections, so any per-ticket artifact badge this ticket
+adds lands there once rather than in two places.
 
 ## Implementation Plan
 
@@ -65,3 +68,5 @@ Soft coupling: T-055 (the serve board's at-limit WIP badge) touches the same boa
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
+- 2026-08-15 — patched by T-104's review impact sweep: soft coupling repointed from T-055
+  (dropped, absorbed by T-104) to T-104's shared `ticket-item` board template.

@@ -159,7 +159,7 @@ and `internal/sync` — sequence them, do not run them concurrently.
    `handler.load` (`serve.go:128`) and around `audit.Audit` inside `buildHealth`
    (`view.go:378`). One acquisition per *filesystem traversal*, not per request — the
    alternative threads an audit result through `newPage` and five handlers, colliding head-on
-   with T-065, T-077 and T-055 in `view.go` for a display-only consistency gain. The residual
+   with T-065 and T-077 in `view.go` for a display-only consistency gain. The residual
    window (board and health banner from two different instants) is a cosmetic artifact of a
    page that already refreshes every 5 s; record it as an accepted limitation in the package
    comment.
@@ -353,3 +353,5 @@ holds the tree lock" error, and `pickle serve` is officially safe to run beside 
   in READY: the one fragment of T-056 work area 3 that costs a paragraph and needs no consumer.
   Areas 1+3 otherwise stay unfiled.
 - 2026-08-14 — TO DO → READY: plan complete
+- 2026-08-15 — patched by T-104's review impact sweep: decision 8's `view.go` collision list
+  drops T-055 (dropped, absorbed by T-104); both lock sites it names are unchanged by T-104.
