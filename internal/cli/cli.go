@@ -124,6 +124,10 @@ Flow commands:
                           Move a ticket (file + History + board regeneration) atomically.
   board audit             Check the ticket invariants + board freshness (exit non-zero on any error).
   board sync              Regenerate BOARD.md from ticket frontmatter + locations.
+  board state --json      Print the whole ticket tree as one versioned JSON document
+                          (schema, children/WIP, tickets incl. parsed History and
+                          review findings, audit health). Read-only. --json is
+                          mandatory; omitting it prints usage and exits 2.
   changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]
                           Report tickets that shipped in <since>..<until> (defaults: the
                           last git tag before <until>, and HEAD) but aren't named
