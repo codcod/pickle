@@ -363,7 +363,7 @@ Then, against this repo's own ticket tree:
 | 6 | `./pickle board state --json \| jq '[.tickets[].review.findings \| length] \| add'` | ~423 (measured 2026-08-15; re-run the recipe against the tree at implementation time — the point of this check is that it self-verifies, not that the number is pinned), and within ±2 of `for f in tickets/6-done/*.md; do …; done` counting `\|`-rows under a `severity`+`disposition` header — any larger gap means rows are being dropped |
 | 7 | `./pickle board state --json \| jq -r '.tickets[].review.headers[] \| @csv' \| sort -u \| wc -l` | **≥ 10** — proves the parser sees the corpus's real variety rather than only the canonical header (the tautology this check exists to rule out) |
 | 8 | `./pickle board state --json \| jq -r '[.tickets[].review.findings[] \| select(.severity=="non-blocking") \| .class] \| group_by(.) \| map({(.[0]): length}) \| add'` | non-empty; the counts for non-`""` classes **match** the `awk` recipe in `NOTES.md` § *"T-085's pre-registered criterion"* run over the same tree |
-| 9 | `./pickle board state --json \| jq -r '.states[].dir'` | the seven status dirs in board order, none hardcoded in `internal/state` (`rg '[0-9]-(to-do\|ready\|in-)' internal/state/` prints nothing) |
+| 9 | `./pickle board state --json \| jq -r '.states[].dir'` | the seven status dirs in board order, none hardcoded in `internal/state`'s production code (`rg '[0-9]-(to-do\|ready\|in-)' internal/state -g '\!*_test.go'` prints nothing — a test fixture naming a concrete dir to build a tree is not the hardcoding this checks for) |
 | 10 | `./pickle board state --json \| jq -e '.health.board_drift == "none" and (.health.errors \| length) == 0'` | exits 0 on a clean tree; after `printf '\n' >> tickets/BOARD.md` it reports `"layout"` or `"rows"`, and reverting restores `"none"` |
 | 11 | fresh throwaway install — `D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" && ./pickle-test install --project demo && ./pickle-test board state --json \| jq -e '.tickets == [] and .schema == 1'` | exits 0 |
 | 12 | concurrency (decision 14): in the throwaway dir, loop `./pickle-test ticket new …` / `ticket move` for ~20 s while looping `./pickle-test board state --json \| jq -e .schema >/dev/null` | zero non-zero exits, zero parse failures |
@@ -467,3 +467,7 @@ Nothing under `skill/` changes (decision 15), so `concepts/lifecycle.adoc` and
   Verdict: PROCEED
 - 2026-08-15 — TO DO → READY: plan complete
 - 2026-08-15 — READY → IN DEVELOPMENT: picked up
+- 2026-08-15 — plan amended inline: acceptance check 9's `rg` invocation scoped to `internal/state`'s
+  production code (`-g '!*_test.go'`) — the unscoped form flagged `build_test.go`'s fixture
+  directory literals (e.g. `dir: "1-to-do"`), which build a test tree on purpose and are not the
+  hardcoding decision 6 forbids; nothing else in the plan changed
