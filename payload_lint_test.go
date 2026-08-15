@@ -71,26 +71,30 @@ func insideBackticks(ctx lineCtx, start, _ int) bool {
 	return strings.Count(ctx.text[:start], "`")%2 == 1
 }
 
-// isProvenanceTag reports whether the matched id closes a parenthetical on
-// the same line — "(T-42)", or just as legitimately "(`## Outcome`, T-083)"
-// where the parens hold other text too. Either way the id names which ticket
-// introduced a rule rather than asking the reader to go look one up, so the
-// test is deliberately loose: "immediately followed by ')'", not "the whole
-// parenthetical is only the id".
-func isProvenanceTag(ctx lineCtx, _, end int) bool {
-	return end < len(ctx.text) && ctx.text[end] == ')'
-}
-
 // ticketRefExempt is the shape exemption for rule 1 (decision 5): a
-// backtick/fenced syntax-filler example, or a provenance tag. A metasyntactic
-// id (T-NNN, T-MMM, ...) never reaches this func at all — rule 1's pattern
-// requires digits, so those never match in the first place (see
+// backtick/fenced syntax-filler example. A metasyntactic id (T-NNN, T-MMM,
+// ...) never reaches this func at all — rule 1's pattern requires digits, so
+// those never match in the first place (see
 // TestPayloadLintRule1LookupShapedReferences/metasyntactic-id-never-matches).
+//
+// Decision 5 also names a bare provenance tag — "(T-42)" — as a legitimate
+// shape, but rule 1's pattern only ever matches a lookup-shaped construct
+// (`tickets/<dir>/T-\d+` or `T-\d+\s*F\d+`), never a bare id on its own, so
+// there is nothing for a provenance-tag exemption to carve out *within this
+// rule* — a bare "(T-083)" already passes because the pattern never touches
+// it. An earlier revision exempted any match "immediately followed by ')'"
+// to encode the provenance shape anyway, which instead opened a hole over
+// rule 1's own target shape: "(see tickets/6-done/T-090)" and "(T-090 F1)"
+// both closed on ')' and so both escaped unflagged (review finding F1). That
+// exemption bought no legitimate reference and cost the two shapes T-098
+// actually shipped, so it is gone — do not re-add a trailing-paren exemption
+// without first checking whether rule 1's pattern could ever match a bare id
+// (it cannot, today).
 func ticketRefExempt(ctx lineCtx, start, end int) bool {
 	if ctx.inFence {
 		return true
 	}
-	return insideBackticks(ctx, start, end) || isProvenanceTag(ctx, start, end)
+	return insideBackticks(ctx, start, end)
 }
 
 // escapeHatch is the one allowlist decision 6 permits: an exact substring, in
@@ -149,7 +153,16 @@ func payloadLintRules() []payloadLintRule {
 			// installed project has tickets/1-to-do/, so a blanket path ban
 			// would be the trap this rule exists to avoid; a ticket-shaped
 			// path is rule 1's job, not this one's.
-			pattern: regexp.MustCompile(`(^|[^\w./-])(skill|internal|cmd|agents|docs|\.github)/|\b(assets\.go|justfile|\.goreleaser\.yaml)\b`),
+			//
+			// assets.go and justfile start with a word character, so a plain
+			// \b boundary works before them. .goreleaser.yaml does not: \b
+			// only fires at a word/non-word transition, and a space (or
+			// start-of-line) followed by "." is non-word on both sides, so
+			// \b never matched there — the alternative was dead on every real
+			// sentence (review finding F2). It now shares the same explicit
+			// leading-boundary group the directory alternatives use, for the
+			// same lookbehind-free reason.
+			pattern: regexp.MustCompile(`(^|[^\w./-])(skill|internal|cmd|agents|docs|\.github)/|\b(assets\.go|justfile)\b|(^|[^\w./-])\.goreleaser\.yaml\b`),
 			why: "a path that only resolves in pickle's own source tree; an installed workspace " +
 				"has no skill/, internal/, cmd/, docs/ or .github/ at its root. Phrase the path " +
 				"relative to the skill the reader is holding (\"this skill's own " +
@@ -316,10 +329,11 @@ func TestPayloadLintRulesLeaveLegitimateShapesAlone(t *testing.T) {
 }
 
 // TestPayloadLintRule1LookupShapedReferences exercises rule 1 directly: the
-// shape it targets, the two exemption paths (backtick/fenced syntax filler,
-// provenance-tag closing paren) that let a legitimate use through unflagged,
-// and the metasyntactic ids that never reach the exemption logic at all
-// because the pattern requires digits.
+// shape it targets, the backtick/fenced syntax-filler exemption that lets a
+// legitimate use through unflagged, the metasyntactic ids that never reach
+// the exemption logic at all because the pattern requires digits, and —
+// after review finding F1 — the confirmation that a trailing paren no longer
+// exempts a real lookup-shaped reference just for sitting inside one.
 func TestPayloadLintRule1LookupShapedReferences(t *testing.T) {
 	rules := payloadLintRules()
 	one := func(name string) payloadLintRule {
@@ -354,10 +368,26 @@ func TestPayloadLintRule1LookupShapedReferences(t *testing.T) {
 		}
 	})
 
-	t.Run("a closing paren treats the reference as a provenance tag", func(t *testing.T) {
-		line := "(see tickets/6-done/T-090)"
-		if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) != 0 {
-			t.Fatalf("expected %q to pass, got %+v", line, findings)
+	t.Run("a closing paren no longer exempts a lookup-shaped reference (F1)", func(t *testing.T) {
+		// Regression case for review finding F1: this used to pass, on the
+		// theory that a trailing ')' makes it a provenance tag. It doesn't
+		// — a provenance tag is bare ("(T-083)"), and this is a full lookup
+		// path that happens to sit in parens, exactly the shape T-098 shipped.
+		for _, line := range []string{"(see tickets/6-done/T-090)", "the finding reference (T-090 F1)"} {
+			if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) == 0 {
+				t.Fatalf("expected %q to be flagged, got none", line)
+			}
+		}
+	})
+
+	t.Run("a bare provenance tag still passes — the pattern never touches it", func(t *testing.T) {
+		// Not an exemption: rule 1's pattern requires a lookup shape
+		// (tickets/<dir>/T-\d+ or T-\d+\s*F\d+), so a bare id never matches
+		// in the first place, parens or not.
+		for _, line := range []string{"(T-083)", "(`## Outcome`, T-083)"} {
+			if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) != 0 {
+				t.Fatalf("expected %q to pass, got %+v", line, findings)
+			}
 		}
 	})
 
@@ -365,6 +395,56 @@ func TestPayloadLintRule1LookupShapedReferences(t *testing.T) {
 		line := "tickets/6-done/T-NNN"
 		if findings := lintFile("s.md", line, []payloadLintRule{rule1}); len(findings) != 0 {
 			t.Fatalf("expected metasyntactic %q to pass, got %+v", line, findings)
+		}
+	})
+}
+
+// TestPayloadLintRule3RepoOnlyPaths exercises rule 3 directly, in particular
+// the F2 regression: ".goreleaser.yaml" was a dead alternative because a
+// plain \b boundary never fires between a space (or start-of-line) and the
+// leading "." — both are non-word, so no word/non-word transition exists for
+// \b to match. It now shares the same explicit leading-boundary group as the
+// directory alternatives, for the same lookbehind-free reason (RE2 has none).
+func TestPayloadLintRule3RepoOnlyPaths(t *testing.T) {
+	rules := payloadLintRules()
+	one := func(name string) payloadLintRule {
+		for _, r := range rules {
+			if r.name == name {
+				return r
+			}
+		}
+		t.Fatalf("no rule named %q", name)
+		return payloadLintRule{}
+	}
+	rule3 := one("repo-only-path")
+
+	t.Run("flags a bare .goreleaser.yaml mention (F2 regression)", func(t *testing.T) {
+		for _, line := range []string{
+			"edit .goreleaser.yaml to add the target",
+			"the release config is .goreleaser.yaml",
+			".goreleaser.yaml",
+		} {
+			if findings := lintFile("s.md", line, []payloadLintRule{rule3}); len(findings) == 0 {
+				t.Fatalf("expected %q to be flagged", line)
+			}
+		}
+	})
+
+	t.Run("still flags its word-initial siblings", func(t *testing.T) {
+		for _, line := range []string{
+			"the payload is embedded by assets.go",
+			"run just build then edit justfile",
+		} {
+			if findings := lintFile("s.md", line, []payloadLintRule{rule3}); len(findings) == 0 {
+				t.Fatalf("expected %q to be flagged", line)
+			}
+		}
+	})
+
+	t.Run("does not false-positive on the installed skill path", func(t *testing.T) {
+		line := ".agents/skills/brine/resources/TEMPLATE.md"
+		if findings := lintFile("s.md", line, []payloadLintRule{rule3}); len(findings) != 0 {
+			t.Fatalf("expected %q to pass, got %+v", line, findings)
 		}
 	})
 }
