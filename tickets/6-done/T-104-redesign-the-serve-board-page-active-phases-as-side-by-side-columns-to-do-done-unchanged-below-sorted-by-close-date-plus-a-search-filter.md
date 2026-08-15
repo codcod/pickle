@@ -368,3 +368,4 @@ cost: estimated M, actual M
 - 2026-08-15 — READY → IN DEVELOPMENT: picked up
 - 2026-08-15 — IN DEVELOPMENT → IN REVIEW: acceptance green + visual sign-off
 - 2026-08-15 — IN REVIEW → DONE: review clean: 0 blocking, 8 non-blocking (3 fixed inline, 5 noted)
+- 2026-08-15 — merged to main (3104977, PR #48)
