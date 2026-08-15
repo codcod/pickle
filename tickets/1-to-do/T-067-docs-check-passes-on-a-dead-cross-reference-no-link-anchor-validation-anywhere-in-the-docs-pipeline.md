@@ -119,3 +119,15 @@ halves, and the second is what makes the first load-bearing:
   never runs unattended
 - 2026-08-06 — patched by the T-057 review (finding N3, disposition `folded`): scope gained the
   inter-document `xref:<file>.adoc#id[]` class, with two live examples the current gate passed
+- 2026-08-15 — patched by **T-099's review impact sweep**. The "Where it lives" bullet framed the
+  choice as two options — a Go test under `internal/` reaching the repo root via `payloadRoot()`,
+  or a `just` recipe. T-099 shipped a third shape and an argument against one of the two, both of
+  which transfer: `payload_lint_test.go` is a Go test **at the repo root in `package main`**,
+  reading the embedded `payloadFS` directly rather than walking up to a directory that happens to
+  sit beside it — the natural form when the thing under lint is already embedded. And T-099's
+  refinement rejected the `just`-recipe option outright, on the grounds that this repo's own
+  precedent (`lint-ci-surface`) lets an optional tool **degrade to a warning when missing**, which
+  is the one failure mode a regression guard cannot have. Docs are not embedded, so
+  `payloadFS`-style direct reading does not carry over to this ticket unchanged — the transferable
+  parts are the root-`package main` placement and the anti-warning argument, not the FS. Nothing
+  here is invalidated; the bullet just has a third candidate and one fewer live option to weigh
