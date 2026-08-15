@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codcod/pickle/internal/atomicfile"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/ticket"
@@ -444,9 +445,19 @@ func Compare(def *flow.Definition, current, fresh string) Drift {
 }
 
 // Regenerate renders the board from the ticket tree under root and writes it —
-// the one write path `ticket new`, `ticket move` and `board sync` all share.
-// It refuses to render over structural load problems rather than generating a
-// board that silently omits the unloadable tickets.
+// the one write path `ticket new`, `ticket move`, `board sync`, `project add`
+// and `project remove` all share. It refuses to render over structural load
+// problems rather than generating a board that silently omits the unloadable
+// tickets.
+//
+// The write is atomic (internal/atomicfile): a concurrent reader — notably
+// `pickle serve`, which re-reads the tree on every request and on its poll —
+// never observes a truncated or half-written BOARD.md. Regenerate does not
+// itself take the tree lock (T-101): every caller reaches it from inside an
+// already-locked path (`ticket new`, `ticket move`, `board sync`, `project
+// add`/`remove`), and flock is per file descriptor, so a nested acquire on a
+// second descriptor from the same process would deadlock against nothing
+// useful. Callers hold the tree lock.
 func Regenerate(def *flow.Definition, root string, cfg *config.Config) error {
 	tickets, issues := ticket.LoadAll(def, root)
 	if len(issues) > 0 {
@@ -454,5 +465,5 @@ func Regenerate(def *flow.Definition, root string, cfg *config.Config) error {
 			strings.Join(issues, "; "))
 	}
 	text := Render(def, tickets, cfg, time.Now().Format("2006-01-02"))
-	return os.WriteFile(filepath.Join(root, "tickets", "BOARD.md"), []byte(text), 0o644)
+	return atomicfile.WriteFile(filepath.Join(root, "tickets", "BOARD.md"), []byte(text))
 }

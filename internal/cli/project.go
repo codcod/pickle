@@ -13,6 +13,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/install"
+	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/ticket"
 	"github.com/codcod/pickle/internal/vcs"
 )
@@ -122,8 +123,18 @@ func runProjectAdd(args []string) int {
 // registration, which is already saved: it prints a note and leaves
 // `pickle board sync` as the next step, the same restraint refreshMarkers
 // documents for its own failure mode.
+//
+// T-101 rework (F1): this is a ticket-tree writer like `ticket new`, `ticket
+// move` and `board sync`, so it takes the same exclusive tree lock around the
+// regenerate call — board.Regenerate's own doc comment states every caller
+// holds the lock, and this was the one that did not. Neither `project add`
+// nor `project remove` holds the lock anywhere else in its own call path, so
+// there is no nested-acquire deadlock risk here.
 func regenerateBoard(cfg *config.Config) {
-	if err := board.Regenerate(flow.ForName(cfg.FlowName()), cfg.Root(), cfg); err != nil {
+	err := lock.WithExclusive(cfg.Root(), func() error {
+		return board.Regenerate(flow.ForName(cfg.FlowName()), cfg.Root(), cfg)
+	})
+	if err != nil {
 		fmt.Printf("note: could not regenerate the board (%v) — run pickle board sync\n", err)
 		return
 	}

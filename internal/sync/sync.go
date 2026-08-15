@@ -14,10 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codcod/pickle/internal/atomicfile"
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
+	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -32,7 +34,31 @@ type Result struct {
 // reports drift without writing; otherwise it writes when the file differs from
 // a fresh render (normalising the `Last updated:` line, so a date-only
 // difference is not drift) and runs an audit self-check.
+//
+// T-101: a real (non-dry-run) sync runs load→check→write behind the tree's
+// exclusive lock, the same shape as internal/move.Move. A dry run never
+// writes, so it takes only the shared read lock — enough to keep it from
+// reading a tree mid-write, without making a read-only report block behind
+// (or itself exclude) another sync's writer.
 func Sync(root string, cfg *config.Config, dryRun bool) (Result, error) {
+	var res Result
+	var err error
+	lockFn := lock.WithExclusive
+	if dryRun {
+		lockFn = lock.WithShared
+	}
+	lockErr := lockFn(root, func() error {
+		res, err = sync(root, cfg, dryRun)
+		return nil // sync's own error is returned via err, not the lock's
+	})
+	if lockErr != nil {
+		return res, lockErr
+	}
+	return res, err
+}
+
+// sync is Sync's body, run while the caller holds the tree lock.
+func sync(root string, cfg *config.Config, dryRun bool) (Result, error) {
 	res := Result{Path: filepath.Join("tickets", "BOARD.md")}
 	def := flow.ForName(cfg.FlowName())
 
@@ -67,7 +93,7 @@ func Sync(root string, cfg *config.Config, dryRun bool) (Result, error) {
 	if dryRun || !res.Changed {
 		return res, nil
 	}
-	if err := os.WriteFile(boardPath, []byte(newText), 0o644); err != nil {
+	if err := atomicfile.WriteFile(boardPath, []byte(newText)); err != nil {
 		return res, err
 	}
 	// Post-op self-check: the tree must be audit-clean (surfaces a ticket-side

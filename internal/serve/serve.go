@@ -30,6 +30,7 @@ import (
 
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
+	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -125,9 +126,25 @@ type handler struct {
 // deliberately not an error here: one malformed file must not blank the whole
 // dashboard. The audit banner reports them, because audit.Audit re-runs the same
 // load and lists each one.
+//
+// T-101 decision 8: this traversal runs behind the tree's shared lock, so a
+// concurrent pickle writer's atomic rename (internal/atomicfile) is either
+// fully visible or not visible yet — never half-written. lock.WithShared
+// never creates the lock file: if no pickle writer has ever run against this
+// tree, the load proceeds unlocked, which is what keeps serve a strict
+// non-writer (TestServeNeverWrites). The lock is taken once per traversal,
+// here — not once per request — and buildHealth's own, separate traversal
+// (audit.Audit) takes it again around itself for the same reason.
 func (h *handler) load() []*ticket.Ticket {
 	def := flow.ForName(h.opts.Cfg.FlowName())
-	tickets, _ := ticket.LoadAll(def, h.opts.Root)
+	var tickets []*ticket.Ticket
+	// See buildHealth's identical comment: a lock-timeout error is
+	// deliberately not surfaced here either, for the same availability
+	// reason — it degrades to an empty ticket slice, not a broken page.
+	_ = lock.WithShared(h.opts.Root, func() error {
+		tickets, _ = ticket.LoadAll(def, h.opts.Root)
+		return nil
+	})
 	return tickets
 }
 

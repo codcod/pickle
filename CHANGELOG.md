@@ -21,6 +21,19 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   query and the selected child survive the five-second refresh. Ordering is untouched: every
   column and section is still sorted by the same code `BOARD.md` uses (T-104).
 
+- **Every write to the ticket tree is now atomic, and concurrent `pickle` commands (including
+  `pickle serve`) no longer race each other.** `BOARD.md` is written via a temp-file-and-rename
+  so a concurrent reader — notably `serve`, which re-reads the tree on every request and on its
+  5-second poll — can never observe a truncated or half-written board. `ticket new`, `ticket
+  move` and `board sync` each take an exclusive lock on the tree spanning their full
+  load-check-write, and `project add`/`project remove` take it while they re-render the board,
+  so two of them running at once always serialise instead of racing; `ticket new` additionally
+  allocates the new ticket's id under that same lock, so two concurrent invocations can never
+  land on the same id. `pickle serve` takes only a
+  shared read lock, so any number of dashboards can stay open, and is confirmed safe to leave
+  running beside the CLI. A command that cannot acquire the lock within 10 seconds refuses with a
+  message naming the lock file rather than hanging (T-101).
+
 ### Fixed
 
 - **The board's at-limit WIP badge is now actually highlighted.** `.count` was declared after
