@@ -63,3 +63,4 @@ stylesheet — if T-054 lands first, expect a trivial context conflict, nothing 
 - 2026-07-28 — created (TO DO). source: applicability audit before T-054's pickup, finding F7
   (pre-existing T-053 defect; promoted to its own ticket rather than folded, to keep T-054's
   diff purely about theming)
+- 2026-08-15 — TO DO → DROPPED: absorbed by T-104 (task 6): the .count/.wip-full specificity fix lands with the lane-header rewrite that replaces this markup
