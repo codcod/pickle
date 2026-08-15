@@ -391,6 +391,34 @@ Dispositions: 4 blocking (F1–F4, not dispositioned — fixed in rework); 4 non
 
 cost: estimated L, actual L
 
+### Rework pass (2026-08-15, commit `06949f6`)
+
+- **F1 — fixed.** `regenerateBoard` (`internal/cli/project.go`) now wraps its `board.Regenerate`
+  call in `lock.WithExclusive`; both call sites (`project add`, `project remove`) go through it.
+  `board.Regenerate`'s doc comment and the manual's tree-lock paragraph both now list `project
+  add`/`project remove` alongside `ticket new`/`ticket move`/`board sync`. Re-verified: a
+  `project add`/`project remove` loop racing a `ticket move T-001 ready`/`to-do` loop for 8s in a
+  throwaway install, then `board audit` — 0 errors.
+- **F2 — fixed.** Added a `CHANGELOG.md` entry under `[Unreleased] > Added` describing the
+  atomic writes and tree lock in user terms. `pickle changelog check --since v0.8.0` no longer
+  names T-101 (the one remaining candidate, T-099, already carries its own recorded no-entry
+  decision and is unrelated to this ticket).
+- **F3 — fixed.** `TestWithSharedOnAbsentLockFileCreatesNothing` now creates a `dir/.git`
+  directory first (asserting `lockPath(dir)` actually resolves inside it) and checks `dir/.git`'s
+  contents before/after, rather than `dir` itself. Re-ran the same mutation from the review
+  (`WithShared` unconditionally creating the lock file): the fixed test now **fails** as
+  expected, where it previously passed.
+- **F4 — fixed.** Added a paragraph to `internal/lock`'s package comment stating decision 8's
+  accepted limitation verbatim: the board and health banner are read under two separate shared
+  acquisitions in `serve`, so one page render can reflect two different instants of the tree;
+  cosmetic, self-healing on the next 5s poll.
+
+Re-ran the full acceptance test after the fixes: `just build && just test && just lint &&
+just docs-check` green; acceptance items 1–6 all re-verified (concurrent creates, truncate
+race ×20, lock ×5, `TestServeNeverWrites` unmodified, `go doc` output, and a fresh
+serve-beside-writer session), all still met. F5–F8 unchanged — out of this rework's scope by
+design (only F1–F4 were blocking).
+
 ### What is solid
 
 Recorded so the rework pass does not re-litigate it. The two new packages are well-shaped:
@@ -416,3 +444,4 @@ partial-failure contract (Task 8) is the strongest prose in the diff.
 - 2026-08-15 — READY → IN DEVELOPMENT: picked up
 - 2026-08-15 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-15 — IN REVIEW → REWORK: 4 blocking findings (F1-F4)
+- 2026-08-15 — REWORK → IN REVIEW: findings fixed
