@@ -1060,10 +1060,70 @@ recorded so the proposal is not re-raised without new evidence:
 3. **Scope.** The brine payload carries ticket-flow judgement. This is an execution-layer shell
    quirk: useless to a human, and to an agent on a different harness. Admitting it invites
    unbounded agent-hygiene content into a skill whose value is being tight.
-4. **The position was already recorded**, ~`:646` above, from T-050's analysis: *do not optimise
-   shell-heredoc authoring, the toolset already replaces it*. What failed here was compliance with
-   an existing principle, not the absence of one — which no new prose fixes.
+4. **The position was already recorded** — § *Field-finding triage (2026-07-27) — first external
+   workspace*, the note beginning "Noted, not filed — the repro was an anti-pattern", from T-050's
+   analysis: *do not optimise shell-heredoc authoring, the toolset already replaces it*. What
+   failed here was compliance with an existing principle, not the absence of one — which no new
+   prose fixes.
 
 **A guardrail in `agents/` is the only legitimate machinery option, and it is contraindicated
-today** by the field record at `:364-374`: one false positive, one prompting nuisance, zero
-recorded true positives. It would need its own ticket and a materially better case than this.
+today** by the field record in § *The enforcement premise has a poor field record — this is the
+finding*: one false positive, one prompting nuisance, zero recorded true positives. It would need
+its own ticket and a materially better case than this.
+
+## NOTES.md growth (2026-08-15) — measured, deliberately not restructured, and the citation change that unblocks it
+
+Asked whether this file should be refactored so its size stops costing agent context. Measured
+first, because the premise was an estimate. **The premise did not hold; a different defect did.**
+
+| measure | value |
+|---|---|
+| size | 1069 lines / 76 KB |
+| growth | 132 lines (Jul) → 948 lines (Aug) |
+| churn, all time | **1080 added, 11 deleted** |
+| share that is "explored, not filed" archive | 3 sections, 557 lines, **52%** |
+| references that pin a line number into this file | ~78 (25 from tickets/`AGENTS.md`, 53 internal) |
+| mentions of this file that *instruct reading it* | **0** |
+
+**The context cost is not being paid.** All 155 `NOTES.md` references across the payload,
+`AGENTS.md` and the tickets are write-path pointers ("notes go here"); no procedure step in
+`SKILL.md` or `review-protocol.md` loads it, and nothing auto-reads it. Observed access is `grep`
+plus a ranged read — the session that raised the question used ~100 lines of 1069 (~9%) across
+three lookups. Size only bites on a wholesale read that nothing asks for.
+
+**The actual defect is that this is an append-only log with no eviction mechanism** — 11 lines
+deleted in its entire history — and the growth rate is compounding. That is a trajectory problem,
+not a context problem, and it will not self-correct.
+
+**Not restructured, for three reasons.** Recorded so a split is not re-proposed as if it were
+free:
+
+1. **~78 line-pinned references currently resolve, and only because growth is append-only.**
+   Spot-checked `NOTES.md:152` and `NOTES.md:869-874` — both still land on their cited content.
+   Any split, reorder, compaction, *or even a table of contents at the top* shifts line numbers and
+   breaks them at once: a self-inflicted `stale-xref` event larger than any ticket has caused, in
+   the exact class T-099 was built to prevent.
+2. **This file is a shipped convention, not a local artifact.** `pickle install` scaffolds
+   `tickets/NOTES.md` and the canonical layout in `resources/tickets-README.md` names it. Splitting
+   it here would hand every other brine project a layout this repo does not itself use, which is
+   the opposite of why the flow is self-hosted. Changing the convention is a payload ticket.
+3. **The measured saving today is zero**, and this file's own standard (§ *The enforcement premise
+   has a poor field record — this is the finding*) requires a proposal to state what it catches and
+   how that is measured **before** filing.
+
+**The change that unblocks everything else: cite by heading, not by line.** `NOTES.md:869-874`
+becomes `NOTES.md § "Rejected outright, so they are not re-proposed"`. Headings survive appends,
+reorders and compaction; line numbers survive none of them. The line-pinning habit — not the line
+count — is what currently makes this file rigid. **Adopted from this entry forward**, applied
+opportunistically when an existing reference is touched; no big-bang migration, since the existing
+refs are correct today and rewriting all 78 would risk more than it fixes. The two refs in
+§ *Agent operating finding (2026-08-15) — the `$()`-nested heredoc trap* were converted as the
+first application.
+
+> **Pre-registered trigger.** File the compaction ticket the **first** time a lookup in this file
+> actually fails — an agent reads it wholesale for want of navigation, or a targeted search misses
+> because the vocabulary drifted. Compaction then means collapsing a *settled* section (its ticket
+> done and merged, its conclusion already absorbed into a ticket or the payload) to title +
+> two-line conclusion + pointer, never deleting it: the archive's whole function is to be findable
+> by whoever next re-proposes the thing it rejected. Until that trigger fires, this is anticipatory
+> and should not be re-raised.
