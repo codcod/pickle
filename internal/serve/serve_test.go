@@ -262,6 +262,89 @@ func TestBoardFilterBar(t *testing.T) {
 	}
 }
 
+// TestBoardLaneLayout: T-104. The active states (READY, IN DEVELOPMENT, IN
+// REVIEW, REWORK) render as four .lane columns, in lifecycle order, each
+// tagged with its status slug; they sit inside one .child.lane-row per
+// registered child-project. Every other state (TO DO, DONE, DROPPED) keeps
+// rendering as a stacked .status section, unchanged from before this ticket.
+func TestBoardLaneLayout(t *testing.T) {
+	body := get(t, newHandler(t, standardTree(t)), "/").Body.String()
+
+	for _, want := range []string{
+		`class="child lane-row" data-child="demo"`,
+		`class="lane" data-status="ready"`,
+		`class="lane" data-status="in-development"`,
+		`class="lane" data-status="in-review"`,
+		`class="lane" data-status="rework"`,
+		`class="status"`, // TO DO/DONE/DROPPED still render the old section shape
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("board page is missing %q", want)
+		}
+	}
+
+	if !indexOrder(body, `data-status="ready"`, `data-status="in-development"`,
+		`data-status="in-review"`, `data-status="rework"`) {
+		t.Error("lanes are not in lifecycle order (want READY, IN DEVELOPMENT, IN REVIEW, REWORK left-to-right)")
+	}
+
+	// TO DO/DONE/DROPPED must not also render as lanes — they are not in
+	// def.ActiveStates(), so exactly four .lane sections should exist.
+	if n := strings.Count(body, `class="lane"`); n != 4 {
+		t.Errorf("got %d .lane sections, want exactly 4 (one per active state)", n)
+	}
+	// T-004 (fixture's in-development ticket) renders as exactly one ticket row
+	// — inside its lane, not duplicated into a stacked section too. Counting
+	// data-search (set only on the row's own <li>) rather than the bare id
+	// avoids double-counting T-002's "depends on T-004" edge link, which also
+	// renders class="tid" href="/t/T-004".
+	if n := strings.Count(body, `data-search="t-004`); n != 1 {
+		t.Errorf(`got %d ticket rows for T-004, want exactly 1`, n)
+	}
+}
+
+// TestBoardSearchMarkup: T-104. The search box lives outside #board (so it
+// survives the 5s htmx swap, like the child filter already does — T-061), and
+// every ticket row, in both the lanes and the stacked sections, carries a
+// data-search attribute the client-side filter matches against.
+func TestBoardSearchMarkup(t *testing.T) {
+	h := newHandler(t, standardTree(t))
+
+	page := get(t, h, "/").Body.String()
+	if !strings.Contains(page, `id="board-search"`) {
+		t.Error("board page is missing the search input")
+	}
+	if !strings.Contains(page, `data-search="t-004`) {
+		t.Error("board page's T-004 row is missing a lowercased data-search attribute")
+	}
+
+	frag := get(t, h, "/fragments/board").Body.String()
+	if strings.Contains(frag, `id="board-search"`) {
+		t.Error("search input leaked into the polled fragment; it must live outside #board")
+	}
+	if !strings.Contains(frag, `data-search="t-004`) {
+		t.Error("fragment dropped the data-search attribute the search box needs")
+	}
+}
+
+// TestWIPBadgeHighlightedAtLimit: T-104 task 6, absorbing T-055 ("the board's
+// at-limit WIP badge is never highlighted"). A child at its in-development
+// limit must render the combined `count wip-full` class, and the served
+// stylesheet must carry a rule that actually highlights that combination —
+// .wip-full alone is declared before .count and loses the cascade.
+func TestWIPBadgeHighlightedAtLimit(t *testing.T) {
+	h := newHandler(t, standardTree(t)) // T-004 is demo's one in-development ticket, at its 1/1 limit
+	body := get(t, h, "/").Body.String()
+	if !strings.Contains(body, `class="count wip-full"`) {
+		t.Errorf("board page does not mark the at-limit lane badge with both count and wip-full:\n%s", body)
+	}
+
+	css := get(t, h, "/static/styles.css").Body.String()
+	if !strings.Contains(css, ".count.wip-full") {
+		t.Error("stylesheet has no .count.wip-full rule; the at-limit badge cannot render as a warning")
+	}
+}
+
 func TestTicketPage(t *testing.T) {
 	h := newHandler(t, standardTree(t))
 	rec := get(t, h, "/t/T-002")
