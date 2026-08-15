@@ -1020,3 +1020,50 @@ Three decisions worth keeping, because each will be re-proposed otherwise:
   pickup queue. Two stale numbers in T-056's own evidence were corrected in passing: `family:` is
   set on **4 of 100** tickets (all `family: T-075`), not 0 of 63, and `critical`/`high-critical`
   remain unused across **100** tickets.
+
+## Agent operating finding (2026-08-15) — the `$()`-nested heredoc trap, and why it stayed out of the payload
+
+Surfaced while publishing T-099: `gh pr create --body "$(cat <<'EOF' … EOF)"` failed with
+*"unexpected EOF while looking for matching `'`"*, costing a round trip to the `--body-file`
+form that worked. The first diagnosis offered — "heredocs are structurally fragile in this
+harness" — was **wrong**, and was believed only because it sounded plausible. The same session
+had already run three statement-level heredocs successfully.
+
+**The measured trigger**, isolated by bisecting the construct rather than reasoning about it:
+
+| construct | apostrophes in body | result |
+|---|---|---|
+| heredoc at statement level (`cat > f <<'EOF'`) | yes | works |
+| heredoc nested in `$(…)` | yes | **fails** |
+| heredoc nested in `$(…)` | no | works |
+
+So it is neither heredocs nor apostrophes alone — it is **an apostrophe inside a heredoc nested
+in command substitution**, the one place the quoted-heredoc guarantee (`<<'EOF'` makes a body
+wholly literal) does not survive. That is non-POSIX behaviour and therefore a property of the
+execution layer, not of the shell language.
+
+**The working rule:** author multi-line commit/tag/MR bodies with the `write` tool, then pass
+`-F` / `--body-file` / `--message-file`. A statement-level heredoc writing the same file is
+equally safe; only the `$()` nesting is not. Single-line `-m "…"` was never affected — six
+multi-line `git commit -m` calls with apostrophes and parentheses succeeded in the same session,
+so the exposure is roughly one construct at one step, not "every commit" as first reported.
+
+**Deliberately not filed as a ticket, and deliberately not shipped in `skill/`.** Four reasons,
+recorded so the proposal is not re-raised without new evidence:
+
+1. **It would have shipped a false claim.** The proposed payload sentence was "avoid heredocs for
+   multi-line messages" — both too broad (statement-level heredocs are fine) and wrong about the
+   cause. Incorrect payload prose is worse than none.
+2. **It is the instrument T-099 had just rejected.** T-099 replaced a twice-failed hand sweep with
+   a check that cannot be forgotten. Fixing a recurring agent behaviour with one more sentence of
+   prose is the third hand sweep.
+3. **Scope.** The brine payload carries ticket-flow judgement. This is an execution-layer shell
+   quirk: useless to a human, and to an agent on a different harness. Admitting it invites
+   unbounded agent-hygiene content into a skill whose value is being tight.
+4. **The position was already recorded**, ~`:646` above, from T-050's analysis: *do not optimise
+   shell-heredoc authoring, the toolset already replaces it*. What failed here was compliance with
+   an existing principle, not the absence of one — which no new prose fixes.
+
+**A guardrail in `agents/` is the only legitimate machinery option, and it is contraindicated
+today** by the field record at `:364-374`: one false positive, one prompting nuisance, zero
+recorded true positives. It would need its own ticket and a materially better case than this.
