@@ -20,11 +20,10 @@ Last updated: 2026-08-15
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-15
 
 | id | title | open findings |
 |---|---|---|
+| T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | 4 blocking findings (F1-F4) |
 
 ## READY (impact order, per child)
 
