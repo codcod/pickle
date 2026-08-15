@@ -1101,3 +1101,86 @@ rewriting all 78 at once would risk more than it fixes.
 > reader can point at. Compaction then means collapsing a *settled* section to title + two-line
 > conclusion + pointer, **never deleting it**: the archive exists to be found by whoever next
 > re-proposes the thing it rejected.
+
+## ADR exploration (2026-08-15) — explored, nothing filed; the convention already works
+
+Asked whether brine should grow **formal ADRs**, one filled per refinement from the decisions
+made in the process. Explored to a conclusion and **not filed**, in any of its four shapes. The
+measurements below are the reason, and they are the reason not to re-propose it.
+
+### What the corpus actually holds
+
+- **382 numbered decisions** across 61 done tickets (`### Confirmed design decisions`). All 382
+  sit in `6-done/` — the section is written at refinement, so an unrefined ticket has none, and
+  **14 of 61 done tickets have zero**.
+- **29 of the 382 are ever cited by another ticket — 7.6%**, from 15 source tickets.
+  **12 are cited twice or more.** Most-cited: `T-057 decision 3` (the fail-open contract, 7
+  citations), then `T-095 decision 2` (6).
+- Citations cluster by **subsystem lineage, within days**, not by long-range architectural
+  memory: hooks (T-057 → T-082 → T-100), changelog (T-093 → T-094 → T-095 → T-097), serve
+  (T-053 → T-101), plus `T-044 decision 9` and `T-085 decision 5` standing alone.
+
+**The finding that killed the proposal: an addressing scheme already exists and works.**
+`T-NNN decision N` is cited in running prose across three subsystems, and one `grep` recovers a
+three-hop inheritance chain (`T-057 d3` → `T-082 d2` → `T-100 d10`, "inherited verbatim"). ADRs
+would replace a working zero-cost convention with a schema, and — because backfilling is refused
+outright (T-025 precedent, archaeology with no consumer) — would run **prospective-only against
+382 existing decisions**, leaving two stores where the larger, older one is still the one to
+search. That is a net retrieval loss, not a gain.
+
+### The case against each shape, which this file requires
+
+1. **One ADR per refinement** — most confirmed decisions are ticket-local (test technique, a CLI
+   default, "no revnumber plumbing"); at 7.6% citation the signal-to-noise is 1:12.
+2. **A `decisions:` frontmatter key, provenance-only, never gating** — this is **`family:`
+   reborn**, and `family:` is measured at **4 of 104 tickets, all four the same value**. Cite that
+   against the next optional-schema proposal, including this one.
+3. **A promotion test at refinement** — "a rules paragraph with no mechanism", which this file
+   already parked once for that exact reason (§ *Not filed, deliberately*, item 2).
+4. **A generated ADR index / `pickle ticket decisions` command** — within reach of the
+   rejected-outright "metrics command, retro command, or dashboard", and it **pre-empts T-065**,
+   which already owns the read projection. It also needs a citation parser: the ad-hoc one written
+   during this exploration **failed on 6 of 29 citations** (possessives, `**bold**`, backticks) —
+   the T-097 defect shape (a permissive scan reporting confidently and wrongly), reintroduced one
+   ticket after it was fixed.
+
+### `docs/decisions.md` — proposed mid-exploration, then withdrawn
+
+A hand-written locked-decisions page (~12 entries) was the surviving candidate, because
+**"locked decision" is load-bearing and has no artifact**: `review-protocol.md:176` makes
+"contradicts a locked decision" **blocking** severity, and `SKILL.md:207` feeds "the target
+child's locked-decision docs" into the applicability gate. Both consume a thing no rule defines.
+
+It was withdrawn on a rate measurement. Locked decisions are **not front-loaded** — 7 in week 1,
+0 in week 2, 14 in week 3, and **8 in the last 3 days**, the highest rate yet (and *undercounted*,
+since citation is retrospective). At a ≥2-citation threshold the file needs an update **every
+other day**. That lands in the band where this repo's manual bookkeeping measurably fails —
+"zero neighbours re-graded, twice" (T-064), 0 negative verdicts in ~15 applicability-gate runs,
+`family:` at 4/104. **And staleness here is not benign:** the file would drive a *blocking*
+severity classification, so its omissions read as "not locked" and produce false blocking
+findings. A stale README is ignored; this one would misfire.
+
+**Pre-registered trigger for revisiting** (T-045 precedent — write the threshold in advance):
+revisit only when an applicability gate or a review **actually reports being unable to locate a
+locked decision**. Costs nothing until it fires. Absent that, decisions stay in their tickets.
+
+### The one real gap, deliberately not filed
+
+**Nothing documents the `T-NNN decision N` convention.** Verified: no match in
+`tickets-README.md`, `TEMPLATE.md` or `review-protocol.md`. `TEMPLATE.md` says decisions are
+"numbered" and points at "the project's own docs / `AGENTS.md`", but never closes the loop on how
+to cite one. It is the mechanism carrying all the weight above, and it is undocumented — two
+sentences, no maintenance cost, no staleness mode.
+
+**Pointer left here rather than filed**, per the T-064 precedent ("pointer left in T-022, which
+edits those files; deliberately not filed as a ticket"): fold it into the next ticket that edits
+the skill resources. Dedup checked against all 16 TO DO titles at the time — nothing covers it.
+
+### Correction recorded, because it changed a recommendation
+
+Mid-exploration this session reported `2-ready/` as empty and recommended refining T-065 as the
+bottleneck fix. **Both were wrong**: T-065 had already been refined to READY on 2026-08-15 (the
+immediately preceding commit) from a stale directory listing read earlier in the session. Note
+also that T-065's refinement re-graded it to `impact: low` because "no consumer exists, and the
+2026-08-04 precedent refuses to credit prospective demand" — **decision retrieval is exactly such
+a prospective consumer and must not be cited to re-inflate that grade.**
