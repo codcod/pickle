@@ -12,6 +12,7 @@ import (
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
+	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -443,8 +444,24 @@ func (h HealthView) OK() bool { return len(h.Errors) == 0 && len(h.Warnings) == 
 // directory strings. A flow with a third WIP-limited state renders no third
 // badge until ChildWIP and the health template both grow one; that is out of
 // scope here (T-080).
+// T-101 decision 8: audit.Audit is its own full traversal of the ticket tree,
+// separate from the one handler.load already did for this request, so it
+// takes the shared tree lock around itself — one acquisition per traversal,
+// not per request. If the lock file is absent (no pickle writer has ever run
+// against this tree), lock.WithShared runs unlocked and creates nothing,
+// which is what keeps serve a strict non-writer.
 func buildHealth(def *flow.Definition, root string, tickets []*ticket.Ticket, cfg *config.Config) HealthView {
-	res := audit.Audit(root, cfg)
+	var res audit.Result
+	// The lock error is deliberately not surfaced: a health banner that could
+	// fail a whole page render on a lock timeout would make `serve` less
+	// available than the read it protects, not more correct. A timeout here
+	// is exceedingly unlikely (bounded at 10s, and no serve request holds the
+	// tree lock for anywhere near that long) and degrades to res's zero value
+	// (0 tickets, no errors/warnings) rather than a broken page.
+	_ = lock.WithShared(root, func() error {
+		res = audit.Audit(root, cfg)
+		return nil
+	})
 	view := HealthView{Tickets: res.NumTickets, Errors: res.Errors, Warnings: res.Warnings}
 	wip := board.WIPCounts(def, tickets)
 	devSt, _ := def.StateByWIPKey(config.WIPKeyInDevelopment)
