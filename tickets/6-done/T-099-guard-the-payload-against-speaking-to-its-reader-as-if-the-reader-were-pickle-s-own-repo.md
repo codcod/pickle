@@ -435,6 +435,51 @@ Re-ran the full acceptance test after both fixes: `just build`, `just test`, `ju
 replayed live) fail naming file, line, rule and matched text, and the untouched payload is green.
 No new findings surfaced fixing these two — both changes are confined to `payload_lint_test.go`.
 
+### Scoped re-review (2026-08-15) — verdict: both blocking findings resolved
+
+Scope per rules §5: verify F1 and F2 are fixed, plus anything the fix itself introduced. The
+feature was **not** re-audited from scratch.
+
+**F1 — resolved.** `isProvenanceTag` is gone; `ticketRefExempt` carries only the backtick/fence
+exemption. Verified as a 19-case truth table through `lintFile` with the shipped rules: the three
+lookup shapes (`"the finding reference (T-090 F1)"`, `"(see tickets/6-done/T-090)"`, the unwrapped
+form) are now all flagged `[ticket-lookup]`, and the six legitimate shapes — `"(T-083)"`,
+``"(`## Outcome`, T-083)"``, the backticked grammar example, the backticked bad-shape example,
+`"tickets/1-to-do/"`, `"T-NNN"` — all still pass. Over-correction guard holds.
+
+**F2 — resolved.** `.goreleaser.yaml` moved into its own leading-boundary group. All three
+previously-dead phrasings now fire, the word-initial siblings (`assets.go`, `justfile`) still
+fire, and the boundary cases still pass — including two I added at re-review that the rework did
+not cover: `"the goreleaser config"` (bare word, no extension) and `"agentsgoreleaser.yaml"`
+(the token as a suffix of a longer word). Neither false-positives.
+
+**Live re-verification, both payload roots.** Beyond the synthetic table, each escape was replayed
+against the embedded `payloadFS` and each named file, line, rule and matched text:
+`skill/resources/tickets-README.md:485 [repo-only-path]`, `skill/resources/review-protocol.md:285
+[invisible-evidence]`, `skill/SKILL.md:315 [ticket-lookup]` (F1's shape, which passed silently
+before the fix), `skill/resources/TEMPLATE.md:172 [repo-only-path]` (F2's shape, likewise). A
+`.ts` injection under the second root confirmed `agents/` is linted on the same footing:
+`agents/pi/extensions/docs-readability.ts:173` reported both `[ticket-lookup]` and
+`[repo-only-path]` on one line. `just build`, `just test`, `just lint`, `just docs-check` all
+clean; working tree clean after every injection.
+
+One new finding, introduced by the rework itself:
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| N4 | non-blocking | design | fixed inline | The rework copied an 11-line rule-lookup closure verbatim into the second rule test rather than sharing it | `payload_lint_test.go:339,410` (pre-fix) | Hoisted to one package-level `payloadLintRuleNamed(t, name)`; done in `839d946` |
+
+N4 met the inline bar squarely on rules §5's own test — *"idiom **this branch authored**, and no
+behaviour change"* — since the duplication did not pre-exist the branch. The hoisted helper looks
+rules up **by name rather than index**, so a future reordering of `payloadLintRules()` cannot
+silently point a rule's own test at a different rule and leave both looking covered.
+
+re-review disposition summary: 2 blocking resolved (F1, F2); 1 new non-blocking (N4, fixed
+inline); N1/N2 unchanged from the first review (noted); 0 new tickets. Verdict: **DONE**.
+
+cost: estimated S, actual S — held across two review rounds; both blocking findings were
+single-expression regex/exemption fixes, not rework of the design.
+
 ## History
 
 - 2026-08-13 — created (TO DO). source: review: T-098's review, finding N7, disposition *new
@@ -478,3 +523,4 @@ No new findings surfaced fixing these two — both changes are confined to `payl
 - 2026-08-14 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-14 — IN REVIEW → REWORK: 2 blocking: rule 1's provenance exemption opens a hole over its own target shape (F1); rule 3's .goreleaser.yaml alternative is dead (F2)
 - 2026-08-15 — REWORK → IN REVIEW: findings fixed
+- 2026-08-15 — IN REVIEW → DONE: scoped re-review: F1 and F2 resolved; N4 fixed inline
