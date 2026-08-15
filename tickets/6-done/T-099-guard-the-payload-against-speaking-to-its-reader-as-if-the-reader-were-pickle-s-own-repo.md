@@ -524,3 +524,4 @@ single-expression regex/exemption fixes, not rework of the design.
 - 2026-08-14 — IN REVIEW → REWORK: 2 blocking: rule 1's provenance exemption opens a hole over its own target shape (F1); rule 3's .goreleaser.yaml alternative is dead (F2)
 - 2026-08-15 — REWORK → IN REVIEW: findings fixed
 - 2026-08-15 — IN REVIEW → DONE: scoped re-review: F1 and F2 resolved; N4 fixed inline
+- 2026-08-15 — merged to `main` via PR #47 (`3640db6`)
