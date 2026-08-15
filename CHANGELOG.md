@@ -10,6 +10,18 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Added
 
+- **`pickle board state --json` prints the whole ticket tree as one versioned JSON document** — every
+  registered child-project, every ticket's frontmatter, parsed `## History` and dispositioned
+  `## Review` findings, per-child WIP counts and their caps, and an audit-health summary. As a
+  result, a programmatic consumer (an agent-harness extension, a CI step, a git hook) no longer has
+  to scrape the other commands' prose or re-implement the tree walk and grading/WIP/audit rules.
+  `--json` is mandatory; a bare `pickle board state` prints usage and exits 2 rather than dumping
+  the document. The findings projection is a best-effort read across the corpus's historical table
+  shapes, keyed by column name, and carries only the closed-vocabulary columns (`id`, `severity`,
+  `class`, `disposition`) — never the free-prose ones. The whole read runs behind the same shared
+  tree lock `pickle serve` uses, and the output is a pure function of the tree (no timestamp), so
+  two runs against an unchanged tree are byte-identical (T-065).
+
 - **The `pickle serve` board page lays the active statuses out as side-by-side columns, and gains a
   search box.** READY, IN DEVELOPMENT, IN REVIEW and REWORK now render as a row of columns per
   registered child-project — the work actually in flight, visible together — while TO DO, DONE and
