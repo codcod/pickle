@@ -247,6 +247,22 @@ func lintPayload(t *testing.T) []payloadLintFinding {
 	return findings
 }
 
+// payloadLintRuleNamed returns the single rule with the given name, failing
+// the test if there is none. The lookup is by name rather than by index so a
+// reordering of payloadLintRules() cannot silently point a rule's own test at
+// a different rule — which would leave both rules looking tested while one
+// was not.
+func payloadLintRuleNamed(t *testing.T, name string) payloadLintRule {
+	t.Helper()
+	for _, r := range payloadLintRules() {
+		if r.name == name {
+			return r
+		}
+	}
+	t.Fatalf("no rule named %q", name)
+	return payloadLintRule{}
+}
+
 // TestPayloadSpeaksToAForeignReader is the regression guard itself: it fails
 // the build the moment a sentence reaches skill/ or agents/ that only makes
 // sense to a reader standing inside pickle's own repo, instead of depending
@@ -335,17 +351,7 @@ func TestPayloadLintRulesLeaveLegitimateShapesAlone(t *testing.T) {
 // after review finding F1 — the confirmation that a trailing paren no longer
 // exempts a real lookup-shaped reference just for sitting inside one.
 func TestPayloadLintRule1LookupShapedReferences(t *testing.T) {
-	rules := payloadLintRules()
-	one := func(name string) payloadLintRule {
-		for _, r := range rules {
-			if r.name == name {
-				return r
-			}
-		}
-		t.Fatalf("no rule named %q", name)
-		return payloadLintRule{}
-	}
-	rule1 := one("ticket-lookup")
+	rule1 := payloadLintRuleNamed(t, "ticket-lookup")
 
 	t.Run("flags an unwrapped lookup-shaped reference", func(t *testing.T) {
 		line := "see tickets/6-done/T-090 F1 for the pattern"
@@ -406,17 +412,7 @@ func TestPayloadLintRule1LookupShapedReferences(t *testing.T) {
 // \b to match. It now shares the same explicit leading-boundary group as the
 // directory alternatives, for the same lookbehind-free reason (RE2 has none).
 func TestPayloadLintRule3RepoOnlyPaths(t *testing.T) {
-	rules := payloadLintRules()
-	one := func(name string) payloadLintRule {
-		for _, r := range rules {
-			if r.name == name {
-				return r
-			}
-		}
-		t.Fatalf("no rule named %q", name)
-		return payloadLintRule{}
-	}
-	rule3 := one("repo-only-path")
+	rule3 := payloadLintRuleNamed(t, "repo-only-path")
 
 	t.Run("flags a bare .goreleaser.yaml mention (F2 regression)", func(t *testing.T) {
 		for _, line := range []string{
