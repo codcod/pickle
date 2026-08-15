@@ -63,9 +63,10 @@ pre-registered criterion — recorded so the 8th review after it ships can find 
 shipped `changelog check` with its own git walk. The rick interop seam runs the other way
 (`rick status --json` flows *into* pickle; `NOTES.md` § *"Rick interop — the asks that live
 upstream (2026-08-07)"*). What tipped the decision is the counter-evidence sitting in this
-ticket's own History: **the finding-count figure quoted below has now been wrong twice** (165 →
-347 → ~500), each time because it was hand-counted and then went stale. That is the defect a
-projection removes, and it is measured rather than prospective.
+ticket's own History: **the finding-count figure quoted below has now been wrong three times**
+(165 → 347 → ~500 → 423), each time because it was hand-counted and then went stale before the
+next reader recounted it. That is the defect a projection removes, and it is measured rather
+than prospective.
 
 **2. Does it project the `## Review` findings table? — yes, the middle option only.** The
 closed-vocabulary columns (`id`, `severity`, `class`, `disposition`) plus the two raw closer
@@ -95,12 +96,17 @@ format. T-085 was **prospective only and explicitly did not backfill** (its conf
 | `id \| severity \| disposition \| description \| evidence \| resolution` | 2 |
 | six further one-off variants, including two led by `#` and one ordered `# \| finding \| evidence \| severity \| disposition` | 6 |
 
-Twelve distinct headers; the canonical one covers **8 of the 61** done tickets that carry a
-findings table at all. So the parser must be **keyed by column name, never by position** — a
+Thirteen distinct headers; the canonical one covers **8 of the 55** done tickets that carry a
+findings table at all (a table is counted here iff its header has both a `severity` and a
+`disposition` column — 7 done tickets, e.g. T-004–T-008, predate the findings-table convention
+entirely, and T-018's own table has `severity` but no `disposition` column, a genuine near-miss
+under this same rule). So the parser must be **keyed by column name, never by position** — a
 positional reader silently mis-columns three quarters of the corpus, which is worse than not
-shipping. Current totals, measured the same way: **~500 finding rows across 61 of 62 done
-tickets**, with a `Disposition summary` line in **45 of 62** (the figures this ticket previously
-quoted — 347 / 53 / 40-of-53 — were correct on 2026-08-13 and are now stale).
+shipping. Current totals, measured the same way: **423 finding rows across 55 of 62 done
+tickets**, with a `Disposition summary` line in **47 of 62** (the figures this ticket previously
+quoted — 347/53/40, then ~500/61/45 — were each correct when written and are superseded here;
+the acceptance test below recomputes them live rather than asserting a static number, which is
+why the drift never invalidated the plan).
 
 That measurement is also what kills the "include everything" option and confirms the middle one:
 a name-keyed parser over twelve headers is a bounded, testable problem when the fields it
@@ -354,7 +360,7 @@ Then, against this repo's own ticket tree:
 | 3 | `diff <(./pickle board state --json) <(./pickle board state --json)` | no output (decision 3) |
 | 4 | `./pickle board state --json \| jq '.tickets \| length'` vs `find tickets -name 'T-*.md' \| wc -l` | equal |
 | 5 | `./pickle board state --json \| jq -r '.tickets[] \| select(.status=="TO DO") \| .id'` vs the ids in `BOARD.md`'s TO DO section, in file order | identical sequences (decision 7) |
-| 6 | `./pickle board state --json \| jq '[.tickets[].review.findings \| length] \| add'` | ~500, and within ±2 of `for f in tickets/6-done/*.md; do …; done` counting `\|`-rows under a `severity`+`disposition` header — any larger gap means rows are being dropped |
+| 6 | `./pickle board state --json \| jq '[.tickets[].review.findings \| length] \| add'` | ~423 (measured 2026-08-15; re-run the recipe against the tree at implementation time — the point of this check is that it self-verifies, not that the number is pinned), and within ±2 of `for f in tickets/6-done/*.md; do …; done` counting `\|`-rows under a `severity`+`disposition` header — any larger gap means rows are being dropped |
 | 7 | `./pickle board state --json \| jq -r '.tickets[].review.headers[] \| @csv' \| sort -u \| wc -l` | **≥ 10** — proves the parser sees the corpus's real variety rather than only the canonical header (the tautology this check exists to rule out) |
 | 8 | `./pickle board state --json \| jq -r '[.tickets[].review.findings[] \| select(.severity=="non-blocking") \| .class] \| group_by(.) \| map({(.[0]): length}) \| add'` | non-empty; the counts for non-`""` classes **match** the `awk` recipe in `NOTES.md` § *"T-085's pre-registered criterion"* run over the same tree |
 | 9 | `./pickle board state --json \| jq -r '.states[].dir'` | the seven status dirs in board order, none hardcoded in `internal/state` (`rg '[0-9]-(to-do\|ready\|in-)' internal/state/` prints nothing) |
@@ -449,4 +455,15 @@ Nothing under `skill/` changes (decision 15), so `concepts/lifecycle.adoc` and
 - 2026-08-15 — re-graded `impact: low-medium` → `low` (range collapsed at refinement, rules §3):
   no consumer exists, and the 2026-08-04 precedent refuses to credit prospective demand;
   `complexity: medium` and `cost: M` unchanged. Reason recorded in the Description, not only here
+- 2026-08-15 — pickup applicability gate run (fresh sub-agent, per the implement procedure):
+  every internal/ citation, line number and structural assumption verified against `main`
+  (all held); only non-blocking finding was the corpus's descriptive statistics, independently
+  recounted as 423 finding rows / 55 of 62 done tickets / 13 header variants / 47 with a
+  disposition-summary line (previously 347/53/12/45, corrected 2026-08-13 to ~500/61/12/45 —
+  neither prior pass had re-derived the header-variant count from scratch). Disposed note-and-close:
+  plan amended inline in the Description and the acceptance test's check 6, since the correction was
+  cheap and factual and neither changes a Task nor the parser design (if anything the extra variant
+  found — T-018's `severity`-without-`disposition` near miss — strengthens decision 10's rationale).
+  Verdict: PROCEED
 - 2026-08-15 — TO DO → READY: plan complete
+- 2026-08-15 — READY → IN DEVELOPMENT: picked up
