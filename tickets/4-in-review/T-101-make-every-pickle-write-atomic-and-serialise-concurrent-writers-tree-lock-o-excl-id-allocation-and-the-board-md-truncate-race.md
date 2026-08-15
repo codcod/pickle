@@ -356,3 +356,4 @@ holds the tree lock" error, and `pickle serve` is officially safe to run beside 
 - 2026-08-15 — patched by T-104's review impact sweep: decision 8's `view.go` collision list
   drops T-055 (dropped, absorbed by T-104); both lock sites it names are unchanged by T-104.
 - 2026-08-15 — READY → IN DEVELOPMENT: picked up
+- 2026-08-15 — IN DEVELOPMENT → IN REVIEW: acceptance green
