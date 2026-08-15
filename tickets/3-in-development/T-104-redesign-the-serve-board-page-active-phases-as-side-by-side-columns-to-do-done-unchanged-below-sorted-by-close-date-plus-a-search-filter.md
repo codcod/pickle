@@ -286,3 +286,4 @@ decision 3 means it stays true, and this ticket must not silently weaken it. Re-
   mockup (generated from the real tickets/BOARD.md, discussed and iterated live) reshaping the
   serve board page's layout, then asked to file a ticket to build it for real.
 - 2026-08-15 — TO DO → READY: plan complete; scope cut to layout+search (no ordering change), retitled, T-055 absorbed
+- 2026-08-15 — READY → IN DEVELOPMENT: picked up

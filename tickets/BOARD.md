@@ -13,10 +13,11 @@ Last updated: 2026-08-15
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-15
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | medium | medium | L | [] |  |
-| T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
