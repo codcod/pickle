@@ -471,3 +471,4 @@ Nothing under `skill/` changes (decision 15), so `concepts/lifecycle.adoc` and
   production code (`-g '!*_test.go'`) — the unscoped form flagged `build_test.go`'s fixture
   directory literals (e.g. `dir: "1-to-do"`), which build a test tree on purpose and are not the
   hardcoding decision 6 forbids; nothing else in the plan changed
+- 2026-08-15 — IN DEVELOPMENT → IN REVIEW: acceptance green
