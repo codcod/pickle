@@ -128,7 +128,7 @@ Last updated: 2026-08-15
 | T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | yes — merged to main (PR #43, ee85bf3, https://github.com/codcod/pickle/commit/ee85bf3); |
 | T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | yes — merged to `main` via PR #47 (`3640db6`) |
 | T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | yes — merged to main (PR #46, 1c55323, https://github.com/codcod/pickle/commit/1c55323); |
-| T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | no — publish-gated |
+| T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | yes — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than |
 | T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | yes — merged to main (3104977, PR #48) |
 
 ## DROPPED

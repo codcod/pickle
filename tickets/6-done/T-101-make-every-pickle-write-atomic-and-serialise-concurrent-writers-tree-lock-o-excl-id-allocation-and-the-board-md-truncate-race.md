@@ -495,3 +495,5 @@ partial-failure contract (Task 8) is the strongest prose in the diff.
 - 2026-08-15 — IN REVIEW → REWORK: 4 blocking findings (F1-F4)
 - 2026-08-15 — REWORK → IN REVIEW: findings fixed
 - 2026-08-15 — IN REVIEW → DONE: re-review clean: F1-F4 resolved, 2 fixed inline, 2 noted
+- 2026-08-15 — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than
+  squashed (root-path child default)
