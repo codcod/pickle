@@ -49,7 +49,11 @@ therefore live out here where `pickle upgrade` will not overwrite them:
   sentence stand on its own, or to phrase a path relative to the skill the reader is holding
   (`this skill's own resources/TEMPLATE.md`, not `skill/resources/TEMPLATE.md`). This is why the
   test lives here and not in the payload: a rule about how to write the payload, shipped inside
-  the payload, is the very defect it warns against.
+  the payload, is the very defect it warns against. `payload_lint_test.go` (T-099) now enforces
+  the mechanical part of this paragraph: a ticket-lookup shape, a repo-only path, and the
+  first-person and invisible-evidence phrasings all fail `just test` before they reach review.
+  But the test cannot judge what a sentence *means* — it can only match one of its four rules — so
+  this paragraph stays the authority for the judgement call the test cannot make.
 
 <!-- pickle:begin -->
 ## Brine (start here)
