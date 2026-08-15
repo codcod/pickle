@@ -54,6 +54,11 @@ therefore live out here where `pickle upgrade` will not overwrite them:
   first-person and invisible-evidence phrasings all fail `just test` before they reach review.
   But the test cannot judge what a sentence *means* — it can only match one of its four rules — so
   this paragraph stays the authority for the judgement call the test cannot make.
+- **Cite `tickets/NOTES.md` by heading, never by line number** — `NOTES.md § "Rejected outright, so
+  they are not re-proposed"`, not `NOTES.md:869-874`. That file is append-only, so line-pinned refs
+  happen to resolve today and would break together the moment anything is reordered or compacted.
+  Headings survive all three. The reasoning, and the deliberate decision not to restructure the
+  file, are in `NOTES.md` § *NOTES.md growth (2026-08-15)*.
 
 <!-- pickle:begin -->
 ## Brine (start here)

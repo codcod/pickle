@@ -1071,59 +1071,33 @@ today** by the field record in § *The enforcement premise has a poor field reco
 finding*: one false positive, one prompting nuisance, zero recorded true positives. It would need
 its own ticket and a materially better case than this.
 
-## NOTES.md growth (2026-08-15) — measured, deliberately not restructured, and the citation change that unblocks it
+## NOTES.md growth (2026-08-15) — not restructured; cite by heading
 
-Asked whether this file should be refactored so its size stops costing agent context. Measured
-first, because the premise was an estimate. **The premise did not hold; a different defect did.**
+Asked whether this file's size costs agent context. Measured: **it does not.** Nothing in the
+payload, `AGENTS.md` or the tickets instructs *reading* this file — every mention is a write-path
+pointer — and observed access is `grep` plus a ranged read. The real defect is a different one:
+this is an **append-only log with no eviction mechanism**, and that will not self-correct.
 
-| measure | value |
-|---|---|
-| size | 1069 lines / 76 KB |
-| growth | 132 lines (Jul) → 948 lines (Aug) |
-| churn, all time | **1080 added, 11 deleted** |
-| share that is "explored, not filed" archive | 3 sections, 557 lines, **52%** |
-| references that pin a line number into this file | ~78 (25 from tickets/`AGENTS.md`, 53 internal) |
-| mentions of this file that *instruct reading it* | **0** |
+**Not restructured**, so it is not re-proposed as though it were free. Three reasons: ~78
+references pin line numbers into this file and resolve *only* because growth is append-only, so any
+split, reorder, or even a table of contents at the top breaks them at once (the `stale-xref` class
+T-099 exists to prevent); the file is a **shipped convention** that `pickle install` scaffolds and
+`resources/tickets-README.md` names, so changing its shape is a payload ticket, not a local edit;
+and the measured saving today is zero, which § *The enforcement premise has a poor field record —
+this is the finding* requires a proposal to beat before filing. **Re-derive the numbers rather than
+trusting a snapshot** — `wc -l`, `git log --numstat --format="" -- tickets/NOTES.md`, and a grep
+for whether anything yet instructs reading it. An earlier draft of this entry stored that table and
+was stale on the commit that added it.
 
-**The context cost is not being paid.** All 155 `NOTES.md` references across the payload,
-`AGENTS.md` and the tickets are write-path pointers ("notes go here"); no procedure step in
-`SKILL.md` or `review-protocol.md` loads it, and nothing auto-reads it. Observed access is `grep`
-plus a ranged read — the session that raised the question used ~100 lines of 1069 (~9%) across
-three lookups. Size only bites on a wholesale read that nothing asks for.
+**Cite by heading, not by line** — `§ "Rejected outright, so they are not re-proposed"`, never
+`:869-874`. Headings survive appends, reorders and compaction; line numbers survive none of them.
+The line-pinning habit, not the line count, is what makes this file rigid. Adopted from here
+forward and applied when an existing reference is touched; the existing refs are correct today, so
+rewriting all 78 at once would risk more than it fixes.
 
-**The actual defect is that this is an append-only log with no eviction mechanism** — 11 lines
-deleted in its entire history — and the growth rate is compounding. That is a trajectory problem,
-not a context problem, and it will not self-correct.
-
-**Not restructured, for three reasons.** Recorded so a split is not re-proposed as if it were
-free:
-
-1. **~78 line-pinned references currently resolve, and only because growth is append-only.**
-   Spot-checked `NOTES.md:152` and `NOTES.md:869-874` — both still land on their cited content.
-   Any split, reorder, compaction, *or even a table of contents at the top* shifts line numbers and
-   breaks them at once: a self-inflicted `stale-xref` event larger than any ticket has caused, in
-   the exact class T-099 was built to prevent.
-2. **This file is a shipped convention, not a local artifact.** `pickle install` scaffolds
-   `tickets/NOTES.md` and the canonical layout in `resources/tickets-README.md` names it. Splitting
-   it here would hand every other brine project a layout this repo does not itself use, which is
-   the opposite of why the flow is self-hosted. Changing the convention is a payload ticket.
-3. **The measured saving today is zero**, and this file's own standard (§ *The enforcement premise
-   has a poor field record — this is the finding*) requires a proposal to state what it catches and
-   how that is measured **before** filing.
-
-**The change that unblocks everything else: cite by heading, not by line.** `NOTES.md:869-874`
-becomes `NOTES.md § "Rejected outright, so they are not re-proposed"`. Headings survive appends,
-reorders and compaction; line numbers survive none of them. The line-pinning habit — not the line
-count — is what currently makes this file rigid. **Adopted from this entry forward**, applied
-opportunistically when an existing reference is touched; no big-bang migration, since the existing
-refs are correct today and rewriting all 78 would risk more than it fixes. The two refs in
-§ *Agent operating finding (2026-08-15) — the `$()`-nested heredoc trap* were converted as the
-first application.
-
-> **Pre-registered trigger.** File the compaction ticket the **first** time a lookup in this file
-> actually fails — an agent reads it wholesale for want of navigation, or a targeted search misses
-> because the vocabulary drifted. Compaction then means collapsing a *settled* section (its ticket
-> done and merged, its conclusion already absorbed into a ticket or the payload) to title +
-> two-line conclusion + pointer, never deleting it: the archive's whole function is to be findable
-> by whoever next re-proposes the thing it rejected. Until that trigger fires, this is anticipatory
-> and should not be re-raised.
+> **Pre-registered trigger.** File the compaction ticket the first time **a decision already
+> recorded in this file is re-made from scratch** — two sections reaching the same conclusion is
+> this archive's function measurably failing, and unlike "a search missed" it leaves evidence a
+> reader can point at. Compaction then means collapsing a *settled* section to title + two-line
+> conclusion + pointer, **never deleting it**: the archive exists to be found by whoever next
+> re-proposes the thing it rejected.
