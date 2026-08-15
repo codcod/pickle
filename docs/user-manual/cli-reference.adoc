@@ -5,6 +5,21 @@ Every command, its synopsis, and its contract. {product} operates on the
 current working directory (finding `pickle.toml` upward from it); nothing is
 ever written to `~/` or outside the project root.
 
+Every command that changes an existing ticket tree (`ticket new`, `ticket
+move`, `board sync`, `project add`, `project remove`) takes an exclusive lock
+on the tree first, so two `pickle` commands — or a command and `pickle serve`
+— running at the same time never race each other; `pickle serve` itself takes
+only a shared read lock, so any number of dashboards can be open at once.
+(`install` is the exception, and needs no lock: it creates the tree rather
+than changing one, so there is nothing for a concurrent reader to observe
+half-done.) The
+lock file lives at `.git/pickle-tree.lock` (or, outside a git checkout, a
+fixed path under your OS's temp directory) and is created automatically the
+first time a write command runs — it is empty, safe to ignore, and never
+needs deleting by hand. If a command refuses with a message naming this lock
+file, another `pickle` command or `pickle serve` is already running against
+the same tree. Wait for it to finish, then try again.
+
 == Overview
 
 [cols="2,3"]
@@ -930,7 +945,10 @@ overrides it.
 *It never writes.* No route creates, moves, rewrites or regenerates anything —
 not even a stale `BOARD.md`. `pickle ticket new`, `pickle ticket move` and
 `pickle board sync` remain the only writers, so it is safe to leave the server
-running while you or an agent work on tickets.
+running while you or an agent work on tickets — every read it does takes only
+a shared lock on the ticket tree, which never excludes another reader and
+never blocks behind a write for long (writes are quick, whole-tree
+operations, not held open).
 
 What it serves:
 
