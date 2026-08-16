@@ -1,0 +1,328 @@
+include::../attributes.adoc[]
+
+[#proposal-post-merge-done-move]
+= Proposal: move the `DONE` transition to after the merge
+
+[WARNING]
+====
+**Not implemented. Not part of the shipped flow.** Nothing in this file
+describes current `{product}` behaviour — `pickle ticket move T-NNN done
+--verify-merged` does not exist today, and a clean review verdict currently
+moves a ticket straight to `6-done/` (see <<lifecycle>> in the user manual).
+
+This page is deliberately kept **outside** `docs/user-manual.adoc`'s
+`include::` tree, so `just docs-check` (snowball) never validates or ships
+it as part of the manual, and it is not reachable from the table of
+contents. It exists so this design can be picked back up in a later
+session without re-deriving it.
+
+**Status:** proposed, not yet filed as a ticket. Before building it, file a
+ticket from this page's content, run it through refinement, and let
+refinement re-verify every claim below against the code at that time — this
+page will drift the moment `internal/state`, `internal/hook` or the review
+protocol change under it. Once a ticket ships this, fold the surviving
+parts into `docs/user-manual/concepts/lifecycle.adoc` and delete this file
+rather than maintaining two descriptions of the same behaviour.
+====
+
+== Where this came from
+
+A review of T-065 (`tickets/6-done/T-065-…json-read-projection.md`)
+surfaced friction in the rule that ticket and board bookkeeping is committed
+only on the base branch, never a feature branch (rules §0). Working through
+*why* the rule exists, and where it breaks down, turned up one concrete,
+observed defect worth fixing on its own:
+
+[quote]
+____
+For three consecutive commits, `main` asserted T-065 was `DONE` while
+containing **zero** of its code (`internal/state` did not exist on `main`
+yet). Anyone cloning `main` in that window — a teammate, CI, `pickle serve`,
+or `board state --json` itself — would report a shipped feature that wasn't
+there.
+____
+
+The flow already partly guards against this: `board audit` warns when a
+`6-done/` ticket has no `merged` History line. But the audit's own comment
+admits the warning is ambiguous — it "cannot tell 'not merged yet' from
+'merge line forgotten'". This proposal removes the ambiguity by making the
+transition to `DONE` require, and record, the merge in one step — instead of
+"reviewed" and "merged" being two separate, independently-timed events that
+can drift apart.
+
+== What changes, precisely
+
+Two changes, both narrow. Everything else about the flow — status-as-directory,
+bookkeeping on the base branch, the review protocol's audits, the rework
+loop, WIP limits, the publish-gated commit policy — is **unchanged**.
+
+[cols="1,3,3"]
+|===
+| | Today | Proposed
+
+| A clean review verdict
+| Moves the ticket straight to `6-done/`, in the same commit as the
+  findings table.
+| Ticket **stays in `4-in-review/`**. The findings table, disposition
+  summary and verdict are recorded exactly as today — only the directory
+  move is deferred.
+
+| Recording the merge
+| The agent hand-types a `merged: …` History line after asking the user
+  whether the MR merged, in a separate commit from the review verdict.
+| `pickle ticket move T-NNN done --verify-merged` — refuses to run unless
+  it can itself confirm (via `git`/`gh`) that the branch's commits are
+  reachable from the base branch; on success it derives the merge
+  commit/PR reference itself and performs the `4-in-review/` → `6-done/`
+  move, in one commit.
+|===
+
+The net effect: `DONE` becomes synonymous with "merged", by construction,
+rather than by an agent remembering to say so afterward. The
+`board audit` warning this proposal removes
+(`DONE but has no 'MERGED' History line`) becomes unreachable rather than
+merely rarer — there is no longer a `DONE` state that lacks it.
+
+== What this proposal explicitly does **not** change
+
+Rejected, or rather never seriously entertained, before landing on the above:
+
+* **Ticket files do not move onto the feature branch.** The tempting
+  version of this idea — carry the ticket's status *with* the code, so
+  status and code are one atomic commit — runs into a real constraint: a
+  file's location cannot be authoritative on two branches at once. During
+  review, the reviewer must write findings into the ticket before the
+  merge happens; if the branch also owns the ticket's location, that write
+  races the branch's own rename of the same file on every single ticket.
+  Bookkeeping stays on the base branch, unconditionally.
+* **`BOARD.md` is still generated on the base branch only.** This was never
+  in question — the board is a cross-cutting index over every ticket, and
+  putting a global artifact under one branch's control was the part of the
+  status quo that always held up.
+* **The rework loop is untouched.** A blocking finding already routes to
+  `5-rework/` and back to `4-in-review/` entirely pre-merge, so it never
+  touches the seam this proposal changes.
+* **The git mechanics are untouched** — branch naming, WIP commits, the
+  publish approval gate, push-`main`-before-branch ordering, opening the
+  MR, waiting for CI. All identical to today.
+
+== Worked example: the full lifecycle under the proposal
+
+Ticket `T-076`, "consume rick status --json as an artifact-state source",
+walked end to end. `← CHANGED` marks the two steps that differ from
+today's flow; everything else is exactly what already happens.
+
+=== 1. File it
+
+[quote, user]
+"file a ticket for consuming rick's status JSON as an artifact-state source"
+
+The agent reads the brine skill, dedupes against the open board, runs:
+
+[source,sh]
+----
+pickle ticket new "consume rick status --json as an artifact-state source" \
+  --project pickle
+----
+
+fills in `## Outcome` and the Description, grades it, and commits on `main`:
+
+[source]
+----
+board: T-076 created (TO DO). source: chat
+----
+
+=== 2. Refine it
+
+[quote, user]
+"refine ticket T-076"
+
+The agent writes the Implementation Plan against the seven-item READY gate,
+surfaces open decisions for sign-off, then:
+
+[source,sh]
+----
+pickle ticket move T-076 ready --reason "plan complete"
+----
+
+committed on `main` as `board: T-076 to do → ready`.
+
+=== 3. Implement it
+
+[quote, user]
+"implement ticket T-076"
+
+The agent checks `depends-on:` and WIP, runs the pickup applicability gate
+(fresh sub-agent, PROCEED), then:
+
+[source,sh]
+----
+pickle ticket move T-076 in-development --reason "picked up"   # on main
+
+git checkout main
+git checkout -b feat/T-076-rick-status-json
+----
+
+Executes the plan; commits WIP locally on the branch as it goes:
+
+[source]
+----
+feat(rick): parse status.json artifact envelope (T-076)
+feat(cli): surface rick state via doctor (T-076)
+test(rick): golden-file fixtures for the three status shapes (T-076)
+----
+
+Runs the acceptance test plus `just build && just test && just lint && just
+docs-check`, all green, then:
+
+[source,sh]
+----
+pickle ticket move T-076 in-review --reason "acceptance green"   # on main
+----
+
+None of the `feat`/`test` commits on the branch touch `tickets/` — that half
+of the design is unchanged.
+
+=== 4. Review it
+
+[quote, user]
+"review ticket T-076"
+
+The agent checks out the branch, reads the ticket **from `main`**
+(`git show main:tickets/4-in-review/T-076-*.md`, since the branch's own copy
+is stale the moment bookkeeping landed after the branch was cut), re-runs
+the acceptance test, audits quality/consistency/docs, records zero blocking
+findings in `## Review` — committed on `main`.
+
+[IMPORTANT]
+`← CHANGED`. The verdict does **not** move the ticket to `6-done/`. It stays
+in `4-in-review/`:
+
+[source]
+----
+board: T-076 review verdict PROCEED — awaiting merge
+----
+
+`pickle board audit` now reports T-076 as `IN REVIEW`, which is always
+literally true — there is no longer a state where the board can disagree
+with reality about whether this ticket shipped.
+
+The agent presents the commit message(s) and MR attributes for approval —
+this gate is unchanged:
+
+[quote]
+____
+*Title:* `feat(cli): consume rick status --json (T-076)` +
+*Base:* `main` +
+*Commits kept, not squashed* (root-path default) +
+Approve?
+____
+
+=== 5. User approves publishing
+
+[quote, user]
+"push and open mr"
+
+[source,sh]
+----
+git fetch origin main
+git diff --name-only origin/main...HEAD | grep '^tickets/'   # empty — clean
+
+git push origin main                              # bookkeeping through step 4
+git push -u origin feat/T-076-rick-status-json
+gh pr create --base main --head feat/T-076-rick-status-json \
+  --title "feat(cli): consume rick status --json (T-076)" \
+  --body-file /tmp/pr-body.md
+gh pr checks 51 --watch
+----
+
+CI green. The agent reports the MR number and stops — **no ticket move
+happens here**, which is the entire point of the change.
+
+=== 6. User merges
+
+[quote, user]
+"pr 51 merged"
+
+The agent does not take this on faith — it verifies independently:
+
+[source,sh]
+----
+gh pr view 51 --json state,mergedAt,mergeCommit
+----
+
+`state: MERGED`, `mergeCommit: 9f2a1c7`.
+
+=== 7. The collapsed move
+
+[IMPORTANT]
+`← CHANGED`. Today this is two separate hand-typed commits (record the
+publish, later record the merge). Under the proposal it is **one command,
+one commit**:
+
+[source,sh]
+----
+pickle ticket move T-076 done --verify-merged
+----
+
+which:
+
+* refuses to run at all unless it can confirm — via `git`/`gh`, not the
+  agent's say-so — that the branch's commits are reachable from `main`;
+* derives the `merged` line itself (merge commit SHA, PR number, commit
+  count kept) instead of the agent composing prose that could drift from
+  the truth;
+* moves `4-in-review/` → `6-done/` and appends the derived `merged` line in
+  the same transaction.
+
+Committed on `main`:
+
+[source]
+----
+board: T-076 in review → done (merged PR #51, 9f2a1c7)
+----
+
+`pickle board audit` now shows 0 errors, 0 warnings — and there was never a
+window where the old ambiguous warning *could* have fired, because `done`
+was unreachable until `--verify-merged` succeeded.
+
+=== 8. Cleanup and next
+
+The agent deletes the local feature branch, asks whether to delete the
+remote one too, and suggests the next `READY`/`TO DO` ticket within WIP
+limits.
+
+== What would actually need building
+
+Recorded here so refinement doesn't have to re-derive it from this prose:
+
+* `internal/move` (or a new flag on the existing `ticket move` path):
+  `--verify-merged`, resolving whether the ticket's feature branch is an
+  ancestor of the target base — likely `git merge-base --is-ancestor` plus,
+  where available, a `gh pr view --json state,mergedAt,mergeCommit` lookup
+  for the richer citation (PR number, merge commit) the worked example
+  above shows.
+* The **derived `merged` line format** needs pinning down as a confirmed
+  decision, not improvised per ticket — e.g. `` merged: PR #<n> (<sha>), <k>
+  commits kept `` vs the free-prose lines currently hand-written across
+  `tickets/6-done/` (`internal/state`'s own review-table corpus work is the
+  precedent for "many historical shapes, one going forward").
+* `resources/review-protocol.md` step 6b currently reads "move
+  `tickets/4-in-review/T-NNN-*.md` → `tickets/6-done/`" as the concluding
+  action of a review. That step's ending changes to "record the verdict;
+  leave the ticket in `4-in-review/`", and a new closing step (or an
+  extension of the existing `implement`/finish flow) owns the post-merge
+  move.
+* `internal/audit` drops the `DONE but has no 'MERGED' History line`
+  warning — check whether anything else in `internal/audit` or
+  `internal/state` (T-065) depends on `6-done/` meaning "review concluded"
+  rather than "merged"; at least `board.WIPCounts` should be checked, since
+  a ticket sitting in `4-in-review/` for longer (through the merge wait)
+  interacts with the `wip_in_review` limit differently than today.
+* Docs: `docs/user-manual/concepts/lifecycle.adoc`'s state table and the
+  review section of the CLI reference both describe the current
+  review-ends-in-DONE behaviour and would need updating alongside the
+  code, not after.
+* Reconcile with **T-057** (medium-high, the backlog's joint-top grade),
+  which already owns the bookkeeping-enforcement area this touches —
+  file this as a change *within* that area rather than a competing one.
