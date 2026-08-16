@@ -8,8 +8,9 @@ ever written to `~/` or outside the project root.
 Commands that change an existing ticket tree (`ticket new`, `ticket move`,
 `board sync`, `project add`, `project remove`) first take an exclusive lock,
 so two `pickle` commands — or a `pickle` command and `pickle serve` — cannot
-race each other. `pickle serve` and `pickle board state --json`
-(<<cmd-board-state>>) take only a shared read lock, so any number of
+race each other. `pickle serve`, `pickle board state --json`
+(<<cmd-board-state>>) and `pickle board decisions`
+(<<cmd-board-decisions>>) take only a shared read lock, so any number of
 dashboards or read-projection calls can run at once alongside the CLI.
 `install` is the exception: it creates the tree rather than changing one, so
 there is nothing for a concurrent reader to observe half-done. The
@@ -60,6 +61,9 @@ the same tree. Wait for it to finish, then try again.
 
 | `pickle board state --json`
 | Print the whole ticket tree as one versioned JSON document.
+
+| `pickle board decisions [--project …] [--status …] [--grep …] [--json]`
+| Query every ticket's confirmed design decisions, in citable `<ID> decision <N>` form.
 
 | `pickle changelog check [--since …] [--until …] [--changelog …] [--section …] [--show-excluded]`
 | Report tickets that shipped since the last release but aren't named in the
@@ -931,6 +935,84 @@ pickle board state --json \
             | select(.severity == "non-blocking") | .class] | group_by(.)
             | map({(.[0]): length}) | add'
 ----
+
+[#cmd-board-decisions]
+== `pickle board decisions`
+
+----
+pickle board decisions [--project <child>] [--status <dir>] [--grep <regex>] [--json]
+----
+
+*Queries every ticket's `### Confirmed design decisions` subsection* and prints
+each item already in citable `<ID> decision <N>` form. Read-only: nothing
+under `tickets/` is ever written, and the whole read runs inside the same
+shared tree lock `pickle serve` and `pickle board state` use. Unlike
+`board state`, `--json` is *not* mandatory here — the default output is a
+short, human-shaped table, not a full document dump, so a bare invocation is
+already the common case.
+
+Every flag is optional and they compose:
+
+[cols="1,3"]
+|===
+| Flag | Meaning
+
+| `--project <child>`
+| Narrow to one registered child-project's tickets. An unregistered name is
+  an *error* (exit `1`); a registered child that simply has no matching
+  decisions is exit `0` with an empty result — these are different outcomes,
+  and the command is deliberate about which is which (see *Exit codes*,
+  below).
+
+| `--status <dir>`
+| Narrow to one status *directory* (e.g. `6-done`, not the display name
+  `DONE`). An unknown directory is an error naming the legal values, read
+  from the flow definition rather than hardcoded.
+
+| `--grep <regex>`
+| A regular expression, matched case-insensitively against each decision's
+  *whole* text — the statement and the rationale that follows it — because a
+  topic search needs to reach the rationale even though the output never
+  prints it (see below). An uncompilable pattern is an error, not zero
+  results. Write `(?-i:…)` inline for a case-sensitive sub-match.
+
+| `--json`
+| Print the machine-readable form instead of the table (see below).
+|===
+
+A decision is projected, never invented: the ticket id, its own ordinal *as
+written in the file* (a gap — `1, 2, 4` — is reported as `4`, never
+renumbered, because another ticket may already cite it), and — when the
+numbered item opens with a `**bold run**` — that run as the statement, with
+emphasis/code markers stripped. An item with no leading bold run is reported
+as unstructured, carrying its raw first line instead; the rationale prose is
+*never* projected in either case, structured or not (only searched, via
+`--grep`).
+
+The text form's columns are `DECISION` (the pasteable `<ID> decision <N>`),
+`PROJECT`, `STATUS`, `FORM` (`bold` when a statement was found, `raw`
+otherwise) and `STATEMENT` (the projected statement, or the raw first line
+for a `raw` row). A closing line always summarises the count, `board
+decisions: N decision(s) from M ticket(s)`, so an empty result prints a
+clear `0` rather than silence.
+
+The `--json` form is this command's own small envelope, versioned
+independently of `pickle board state --json`'s `schema` (T-105 decision 13
+— the two evolve on separate schedules): `{schema, pickle_version, filters,
+decisions}`, where `filters` echoes back the `--project`/`--status`/`--grep`
+values the document was built from and `decisions` is an array of `{ticket_id,
+prefix, num, project, status, dir, file, number, citation, structured,
+statement, raw}` — always `[]`, never `null`, when nothing matched.
+
+=== Exit codes
+
+An **unregistered** `--project`, an **unknown** `--status` directory, and an
+**uncompilable** `--grep` pattern are each an error (exit `1`). A
+**registered child with no matching decisions**, or **any filter combination
+that simply matches nothing**, is exit `0` with an empty result — these are
+legitimate answers, not failures, and the command is deliberate about the
+distinction: an ad-hoc `grep`-based script this command replaces routinely
+conflated the two by leaking `grep`'s own exit `1` into the empty case.
 
 [#cmd-changelog-check]
 == `pickle changelog check`
