@@ -38,6 +38,8 @@ Last updated: 2026-08-16
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | low-medium | low | S | [] |  |
+| T-105 | pickle board decisions: query a child's confirmed design decisions | low | low-medium | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -57,11 +59,9 @@ Last updated: 2026-08-16
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
-| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | low-medium | low | S | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-103 | board.Sort: break impact ties by cost lexicographically instead of by id | low | low | S | [] |  |
-| T-105 | pickle project decisions: query a child's confirmed design decisions | low | low-medium | S | [] |  |
 
 ## DONE
 
