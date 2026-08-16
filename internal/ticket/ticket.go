@@ -591,23 +591,26 @@ func normalizeHeading(h string) string {
 	return strings.TrimRight(strings.TrimSpace(h), ".:;,")
 }
 
-// SubsectionMissing reports whether the top-level "## section" span contains
-// a "### " heading whose normalizeHeading form has stem as a prefix, with a
-// substantive body (SectionMissing's own predicate, applied to the
-// sub-heading's own span: up to the next "### " or "## ", whichever comes
-// first). An absent parent section, or no sub-heading matching stem, both
-// count as missing — the caller (GateViolations) does not need to
-// distinguish the two. Reuses SectionBody's line-prefix walk rather than
+// SubsectionBody returns the trimmed body of the first "### " heading inside
+// the top-level "## section" span whose normalizeHeading form has stem as a
+// prefix, bounded by the next "### " or "## " heading, whichever comes first
+// (or EOF). found is false when the parent section itself is absent, or no
+// "### " heading under it matches stem — callers that don't need to
+// distinguish the two (e.g. SubsectionMissing) can fold found==false into
+// "missing" directly. Reuses SectionBody's line-prefix walk rather than
 // adding a fifth copy of it (T-042): the parent scan is exactly SectionBody's
-// own logic, repeated one level down for "### " instead of "## ".
+// own logic, repeated one level down for "### " instead of "## ". Factored
+// out of SubsectionMissing (T-105) so a second consumer (a decisions-style
+// reader that needs the body's *content*, not just whether it's substantive)
+// does not need a sixth copy.
 //
 // Like SectionBody/SectionHeadings, this walk is blind to a "### "-looking
 // line at column 0 inside a fenced code block — an inherited, pre-existing
 // limitation (T-083 documented it for SectionHeadings), not a new one.
-func SubsectionMissing(text, section, stem string) bool {
-	parent, found := SectionBody(text, section)
-	if !found {
-		return true
+func SubsectionBody(text, section, stem string) (body string, found bool) {
+	parent, ok := SectionBody(text, section)
+	if !ok {
+		return "", false
 	}
 	lines := strings.Split(parent, "\n")
 	start := -1
@@ -618,7 +621,7 @@ func SubsectionMissing(text, section, stem string) bool {
 		}
 	}
 	if start == -1 {
-		return true
+		return "", false
 	}
 	end := len(lines)
 	for i := start; i < len(lines); i++ {
@@ -627,7 +630,20 @@ func SubsectionMissing(text, section, stem string) bool {
 			break
 		}
 	}
-	body := strings.TrimSpace(strings.Join(lines[start:end], "\n"))
+	return strings.TrimSpace(strings.Join(lines[start:end], "\n")), true
+}
+
+// SubsectionMissing reports whether the top-level "## section" span contains
+// a "### " heading whose normalizeHeading form has stem as a prefix, with a
+// substantive body (SectionMissing's own predicate: empty once HTML comments
+// — the TEMPLATE.md placeholder form — are stripped). An absent parent
+// section, or no sub-heading matching stem, both count as missing — the
+// caller (GateViolations) does not need to distinguish the two.
+func SubsectionMissing(text, section, stem string) bool {
+	body, found := SubsectionBody(text, section, stem)
+	if !found {
+		return true
+	}
 	return strings.TrimSpace(htmlCommentRE.ReplaceAllString(body, "")) == ""
 }
 

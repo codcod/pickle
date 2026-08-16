@@ -632,6 +632,89 @@ func TestNormalizeHeading(t *testing.T) {
 	}
 }
 
+func TestSubsectionBody(t *testing.T) {
+	const text = `## Implementation Plan
+
+### 0. Feature branch (mandatory)
+
+Cut the branch.
+
+### Prerequisite gate (hard)
+
+<!-- TODO: fill in -->
+
+### Confirmed design decisions (do not deviate without asking)
+
+1. **First decision.** Rationale one.
+2. **Second decision.** Rationale two.
+
+### Tasks
+
+#### Task 1
+
+detail
+
+## Review
+
+findings
+`
+	cases := []struct {
+		name          string
+		section, stem string
+		wantBody      string
+		wantFound     bool
+	}{
+		{"absent parent section", "Nonexistent", "feature branch", "", false},
+		{"absent stem", "Implementation Plan", "acceptance test", "", false},
+		{"heading present, body is an HTML-comment placeholder", "Implementation Plan", "prerequisite",
+			"<!-- TODO: fill in -->", true},
+		{"heading present with prose", "Implementation Plan", "feature branch", "Cut the branch.", true},
+		{"heading present with a multi-item body", "Implementation Plan", "confirmed",
+			"1. **First decision.** Rationale one.\n2. **Second decision.** Rationale two.", true},
+		{"heading bounded by the next ## (last ### in its parent section)", "Implementation Plan", "tasks",
+			"#### Task 1\n\ndetail", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			body, found := SubsectionBody(text, c.section, c.stem)
+			if found != c.wantFound {
+				t.Errorf("SubsectionBody(text, %q, %q) found = %v, want %v", c.section, c.stem, found, c.wantFound)
+			}
+			if body != c.wantBody {
+				t.Errorf("SubsectionBody(text, %q, %q) body = %q, want %q", c.section, c.stem, body, c.wantBody)
+			}
+		})
+	}
+
+	const lastHeading = `## Implementation Plan
+
+### Confirmed design decisions (do not deviate without asking)
+
+1. **Only decision.** The only rationale.
+`
+	t.Run("heading is the last thing in the file (bounded by EOF)", func(t *testing.T) {
+		body, found := SubsectionBody(lastHeading, "Implementation Plan", "confirmed")
+		if !found || body != "1. **Only decision.** The only rationale." {
+			t.Errorf("SubsectionBody(lastHeading, ...) = %q, %v, want %q, true",
+				body, found, "1. **Only decision.** The only rationale.")
+		}
+	})
+
+	const emptyLast = `## Implementation Plan
+
+### Confirmed design decisions (do not deviate without asking)
+### Tasks
+
+detail
+`
+	t.Run("### heading immediately followed by another ### (empty body)", func(t *testing.T) {
+		body, found := SubsectionBody(emptyLast, "Implementation Plan", "confirmed")
+		if !found || body != "" {
+			t.Errorf("SubsectionBody(emptyLast, ...) = %q, %v, want \"\", true", body, found)
+		}
+	})
+}
+
 func TestSubsectionMissing(t *testing.T) {
 	const text = `## Implementation Plan
 
