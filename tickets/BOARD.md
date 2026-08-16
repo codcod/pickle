@@ -20,10 +20,11 @@ Last updated: 2026-08-16
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-065 | expose board and ticket state as a versioned JSON read projection | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-16
 
 | id | title | open findings |
 |---|---|---|
-| T-065 | expose board and ticket state as a versioned JSON read projection | 1 blocking finding (F1): health.board_drift emits an undocumented fourth value |
 
 ## READY (impact order, per child)
 

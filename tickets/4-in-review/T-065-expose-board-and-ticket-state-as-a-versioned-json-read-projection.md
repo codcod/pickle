@@ -269,8 +269,13 @@ consumes them but adds no hard dependency, because it degrades gracefully if any
     Concatenate their rows into one `findings` array and report the count in `tables`.
 13. **Health reuses existing vocabulary.** `health` is `{tickets, errors, warnings, board_drift}`
     — the first three straight from `audit.Result`, and `board_drift` one of `none`/`layout`/
-    `rows` from `board.Compare` (T-052). Do not restructure `audit.Result` into typed findings;
-    it is `[]string` today and widening it is a different ticket.
+    `rows` from `board.Compare` (T-052), **or `unknown`** when the tree itself failed to load
+    (a structural problem already reported in `errors`, e.g. a ticket file with no frontmatter
+    block) and so cannot be freshly rendered to compare against — `unknown` means "not computed",
+    never a fourth drift verdict, and must be named as such wherever `board_drift`'s value set is
+    documented (widened at rework, 2026-08-16 — review finding F1). Do not restructure
+    `audit.Result` into typed findings; it is `[]string` today and widening it is a different
+    ticket.
 14. **The whole traversal runs inside `lock.WithShared(cfg.Root(), …)`**, copying
     `internal/serve/serve.go:144`. Unlike `buildHealth`, a **lock error here is fatal** — this
     command's contract is "a correct document or a non-zero exit", not a degraded page — so
@@ -461,12 +466,12 @@ verified: `git diff main...HEAD -- skill/ agents/` is empty). Decision 13 is the
 
 | id | severity | class | disposition | description | evidence | suggestion |
 |---|---|---|---|---|---|---|
-| F1 | **blocking** | docs-gap | — | `health.board_drift` can emit a **fourth** value, `"unknown"`, that is in neither confirmed decision 13 (`one of none/layout/rows from board.Compare`) nor the manual, which states the set as closed. Reachable with one malformed ticket file, and the whole point of a versioned envelope is that a consumer can switch on a documented contract. The behaviour is right; the stated contract is wrong. | `internal/state/build.go` — `h.BoardDrift = "unknown"` on the `len(issues) > 0` branch. `docs/user-manual/cli-reference.adoc`, envelope table: "`board_drift` is one of `none`, `layout` or `rows`". Reproduced in a throwaway install: one frontmatter-less file under `1-to-do/` → `{"drift":"unknown","errors":["…: no frontmatter block"]}`. | Document `unknown` in the envelope table with its meaning (the tree could not be re-rendered because of a structural load problem — see `health.errors`), and add a `plan amended inline:` History line widening decision 13. Do **not** delete the value. |
+| F1 | **blocking** | docs-gap | fixed | `health.board_drift` can emit a **fourth** value, `"unknown"`, that is in neither confirmed decision 13 (`one of none/layout/rows from board.Compare`) nor the manual, which states the set as closed. Reachable with one malformed ticket file, and the whole point of a versioned envelope is that a consumer can switch on a documented contract. The behaviour is right; the stated contract is wrong. | `internal/state/build.go` — `h.BoardDrift = "unknown"` on the `len(issues) > 0` branch. `docs/user-manual/cli-reference.adoc`, envelope table: "`board_drift` is one of `none`, `layout` or `rows`". Reproduced in a throwaway install: one frontmatter-less file under `1-to-do/` → `{"drift":"unknown","errors":["…: no frontmatter block"]}`. | **Fixed** (`e05f402`): the envelope table and `state.go`'s field comment now name `unknown` and its trigger; decision 13 widened in the plan with a `plan amended inline` line below. F6 folded in: `TestBuildHealthDriftUnknownOnLoadFailure` covers the path. Reproduction re-run post-fix — same `unknown`/`errors` pair, now matching the documented contract. |
 | F2 | non-blocking | stale-xref | fixed inline | `internal/state/review.go`'s package comment ships hand-counted corpus figures that are already wrong: "13 distinct findings-table headers, of which the canonical one covers only 8 of the 55 done tickets". Measured with the very command this branch adds: **11** distinct headers under `6-done/`, canonical covering **14** of 55. The `8` is the T-085 `class`-column count from an older paragraph of this ticket's Description, not the canonical-header count. This is precisely the defect the ticket was filed to remove. | `internal/state/review.go` package comment vs `board state --json \| jq` over `6-done/` (11 / 14 / 55). The ticket's own Description says 14 for the canonical header. | Keep the qualitative claim (many shapes ⇒ key by name); drop the two brittle numbers, or attribute them to a dated measurement with the recipe beside them. |
 | F3 | non-blocking | stale-xref | fixed inline | The new section points at "`<<cmd-board-sync>>`'s lock paragraph above", but `cmd-board-sync` contains no lock paragraph — the lock paragraph is the chapter preamble under `[#cli-reference]`. The xref resolves (so `docs-check` passes) but lands the reader on the wrong section. | `docs/user-manual/cli-reference.adoc`, `[#cmd-board-state]`; `sed -n '/^\[#cmd-board-sync\]/,/^\[#cmd-board-state\]/p' … \| grep -i lock` → no match. | Point at `<<cli-reference>>`, or drop the xref and say "the lock paragraph at the top of this chapter". |
 | F4 | non-blocking | spec-unclear | fixed inline | The docs and the package comment both state the location-independence conclusion in a form their own exception contradicts: "Paths are repo-relative except `root` in the envelope, so the same tree produces the same document from any checkout location." `root` **is** in the document and **is** absolute, so two checkouts do not produce the same document. | `docs/user-manual/cli-reference.adoc` ("Ticket fields"); `internal/state/state.go` `Ticket` doc comment. Verified: the repo prints `/Users/…/pickle`, a `git worktree` of the same commit prints `/var/folders/…/wt`. | Scope the claim to what is true — every ticket entry is location-independent; `root` is the one absolute path, and a consumer wanting byte-identical output across checkouts should compare with `root` removed. |
 | F5 | non-blocking | spec-unclear | noted | Acceptance check 8 (in the plan, not the code) compares a jq filtered to `severity=="non-blocking"` against the `NOTES.md` awk recipe, which does **not** filter by severity — so run literally they disagree (correctness 1 vs 8, docs-gap 8 vs 13, spec-unclear 8 vs 10, test-gap 6 vs 7). Dropping the filter makes them match exactly on all seven classes. The implementation is correct; the check is mis-specified, and would read as an implementation failure to the next person who runs it. | `board state --json \| jq '[…select(.class != "") \| .class] \| group_by(.)…'` → `{correctness:8, design:15, docs-gap:13, other:5, spec-unclear:10, stale-xref:10, test-gap:7}`, byte-for-byte the awk recipe's output. `NOTES.md` § *"T-085's pre-registered criterion"*. | Pre-existing (authored at refinement, not by this branch — the causation rule in rules §5), so recorded rather than edited. Whoever next evaluates T-085's criterion should drop the severity filter, or filter the awk side to match. |
-| F6 | non-blocking | test-gap | noted | No test covers the `"unknown"` drift branch — `TestBuildHealthClean` covers `none` and `TestBuildHealthDriftAfterEdit` covers the drift path, but the `len(issues) > 0` fallback in `buildHealth` has no test, which is why F1's undocumented value could ship unnoticed. | `internal/state/build_test.go`; `internal/state/build.go` `buildHealth`. | A fixture tree with one frontmatter-less file asserting `BoardDrift == "unknown"` and a non-empty `Health.Errors`. Natural to add alongside F1's fix, but not required by it — recorded, not scheduled. |
+| F6 | non-blocking | test-gap | fixed inline | No test covers the `"unknown"` drift branch — `TestBuildHealthClean` covers `none` and `TestBuildHealthDriftAfterEdit` covers the drift path, but the `len(issues) > 0` fallback in `buildHealth` has no test, which is why F1's undocumented value could ship unnoticed. | `internal/state/build_test.go`; `internal/state/build.go` `buildHealth`. | **Fixed** (`e05f402`), folded into the F1 fix rather than scheduled separately: `TestBuildHealthDriftUnknownOnLoadFailure` asserts `BoardDrift == "unknown"` and non-empty `Health.Errors` on a frontmatter-less fixture file. |
 
 **Disposition summary:** 6 findings — **1 blocking** (F1, docs-gap: the `board_drift` contract
 omits a shipped value) → `5-rework/`; 5 non-blocking: 3 *fixed inline* (F2, F3, F4 — all prose
@@ -475,6 +480,20 @@ follow-up ticket: none passes the promotion test, and F1 is a five-line fix on t
 
 cost: estimated M, actual M — one new package, one subcommand, docs; the name-keyed parser was
 bounded exactly as refinement predicted, and the corpus reproduced an independent count to the row.
+
+### Rework (2026-08-16)
+
+F1 fixed on `feat/T-065-json-read-projection` (`e05f402`): the envelope table and
+`internal/state/state.go`'s field comment now name `board_drift`'s fourth value, `unknown`, and
+what triggers it; decision 13 in the Implementation Plan above was widened to match (a
+`plan amended inline` History line records it). F6 folded into the same commit rather than left
+for later, since it covers exactly the path F1 shipped unnoticed on
+(`TestBuildHealthDriftUnknownOnLoadFailure`).
+
+Re-verified: `just build && just test && just lint && just docs-check` clean; the F1 reproduction
+(a frontmatter-less ticket in a throwaway install) now reports `"unknown"` matching the documented
+contract; acceptance checks 3 and 10 re-run and still pass (determinism and drift-toggle both
+unaffected by the fix).
 
 ### Docs-readability pass (step 4b)
 
@@ -539,3 +558,9 @@ recorded here rather than in the table by design.
   hardcoding decision 6 forbids; nothing else in the plan changed
 - 2026-08-15 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-16 — IN REVIEW → REWORK: 1 blocking finding (F1): health.board_drift emits an undocumented fourth value
+- 2026-08-16 — plan amended inline: decision 13 widened to name `board_drift`'s fourth value,
+  `unknown` (tree failed to load, nothing sound to compare against), alongside the existing
+  `none`/`layout`/`rows` from `board.Compare` — review finding F1
+- 2026-08-16 — rework: F1 fixed (envelope table + state.go field comment now name `unknown`
+  and its trigger); F6 folded in (`TestBuildHealthDriftUnknownOnLoadFailure`). `e05f402`
+- 2026-08-16 — REWORK → IN REVIEW: F1 fixed
