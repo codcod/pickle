@@ -400,3 +400,4 @@ A discrepancy is a parser bug, not a corpus fact — investigate before shipping
   execute. Corpus re-measured at refinement: 449 decisions, 433 (96%) conforming, up from 397/92%
   at filing, so the shape is not eroding. Grades re-confirmed rather than inherited
 - 2026-08-16 — TO DO → READY: plan complete
+- 2026-08-16 — READY → IN DEVELOPMENT: picked up

@@ -13,10 +13,11 @@ Last updated: 2026-08-16
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-105 | pickle board decisions: query a child's confirmed design decisions | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-16
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | low-medium | low | S | [] |  |
-| T-105 | pickle board decisions: query a child's confirmed design decisions | low | low-medium | S | [] |  |
 
 ## TO DO (impact order, per child)
 
