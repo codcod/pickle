@@ -20,11 +20,10 @@ Last updated: 2026-08-16
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-065 | expose board and ticket state as a versioned JSON read projection | [] |
 
 ## REWORK
 
@@ -102,6 +101,7 @@ Last updated: 2026-08-16
 | T-058 | per-child ticket_prefix: optional id prefix per child-project, default T | yes — merged to main (0f3049f) |
 | T-059 | family: group tickets under an umbrella ticket id for curated pickup order | yes — merged to main (#7) |
 | T-061 | Board child-project filter buttons in the serve dashboard | yes — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed |
+| T-065 | expose board and ticket state as a versioned JSON read projection | no — publish-gated |
 | T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives |
 | T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | yes — MERGED: feat/T-069-config-writers-safe → main (152fea8, #17, squash), user-approved |
 | T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | yes — merged to main (PR #19, 236d859), squashed |
