@@ -25,11 +25,11 @@ import (
 //	pickle board state --json | jq -r '.tickets[].review.headers[] | @csv' | sort -u
 //
 // A parser keyed to column *position* would silently mis-column most of that
-// corpus. Keying by column *name* instead
-// turns that into a bounded, testable problem for four short tokens
-// (severity/class/disposition are drawn from small vocabularies; id is a
-// short bareword) — and an open-ended one for three columns that are
-// multi-sentence prose containing pipes, backticks and embedded tables.
+// corpus. Keying by column *name* instead turns it into a bounded, testable
+// problem for four short tokens (severity/class/disposition are drawn from
+// small vocabularies; id is a short bareword) — and an open-ended one for the
+// three columns that are multi-sentence prose containing pipes, backticks and
+// embedded tables.
 
 // sepCellRE matches one GFM table-separator cell: optional leading/trailing
 // colon (alignment), one or more dashes.
