@@ -533,10 +533,13 @@ rather than silently skipped.
 | R1 | non-blocking | stale-xref | fixed inline | The disposition summary contradicted the table it summarises: it still read "3 *fixed inline* (F2, F3, F4) … 2 *noted* (F5, F6)" after the rework moved F6 to *fixed inline*, i.e. 4 and 1. That line exists precisely so the shape of a review is legible without reading every row, so a wrong count there is worse than none. | The findings table's own disposition column (F1 `—`, F2–F4 and F6 *fixed inline*, F5 *noted*) vs the summary line beneath it. | **Fixed**: summary rewritten to 4 *fixed inline* / 1 *noted*, naming which findings were dispositioned at review and which at rework. |
 | R2 | non-blocking | stale-xref | fixed inline | F1's disposition cell had been changed from `—` to `fixed` when recording the rework. The rules are explicit that a blocking finding is **never** dispositioned — "leave the disposition cell `—`: a blocking finding is not dispositioned, it is fixed" — and the resolution belongs in the resolution cell, where it already was. | `resources/tickets-README.md` §5, blocking bullet; the F1 row. | **Fixed**: cell restored to `—`; the resolution prose stays in the suggestion/resolution column. |
 | R3 | non-blocking | other | fixed inline | Cosmetic: the F2 inline fix left two ragged short lines in `review.go`'s package comment where the paragraph was re-wrapped. | `internal/state/review.go` closing paragraph of the package comment. | **Fixed** (`8b4caa6`): paragraph reflowed, no content change. |
+| R4 | non-blocking | correctness | noted | `review.cost_line` is truncated at a source line wrap: the parser takes the single line matching `^cost: estimated`, so a `cost:` closer wrapped across two lines in the ticket loses its trailing clause. Found by running the shipped command against this ticket's own record after the verdict — 3 of the 9 cost lines in the corpus are affected. Mitigating, and why this is not blocking: the two values the field exists for (`estimated X, actual Y`) sit before any wrap and are captured intact in **all 9** cases; only the optional explanatory clause after the em-dash is lost. | `board state --json \| jq -r '.tickets[] \| select(.review.cost_line != "") \| .review.cost_line'` — T-065, T-085 and T-098 end mid-clause ("… the name-keyed parser was", "… two blocking findings,", "… the sites were cheap,"); the other six are single-line and complete. | Continue the capture across following lines until a blank line or a new block, as a table/heading-terminated run — the same shape `parseTables` already uses for row runs. Recorded, not scheduled: it does not pass the promotion test alone, and the field's load-bearing half is unaffected. Fold into the next ticket that touches `internal/state/review.go`. |
 
-**Re-review disposition summary:** 3 findings, **0 blocking**, 3 non-blocking all *fixed inline* —
-every one a defect the review or the rework introduced into its own record, none touching shipped
-behaviour. F1 and F6 confirmed resolved; F5 remains *noted* as recorded. Verdict: **DONE**.
+**Re-review disposition summary:** 4 findings, **0 blocking**; 3 *fixed inline* (R1–R3, each a
+defect the review or rework introduced into its own record) and 1 *noted* (R4, a real but narrow
+fidelity limit in the shipped parser, found after the verdict and recorded rather than dropped).
+F1 and F6 confirmed resolved; F5 remains *noted* as recorded. Verdict: **DONE** — unchanged, since
+no finding here is blocking.
 
 ### Docs-readability pass (step 4b)
 
@@ -608,3 +611,8 @@ recorded here rather than in the table by design.
   and its trigger); F6 folded in (`TestBuildHealthDriftUnknownOnLoadFailure`). `e05f402`
 - 2026-08-16 — REWORK → IN REVIEW: F1 fixed
 - 2026-08-16 — IN REVIEW → DONE: scoped re-review: F1 and F6 resolved, 0 blocking
+- 2026-08-16 — re-review finding R4 appended after the DONE verdict: running the shipped command
+  against this ticket's own record showed `review.cost_line` truncating at a source line wrap
+  (3 of 9 corpus cost lines). Non-blocking — the `estimated …, actual …` pair is intact in all
+  9 — so *noted*, and the verdict stands; recorded here rather than dropped because a later
+  reviewer can promote that row by citing it
