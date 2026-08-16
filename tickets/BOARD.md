@@ -60,6 +60,7 @@ Last updated: 2026-08-16
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-103 | board.Sort: break impact ties by cost lexicographically instead of by id | low | low | S | [] |  |
+| T-105 | pickle project decisions: query a child's confirmed design decisions from a specified, audit-enforced format | low | medium | M | [] |  |
 
 ## DONE
 
