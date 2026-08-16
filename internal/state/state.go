@@ -136,5 +136,5 @@ type Health struct {
 	Tickets    int      `json:"tickets"`
 	Errors     []string `json:"errors"`
 	Warnings   []string `json:"warnings"`
-	BoardDrift string   `json:"board_drift"` // "none" | "layout" | "rows" — board.Drift's vocabulary (T-052)
+	BoardDrift string   `json:"board_drift"` // "none" | "layout" | "rows" (board.Drift's vocabulary, T-052) | "unknown" when the tree failed to load (see Errors) and so has nothing sound to compare against
 }

@@ -870,9 +870,12 @@ writer's half-finished change.
 
 | `health`
 | `{tickets, errors, warnings, board_drift}` — what `pickle board audit`
-  would report right now. `board_drift` is one of `none`, `layout` or
-  `rows`, the same vocabulary `board audit` itself uses for `BOARD.md`
-  freshness.
+  would report right now. `board_drift` is `none`, `layout` or `rows` —
+  the same vocabulary `board audit` itself uses for `BOARD.md` freshness —
+  or `unknown` when the tree itself failed to load (a structural problem
+  reported in `errors`, e.g. a ticket file with no frontmatter block) and
+  so cannot be freshly rendered to compare against. `unknown` means "not
+  computed", never a fourth drift verdict; check `errors` first.
 |===
 
 === Ticket fields

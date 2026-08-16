@@ -227,6 +227,31 @@ func TestBuildHealthDriftAfterEdit(t *testing.T) {
 	}
 }
 
+// TestBuildHealthDriftUnknownOnLoadFailure pins T-065 review finding F1: a
+// tree that fails to load structurally (here, a ticket file with no
+// frontmatter block) cannot be freshly rendered to compare against, so
+// BoardDrift must report "unknown" rather than guessing "none"/"layout"/
+// "rows" — and the underlying problem must still surface in Errors.
+func TestBuildHealthDriftUnknownOnLoadFailure(t *testing.T) {
+	root := newBuildTree(t,
+		buildFixture{dir: "1-to-do", id: "T-001", title: "alpha", impact: "low"},
+	)
+	broken := filepath.Join(root, "tickets", "1-to-do", "T-900-broken.md")
+	if err := os.WriteFile(broken, []byte("no frontmatter here\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := Build(testDef, root, testCfg(), "dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc.Health.BoardDrift != "unknown" {
+		t.Errorf("BoardDrift = %q, want \"unknown\" when the tree fails to load", doc.Health.BoardDrift)
+	}
+	if len(doc.Health.Errors) == 0 {
+		t.Error("Errors is empty, want the load failure reported")
+	}
+}
+
 func TestBuildReviewProjection(t *testing.T) {
 	root := newBuildTree(t,
 		buildFixture{dir: "6-done", id: "T-001", title: "done ticket", impact: "low", review: `| id | severity | class | disposition | description | evidence | suggestion |
