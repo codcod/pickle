@@ -1176,6 +1176,24 @@ sentences, no maintenance cost, no staleness mode.
 edits those files; deliberately not filed as a ticket"): fold it into the next ticket that edits
 the skill resources. Dedup checked against all 16 TO DO titles at the time — nothing covers it.
 
+### Superseded next day (2026-08-16) — T-105 filed by human direction
+
+**A decisions command was filed as T-105**, overriding this section's recommendation. Recorded
+here so the archive does not silently disagree with the board. Two of the four objections above
+lapsed within a day, and one still stands:
+
+- **"It pre-empts T-065" — void.** T-065 shipped and merged (PR #50) hours after this entry was
+  written. T-105 now *extends* its `schema: 1` projection instead of competing with it.
+- **"It needs a fragile parser" — answered, by measurement.** **367 of 397 decisions (92%)**
+  already match `N. **<statement>.** <rationale>`. T-105's route is to *specify* that existing
+  grammar and have the audit hold the corpus to it, not to write a tolerant parser over free
+  prose. That inverts the T-097 defect shape rather than repeating it.
+- **The `family:` adoption objection still stands** and is the one to watch: T-105 adds a *format*
+  people must keep conforming to. It is weaker here than for `family:` — 92% conform already,
+  unprompted — but if the audit row is dropped at refinement, conformance has nothing holding it.
+- **Locked-vs-local is explicitly out of T-105's scope**, so the `docs/decisions.md` analysis and
+  its pre-registered trigger above remain live and unchanged.
+
 ### Correction recorded, because it changed a recommendation
 
 Mid-exploration this session reported `2-ready/` as empty and recommended refining T-065 as the
