@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 ## IN DEVELOPMENT
 
@@ -20,11 +20,10 @@ Last updated: 2026-08-15
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-065 | expose board and ticket state as a versioned JSON read projection | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-15
 
 | id | title | open findings |
 |---|---|---|
+| T-065 | expose board and ticket state as a versioned JSON read projection | 1 blocking finding (F1): health.board_drift emits an undocumented fourth value |
 
 ## READY (impact order, per child)
 

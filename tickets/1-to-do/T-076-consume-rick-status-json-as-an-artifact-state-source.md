@@ -68,3 +68,9 @@ on versioning discipline, and whichever lands second should copy the first's con
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
+- 2026-08-16 — patched by T-065's review impact sweep (step 8): T-065 landed first, so this
+  ticket's own instruction — "whichever lands second should copy the first's conventions" —
+  now has a concrete answer instead of a deferral. The convention to copy: a top-level envelope
+  with an integer `schema` (removal/retype bumps it, addition never does), `pickle_version`,
+  and snake_case keys; a consumer refuses an unrecognised `schema` rather than guessing.
+  Nothing re-graded

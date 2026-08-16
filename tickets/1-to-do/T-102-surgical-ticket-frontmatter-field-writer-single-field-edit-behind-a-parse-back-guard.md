@@ -104,3 +104,10 @@ reviewed.
   `internal/atomicfile.WriteFile`, which is exported, so this ticket consumes it rather than
   mirroring an unexported helper. The `verifyOnlyPayloadVersion` parse-back guard is unchanged
   and stays in `internal/config`.
+- 2026-08-16 — patched by T-065's review impact sweep (step 8): T-065 shipped read-only, so the
+  `schema_version`-style guard parked against this ticket is **confirmed still un-triggered** —
+  `internal/state` reads frontmatter into `front_matter` verbatim and re-renders nothing, so no
+  write path can yet drop an unknown key. The pre-registration stands unchanged, and this ticket
+  is still the first work that creates the hazard. (The `NOTES.md:428` line-number citation above
+  is stale as written — cite that file by heading, per AGENTS.md; the parking rationale is in
+  T-065's own Description under "Envelope and versioning".) Nothing re-graded

@@ -99,3 +99,10 @@ problem but operates on `tickets/`, a different tree with a different other-writ
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
+- 2026-08-16 — patched by T-065's review impact sweep (step 8): T-065 shipped, so the
+  "they should agree on versioning style" coupling is no longer an open question — pickle's
+  emitted convention is now concrete and this ticket copies it rather than negotiating it.
+  `pickle board state --json` emits a top-level envelope carrying an integer `schema` (bumped
+  only when a field is removed or retyped; adding one is compatible) plus `pickle_version`,
+  `flow` and `root`, with snake_case keys throughout. Soft coupling unchanged in kind; nothing
+  re-graded
