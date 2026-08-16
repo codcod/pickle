@@ -1194,6 +1194,27 @@ lapsed within a day, and one still stands:
 - **Locked-vs-local is explicitly out of T-105's scope**, so the `docs/decisions.md` analysis and
   its pre-registered trigger above remain live and unchanged.
 
+**Same day: an adversarial pass narrowed T-105 and split out T-106.** The pass found T-105 bundled
+four separable changes, and that its only cross-ticket consumer (the `SKILL.md` applicability gate)
+needs precisely the *locked* decisions the ticket excludes — so as filed it would have shipped a
+command no procedure calls **and** a format burden it did not need. T-105 kept the query command
+(re-graded `cost: M → S`, since `ticket.LoadAll`/`ParseFrontmatter`/`SectionBody` already exist);
+T-106 took the `TEMPLATE.md` grammar and any audit row. Adversarial passes on freshly-filed process
+tickets are now **3 for 3** at materially changing the outcome (T-063 and T-064 dropped, T-105
+halved).
+
+**The finding that settled it — and the first evidence in this theme from outside this repo.**
+The statement shape was measured in an unrelated three-child brine workspace that has never seen
+any of this: **120 of 138 decisions (86%)**, against 367 of 397 (92%) here. Two independent corpora
+reaching ~9 in 10 unprompted is what moved the format spec from "a rule we would be imposing" to
+"a convention the payload should state" — and it is the kind of evidence this file has repeatedly
+asked for and rarely had, since every prior measurement in this theme came from this repo's own
+n-of-1 corpus. The same workspace also falsified a latent assumption: ticket ids are **not**
+`T-NNN` everywhere (it uses `RICK-` and `SNOW-`), so the citation form must be documented
+prefix-agnostically, and any id matching must come from the loaded ticket rather than a pattern.
+When the next proposal in this theme needs a reality check, run it against a workspace that is not
+this one before trusting a number measured here.
+
 ### Correction recorded, because it changed a recommendation
 
 Mid-exploration this session reported `2-ready/` as empty and recommended refining T-065 as the
