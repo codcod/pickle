@@ -616,3 +616,9 @@ recorded here rather than in the table by design.
   (3 of 9 corpus cost lines). Non-blocking — the `estimated …, actual …` pair is intact in all
   9 — so *noted*, and the verdict stands; recorded here rather than dropped because a later
   reviewer can promote that row by citing it
+- 2026-08-16 — published with user approval: `main` pushed first (9 bookkeeping commits — the §0
+  guard fired only because `origin/main` was behind, the branch itself carrying no `tickets/`
+  path), then `feat/T-065-json-read-projection` with its 7 commits kept rather than squashed, so
+  the `e05f402`/`8b4caa6` hashes cited in `## Review` stay resolvable. MR:
+  https://github.com/codcod/pickle/pull/50 — all four CI checks green (build-test, ci-surface,
+  goreleaser-check, smoke). Awaiting the human's merge
