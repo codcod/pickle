@@ -622,3 +622,5 @@ recorded here rather than in the table by design.
   the `e05f402`/`8b4caa6` hashes cited in `## Review` stay resolvable. MR:
   https://github.com/codcod/pickle/pull/50 — all four CI checks green (build-test, ci-surface,
   goreleaser-check, smoke). Awaiting the human's merge
+- 2026-08-16 — merged to `main` via PR #50 (`83a4d39`); 7 commits kept, not squashed, so the
+  `e05f402`/`8b4caa6` hashes cited in `## Review` stay resolvable
