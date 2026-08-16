@@ -830,9 +830,9 @@ anything already scripted against the flag.
 The document is a pure function of the tree, `pickle.toml`, and the binary's
 own version — running it twice against an unchanged tree produces
 byte-identical output (no timestamp field), so it diffs and scripts cleanly.
-The whole read runs inside the same shared tree lock `pickle serve` uses
-(<<cmd-board-sync>>'s lock paragraph above), so it never observes a
-concurrent writer's half-finished change.
+The whole read runs inside the same shared tree lock `pickle serve` uses (the
+lock paragraph at the top of this chapter), so it never observes a concurrent
+writer's half-finished change.
 
 === Envelope and compatibility
 
@@ -885,8 +885,11 @@ frontmatter keys, if any), `front_matter` (the raw frontmatter map, so an
 unknown or project-specific key survives), `merged` (the merge `## History`
 line, `""` when unmerged), `history` (one `{date, kind, target, text}` per
 `## History` entry, `kind` one of `created`/`merged`/`transition`/`note`),
-and `review` (below). Paths are repo-relative except `root` in the envelope,
-so the same tree produces the same document from any checkout location.
+and `review` (below). Every per-ticket path is repo-relative, so the ticket
+entries are identical from any checkout location; `root` in the envelope is
+the one absolute path in the document, and therefore the one field that
+differs between two checkouts of the same tree. Compare with `root` removed
+(`jq 'del(.root)'`) if you want byte-identical output across machines.
 
 === The `review` field, and its one caveat
 

@@ -72,9 +72,13 @@ type Child struct {
 	WIP  []WIP  `json:"wip"`
 }
 
-// Ticket is one ticket file, projected. Paths are repo-relative (Slug/File),
-// never absolute — only Document.Root is absolute — so two checkouts of the
-// same tree produce identical documents (T-065 confirmed decision 3).
+// Ticket is one ticket file, projected. Every path here is repo-relative
+// (Slug/File), never absolute, so a ticket entry is identical from any
+// checkout location. Document.Root is the one absolute path in the whole
+// document, and therefore the one field that differs between two checkouts of
+// the same tree — decision 3's byte-identical guarantee is per-tree (two runs
+// against an unchanged tree), and holds across checkouts once Root is
+// excluded.
 type Ticket struct {
 	ID            string            `json:"id"`
 	Num           int               `json:"num"`

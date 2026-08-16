@@ -16,12 +16,16 @@ import (
 // Why: the corpus this parses is not one shape. review-protocol.md §5 fixed
 // a canonical seven-column header only from T-085 onward (2026-08-13), and
 // T-085 was explicitly prospective-only — it did not backfill the existing
-// tables (its own confirmed decision 3). Measured against tickets/6-done/ at
-// implementation time: 13 distinct findings-table headers, of which the
-// canonical one covers only 8 of the 55 done tickets that carry a findings
-// table at all (measured under tickets/6-done/, the repo's own archive of
-// shipped tickets). A parser keyed to column *position* would therefore silently
-// mis-column three quarters of the corpus. Keying by column *name* instead
+// tables (its own confirmed decision 3). So an established archive of shipped
+// tickets holds many header shapes, of which the canonical one is a minority.
+// The exact counts are deliberately not restated here: a hand-copied figure
+// goes stale the moment another review lands, which is half of why this
+// command exists. Re-measure them with the command itself:
+//
+//	pickle board state --json | jq -r '.tickets[].review.headers[] | @csv' | sort -u
+//
+// A parser keyed to column *position* would silently mis-column most of that
+// corpus. Keying by column *name* instead
 // turns that into a bounded, testable problem for four short tokens
 // (severity/class/disposition are drawn from small vocabularies; id is a
 // short bareword) — and an open-ended one for three columns that are
@@ -175,9 +179,9 @@ func parseTables(body string) []reviewTable {
 // alias resolution). This is what excludes a near-miss like "check | old
 // trigger | new trigger | severity before → after" (that table's fourth
 // column, once emphasis is stripped, is "severity before → after", not
-// "severity" — no match) without excluding any of the 13 real findings-table
-// variants measured in the corpus, every one of which carries both columns
-// under exactly those two names.
+// "severity" — no match) without excluding any real findings-table variant in
+// the corpus, every one of which carries both columns under exactly those two
+// names.
 func isFindingsHeader(header []string) bool {
 	hasSeverity, hasDisposition := false, false
 	for _, h := range header {
