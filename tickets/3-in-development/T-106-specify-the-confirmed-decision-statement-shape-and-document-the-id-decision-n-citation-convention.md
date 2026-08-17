@@ -234,16 +234,24 @@ grep -n "decision <N>" .agents/skills/brine/resources/tickets-README.md
 grep -n "decision <N>" .agents/skills/brine/resources/TEMPLATE.md
 grep -n "decision <N>" .agents/skills/brine/resources/review-protocol.md
 ./pickle-test ticket new "example" --project demo
-grep -n "decision <N>" tickets/1-to-do/T-001-example.md
 ./pickle-test board audit
 cd - && rm -rf "$D"
 ```
 
 Expected: `install` succeeds; each `grep` prints at least one line, proving the text reached the
-installed payload rather than only the working copy; a freshly scaffolded ticket carries the new
-`### Confirmed design decisions` guidance; and `board audit` reports **0 errors** — specifically,
-**no new warning class appears**, which is the mechanical check that this ticket stayed
-documentation-only (decision 1).
+installed payload rather than only the working copy; and `board audit` reports **0 errors** —
+specifically, **no new warning class appears**, which is the mechanical check that this ticket
+stayed documentation-only (decision 1).
+
+*Amendment (inline, at pickup):* the plan as filed also expected a freshly scaffolded ticket
+(`tickets/1-to-do/T-001-example.md`) to carry the new `### Confirmed design decisions` guidance.
+That expectation does not hold regardless of this ticket's wording: `pickle ticket new` (see
+`internal/ticket.Scaffold`) always writes a fixed, empty `## Implementation Plan` placeholder
+(`<!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->`) — the
+`### ` sub-headings, including this one, are filled in only during refinement, from
+`TEMPLATE.md`, which the three greps above already prove carries the new text. The `ticket new`
++ `board audit` calls are kept as a sanity check that scaffolding a ticket and auditing the
+board still work with the new prose in place, not as a check that the new ticket contains it.
 
 Finally, read the three shipped paragraphs against `AGENTS.md`'s foreign-workspace test by hand.
 `payload_lint_test.go` matches four shapes; it cannot judge whether a sentence *means* something
@@ -315,3 +323,10 @@ step 0).
   the ad-hoc scripts silently skipped, which is why the corpus counts recorded above read 449/433
   where the command reports 470/454
 - 2026-08-17 — READY → IN DEVELOPMENT: picked up
+- 2026-08-17 — plan amended inline: the acceptance test's expectation that a freshly scaffolded
+  ticket (`tickets/1-to-do/T-001-example.md`) would carry the new `### Confirmed design
+  decisions` guidance does not hold — `pickle ticket new` always writes a fixed, empty
+  `## Implementation Plan` placeholder regardless of `TEMPLATE.md`'s content, since sub-headings
+  are filled in only at refinement. The step 4 acceptance test was corrected to check
+  `TEMPLATE.md` directly (already covered by the existing grep) and keep `ticket new` +
+  `board audit` only as a scaffolding/audit sanity check, not as a carrier check
