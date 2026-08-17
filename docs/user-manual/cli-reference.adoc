@@ -452,6 +452,19 @@ pickle hooks run pre-commit
 pickle hooks run pre-push
 ----
 
+[NOTE]
+====
+**These guards are meaningful only in the in-tree layout** (<<install-layout>>). They protect one
+invariant: ticket/board bookkeeping must not ride along on a feature branch. That can only happen
+where `tickets/` and the `feat/T-NNN-<slug>` branches share a repository, which is exactly what
+`layout = "in-tree"` means.
+
+Under the default `umbrella` layout the board lives in the overarching project and every child is
+a separate repository, so a commit in a child *cannot* stage a `tickets/` path and a child's push
+*cannot* carry one. Installing the hooks there is harmless and they will simply never fire — which
+is worth knowing before you go looking for a fault to explain the silence.
+====
+
 Installs, inspects and runs two guards, both written by the same shared shim
 machinery and sharing one marker version:
 
@@ -580,6 +593,12 @@ that wants the guard already has it.
   so.** `hooks install`, `hooks status` and `doctor` each warn when the
   binary a shim will actually resolve cannot run the guard — see
   <<hooks-version-skew,version skew>>.
+* **Under the `umbrella` layout they never fire, and that is correct — not a
+  fault.** The invariant they guard cannot be violated when the board is in a
+  different repository from the code (<<install-layout>>). A guard that stays
+  silent for the whole life of an umbrella project is inert by construction,
+  so do not read the silence as a broken hook or a missing install; check
+  `layout` in `pickle.toml` first.
 * **Both fail open, always.** No `pickle` on `PATH`, no `pickle.toml`, an
   unparseable config, no git, an unresolvable base — each of those skips the
   check and allows the commit or push, with one line on stderr naming which
