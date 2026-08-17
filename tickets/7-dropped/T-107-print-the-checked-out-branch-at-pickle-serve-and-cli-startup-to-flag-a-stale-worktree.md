@@ -97,3 +97,4 @@ to shrug off, illusion — which is part of why it is worth flagging rather than
   whether a different agent/session would notice a ticket was ready to review and what
   `pickle serve` would show from a stale checkout — surfaced by empirically running `serve`
   against T-065's own merged-and-deleted feature branch tip (`8b4caa6`) and comparing to `main`
+- 2026-08-17 — TO DO → DROPPED: superseded by T-108, which derives the same warning from a recorded layout instead of the main/master guess

@@ -50,8 +50,9 @@ Last updated: 2026-08-17
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | high | medium | M | [] |  |
+| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | high | medium | L | [T-108] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
-| T-107 | print the checked-out branch at pickle serve and CLI startup, to flag a stale worktree | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
@@ -166,3 +167,4 @@ Last updated: 2026-08-17
 | T-062 | Theme serve dashboard board page to match the mock's framed-card shapes | reverted per user: both rounds looked worse than the pre-T-062 baseline; no code merged to main; feat branch discarded |
 | T-063 | order TO DO/READY by value per cost, not impact alone: use the cost axis, de-rank blocked tickets, behind a configurabl… | pickup queue is READY not TO DO (never >2 rows in 114 board revisions); blocked de-rank hits 0 tickets; recalibrate imp… |
 | T-064 | no merit gate between filing and pickup: the READY gate tests plan completeness and the applicability gate only tests t… | compliance failure, not a design gap: tickets-README.md:139-140 already mandates the assessment; the gate it would reus… |
+| T-107 | print the checked-out branch at pickle serve and CLI startup, to flag a stale worktree | superseded by T-108, which derives the same warning from a recorded layout instead of the main/master guess |
