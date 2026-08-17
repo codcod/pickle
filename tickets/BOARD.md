@@ -38,6 +38,8 @@ Last updated: 2026-08-17
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | high | medium | M | [] |  |
+| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | high | medium | L | [T-108] |  |
 
 ## TO DO (impact order, per child)
 
@@ -50,8 +52,6 @@ Last updated: 2026-08-17
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
-| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | high | medium | M | [] |  |
-| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | high | medium | L | [T-108] |  |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | medium | low | S | [] |  |
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | low-medium | low | S | [T-004] |  |
 | T-050 | pi guardrail: make the staging gate a confirm, not a hard block | low-medium | low | S | [] |  |
