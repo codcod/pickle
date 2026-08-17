@@ -483,3 +483,4 @@ rather than guessed at.
   flattened structured decisions) and the reason an anchored match cannot over-capture. No other
   decision changed
 - 2026-08-17 — IN REVIEW → DONE: review passed: 0 blocking, 4 fixed inline, 1 noted
+- 2026-08-17 — MERGED: feat/T-105-board-decisions → main (9343299, PR #51), user-approved; history kept (4 commits); branch not deleted
