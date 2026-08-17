@@ -458,7 +458,7 @@ alone, and a tool reading the ticket tree can lift the statement without guessin
 Number the decisions in one unbroken list and **never renumber them** — an ordinal, once
 written, is an address that another ticket may already be citing.
 
-Cite a decision from another ticket as **`<TICKET-ID> decision <N>`** — for example
+Cite a decision from another ticket as **`<ID> decision <N>`** — for example
 `T-NNN decision 3`. Write the id exactly as its own child-project writes it (children set their
 own id prefix, so never assume a particular one), and `<N>` as the ordinal written in that
 ticket, never a re-count. The citation is prose, not a link: it costs nothing to write and one

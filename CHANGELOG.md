@@ -27,7 +27,7 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 - **The shipped skill now states the confirmed-decision shape and its citation form**, previously
   learned only by imitation: a confirmed design decision is a numbered item whose leading bold
   run is the decision statement, numbered in one unbroken list that is never renumbered, and cited
-  from another ticket as `<TICKET-ID> decision <N>` (T-106).
+  from another ticket as `<ID> decision <N>` (T-106).
 
 ## [0.9.0] - 2026-08-16
 
