@@ -441,3 +441,8 @@ cost: estimated S, actual S
   the amendment aligns the decision with three authorities rather than introducing a fourth. No
   other decision changed
 - 2026-08-17 — IN REVIEW → DONE: scoped re-review passed: F1 fixed and verified; 0 blocking, 2 fixed inline
+- 2026-08-17 — published, user-approved: MR #52 opened (feat/T-106-decision-shape-and-citation →
+  main), history kept (4 commits, `d8bea5c..8eba5bd`), CI green on all four checks (build-test,
+  ci-surface, goreleaser-check, smoke). `origin/main` was pushed first (9 bookkeeping commits) so
+  the base-not-behind guard passed; the MR range carries the 5 docs files and no `tickets/` path.
+  Awaiting the human merge
