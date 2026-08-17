@@ -314,3 +314,4 @@ step 0).
   `awk` from here on: the ordinal-prefixed heading form (`### 2. Confirmed design decisions`) is one
   the ad-hoc scripts silently skipped, which is why the corpus counts recorded above read 449/433
   where the command reports 470/454
+- 2026-08-17 — READY → IN DEVELOPMENT: picked up
