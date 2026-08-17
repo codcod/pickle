@@ -29,6 +29,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/codcod/pickle/internal/atomicfile"
+	"github.com/codcod/pickle/internal/vcs"
 )
 
 // ticketPrefixRE is the legal shape for a per-child ticket_prefix: an uppercase
@@ -62,6 +63,24 @@ const (
 // exists yet (see FlowName and Validate).
 const DefaultFlowName = "brine"
 
+// Layout selects where the board (tickets/ and pickle.toml) lives relative to
+// its child-projects (T-108).
+//
+// LayoutUmbrella is the default and primary mode: the overarching project and
+// its children are separate repositories, so a child's feature branches
+// cannot fork the board — it is simply not in that repository.
+//
+// LayoutInTree is the exception: the sole child and the overarching project
+// are the same repository (a root-path child, path "."). This makes tickets
+// visible to anyone who clones the code, at a known price — the board is now
+// inside a branching medium, so every ticket-reading command can report a
+// stale copy when run from a feature branch cut before the latest
+// bookkeeping commit on the base branch.
+const (
+	LayoutUmbrella = "umbrella"
+	LayoutInTree   = "in-tree"
+)
+
 // WIPKeyInDevelopment and WIPKeyInReview name the two pickle.toml keys a WIP
 // limit is configured under. They must equal Project's own `wip_in_development`
 // / `wip_in_review` struct tags below — Go has no way to derive a constant
@@ -79,10 +98,28 @@ type Config struct {
 	PayloadVersion string       `toml:"payload_version"`
 	ReviewAddendum string       `toml:"review_addendum,omitempty"`
 	Flow           string       `toml:"flow,omitempty"`
+	Layout         string       `toml:"layout,omitempty"`
 	Commit         CommitPolicy `toml:"commit"`
 	Projects       []Project    `toml:"project"`
 
 	path string // where this config was loaded from (not serialised)
+}
+
+// ResolvedLayout is the effective layout: the recorded Layout when set, or —
+// for a config written before this key existed — the decision-5 inference
+// (T-108): a child registered at "." means in-tree, otherwise umbrella. Every
+// caller that needs the layout calls this rather than reading Layout
+// directly, so the inference lives in exactly one place.
+func (c *Config) ResolvedLayout() string {
+	if c.Layout != "" {
+		return c.Layout
+	}
+	for i := range c.Projects {
+		if vcs.IsRepoRoot(c.Projects[i].Path) {
+			return LayoutInTree
+		}
+	}
+	return LayoutUmbrella
 }
 
 // FlowName is the effective name of the flow this project runs: the
@@ -240,9 +277,17 @@ func (c *Config) Validate() error {
 	if c.Flow != "" && c.Flow != DefaultFlowName {
 		return fmt.Errorf("pickle.toml: flow %q is not a known flow (legal: %s)", c.Flow, DefaultFlowName)
 	}
-	if len(c.Projects) == 0 {
-		return errors.New("pickle.toml: at least one [[project]] (child-project) is required")
+	if !utf8.ValidString(c.Layout) {
+		return errors.New("pickle.toml: layout is not valid UTF-8")
 	}
+	if c.Layout != "" && c.Layout != LayoutUmbrella && c.Layout != LayoutInTree {
+		return fmt.Errorf("pickle.toml: layout %q is not a known layout (legal: %s, %s)", c.Layout, LayoutUmbrella, LayoutInTree)
+	}
+	// A config with zero registered children is legal (T-108 decision 2): a
+	// freshly installed umbrella project has none until `pickle project add`
+	// registers the first one. The layout/children invariant itself — in-tree
+	// implies exactly one child at "." — is enforced by `pickle doctor`
+	// (decision 7), not here, so an in-tree config mid-migration still loads.
 	seen := make(map[string]bool, len(c.Projects))
 	// seenPrefix guards against two children sharing a non-default prefix (their
 	// ids would collide). The default "T" is exempt: children that omit
@@ -412,6 +457,9 @@ func (c *Config) Render() string {
 	}
 	if c.Flow != "" {
 		fmt.Fprintf(&b, "flow = %s\n", tomlQuote(c.Flow))
+	}
+	if c.Layout != "" {
+		fmt.Fprintf(&b, "layout = %s\n", tomlQuote(c.Layout))
 	}
 	b.WriteString("\n[commit]\n")
 	fmt.Fprintf(&b, "overarching_auto = %t\n", c.Commit.OverarchingAuto)
