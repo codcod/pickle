@@ -128,6 +128,10 @@ Flow commands:
                           (schema, children/WIP, tickets incl. parsed History and
                           review findings, audit health). Read-only. --json is
                           mandatory; omitting it prints usage and exits 2.
+  board decisions [--project <name>] [--status <dir>] [--grep <regex>] [--json]
+                          Query every ticket's confirmed design decisions, in citable
+                          "<ID> decision <N>" form. Read-only. --json is optional here
+                          (default output is a short table, not a document dump).
   changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]
                           Report tickets that shipped in <since>..<until> (defaults: the
                           last git tag before <until>, and HEAD) but aren't named

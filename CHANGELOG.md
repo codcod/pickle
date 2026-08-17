@@ -8,6 +8,20 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle board decisions` queries every ticket's confirmed design decisions, already in
+  citable `<ID> decision <N>` form** — filterable by registered child-project (`--project`),
+  status directory (`--status`) and a topic regex over each decision's full text, statement and
+  rationale alike (`--grep`), with `--json` for a machine-readable form. The same answer
+  previously needed a hand-written `awk` that re-solved two parsing traps every time (frontmatter
+  scoping, subsection bounding) and got the child filter wrong on any workspace whose ticket
+  prefix was not `T-`. A decision with no leading bold statement is reported as unstructured,
+  carrying its raw first line rather than an inferred one; an unregistered child, an unknown
+  status directory, or an uncompilable `--grep` pattern are each an error, while a registered
+  child or filter combination with simply nothing to report is exit `0` with an empty result
+  (T-105).
+
 ## [0.9.0] - 2026-08-16
 
 ### Added
