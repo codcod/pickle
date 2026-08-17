@@ -392,3 +392,4 @@ cost: estimated M, actual M
 - 2026-08-17 — IN REVIEW → REWORK: review 1: 4 blocking findings (F1-F4), all documentation the branch made false outside cli-reference.adoc
 - 2026-08-17 — REWORK → IN REVIEW: findings fixed
 - 2026-08-17 — IN REVIEW → DONE: review 2 (scoped): F1-F4 + F6/F7/F10 all resolved; 2 new non-blocking (F14 fixed inline, F15 noted)
+- 2026-08-17 — published: 14 WIP commits tidied to 6 atomic (tree hash unchanged), force-pushed to update the already-open MR #53 (`979366d` → `35eaa47`, no review threads existed to orphan); `main` pushed first so the remote board matches the remote tickets. CI clean (build-test, smoke, ci-surface, goreleaser-check); MR `mergeable_state: clean`. Awaiting the human's merge, preserving commits rather than squashing
