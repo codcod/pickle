@@ -328,6 +328,27 @@ cost: estimated M, actual M
   `4-in-review/` was committed on `main` after the branch was cut. The ticket was read from
   `main` throughout, per the review protocol.
 
+**2026-08-17 — rework: F1–F4 fixed, F6/F7/F10 applied.** Same branch, 7 new commits
+(`ad0866e`..`0e5b3bd`). Scope was exactly the four blocking findings plus the three
+`fixed inline` non-blocking ones the review already dispositioned; F5 (folded into T-109), F8,
+F9, F11, F12 and F13 (all `noted`) are untouched, as recorded.
+
+| id | fix |
+|---|---|
+| F1 | `docs/user-manual/concepts/project-structure.adoc`, `multi-project.adoc`, `your-first-project.adoc`, `quickstart.adoc` no longer teach the removed `--path` default. The broken example (`pickle install --project backend --path .`) is now `pickle install --in-tree --project backend`; the quickstart/first-project walkthroughs now install `--in-tree` in step 1, so a child exists before the tutorial files a ticket in step 3 |
+| F2 | `configuration.adoc`'s key list now documents `layout` (both values, the pre-`layout` inference) and the `upgrade` bullet states that it inserts `layout` as well as stamping `payload_version` |
+| F3 | `CHANGELOG.md` `[Unreleased]` gained an *Added* entry (`--in-tree`, `layout`, the `doctor` invariant, the `serve` banner) and a *Changed* entry calling the `--path` default change out as breaking. `pickle changelog check` now reports no unmentioned candidates |
+| F4 | `internal/install/install.go`'s `MarkerBlock` gives "Branch per child:" and "WIP limits (per child):" the same empty-case guard the children summary already had; a childless install now reads "No children registered yet" / "(none yet)" instead of a dangling colon. Regression test added: `TestMarkerBlockNoChildrenHasNoDanglingBullets` |
+| F6 | `checkLayoutInvariant` moved below `checkChildren` in `internal/doctor/doctor.go`; each function's doc comment is back over its own function |
+| F7 | The two test comments in `internal/cli/layout_test.go` and `internal/serve/layout_test.go` claiming "T-108 review found" this gap now say "caught during implementation", which is what actually happened |
+| F10 | `cli-reference.adoc`'s upgrade section no longer claims the `layout` back-fill "refuses outright if it cannot do so safely"; it now states what the code does — insert, then verify by re-reading — in contrast to `payload_version`'s pre-write parse-back gate. The *Why the choice matters* paragraph was also split per the docs-readability suggestion carried over from review 1 |
+
+Re-ran the full acceptance test (all 8 steps) verbatim after the fixes: all still pass
+(umbrella/in-tree installs, the conflicting-flags refusal, the `doctor` invariant both
+directions, the `upgrade` back-fill, and the banner present/absent/surviving-the-poll cases).
+`just build && just test && just lint && just docs-check` clean; `pickle changelog check`
+clean.
+
 ## History
 
 - 2026-08-17 — created (TO DO). source: pickle ticket new
@@ -335,3 +356,4 @@ cost: estimated M, actual M
 - 2026-08-17 — READY → IN DEVELOPMENT: picked up
 - 2026-08-17 — IN DEVELOPMENT → IN REVIEW: acceptance test green: all 8 checks re-run verbatim; just build/test/lint/docs-check clean
 - 2026-08-17 — IN REVIEW → REWORK: review 1: 4 blocking findings (F1-F4), all documentation the branch made false outside cli-reference.adoc
+- 2026-08-17 — REWORK → IN REVIEW: findings fixed
