@@ -150,6 +150,12 @@ the bookkeeping commit shows a stale ticket), so the instruction carries its own
 Update the two places that assert the rule unconditionally, keeping SKILL.md's summary register
 rather than duplicating the long-form explanation.
 
+Also correct the *Install & register* paragraph (lines 54–56), which still states that
+`pickle install` "registers the first child-project": once the layout is recorded, a plain
+`install` registers **no** child and `pickle project add` registers the first one, while
+`--in-tree` registers the sole child at `.`. (Folded here from T-108's review, finding F5 —
+payload edits belong in this ticket rather than in a branch whose plan does not name `skill/`.)
+
 #### Task 4 — hook documentation
 `docs/user-manual/cli-reference.adoc`'s `== pickle hooks` section (line 385, including the
 "What the guards do and do not catch" subsection at 487): state that the guards are meaningful
@@ -220,3 +226,4 @@ tree, or `just docs-check` will not see it.
 
 - 2026-08-17 — created (TO DO). source: pickle ticket new
 - 2026-08-17 — TO DO → READY: refined: 6 confirmed decisions, 6 tasks, hard-depends on T-108 being merged
+- 2026-08-17 — plan amended inline: Task 3 also corrects SKILL.md's "registers the first child-project" claim, folded from T-108 review finding F5

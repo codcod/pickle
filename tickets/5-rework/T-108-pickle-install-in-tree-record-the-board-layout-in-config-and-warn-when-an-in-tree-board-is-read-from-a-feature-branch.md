@@ -254,7 +254,79 @@ that is T-109, which depends on this one.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**2026-08-17 — review 1 (full).** Branch `feat/T-108-in-tree-layout` at `979366d`, read against
+`main`. Verdict: **blocking findings — to `5-rework/`**. The code is in good shape and the
+acceptance test passes verbatim; every blocking finding is documentation the branch made false
+outside the one file the plan named.
+
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass on `docs/user-manual/cli-reference.adoc` (step 4b) — 12 suggestions
+      returned, 11 of them on prose this branch did not touch and therefore out of scope; the one
+      on the new `Layout: umbrella (default) or in-tree` section is carried into rework
+- [x] Findings recorded with severity, class and disposition (step 5)
+- [x] Ticket moved to `5-rework/`; `## History` appended (step 6)
+- [x] Other references updated (step 7) — T-109's plan gains F5
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary presented; no publish (step 9)
+
+### Implementation audit (step 2)
+
+All 8 acceptance-test steps re-run verbatim from the repository root on the feature branch, each
+install into a throwaway directory with the binary copied in as `pickle-test`:
+
+| step | result |
+|---|---|
+| 1 `just build && just test && just lint && just docs-check` | **met** — all clean |
+| 2 umbrella is the default, registers no child | **met** — `layout = "umbrella"`, `0` `[[project]]` |
+| 3 `--in-tree` records layout + sole child | **met** — `layout = "in-tree"`, one `[[project]]` with `path = "."` |
+| 4 `--in-tree --path sub` refused | **met** — exit 2, names `"sub"` |
+| 5 `doctor` catches a contradicting layout | **met** — `ERROR: layout: "umbrella" must have no child registered at ".", found 1`, exit 1; restored → exit 0 |
+| 6 `upgrade` back-fills | **met** — `layout = "in-tree"` returns by inference |
+| 7 banner only where it should | **met** — present on `feat/T-001-x` naming the branch; absent on `main`; absent in the umbrella tree |
+| 8 banner survives the poll | **met** — `/fragments/board` contains no warning text |
+
+All six tasks are done in the files they name. All nine confirmed decisions are honoured;
+decisions 2 and 3 were also *extended* with two further refusals (`--path .` alone, and child
+flags with no `--path`/`--in-tree`) that no decision states and no History line records — see
+F9.
+
+### Findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | docs-gap | — | The manual still teaches the removed `--path` default in four places, and one documented command now fails | `docs/user-manual/concepts/project-structure.adoc:64,131,137` — the shown `pickle install --project backend --path .` exits 2 (`--path "." selects the in-tree layout; pass --in-tree explicitly`); `:140-142` still says "nothing in the tool branches on `path = "."`", which `layout`/`checkLayoutInvariant` made false; `quickstart.adoc:36`; `your-first-project.adoc:24`; `concepts/multi-project.adoc:25` | Correct all four. `your-first-project.adoc` is the sharpest: it installs, then files a ticket — with no child registered, its step 3 now has nothing to target (`pickle ticket new` → `--project is required`), so the tutorial needs `--in-tree` or a `project add` step |
+| F2 | blocking | docs-gap | — | `configuration.adoc`, the canonical `pickle.toml` key reference, omits `layout` and asserts something this branch made false | `docs/user-manual/configuration.adoc:10` "*`upgrade`* rewrites only the `payload_version` line" — it now also inserts `layout`; `:36-44` "The keys" lists `payload_version`, `review_addendum`, `[commit]` and no `layout` | Add `layout` with its two legal values and the inference fallback; correct the `upgrade` bullet. (`flow` is missing from the same list — pre-existing, worth fixing in passing) |
+| F3 | blocking | docs-gap | — | No `CHANGELOG.md` entry, and the plan's own Docs step required the `--path` default to be "called out as a breaking change" — no such callout exists anywhere | `pickle changelog check` → `1 candidate(s) shipped but not named in "Unreleased": T-108`; the branch touches no `CHANGELOG.md`; every comparable ticket (T-104, T-105, T-106, T-065, T-101) landed its entry on the feature branch | Add an `Unreleased` entry: *Added* for `--in-tree`/`layout`/the `doctor` invariant/the `serve` banner, *Changed* for the breaking `--path` default |
+| F4 | blocking | docs-gap | — | The new default install renders a malformed marker block: two bullets end in a colon with nothing after them | fresh `pickle-test install` → `AGENTS.md` contains `Branch per child:` and `- **WIP limits** (per child):` with empty bodies, because `branches`/`wip` are empty with no child registered | `internal/install/install.go:1105-1106` need the empty-case fallback the children line already has at `:1032-1034` (or omit both bullets when no child is registered) — this block is the first thing an agent reads in every new default install |
+| F5 | non-blocking | docs-gap | folded (T-109) | `skill/SKILL.md` still says `install` "registers the first child-project" | `skill/SKILL.md:54-56` | T-109 already owns every payload edit; added to its Task 3 with a History line rather than editing `skill/` from this branch |
+| F6 | non-blocking | stale-xref | fixed inline | `checkChildren`'s doc comment now sits directly above the newly inserted `checkLayoutInvariant`, so it documents the wrong function and `checkChildren` has none | `internal/doctor/doctor.go:337-352` | Move `checkLayoutInvariant` below `checkChildren` so each comment rejoins its function |
+| F7 | non-blocking | other | fixed inline | Three new test comments cite a review that had not happened when they were written | `internal/cli/layout_test.go:100-105` ("pins the gap T-108 review found"); `internal/serve/layout_test.go:92-96` ("pins a real gap review found") | Name the actual origin (a self-audit during implementation) |
+| F8 | non-blocking | design | noted | `pickle project add <name> .` on a default umbrella install succeeds and leaves a config `doctor` errors on forever, with no command that repairs it — and the two new layout errors are the only errors in `doctor.go` carrying no remedy clause | reproduced: `install` (default) → `project add self .` → `ERROR: layout: "umbrella" must have no child registered at "."`, and `upgrade` never rewrites an existing `layout`; contrast `doctor.go:81,263,433` ("— run `pickle upgrade`", "— edit `payload_version` by hand") with `:362-364` | Name the remedy in both messages (edit `layout` by hand), and/or have `project add` refuse or warn when registering `.` under a recorded umbrella layout |
+| F9 | non-blocking | docs-gap | noted | Two refusals ship beyond decision 3 — a bare `--path .`, and `--project/--build/--test/--lint/--docs` with no `--path`/`--in-tree`. The first is documented; the second is documented nowhere, and neither is recorded as a plan amendment | `internal/cli/install.go:38-56`; `cli-reference.adoc` mentions only the bare `--path .` refusal; `## History` carries no `plan amended inline` line | Document the child-flag refusal in `== pickle install`. Both refusals are right; only the record of them is missing |
+| F10 | non-blocking | docs-gap | fixed inline | `cli-reference.adoc` claims the layout back-fill "refuse[s] outright if it cannot do so safely", which is true of the `payload_version` stamp and not of the layout insert | `docs/user-manual/cli-reference.adoc:293-296` vs `internal/config/config.go:562-586` (writes, then `install.go:485-493` verifies) | Narrow the sentence to what the code does, or add the gate (F11) and keep the sentence |
+| F11 | non-blocking | design | noted | `SetLayoutInPlace` has no parse-back gate, unlike `SetPayloadVersionInPlace`: it writes first and verifies after, so a pathological `pickle.toml` is left unparseable rather than untouched | `internal/config/config.go:562-586` has no `verifyOnly…` equivalent of `setPayloadVersion`'s (`:636-650`); e.g. an existing dotted `layout.x = …` key is not matched by `topLevelKeyPresent`, so a duplicate `layout` is inserted | Route the insert through the same decode-both-sides gate. Exotic inputs only — hence non-blocking |
+| F12 | non-blocking | design | noted | `staleBoardBranch` shells out to git on every 5-second fragment poll and the answer is discarded | `internal/serve/serve.go:267-280` — `boardFragment`/`activityFragment` call `newPage`, but the fragment templates never render `.StaleBoard` (which is exactly what acceptance step 8 proves) | Resolve it only for full-page renders, or memoise per request |
+| F13 | non-blocking | design | noted | This repo's own `pickle.toml` records no `layout`, so pickle self-hosts on the compatibility inference decision 5 reserves for pre-existing configs | `pickle.toml` has no `layout` key; `./pickle doctor -v` → `ok: layout "in-tree" is consistent with 1 root-path child(ren)` | No branch action: `AGENTS.md`'s self-modify policy routes this to the post-merge human `pickle upgrade` from `main`, which back-fills the key. Recorded so that upgrade is actually run |
+
+dispositions: 4 blocking (F1–F4, not dispositioned — fixed in rework); 9 non-blocking — 1 folded
+(F5 → T-109), 3 fixed inline (F6, F7, F10), 5 noted (F8, F9, F11, F12, F13); 0 new tickets.
+
+```
+cost: estimated M, actual M
+```
+
+### Notes that are not findings
+
+- The docs-readability pass suggested splitting the new *Why the choice matters* paragraph into
+  two (umbrella cannot fork / in-tree can, and what that costs). Worth applying while F1–F2 are
+  being written; the other 11 suggestions land on prose this branch never touched.
+- The stale-ticket hazard this ticket exists to warn about showed up during the review itself:
+  the feature branch's worktree still carries T-108 in `3-in-development/`, because the move to
+  `4-in-review/` was committed on `main` after the branch was cut. The ticket was read from
+  `main` throughout, per the review protocol.
 
 ## History
 
@@ -262,3 +334,4 @@ that is T-109, which depends on this one.
 - 2026-08-17 — TO DO → READY: refined: 9 confirmed decisions, 6 tasks, 8-step acceptance test
 - 2026-08-17 — READY → IN DEVELOPMENT: picked up
 - 2026-08-17 — IN DEVELOPMENT → IN REVIEW: acceptance test green: all 8 checks re-run verbatim; just build/test/lint/docs-check clean
+- 2026-08-17 — IN REVIEW → REWORK: review 1: 4 blocking findings (F1-F4), all documentation the branch made false outside cli-reference.adoc

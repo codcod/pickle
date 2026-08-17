@@ -20,11 +20,10 @@ Last updated: 2026-08-17
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-17
 
 | id | title | open findings |
 |---|---|---|
+| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | review 1: 4 blocking findings (F1-F4), all documentation the branch made false outside cli-reference.adoc |
 
 ## READY (impact order, per child)
 
