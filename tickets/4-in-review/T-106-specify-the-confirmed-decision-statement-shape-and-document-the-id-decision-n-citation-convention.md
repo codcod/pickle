@@ -387,3 +387,4 @@ class. No other files touched — this fix was scoped to F1 alone, per the rewor
   `board audit` only as a scaffolding/audit sanity check, not as a carrier check
 - 2026-08-17 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-17 — IN REVIEW → REWORK: review found 1 blocking finding: <TICKET-ID> vs T-105's locked <ID> citation form
+- 2026-08-17 — REWORK → IN REVIEW: findings fixed

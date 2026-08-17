@@ -20,10 +20,11 @@ Last updated: 2026-08-17
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-17
 
 | id | title | open findings |
 |---|---|---|
-| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | review found 1 blocking finding: <TICKET-ID> vs T-105's locked <ID> citation form |
 
 ## READY (impact order, per child)
 
