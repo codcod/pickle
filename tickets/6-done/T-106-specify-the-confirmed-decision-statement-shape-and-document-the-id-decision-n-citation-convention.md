@@ -440,3 +440,4 @@ cost: estimated S, actual S
   form T-105 shipped and locked, and already what this ticket's own title and Description said, so
   the amendment aligns the decision with three authorities rather than introducing a fourth. No
   other decision changed
+- 2026-08-17 — IN REVIEW → DONE: scoped re-review passed: F1 fixed and verified; 0 blocking, 2 fixed inline
