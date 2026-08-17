@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-16
+Last updated: 2026-08-17
 
 ## IN DEVELOPMENT
 
@@ -20,11 +20,10 @@ Last updated: 2026-08-16
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-105 | pickle board decisions: query a child's confirmed design decisions | [] |
 
 ## REWORK
 
@@ -133,6 +132,7 @@ Last updated: 2026-08-16
 | T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | yes — merged to main (PR #46, 1c55323, https://github.com/codcod/pickle/commit/1c55323); |
 | T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | yes — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than |
 | T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | yes — merged to main (3104977, PR #48) |
+| T-105 | pickle board decisions: query a child's confirmed design decisions | no — publish-gated |
 
 ## DROPPED
 

@@ -304,3 +304,13 @@ step 0).
   list. Corpus re-measured: 433 of 449 (96%) conforming here, up from 367/397 (92%) at filing.
   Grades re-confirmed, not inherited
 - 2026-08-16 — TO DO → READY: plan complete
+- 2026-08-16 — impact note from T-105's review (no assumption invalidated, nothing in the plan
+  changed): the query command shipped, so two of its measured facts are now shipped behaviour this
+  ticket's §7 prose should stay consistent with. First, a statement's leading bold run **may
+  soft-wrap across physical lines** before its closing `**` — common enough in the corpus that a
+  first-line-only reader misreads 15 conforming items here — so the shape must not be documented as
+  "one line". Second, an item with no leading bold run is reported as unstructured, carrying its raw
+  first line, never a guessed statement. Re-measure with `pickle board decisions` rather than an
+  `awk` from here on: the ordinal-prefixed heading form (`### 2. Confirmed design decisions`) is one
+  the ad-hoc scripts silently skipped, which is why the corpus counts recorded above read 449/433
+  where the command reports 470/454
