@@ -146,9 +146,18 @@ The boxed note at lines 38–44 tells every reviewer to read the ticket from the
 it conditional on the in-tree layout and explain the failure it prevents (a branch cut before
 the bookkeeping commit shows a stale ticket), so the instruction carries its own justification.
 
+The same unconditional instruction recurs at **line 55** ("**as it exists on the base branch**",
+in the locate-the-ticket step), outside the boxed note's range. Both occurrences are in scope.
+
 #### Task 3 — `skill/SKILL.md`
-Update the two places that assert the rule unconditionally, keeping SKILL.md's summary register
-rather than duplicating the long-form explanation.
+Update the places that assert the rule unconditionally, keeping SKILL.md's summary register
+rather than duplicating the long-form explanation. There are **two**, and only the first contains
+the literal phrase "base branch":
+
+- **line 77** — the commit-policy bullet ("on the base branch — never on a feature branch").
+- **lines 271–272** — the review procedure's origin-base check (`origin/<base>...HEAD` must carry
+  no `tickets/` path), which is likewise in-tree-only and is easy to declare done after editing
+  only line 77.
 
 Also correct the *Install & register* paragraph (lines 54–56), which still states that
 `pickle install` "registers the first child-project": once the layout is recorded, a plain
@@ -164,14 +173,37 @@ line number: T-108 inserted its `[#install-layout]` section above both, moving t
 to 445/547, and a merge of anything else will move them again.)
 
 #### Task 5 — the conceptual manual chapter
-Add a section naming both layouts, stating that umbrella is the default, describing when in-tree
-is the right choice (tickets visible to anyone who clones the code), and listing decision 5's
-consequences in full. Register it in the manual's `include::` tree so `just docs-check`
-validates it.
+**Rescoped: most of this already shipped in T-108.** `docs/user-manual/cli-reference.adoc`'s
+`[#install-layout]` section already names both layouts, marks `umbrella (default)`, states when
+in-tree is the right choice ("it makes tickets visible to anyone who clones the code"), and gives
+the *first* of decision 5's four consequences (every reading command reports the checked-out
+branch's copy). `concepts/project-structure.adoc`'s `== The root child` section already carries
+the in-tree base-branch rule and the hooks. Re-deriving any of that as a new chapter would
+duplicate shipped prose.
+
+What is genuinely missing is **three of decision 5's four consequences**:
+
+1. the staleness is **one-directional** — it can only under-report progress, never falsely claim
+   `DONE`, which is what makes it quiet and easy to shrug off;
+2. **CI fires on every bookkeeping push**, with a `paths-ignore` entry for the ticket tree as the
+   recommended mitigation;
+3. the base branch's **history interleaves board moves with code**, so changelog and release
+   tooling must filter.
+
+Add these to `concepts/project-structure.adoc`'s existing in-tree section (`== The root child`),
+cross-referencing `<<install-layout>>` rather than restating it. **No new file and no
+`include::` change**, since the host chapter is already registered.
 
 #### Task 6 — sweep for residual unconditional phrasing
 Re-read every payload file that mentions the base branch and confirm each occurrence is either
 inside a layout-conditional block or genuinely layout-independent.
+
+**Widened:** the sweep also covers phrasing that names the *old* default, which no "base branch"
+grep would find. `skill/resources/tickets-README.md:83` ("In the **single-repo default**
+(`path = "."`, one child at the overarching root)") and `:119` ("which is the single-repo default
+above") both assert a default that T-108 reversed: `umbrella` is now the default and `path = "."`
+is the explicitly-selected exception. Rename these to the recorded layout name (`in-tree`) and
+drop the "default" claim.
 
 ### Acceptance test
 
@@ -180,14 +212,27 @@ Run from the repository root on the feature branch.
 1. `just build && just test && just lint && just docs-check` — all clean. `just test` includes
    `payload_lint_test.go`, which enforces the mechanical half of decision 2.
 2. **No payload file still states the rule unconditionally:**
-   `rg -l 'base branch' skill/ | xargs rg -L 'in-tree'` prints nothing — every payload file that
-   mentions the base branch also names the layout condition.
-3. **Both layouts are named in the manual:** `rg -c 'umbrella' docs/user-manual/*.adoc` and
-   `rg -c 'in-tree' docs/user-manual/*.adoc` are both non-zero, and the new section is reachable
-   from the manual's `include::` tree (`just docs-check` proves the second half).
+
+   ```
+   rg -l 'base branch' skill/ | xargs rg --files-without-match 'in-tree'
+   ```
+
+   prints nothing — every payload file that mentions the base branch also names the layout
+   condition. **Use `--files-without-match`, not `-L`:** in ripgrep `-L` is `--follow`, so the
+   check as originally written printed nothing *before* any work and would have rubber-stamped a
+   no-op. Today the corrected form prints all three payload files
+   (`review-protocol.md`, `tickets-README.md`, `SKILL.md`); after the edits it must print nothing.
+3. **Both layouts are named in the manual, including the new prose:** search **recursively** —
+   `docs/user-manual/`, not the non-recursive `docs/user-manual/*.adoc` glob, which cannot see
+   `concepts/` where Task 5 puts the content. Bare term presence proves nothing (`umbrella`
+   already appears in three manual files), so assert the three new consequence phrases instead —
+   see check 5.
 4. **The rejected term does not appear as a layout name:** `rg -i 'sibling' skill/ docs/` returns
-   no hit that uses it to mean a layout (decision 6).
-5. **The consequence list is present and complete:** the manual section names all four items from
+   no hit that uses it to mean a layout (decision 6). Two hits are pre-existing and
+   **known-good** — `cli-reference.adoc:320` and `:365`, both "sibling extension files" (agent
+   config files, not layouts). Only a *new* hit, or one of these repurposed, fails the check.
+5. **The consequence list is present and complete:** across `[#install-layout]` (which already
+   carries per-branch reads) and Task 5's addition, the manual names all four items from
    decision 5 — per-branch reads, one-directional staleness, CI-on-every-bookkeeping-push with
    the `paths-ignore` mitigation, and interleaved history.
 6. **The guards' applicability is documented:** the `pickle hooks` section states both that the
@@ -230,3 +275,6 @@ tree, or `just docs-check` will not see it.
 - 2026-08-17 — TO DO → READY: refined: 6 confirmed decisions, 6 tasks, hard-depends on T-108 being merged
 - 2026-08-17 — plan amended inline: Task 3 also corrects SKILL.md's "registers the first child-project" claim, folded from T-108 review finding F5
 - 2026-08-17 — plan amended inline: Task 4 now cites the `pickle hooks` section by heading instead of by line number — T-108's merge shifts 385/487 to 445/547 (T-108 review 2 impact sweep)
+- 2026-08-17 — READY → IN DEVELOPMENT: picked up
+- 2026-08-17 — plan amended inline: pickup applicability audit, 10 findings, all non-blocking, 7 dispositioned inline. Acceptance check 2 was inverted (`rg -L` is `--follow`, not `--files-without-match`) and passed vacuously, so it would have rubber-stamped a no-op — corrected. Task 5 rescoped: T-108 already shipped both layout names, the default and consequence 1 in `[#install-layout]`, so only three consequences remain, added to `concepts/project-structure.adoc`'s existing in-tree section with no new file and no `include::` change. Task 2 gained `review-protocol.md:55`; Task 3 now names SKILL.md `:77` and `:271-272` explicitly; Task 6 widened to the stale "single-repo default" phrasing at `tickets-README.md:83`/`:119`. Checks 3 and 4 repaired (recursive search plus asserted phrases; two known-good "sibling extension files" hits recorded). Noted and closed: Task 3's second half confirmed required (`SKILL.md:56` contradicts `install.go:179`), no plan item forces a foreign-workspace violation, and T-067 means new xrefs need checking by eye.
+- 2026-08-17 — READY → IN DEVELOPMENT: picked up
