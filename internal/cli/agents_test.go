@@ -22,7 +22,7 @@ func TestInstallAgentFlag(t *testing.T) {
 		t.Chdir(root)
 		var code int
 		_ = captureStderr(t, func() {
-			code = Run(payload, "test", []string{"install", "--project", "demo", "--agent", "zed"})
+			code = Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--agent", "zed"})
 		})
 		if code != exitUsage {
 			t.Fatalf("exit = %d, want %d", code, exitUsage)
@@ -36,7 +36,7 @@ func TestInstallAgentFlag(t *testing.T) {
 		root := t.TempDir()
 		t.Chdir(root)
 		_ = captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--project", "demo", "--agent", "claude,opencode,pi"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--agent", "claude,opencode,pi"}); code != exitOK {
 				t.Fatalf("exit = %d, want %d", code, exitOK)
 			}
 		})
@@ -57,7 +57,7 @@ func TestInstallAgentFlag(t *testing.T) {
 		root := t.TempDir()
 		t.Chdir(root)
 		_ = captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--project", "demo"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo"}); code != exitOK {
 				t.Fatalf("exit = %d, want %d", code, exitOK)
 			}
 		})
@@ -78,7 +78,7 @@ func TestInstallAgentFlag(t *testing.T) {
 		var stderr string
 		_ = captureStdout(t, func() {
 			stderr = captureStderr(t, func() {
-				if code := Run(payload, "test", []string{"install", "--project", "demo", "--no-claude"}); code != exitOK {
+				if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--no-claude"}); code != exitOK {
 					t.Fatalf("exit = %d, want %d", code, exitOK)
 				}
 			})
@@ -98,7 +98,7 @@ func TestInstallAgentFlag(t *testing.T) {
 			t.Fatal(err)
 		}
 		out := captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--project", "demo", "--agent", "opencode"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--agent", "opencode"}); code != exitOK {
 				t.Fatalf("exit = %d, want %d", code, exitOK)
 			}
 		})

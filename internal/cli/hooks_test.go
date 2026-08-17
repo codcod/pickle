@@ -522,7 +522,7 @@ func TestInstallHooksReportsSiblingHookDespiteAForeignOne(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		if got := Run(os.DirFS(repoRoot), "test", []string{"install", "--project", "demo", "--hooks"}); got != exitOK {
+		if got := Run(os.DirFS(repoRoot), "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); got != exitOK {
 			t.Fatalf("install --hooks = %d", got)
 		}
 	})

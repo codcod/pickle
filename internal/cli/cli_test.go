@@ -1153,7 +1153,7 @@ func TestInstallHooksFlag(t *testing.T) {
 		t.Chdir(root)
 		gitInit(t, root, "main")
 		out := captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); code != exitOK {
 				t.Fatalf("install --hooks = %d, want %d", code, exitOK)
 			}
 		})
@@ -1171,7 +1171,7 @@ func TestInstallHooksFlag(t *testing.T) {
 		var stderr string
 		_ = captureStdout(t, func() {
 			stderr = captureStderr(t, func() {
-				if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+				if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); code != exitOK {
 					t.Fatalf("install --hooks (no git) = %d, want %d (a hook failure is a warning, not a failed install)", code, exitOK)
 				}
 			})
@@ -1188,13 +1188,13 @@ func TestInstallHooksFlag(t *testing.T) {
 		root := t.TempDir()
 		t.Chdir(root)
 		gitInit(t, root, "main")
-		if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+		if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); code != exitOK {
 			t.Fatalf("first install --hooks = %d", code)
 		}
 		// A second install re-applies the whole scaffold; hook.Install must see
 		// its own shim already current and report "skipped" rather than an error.
 		out := captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--project", "demo2", "--hooks"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo2", "--hooks"}); code != exitOK {
 				t.Fatalf("second install --hooks = %d, want %d", code, exitOK)
 			}
 		})

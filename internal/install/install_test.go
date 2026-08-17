@@ -703,6 +703,30 @@ func TestMarkerBlockRendersChildrenFromConfig(t *testing.T) {
 	}
 }
 
+// TestMarkerBlockNoChildrenHasNoDanglingBullets pins a rework fix (T-108
+// review finding F4): the umbrella layout's fresh-install state registers no
+// child, and "Branch per child:"/"WIP limits (per child):" must not render
+// with nothing after the colon — the same empty-case guard the children
+// summary bullet already applies.
+func TestMarkerBlockNoChildrenHasNoDanglingBullets(t *testing.T) {
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
+	}
+	block := MarkerBlock(cfg)
+
+	for _, dangling := range []string{
+		"Branch per child:\n",
+		"(per child):\n",
+	} {
+		if strings.Contains(block, dangling) {
+			t.Errorf("marker block has a dangling bullet %q\n--- block ---\n%s", dangling, block)
+		}
+	}
+	if !strings.Contains(block, "(none yet — register with `pickle project add`)") {
+		t.Errorf("marker block missing the no-children build-target clause\n--- block ---\n%s", block)
+	}
+}
+
 func TestMarkerBlockRendersCommitPolicyAndOmitsEmptyCommands(t *testing.T) {
 	cfg := &config.Config{
 		Commit: config.CommitPolicy{OverarchingAuto: false, ChildPublishGated: false},
