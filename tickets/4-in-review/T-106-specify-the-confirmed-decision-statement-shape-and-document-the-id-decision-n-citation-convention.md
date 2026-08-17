@@ -134,9 +134,17 @@ waits for the other.
    restate the full convention in `TEMPLATE.md` or `review-protocol.md` — the payload's own rule
    is that a thing is stated once and referenced (this is why `resources/` is called the single
    source of truth).
-3. **Every shipped example uses a metasyntactic id** (`T-NNN`, `<TICKET-ID>`), never a real one.
-   The citation form itself is documented **prefix-agnostically** as `<TICKET-ID> decision <N>`,
+3. **Every shipped example uses a metasyntactic id** (`T-NNN`, `<ID>`), never a real one.
+   The citation form itself is documented **prefix-agnostically** as `<ID> decision <N>`,
    with the note that children set their own id prefix.
+   *Amended at the scoped re-review (finding F1): this decision originally wrote the placeholder
+   as `<TICKET-ID>`. T-105 had already shipped and locked `<ID> decision <N>` — in its own
+   confirmed decision 4, in `internal/decisions`, `internal/cli/board.go`, the CLI help,
+   `board_decisions_test.go` and `cli-reference.adoc` — so `<TICKET-ID>` would have put a second
+   spelling of one convention into the same payload. It also contradicted this ticket's own title
+   and its Description, both of which already said `<ID>`. Corrected to `<ID>` here and in all
+   five shipped sites; the prefix-agnostic intent the decision was written to protect is
+   unchanged, since `<ID>` is the more prefix-neutral of the two.*
 4. **Every shipped decision example is self-contained** — no `§` cross-reference and no path
    inside the example text, so it reads correctly to someone who has never seen this repository.
    The foreign-workspace test (`AGENTS.md`) is the standard; `payload_lint_test.go` enforces its
@@ -334,6 +342,8 @@ chose the wrong placeholder token.
 | F1 | blocking | plan-wrong | — | Confirmed decision 3 documents the citation form as `` `<TICKET-ID> decision <N>` ``, shipped identically across all five touched files. But `pickle board decisions` (T-105, done and merged) already shipped and locked the citable form as `` `<ID> decision <N>` `` — T-105's own confirmed decision 4 says a citation "says `<ID> decision 4` and must resolve to the same item", the shipped code/docs/tests all print and assert `<ID>`, and `cli-reference.adoc` (already in the tree) teaches authors `<ID> decision <N>`. This ticket's new prose now teaches a *different* placeholder spelling for the identical convention, in the same payload a reader consults for both, without ever discovering T-105 had already fixed it. | `tickets-README.md:461`, `TEMPLATE.md:90` (pre-fix), `review-protocol.md:177`, `lifecycle.adoc:42`, `CHANGELOG.md:30` — all `<TICKET-ID> decision <N>`; vs `tickets/6-done/T-105-…md` confirmed decision 4 and Description ("first column is literally `<ID> decision <N>`"); `internal/cli/board_decisions_test.go:291` (`TestBoardDecisionsCitationIsPasteable`, pins `"LIB-001 decision 1"`); `docs/user-manual/cli-reference.adoc:66,947,992` (all `<ID>`) | Change all five occurrences from `<TICKET-ID> decision <N>` to `<ID> decision <N>`, and re-run the throwaway-install acceptance check to confirm the corrected form ships. |
 | F2 | non-blocking | design | fixed inline | `TEMPLATE.md`'s new sentence wrote `` `tickets/README.md` §7 `` — backtick around the path only, `§7` outside. The file's own dialect for this exact cross-reference is either plain prose (5 other instances: lines 11, 26, 44, 61, 129) or a single backtick span covering the whole `path §N` (3 instances: lines 148, 158, 163); the mixed form this branch introduced matched neither. | `skill/resources/TEMPLATE.md:90` (before fix) | Dropped the backtick around the path, matching the plain-prose majority (`dbb1810`). |
 
+| F3 | non-blocking | stale-xref | fixed inline | Fixing F1 left confirmed decision 3 describing text the branch no longer ships: it still specified the placeholder as `<TICKET-ID>` in both its statement and its rationale, while all five shipped sites now read `<ID>`. Found at the scoped re-review, and caused by the F1 fix itself rather than pre-existing — the "made false by this branch" causation test for an inline fix (rules §5). | plan decision 3 (pre-amendment) vs the five sites listed under F1; same shape as T-105's own F1 (its decision 7 described first-line-only matching after the branch shipped flattened matching) | Decision 3 amended in place with an italicised amendment note naming F1 as the cause, per the T-105 precedent; a `plan amended inline:` History line added below, as rules §1 requires whenever the Implementation Plan is edited after the ticket left `2-ready/`. |
+
 **Disposition (partial — concluding summary follows the scoped re-review):** 1 blocking (F1, to
 fix), 1 non-blocking already fixed inline (F2).
 
@@ -347,6 +357,41 @@ fresh test cache; the throwaway foreign-workspace install shows `<ID> decision <
 installed payload in all three resource files, no `TICKET-ID` occurrence remains anywhere under
 `.agents/skills/brine/resources/`, and `board audit` still reports 0 errors with no new warning
 class. No other files touched — this fix was scoped to F1 alone, per the rework rule.
+
+### Scoped re-review (2026-08-17) — **verdict: DONE**
+
+Re-reviewed against `feat/T-106-decision-shape-and-citation` @ `8eba5bd` (4 commits,
+`d8bea5c..8eba5bd`), base `main`. Scope was F1 and F2 only, per the scoped-re-review rule — the
+feature was not re-audited from scratch.
+
+- [x] **F1 resolved, verified independently of the rework note.** All five sites now read
+      `<ID> decision <N>`; `TICKET-ID` appears nowhere under `skill/`, `docs/`, `CHANGELOG.md` or
+      `README.md`. The wider point of the finding also holds: all **13** citation-form mentions
+      tree-wide (payload, manual, CLI help, Go comments, tests, changelog) now agree on `<ID>`.
+- [x] **The fix was correctly scoped.** `8eba5bd` is exactly five one-line changes and touches
+      nothing else — no scope creep into the rework pass.
+- [x] **F2 still in place** — `TEMPLATE.md:90` reads `See tickets/README.md §7`, matching the
+      file's plain-prose dialect.
+- [x] **Acceptance test re-run verbatim**, fresh `go clean -testcache`: `just build`, `just test`
+      (19 packages, incl. `payload_lint_test.go` — the foreign-workspace guard), `just lint`,
+      `just docs-check` all green. Throwaway install (binary renamed `pickle-test`) confirms the
+      corrected form reached the installed payload in all three resource files, with no
+      `TICKET-ID` leak; `board audit` 0 errors and no new warning class, so the ticket is still
+      documentation-only (decision 1).
+- [x] Docs-readability pass (step 4b) — **conscious skip, sanctioned.** The full pass ran at the
+      first review over all five files and returned nothing applicable to this branch's prose; the
+      rework changed a single placeholder token in five places and introduced no new sentence, so
+      a re-run has no new prose to judge.
+- [x] Impact sweep re-confirmed (step 8): nothing in `1-to-do/` or `2-ready/` cites T-106.
+
+**Disposition summary:** 3 findings total — 1 blocking (F1, fixed in `8eba5bd` and verified
+above), 2 non-blocking both **fixed inline** (F2 in `dbb1810`, F3 as the plan amendment recorded
+above). 0 folded, 0 noted, **0 new tickets** — nothing here passed the promotion test, and the two
+inline fixes are prose this branch itself authored or made false.
+
+```
+cost: estimated S, actual S
+```
 
 ## History
 
@@ -388,3 +433,10 @@ class. No other files touched — this fix was scoped to F1 alone, per the rewor
 - 2026-08-17 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-17 — IN REVIEW → REWORK: review found 1 blocking finding: <TICKET-ID> vs T-105's locked <ID> citation form
 - 2026-08-17 — REWORK → IN REVIEW: findings fixed
+- 2026-08-17 — plan amended inline: confirmed decision 3 now writes the citation placeholder as
+  `<ID>` rather than `<TICKET-ID>`, matching what the branch ships. Recorded at the scoped
+  re-review as finding F3 (`stale-xref`, fixed inline): the F1 fix corrected all five shipped
+  sites and left the decision describing prose that no longer existed. `<ID>` was already the
+  form T-105 shipped and locked, and already what this ticket's own title and Description said, so
+  the amendment aligns the decision with three authorities rather than introducing a fourth. No
+  other decision changed
