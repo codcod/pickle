@@ -446,3 +446,7 @@ cost: estimated S, actual S
   ci-surface, goreleaser-check, smoke). `origin/main` was pushed first (9 bookkeeping commits) so
   the base-not-behind guard passed; the MR range carries the 5 docs files and no `tickets/` path.
   Awaiting the human merge
+- 2026-08-17 — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52),
+  user-approved; history kept (4 commits); branch not deleted. `payload_version` is still at
+  `0.9.0` by design — re-stamping it with a clean-built `pickle upgrade` from `main` is the
+  human's post-merge action (`AGENTS.md`, self-modify policy)

@@ -132,7 +132,7 @@ Last updated: 2026-08-17
 | T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | yes — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than |
 | T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | yes — merged to main (3104977, PR #48) |
 | T-105 | pickle board decisions: query a child's confirmed design decisions | yes — MERGED: feat/T-105-board-decisions → main (9343299, PR #51), user-approved; history kept (4 commits); branch not … |
-| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | no — publish-gated |
+| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | yes — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52), |
 
 ## DROPPED
 
