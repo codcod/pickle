@@ -51,9 +51,11 @@ hand-written planning prose lives in `tickets/NOTES.md` (created by `pickle inst
 ordered status directories (`1-to-do/` … `7-dropped/`), renders a fresh `tickets/BOARD.md`,
 scaffolds `tickets/NOTES.md`, writes the `tickets/README.md` pointer, installs this skill for the
 detected agents (`.agents/skills/brine/`, symlinked into `.claude/skills/` for Claude
-Code), injects the `AGENTS.md`/`CLAUDE.md` marker block, writes `pickle.toml`, and registers
-the first child-project. Register more connected children with
-`pickle project add <name> <path>`. Install scope is **per-project** — nothing is written to
+Code), injects the `AGENTS.md`/`CLAUDE.md` marker block, and writes `pickle.toml` — recording the
+**layout** there (`umbrella` by default, or `in-tree` with `--in-tree`; rules §0). A plain
+`install` registers **no** child, and `pickle project add <name> <path>` registers the first one
+and every one after it; `--path <dir>` registers that first child immediately, and `--in-tree`
+registers the sole child at `.`. Install scope is **per-project** — nothing is written to
 `~/`.
 
 ## Project configuration (in `pickle.toml` + the `AGENTS.md` marker block)
@@ -74,9 +76,12 @@ WIP limits, and an optional per-child review addendum. Defaults:
   finalize + push + open MR; the human merges; a root-path child (`path = "."`) tidies WIP
   commits into atomic ones first and defaults to keeping that history over squashing — rules
   §0). The overarching project's bookkeeping (tickets, board, docs) may be committed
-  automatically, always with explicit pathspecs, and **on the base branch — never on a feature
-  branch** (rules §0): a squash-merge would fold or drop it and leave the board disagreeing with
-  the tickets. `pickle hooks install` enforces this locally, per clone.
+  automatically, always with explicit pathspecs. **Under `layout = "in-tree"` it must land on the
+  base branch — never on a feature branch** (rules §0): there the board shares a repository with
+  the code, so a squash-merge would fold or drop the bookkeeping and leave the board disagreeing
+  with the tickets. `pickle hooks install` enforces that locally, per clone. Under the default
+  `umbrella` layout the rule does not apply — the board is in a different repository from every
+  child, so no feature branch can fork it, and the hooks have nothing to catch.
 - **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced **per child**.
 
 > **Project configuration wins.** The bullets above state the flow's defaults, once.
@@ -268,9 +273,11 @@ child). In short:
    (`6-done/` or `5-rework/`) — do not move it back to `4-in-review/` — and you record the
    pending-publish state in its `## History` instead. For a root-path child (rules §0), tidy the
    WIP commits into atomic ones before presenting them. Only after approval: finalize the branch
-   (squash, or — the root-path default — keep the tidied history), verify the remote base is not
-   behind (`origin/<base>...HEAD` must
-   carry no `tickets/` path — rules §0), push, and **create the merge request** in that child's repo, per
+   (squash, or — the root-path default — keep the tidied history), and under
+   `layout = "in-tree"` verify the remote base is not behind (`origin/<base>...HEAD` must
+   carry no `tickets/` path — rules §0; under `umbrella` there is no `tickets/` path in the
+   child's repository to leak, so the check is skipped), push, and **create the merge
+   request** in that child's repo, per
    the project's configured commit policy (default: never push a child or open an MR without
    approval); **merging is always the human's**.
 5. Overarching-repo bookkeeping (ticket edits, moves, board) is committed per the project's

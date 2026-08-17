@@ -35,13 +35,20 @@ child addendum** (whichever exist).
 > approval — see step 9). End with a summary, the commit message(s) and merge-request attributes
 > for approval, and a next-ticket suggestion.
 >
-> **But read the ticket from the base branch.** Bookkeeping is committed on the base branch, not
-> on the feature branch (the rules §0), so a branch cut before the ticket's move to
-> `4-in-review/` landed shows a **stale ticket file** in its worktree — an older Implementation
-> Plan, a missing History line, a status the board contradicts. The branch is authoritative for
-> the *code*; the base branch is authoritative for the *ticket and the board*. Read them with
+> **In the `in-tree` layout, read the ticket from the base branch.** This applies when the board
+> and the code share one repository — `layout = "in-tree"` in `pickle.toml`. There, bookkeeping is
+> committed on the base branch, not on the feature branch (the rules §0), so a branch cut before
+> the ticket's move to `4-in-review/` landed shows a **stale ticket file** in its worktree — an
+> older Implementation Plan, a missing History line, a status the board contradicts. Checking out
+> the feature branch to audit the code is precisely what exposes you to it, which is why the
+> instruction sits next to the one above. The branch is authoritative for the *code*; the base
+> branch is authoritative for the *ticket and the board*. Read them with
 > `git show <base>:tickets/4-in-review/T-NNN-*.md` (or from a checkout of the base branch), and
 > record this review's own findings and moves on the base branch too.
+>
+> Under the default `umbrella` layout none of that arises: the board lives in the overarching
+> project, which is a different repository from the child whose branch you just checked out, so
+> the worktree copy of the ticket is the only copy and reading it directly is correct.
 >
 > **Project configuration wins.** The branch prefix (`feat/`), the ticket-id prefix (`T`, in
 > every `T-NNN` here), the commit policy above, and any WIP limit named elsewhere in this
@@ -52,10 +59,12 @@ child addendum** (whichever exist).
 
 ## 1. Load context
 
-- Locate the ticket: `tickets/4-in-review/T-NNN-*.md`, **as it exists on the base branch** — if
-  the feature branch is already checked out, `git show <base>:tickets/4-in-review/T-NNN-*.md`
-  rather than the worktree copy (see the box above; a stale read has already caused a review to
-  audit the wrong plan). Read it in full — `## Description`,
+- Locate the ticket: `tickets/4-in-review/T-NNN-*.md`. Under `layout = "in-tree"`, read it **as it
+  exists on the base branch** — if the feature branch is already checked out,
+  `git show <base>:tickets/4-in-review/T-NNN-*.md` rather than the worktree copy, since a stale
+  read there makes a review audit the wrong plan (see the box above). Under the default `umbrella`
+  layout the worktree copy is the only copy, so read it directly. Read it in full —
+  `## Description`,
   `## Implementation Plan` (its acceptance test, tasks, and confirmed decisions are the
   checklist for step 2), and `## History`.
 - If this is a **scoped re-review** (the ticket was previously in `tickets/5-rework/`), read the
@@ -248,13 +257,15 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
   and default to keeping that history on merge rather than squashing. Only after the user
   approves all attributes, finalize the branch (squash to the single approved commit, or — the
   root-path default above — keep the tidied history; the user chooses at approval time).
-  **Before pushing, verify the remote base is not behind your local base**: `git fetch origin
-  <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must print nothing
-  (§0 explains the three-dot choice, the fetch, and the failure this catches). Any output means
-  push `origin <base>` first and re-check. An installed `pre-push` hook performs the same check
-  automatically on push (§0), but it does not replace the manual step: hooks are per-clone and
-  bypassable with `--no-verify`, so run the check by hand regardless of whether the hook is
-  armed. Only then push and **create the merge request** in that child-project's repo.
+  Under `layout = "in-tree"`, **before pushing, verify the remote base is not behind your local
+  base**: `git fetch origin <base> && git diff --name-only origin/<base>...HEAD | grep
+  '^tickets/'` must print nothing (§0 explains the three-dot choice, the fetch, and the failure
+  this catches). Any output means push `origin <base>` first and re-check. An installed
+  `pre-push` hook performs the same check automatically on push (§0), but it does not replace the
+  manual step: hooks are per-clone and bypassable with `--no-verify`, so run the check by hand
+  regardless of whether the hook is armed. Under the default `umbrella` layout this check has
+  nothing to find — the child's repository contains no `tickets/` path to leak — so skip it.
+  Only then push and **create the merge request** in that child-project's repo.
   Publishing follows the
   project's configured commit policy (default: never push a child-project or open a merge
   request without approval); **merging is always the human's.**
@@ -282,4 +293,4 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
 - [ ] Ticket moved to `tickets/6-done/` or `tickets/5-rework/`; `## History` appended (step 6)
 - [ ] Other references updated if needed; board regenerated by the move (step 7)
 - [ ] Remaining-tickets impact sweep done (step 8)
-- [ ] Summary + child-project commit message & MR attributes presented for approval (commit/push/MR per the project's commit policy; merge stays human), **remote base verified not behind local (`origin/<base>...HEAD` carries no `tickets/` path, after a fetch) before pushing** — a `pre-push` hook, if armed, checks this too, but the manual check still runs — + overarching-repo bookkeeping committed per policy + next-ticket suggestion (step 9)
+- [ ] Summary + child-project commit message & MR attributes presented for approval (commit/push/MR per the project's commit policy; merge stays human), **and under `layout = "in-tree"` only, remote base verified not behind local (`origin/<base>...HEAD` carries no `tickets/` path, after a fetch) before pushing** — a `pre-push` hook, if armed, checks this too, but the manual check still runs — + overarching-repo bookkeeping committed per policy + next-ticket suggestion (step 9)
