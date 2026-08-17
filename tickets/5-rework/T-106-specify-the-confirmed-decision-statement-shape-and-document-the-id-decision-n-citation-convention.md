@@ -337,6 +337,17 @@ chose the wrong placeholder token.
 **Disposition (partial — concluding summary follows the scoped re-review):** 1 blocking (F1, to
 fix), 1 non-blocking already fixed inline (F2).
 
+### Rework (2026-08-17)
+
+**F1 fixed** — commit `8eba5bd` on `feat/T-106-decision-shape-and-citation`. Swapped all five
+occurrences of `<TICKET-ID> decision <N>` to `<ID> decision <N>` (`tickets-README.md`,
+`TEMPLATE.md`, `review-protocol.md`, `lifecycle.adoc`, `CHANGELOG.md`), matching the form T-105
+already shipped and locked. Re-verified: `just build`/`test`/`lint`/`docs-check` all green from a
+fresh test cache; the throwaway foreign-workspace install shows `<ID> decision <N>` reached the
+installed payload in all three resource files, no `TICKET-ID` occurrence remains anywhere under
+`.agents/skills/brine/resources/`, and `board audit` still reports 0 errors with no new warning
+class. No other files touched — this fix was scoped to F1 alone, per the rework rule.
+
 ## History
 
 - 2026-08-16 — created (TO DO). source: review: split out of T-105 during an adversarial pass that
