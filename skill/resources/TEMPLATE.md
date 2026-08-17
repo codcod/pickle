@@ -83,7 +83,11 @@ non-empty body, so deleting it fails that check instead of satisfying it.>
 ### Confirmed design decisions (do not deviate without asking)
 
 <Numbered, unambiguous decisions the implementer must honour. Pull any project-wide decisions
-from the project's own docs / `AGENTS.md`.>
+from the project's own docs / `AGENTS.md`. Write each as one numbered item whose leading bold
+run is the decision statement, e.g. `1. **The check never writes to the ticket tree.** It is a
+read-only report, so a failure can be retried without cleanup.` — the rationale follows the bold
+run. Number in one unbroken list and never renumber: another ticket may cite an item by its
+ordinal as `<ID> decision <N>`. See tickets/README.md §7 for the full convention.>
 
 ### Tasks
 

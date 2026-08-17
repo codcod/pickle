@@ -443,6 +443,28 @@ already sitting past the gate) or **advisory** (never refuses; always just a war
 placeholder (T-083). `6-done/` and `7-dropped/` are permanent archives: neither status requires
 anything, so nothing about an archived ticket is ever checked, or warned about, again.
 
+**Confirmed design decisions, and how to cite them.** A confirmed design decision (§4.3) is one
+numbered item whose **leading bold run is the decision statement**; everything after it is the
+rationale. The bold run may soft-wrap across more than one physical line before its closing
+`**` — it is still one statement, so do not assume "the decision is the first line."
+
+```
+1. **The check never writes to the ticket tree.** It is a read-only report, so a failure can be
+   retried without cleanup.
+```
+
+The shape earns its keep twice: a reader skimming a plan gets the decision from the bold run
+alone, and a tool reading the ticket tree can lift the statement without guessing where it ends.
+Number the decisions in one unbroken list and **never renumber them** — an ordinal, once
+written, is an address that another ticket may already be citing.
+
+Cite a decision from another ticket as **`<ID> decision <N>`** — for example
+`T-NNN decision 3`. Write the id exactly as its own child-project writes it (children set their
+own id prefix, so never assume a particular one), and `<N>` as the ordinal written in that
+ticket, never a re-count. The citation is prose, not a link: it costs nothing to write and one
+search to resolve. Precision matters most at review time, where contradicting a locked decision
+is a *blocking* severity (`review-protocol.md` §5).
+
 ## 8. How work enters the project (the only pipeline)
 
 ```

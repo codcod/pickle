@@ -38,7 +38,9 @@ a complete, self-contained prompt (§4):
 
 1. *Feature branch* named, cut inside the target child's repo.
 2. *Prerequisite gate* stated (or "none").
-3. *Confirmed design decisions* the implementer must honour.
+3. *Confirmed design decisions* the implementer must honour. Each is a numbered item whose
+   leading bold run is the decision statement, cited elsewhere as `<ID> decision <N>`;
+   the ordinals are never renumbered.
 4. *Tasks* — concrete, with exact paths in the target child.
 5. *Acceptance test* — runnable commands + expected results, re-runnable
    verbatim.
