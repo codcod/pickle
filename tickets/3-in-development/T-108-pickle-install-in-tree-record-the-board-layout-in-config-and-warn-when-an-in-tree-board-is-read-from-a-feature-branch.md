@@ -260,3 +260,4 @@ that is T-109, which depends on this one.
 
 - 2026-08-17 — created (TO DO). source: pickle ticket new
 - 2026-08-17 — TO DO → READY: refined: 9 confirmed decisions, 6 tasks, 8-step acceptance test
+- 2026-08-17 — READY → IN DEVELOPMENT: picked up

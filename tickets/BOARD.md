@@ -13,10 +13,11 @@ Last updated: 2026-08-17
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-17
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | high | medium | M | [] |  |
 | T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | high | medium | L | [T-108] |  |
 
 ## TO DO (impact order, per child)
