@@ -349,6 +349,40 @@ directions, the `upgrade` back-fill, and the banner present/absent/surviving-the
 `just build && just test && just lint && just docs-check` clean; `pickle changelog check`
 clean.
 
+**2026-08-17 — review 2 (scoped re-review).** Branch at `e2ddefa`, read against `main`. Scope
+was the seven findings review 1 sent to rework (F1–F4 blocking, F6/F7/F10 `fixed inline`); the
+feature was not re-audited from scratch. Verdict: **all seven resolved → `6-done/`**.
+
+| id | verified | how |
+|---|---|---|
+| F1 | **resolved** | All four files corrected. The previously-broken example now runs: `pickle install --in-tree --project backend` exits 0 and writes `layout = "in-tree"` with one `[[project]]` at `.`. Both walkthroughs were executed end to end — quickstart's install→`ticket new` sequence now succeeds (it created `T-001`), and `your-first-project`'s step 1 (`--in-tree`) followed by step 2's two nested `project add`s leaves `doctor` at 0 errors, so the new `--in-tree` step did not trade one broken tutorial for another |
+| F2 | **resolved** | `configuration.adoc` documents `layout` in "The keys" with both values and the inference; the `upgrade` bullet now names the `layout` insert. Both new claims check out against the code — insert-only (`SetLayoutInPlace`'s `topLevelKeyPresent` guard plus `Upgrade`'s `cfg.Layout == ""`) and verify-after-write (`verifyLayoutBackfilled`) |
+| F3 | **resolved** | `CHANGELOG.md` carries an *Added* entry and a *Changed* entry that calls the `--path` default change out as breaking. `pickle changelog check` → `no candidates — every shipped ticket is mentioned` |
+| F4 | **resolved** | A childless install now renders "No children registered yet — see above." and "(none yet — see above)". `doctor -v` on that install reports the marker block *current* in both `AGENTS.md` and `CLAUDE.md`, so the generated form and the drift-detection render agree. The regression test is genuine, not tautological: applied against the pre-fix commit (`979366d`) in a scratch worktree it **fails** |
+| F6 | **resolved** | `checkLayoutInvariant` moved below `checkChildren`; each doc comment sits over its own function again |
+| F7 | **resolved** | Both comments now say "caught during implementation" |
+| F10 | **resolved** | The upgrade section distinguishes `payload_version`'s refuse-before-write gate from `layout`'s verify-after-write insert — which is what the code does. The *Why the choice matters* paragraph was also split |
+
+Also checked, because `docs-check` cannot: the `<<install-layout>>` anchor is defined exactly
+once (`cli-reference.adoc:106`) and all 11 references across six files resolve, every one of
+those files being in `docs/user-manual.adoc`'s `include::` tree. (Anchor validation is still
+absent from the docs pipeline — T-067 — so this was verified by hand.)
+
+Two findings of its own, neither blocking:
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F14 | non-blocking | stale-xref | fixed inline | The rework's own guard comment named a variable that does not exist (`wipBullet`; the variable is `wipLine`) | `internal/install/install.go:1066` | Fixed in `e2ddefa` |
+| F15 | non-blocking | docs-gap | noted | The walkthroughs use `T-1` for the first ticket, but a fresh project allocates `T-001` — so `tickets/1-to-do/T-1-….md`, `refine ticket T-1`, `pickle ticket move T-1 ready` and `feat/T-1-<slug>` all misname it | `quickstart.adoc:52`; `your-first-project.adoc:71,78,88,90`; observed `created T-001` on a fresh install | Pre-existing — the same text is in the pre-T-108 base, so this branch did not make it false and the inline bar (rules §5) excludes it. Left for a docs pass that owns the tutorials |
+
+dispositions: 0 blocking; 2 non-blocking — 1 fixed inline (F14), 1 noted (F15); 0 new tickets.
+Carried forward untouched from review 1, as recorded there: F5 (folded into T-109), F8, F9,
+F11, F12, F13 (all `noted`).
+
+```
+cost: estimated M, actual M
+```
+
 ## History
 
 - 2026-08-17 — created (TO DO). source: pickle ticket new
@@ -357,3 +391,4 @@ clean.
 - 2026-08-17 — IN DEVELOPMENT → IN REVIEW: acceptance test green: all 8 checks re-run verbatim; just build/test/lint/docs-check clean
 - 2026-08-17 — IN REVIEW → REWORK: review 1: 4 blocking findings (F1-F4), all documentation the branch made false outside cli-reference.adoc
 - 2026-08-17 — REWORK → IN REVIEW: findings fixed
+- 2026-08-17 — IN REVIEW → DONE: review 2 (scoped): F1-F4 + F6/F7/F10 all resolved; 2 new non-blocking (F14 fixed inline, F15 noted)

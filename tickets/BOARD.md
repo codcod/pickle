@@ -20,11 +20,10 @@ Last updated: 2026-08-17
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | [] |
 
 ## REWORK
 
@@ -134,6 +133,7 @@ Last updated: 2026-08-17
 | T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | yes — merged to main (3104977, PR #48) |
 | T-105 | pickle board decisions: query a child's confirmed design decisions | yes — MERGED: feat/T-105-board-decisions → main (9343299, PR #51), user-approved; history kept (4 commits); branch not … |
 | T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | yes — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52), |
+| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | no — publish-gated |
 
 ## DROPPED
 
