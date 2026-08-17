@@ -605,19 +605,37 @@ path = "."
 	if !strings.Contains(string(got), `payload_version = "v2"`) {
 		t.Errorf("payload_version not stamped:\n%s", got)
 	}
-	// Exactly one line may differ from what the user wrote.
+	// T-108: layout is also back-filled on this same upgrade, since the
+	// hand-written config predates the key. That is an *inserted* line, not a
+	// rewrite of an existing one — the sole child is at ".", so it infers
+	// "in-tree".
+	if !strings.Contains(string(got), `layout = "in-tree"`) {
+		t.Errorf("layout not back-filled:\n%s", got)
+	}
+	// Exactly one line may be rewritten in place (payload_version), and exactly
+	// one line may be newly inserted (layout) — every other original line
+	// must survive byte-for-byte, in order.
 	before, after := strings.Split(handWritten, "\n"), strings.Split(string(got), "\n")
-	if len(before) != len(after) {
-		t.Fatalf("line count changed: %d -> %d", len(before), len(after))
+	if len(after) != len(before)+1 {
+		t.Fatalf("line count changed: %d -> %d, want %d (one inserted layout line)", len(before), len(after), len(before)+1)
+	}
+	afterWithoutLayout := make([]string, 0, len(after))
+	for _, l := range after {
+		if l != `layout = "in-tree"` {
+			afterWithoutLayout = append(afterWithoutLayout, l)
+		}
+	}
+	if len(afterWithoutLayout) != len(before) {
+		t.Fatalf("expected exactly one inserted layout line, got %d extra line(s)", len(afterWithoutLayout)-len(before))
 	}
 	diffs := 0
 	for i := range before {
-		if before[i] != after[i] {
+		if before[i] != afterWithoutLayout[i] {
 			diffs++
 		}
 	}
 	if diffs != 1 {
-		t.Errorf("upgrade changed %d lines, want 1", diffs)
+		t.Errorf("upgrade changed %d lines (excluding the inserted layout line), want 1", diffs)
 	}
 }
 

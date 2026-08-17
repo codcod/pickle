@@ -478,8 +478,28 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		}
 	}
 
+	// Back-fill layout when absent (T-108 decision 6), independent of whether
+	// the payload_version itself needs a bump below — a project already at the
+	// current version must still gain the key the first time it upgrades on a
+	// binary that knows about it. The recorded value always wins (decision 5),
+	// so this never touches a config that already has the key, of any value.
+	layoutBackfilled := ""
+	if cfg.Layout == "" {
+		resolved := cfg.ResolvedLayout()
+		if err := config.SetLayoutInPlace(cfg.Path(), resolved); err != nil {
+			return res, err
+		}
+		if err := verifyLayoutBackfilled(cfg.Path(), resolved); err != nil {
+			return res, err
+		}
+		layoutBackfilled = resolved
+		res.created(config.FileName + " (layout -> " + resolved + ")")
+	}
+
 	if cfg.PayloadVersion == payloadVersion {
-		res.skipped(config.FileName + " (already at " + payloadVersion + ")")
+		if layoutBackfilled == "" {
+			res.skipped(config.FileName + " (already at " + payloadVersion + ")")
+		}
 		return res, nil
 	}
 	// Edit the one line rather than re-rendering: pickle.toml is the user's
@@ -506,6 +526,20 @@ func verifyStampedVersion(path, want string) error {
 	if after.PayloadVersion != want {
 		return fmt.Errorf("%s still reads payload_version = %q after stamping %q; set it by hand",
 			config.FileName, after.PayloadVersion, want)
+	}
+	return nil
+}
+
+// verifyLayoutBackfilled re-reads the config and confirms it now carries
+// want, mirroring verifyStampedVersion (T-108).
+func verifyLayoutBackfilled(path, want string) error {
+	after, err := config.Load(path)
+	if err != nil {
+		return fmt.Errorf("re-read %s after back-filling layout %s: %w", config.FileName, want, err)
+	}
+	if after.Layout != want {
+		return fmt.Errorf("%s still has no layout = %q after back-filling it; set it by hand",
+			config.FileName, want)
 	}
 	return nil
 }

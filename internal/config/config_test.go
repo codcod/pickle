@@ -791,6 +791,123 @@ payload_version = "decoy-in-table"
 	}
 }
 
+// TestSetLayoutInPlaceInsertsWhenAbsent (T-108 decision 6): back-filling an
+// absent layout key uses the same surgical insert as payload_version —
+// everything else in the file survives, and a decoy layout inside a table is
+// never hijacked.
+func TestSetLayoutInPlaceInsertsWhenAbsent(t *testing.T) {
+	const noLayout = `# a comment worth keeping
+payload_version = "1.0.0"
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+[[project]]
+name = "pickle"
+path = "."
+layout = "decoy-in-table"
+`
+	dir := t.TempDir()
+	path := writeCfg(t, dir, noLayout)
+
+	if err := SetLayoutInPlace(path, LayoutInTree); err != nil {
+		t.Fatalf("SetLayoutInPlace: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(noLayout, "\n"), "\n") {
+		if !strings.Contains(string(got), line) {
+			t.Errorf("original line %q lost", line)
+		}
+	}
+	if !strings.Contains(string(got), `layout = "in-tree"`) {
+		t.Fatalf("layout not inserted:\n%s", got)
+	}
+	if !strings.Contains(string(got), `layout = "decoy-in-table"`) {
+		t.Errorf("the [[project]] layout was hijacked instead of inserting:\n%s", got)
+	}
+	if i, j := strings.Index(string(got), "layout"), strings.Index(string(got), "[commit]"); i > j {
+		t.Errorf("layout inserted below [commit] (%d > %d):\n%s", i, j, got)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load after insert: %v", err)
+	}
+	if c.Layout != LayoutInTree {
+		t.Errorf("Layout = %q, want %q", c.Layout, LayoutInTree)
+	}
+}
+
+// TestSetLayoutInPlaceNeverOverwritesAnExistingValue (T-108 decision 5): the
+// recorded value always wins over inference, so back-fill must be a strict
+// no-op — byte-for-byte — whenever the key is already present, regardless of
+// its value.
+func TestSetLayoutInPlaceNeverOverwritesAnExistingValue(t *testing.T) {
+	const hasLayout = `payload_version = "1.0.0"
+layout = "umbrella"
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+[[project]]
+name = "pickle"
+path = "."
+`
+	dir := t.TempDir()
+	path := writeCfg(t, dir, hasLayout)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SetLayoutInPlace(path, LayoutInTree); err != nil {
+		t.Fatalf("SetLayoutInPlace: %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Errorf("file changed despite an existing layout key:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// TestSetLayoutInPlaceKeyPrefixIsNotAMatch mirrors
+// TestSetPayloadVersionInPlaceKeyPrefixIsNotAMatch: a key merely prefixed with
+// "layout" is not the key, so its presence must not suppress the back-fill.
+func TestSetLayoutInPlaceKeyPrefixIsNotAMatch(t *testing.T) {
+	const decoy = `layout_note = "not the key"
+payload_version = "1.0.0"
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+[[project]]
+name = "pickle"
+path = "."
+`
+	dir := t.TempDir()
+	path := writeCfg(t, dir, decoy)
+	if err := SetLayoutInPlace(path, LayoutInTree); err != nil {
+		t.Fatalf("SetLayoutInPlace: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), `layout_note = "not the key"`) {
+		t.Errorf("a key merely prefixed with layout was disturbed:\n%s", got)
+	}
+	if !strings.Contains(string(got), `layout = "in-tree"`) {
+		t.Errorf("layout not inserted:\n%s", got)
+	}
+}
+
 func TestSetPayloadVersionInPlaceEscapesAndKeepsMode(t *testing.T) {
 	dir := t.TempDir()
 	path := writeCfg(t, dir, oneProject)

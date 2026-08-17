@@ -559,6 +559,80 @@ func PayloadVersionStampable(path, version string) error {
 	return nil
 }
 
+// SetLayoutInPlace back-fills a "layout" key into the pickle.toml at path
+// when the key is entirely absent, using the same surgical, comment-preserving
+// edit as SetPayloadVersionInPlace (T-108 decision 6): `pickle upgrade` calls
+// this so no separate migration command is needed. Unlike payload_version,
+// layout is never rewritten when already present — the recorded value always
+// wins over inference (decision 5), so an existing key, of any value, is left
+// untouched byte-for-byte.
+func SetLayoutInPlace(path, layout string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	mark := ""
+	text := string(data)
+	if strings.HasPrefix(text, bom) {
+		mark, text = bom, strings.TrimPrefix(text, bom)
+	}
+	if topLevelKeyPresent(text, layoutKeySpellings[:]) {
+		return nil // present already — decision 5: never overwritten here
+	}
+	updated := insertTopLevelKey(strings.Split(text, "\n"), topLevelInsertAt(text), "layout", layout)
+	if updated == text {
+		return nil
+	}
+	return atomicfile.WriteFile(path, []byte(mark+updated))
+}
+
+// topLevelKeyPresent reports whether text defines any of spellings as a
+// top-level key (i.e. before the first table header, and not inside a string
+// or array) — the presence half of the scan replacePayloadVersionLine also
+// performs.
+func topLevelKeyPresent(text string, spellings []string) bool {
+	var st scanState
+	for _, raw := range strings.Split(text, "\n") {
+		line := strings.TrimSuffix(raw, "\r")
+		topLevel := st.atTopLevel()
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		body := line[indent:]
+		if topLevel {
+			switch {
+			case body == "" || strings.HasPrefix(body, "#"):
+			case strings.HasPrefix(body, "["):
+				return false // table header reached — key never appeared above it
+			default:
+				if _, ok := matchKey(body, spellings); ok {
+					return true
+				}
+			}
+		}
+		advance(line, &st)
+	}
+	return false
+}
+
+// topLevelInsertAt finds the line index a new top-level key belongs at: right
+// before the first real table header, or at EOF when the file has none — the
+// same rule replacePayloadVersionLine's insert path applies.
+func topLevelInsertAt(text string) int {
+	lines := strings.Split(text, "\n")
+	var st scanState
+	for i, raw := range lines {
+		line := strings.TrimSuffix(raw, "\r")
+		if st.atTopLevel() {
+			indent := len(line) - len(strings.TrimLeft(line, " \t"))
+			body := line[indent:]
+			if strings.HasPrefix(body, "[") {
+				return i
+			}
+		}
+		advance(line, &st)
+	}
+	return len(lines)
+}
+
 // setPayloadVersion is the pure text transformation behind
 // SetPayloadVersionInPlace, including the parse-back check that guards it.
 func setPayloadVersion(text, version string) (string, error) {
@@ -779,13 +853,21 @@ var payloadVersionKeySpellings = [...]string{
 	`'` + payloadVersionKey + `'`,
 }
 
+// layoutKeySpellings mirrors payloadVersionKeySpellings for the "layout" key
+// (T-108): pickle always writes the bare form; a hand-edited file may quote it.
+var layoutKeySpellings = [...]string{
+	"layout",
+	`"layout"`,
+	"'layout'",
+}
+
 // matchKey reports whether body — a line already stripped of its leading
-// indentation — opens with one of the key's legal spellings followed by
-// optional whitespace and '=', and if so the byte offset of that '=' within
-// body. It deliberately does not match a longer identifier that merely
-// starts with the key, such as payload_version_note.
-func matchKey(body string) (eqOffset int, ok bool) {
-	for _, spelling := range payloadVersionKeySpellings {
+// indentation — opens with one of spellings followed by optional whitespace
+// and '=', and if so the byte offset of that '=' within body. It deliberately
+// does not match a longer identifier that merely starts with the key, such as
+// payload_version_note.
+func matchKey(body string, spellings []string) (eqOffset int, ok bool) {
+	for _, spelling := range spellings {
 		rest, cut := strings.CutPrefix(body, spelling)
 		if !cut {
 			continue
@@ -823,7 +905,7 @@ func replacePayloadVersionLine(text, version string) (string, error) {
 				insertAt = i
 				return insertPayloadVersion(lines, insertAt, version)
 			default:
-				if eqOffset, ok := matchKey(body); ok {
+				if eqOffset, ok := matchKey(body, payloadVersionKeySpellings[:]); ok {
 					return rewriteFoundKey(lines, i, raw, line, indent, eqOffset, version)
 				}
 			}
@@ -860,14 +942,22 @@ func rewriteFoundKey(lines []string, i int, raw, line string, indent, eqOffset i
 	return strings.Join(lines, "\n"), nil
 }
 
-// insertPayloadVersion is the not-present path: insert the key at insertAt,
-// keeping any blank lines attached to whatever follows rather than orphaning
-// them above the new key.
+// insertPayloadVersion is the not-present path for payload_version: insert
+// the key at insertAt. A thin wrapper over insertTopLevelKey, kept so its two
+// call sites below need no change.
 func insertPayloadVersion(lines []string, insertAt int, version string) (string, error) {
+	return insertTopLevelKey(lines, insertAt, payloadVersionKey, version), nil
+}
+
+// insertTopLevelKey inserts `key = "value"` at insertAt, keeping any blank
+// lines attached to whatever follows rather than orphaning them above the new
+// key. Shared by insertPayloadVersion and SetLayoutInPlace (T-108) so the two
+// keys this file ever back-fills use one insertion rule.
+func insertTopLevelKey(lines []string, insertAt int, key, value string) string {
 	for insertAt > 0 && strings.TrimSpace(lines[insertAt-1]) == "" {
 		insertAt--
 	}
-	entry := payloadVersionKey + " = " + tomlQuote(version)
+	entry := key + " = " + tomlQuote(value)
 	// Only match the file's CRLF style when another line actually follows the
 	// insert point: appending \r to what becomes the file's last line adds a
 	// bare trailing \r with no \n after it, which the parse-back gate then
@@ -878,7 +968,7 @@ func insertPayloadVersion(lines []string, insertAt int, version string) (string,
 		entry += "\r" // match the file rather than leaving one lone LF line
 	}
 	lines = append(lines[:insertAt], append([]string{entry}, lines[insertAt:]...)...)
-	return strings.Join(lines, "\n"), nil
+	return strings.Join(lines, "\n")
 }
 
 // usesCRLF reports whether every terminated line ends with CR, i.e. the file is
