@@ -291,7 +291,51 @@ step 0).
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Verdict: REWORK — 1 blocking finding.** Reviewed 2026-08-17 against
+`feat/T-106-decision-shape-and-citation` (3 commits, `d8bea5c..dbb1810`), base `main`, following
+`resources/review-protocol.md`. No overarching or per-child review addendum is configured in
+`pickle.toml`, so the generic protocol is the whole standard.
+
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4) — **found the blocking finding below**
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass on the ticket's changed `.adoc`/`.md` files (step 4b) — run via the
+      session's `docs_readability` reviewer over all five changed files; every suggestion
+      targeted prose this branch never touched, so none were applicable/applied
+- [x] Findings recorded in `## Review` with severity, class and disposition (step 5) — a
+      concluding disposition summary + cost line will be added on the scoped re-review that
+      follows the fix, per the done-ticket convention (T-018 precedent: no such line at REWORK)
+- [x] Ticket moved to `tickets/5-rework/`; `## History` appended (step 6)
+- [x] Other references checked — nothing in `1-to-do/`/`2-ready/` cites T-106 (step 7/8, impact
+      sweep: no dependents)
+- [x] Summary presented (step 9); nothing publish-gated to approve yet — the branch is unmerged
+      and pending the rework fix
+
+### Implementation audit
+
+Tasks 1–5 are all present in the files and locations the plan named; `just build`, `just test`
+(fresh `go clean -testcache`, all 19 packages including `payload_lint_test.go`), `just lint` and
+`just docs-check` are all green. The throwaway foreign-workspace install (`AGENTS.md`'s test-install
+rule, binary renamed `pickle-test`) shows the new `decision <N>` text reached the installed
+payload in all three resource files, and `board audit` reports 0 errors with no new warning class
+— confirming decision 1 (documentation only, no enforcement). Confirmed decisions 1, 2, 4, 5, 6, 7
+are honoured (verified: no `internal/*.go` change on the branch; `tickets-README.md` is the only
+file stating the convention in full; every shipped example is self-contained with no `§`
+cross-reference inside it; the never-renumber rule is stated in both `tickets-README.md` and
+`TEMPLATE.md`; each file's own cross-reference dialect is followed; `tickets-README.md` gained no
+new `### ` sub-heading). **Confirmed decision 3 is where the blocking finding below lives** — it
+chose the wrong placeholder token.
+
+### Findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | plan-wrong | — | Confirmed decision 3 documents the citation form as `` `<TICKET-ID> decision <N>` ``, shipped identically across all five touched files. But `pickle board decisions` (T-105, done and merged) already shipped and locked the citable form as `` `<ID> decision <N>` `` — T-105's own confirmed decision 4 says a citation "says `<ID> decision 4` and must resolve to the same item", the shipped code/docs/tests all print and assert `<ID>`, and `cli-reference.adoc` (already in the tree) teaches authors `<ID> decision <N>`. This ticket's new prose now teaches a *different* placeholder spelling for the identical convention, in the same payload a reader consults for both, without ever discovering T-105 had already fixed it. | `tickets-README.md:461`, `TEMPLATE.md:90` (pre-fix), `review-protocol.md:177`, `lifecycle.adoc:42`, `CHANGELOG.md:30` — all `<TICKET-ID> decision <N>`; vs `tickets/6-done/T-105-…md` confirmed decision 4 and Description ("first column is literally `<ID> decision <N>`"); `internal/cli/board_decisions_test.go:291` (`TestBoardDecisionsCitationIsPasteable`, pins `"LIB-001 decision 1"`); `docs/user-manual/cli-reference.adoc:66,947,992` (all `<ID>`) | Change all five occurrences from `<TICKET-ID> decision <N>` to `<ID> decision <N>`, and re-run the throwaway-install acceptance check to confirm the corrected form ships. |
+| F2 | non-blocking | design | fixed inline | `TEMPLATE.md`'s new sentence wrote `` `tickets/README.md` §7 `` — backtick around the path only, `§7` outside. The file's own dialect for this exact cross-reference is either plain prose (5 other instances: lines 11, 26, 44, 61, 129) or a single backtick span covering the whole `path §N` (3 instances: lines 148, 158, 163); the mixed form this branch introduced matched neither. | `skill/resources/TEMPLATE.md:90` (before fix) | Dropped the backtick around the path, matching the plain-prose majority (`dbb1810`). |
+
+**Disposition (partial — concluding summary follows the scoped re-review):** 1 blocking (F1, to
+fix), 1 non-blocking already fixed inline (F2).
 
 ## History
 
