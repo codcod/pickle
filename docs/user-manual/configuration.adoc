@@ -7,25 +7,30 @@ only one command rewrites a file you already own:
 * *`project add|remove`* re-render the whole file to a canonical layout. That
   re-render *does not preserve comments* — this is the one case where
   hand-written notes are lost.
-* *`upgrade`* rewrites only the `payload_version` line. Comments, blank lines,
-  key order and every other line's spacing survive; that one line comes back
-  normalised to `payload_version = "value"`, with any inline comment after the
-  value kept — so that one line's alignment and quoting style are not
-  preserved. The line editor tracks multi-line strings and array nesting
-  as it scans, so a quoted `"payload_version"` key and a table-looking or
-  key-looking line inside an unrelated multi-line string are read correctly
-  wherever they sit in the file — position is not what decides it. Two
-  shapes are beyond a line-based edit by design: `payload_version`'s own
-  value being a multi-line string or an array — pickle never writes either,
-  so it only happens to a hand-edited file — and a file that does not parse
-  to begin with (for example, a duplicated key). And because the editor is a
-  bounded scanner rather than a full TOML parser, a sufficiently exotic file
-  can still defeat it (an inline table `{ … }` written across several lines,
-  say). None of that can cost you content: the result is always
-  parsed and compared against the original before anything is written, so
-  whenever the editor cannot do the job `upgrade` *refuses and changes
-  nothing* and tells you to set the version by hand, naming the offending
-  line whenever it knows which one it is.
+* *`upgrade`* rewrites only the `payload_version` line, and — the first time a
+  project upgrades on a binary that knows the key — inserts a `layout` line
+  when one is not already present (<<install-layout>>). Comments, blank
+  lines, key order and every other line's spacing survive; the
+  `payload_version` line comes back normalised to `payload_version = "value"`,
+  with any inline comment after the value kept — so that one line's alignment
+  and quoting style are not preserved. The line editor tracks multi-line
+  strings and array nesting as it scans, so a quoted `"payload_version"` key
+  and a table-looking or key-looking line inside an unrelated multi-line
+  string are read correctly wherever they sit in the file — position is not
+  what decides it. Two shapes are beyond a line-based edit by design:
+  `payload_version`'s own value being a multi-line string or an array —
+  pickle never writes either, so it only happens to a hand-edited file — and
+  a file that does not parse to begin with (for example, a duplicated key).
+  And because the editor is a bounded scanner rather than a full TOML parser,
+  a sufficiently exotic file can still defeat it (an inline table `{ … }`
+  written across several lines, say). None of that can cost you content for
+  the `payload_version` stamp: the result is always parsed and compared
+  against the original before anything is written, so whenever the editor
+  cannot do the job that stamp *refuses and changes nothing* and tells you to
+  set the version by hand, naming the offending line whenever it knows which
+  one it is. The `layout` back-fill is narrower — it only ever inserts the
+  line, never rewrites an existing one — and confirms the insert by re-reading
+  the file afterward rather than refusing beforehand.
 * *`install`* writes `pickle.toml` only when it does not yet exist; on an
   existing file it reports `= pickle.toml (exists)` and leaves it alone.
 
@@ -37,6 +42,11 @@ Hand-edits are always preserved on load.
 
 * `payload_version` — the payload pinned into this project (stamped by
   install/upgrade).
+* `layout` — `"umbrella"` or `"in-tree"` (<<install-layout>>), recorded by
+  `install` and back-filled by `upgrade` when absent. A config with neither
+  the key nor a child at `.` is `"umbrella"`; a config with no key but a
+  child at `.` is `"in-tree"` — the pre-`layout` compatibility inference,
+  never a substitute for the recorded value once it exists.
 * `review_addendum` (optional) — a project-wide review addendum layered on the
   skill's review protocol.
 * `[commit]` table — `overarching_auto`, `child_publish_gated`. Both default

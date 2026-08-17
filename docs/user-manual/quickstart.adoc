@@ -28,13 +28,17 @@ Other options (from source, the two-installs distinction): see
 [source,sh]
 ----
 cd your-repo
-pickle install
+pickle install --in-tree
 ----
 
 This lays down the {flow} skill (`{skill-dir}/`), the
 `tickets/` directory with its generated `BOARD.md`, an agent-instruction marker
-block in `AGENTS.md`, and `pickle.toml` registering your project as the first
-child-project. It is idempotent — safe to re-run. Details: <<cmd-install>>.
+block in `AGENTS.md`, and `pickle.toml` recording `layout = "in-tree"`
+(<<install-layout>>) and registering your project as the sole child-project.
+It is idempotent — safe to re-run. `--in-tree` fits this quickstart because
+it is one repository; a project spanning several repositories runs plain
+`pickle install` instead and registers each one with `pickle project add`.
+Details: <<cmd-install>>.
 
 == 4. File your first ticket
 

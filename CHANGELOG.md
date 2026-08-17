@@ -10,6 +10,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Added
 
+- **`pickle install --in-tree` explicitly selects the layout where the board lives inside its
+  sole child's own repository**, recording the choice as `layout` (`"umbrella"` or `"in-tree"`)
+  in `pickle.toml` instead of inferring it. `pickle doctor` errors when the recorded layout
+  contradicts the registered children, and `pickle upgrade` back-fills `layout` for existing
+  projects by the same inference `install` used to apply, so no migration command is needed.
+  `pickle serve` states the resolved layout on its startup line and shows a persistent banner
+  when an in-tree board is read from a branch that looks like a feature branch (or a detached
+  `HEAD`) — the one situation in which the dashboard can show a ticket status that is silently
+  out of date, since bookkeeping only ever lands on the base branch (T-108).
 - **`pickle board decisions` queries every ticket's confirmed design decisions, already in
   citable `<ID> decision <N>` form** — filterable by registered child-project (`--project`),
   status directory (`--status`) and a topic regex over each decision's full text, statement and
@@ -24,6 +33,10 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Changed
 
+- **Breaking: `pickle install`'s `--path` no longer defaults to `"."`.** Omitting both
+  `--in-tree` and `--path` now installs the umbrella layout with *no* child registered;
+  `pickle project add` registers the first one afterward. The previous single-repo default is
+  reached explicitly with `--in-tree` (T-108).
 - **The shipped skill now states the confirmed-decision shape and its citation form**, previously
   learned only by imitation: a confirmed design decision is a numbered item whose leading bold
   run is the decision statement, numbered in one unbroken list that is never renumbered, and cited

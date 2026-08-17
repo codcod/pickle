@@ -14,14 +14,18 @@ With the binary installed (<<installation>>), run once in your project root:
 [source,sh]
 ----
 cd your-repo
-pickle install --agent claude          # or: --agent claude,opencode,pi
+pickle install --in-tree --agent claude          # or: --agent claude,opencode,pi
 ----
 
 This scaffolds `tickets/` (seven status directories plus the generated
 `BOARD.md` and hand-written `NOTES.md`), installs the {flow} skill into
-`{skill-dir}/`, injects a marker block into `AGENTS.md`, wires
-up each named agent, and writes `pickle.toml` registering the *first
-child-project* — by default the project itself, at `.`. Full flag reference:
+`{skill-dir}/`, injects a marker block into `AGENTS.md`, wires up each named
+agent, and writes `pickle.toml` recording `layout = "in-tree"` and
+registering the *sole child-project* — the project itself, at `.` —
+accordingly (<<install-layout>>). `--in-tree` is the walkthrough's choice
+because it is one repository start to finish; a project spanning several
+repositories installs the umbrella layout instead (plain `pickle install`,
+no child yet) and registers each one in step 2. Full flag reference:
 <<cmd-install>>.
 
 Verify:
@@ -31,10 +35,12 @@ Verify:
 pickle doctor
 ----
 
-== 2. Register child-projects (optional)
+== 2. Register further child-projects (optional)
 
-If your overarching project holds several cooperating build targets — say a
-frontend and a backend, each its own git repo — register them:
+Step 1 already registered the sole child this walkthrough uses. If your
+overarching project also holds other cooperating build targets — say a
+frontend and a backend, each its own git repo — register them the same way
+`pickle project add` would for an umbrella install:
 
 [source,sh]
 ----
