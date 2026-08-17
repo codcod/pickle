@@ -173,8 +173,9 @@ Two worked examples. A byte-widened `unicode.IsSpace` scan that emits invalid UT
 satisfied by both of its own branches is `spec-unclear`, not `docs-gap` — the documentation
 exists, it just cannot be executed against.
 
-- **Blocking** — breaks the golden path, ships wrong behaviour, contradicts a locked decision,
-  or is missing required docs coverage (4a.1). **Do not fix it inline**, and leave the
+- **Blocking** — breaks the golden path, ships wrong behaviour, contradicts a locked decision
+  (cite it as `<TICKET-ID> decision <N>` — rules §7), or is missing required docs coverage
+  (4a.1). **Do not fix it inline**, and leave the
   disposition cell `—`: a blocking finding is not dispositioned, it is fixed. It still carries a
   `class` — the kind-of-defect axis is most valuable precisely on the blocking rows. The ticket
   moves to `tickets/5-rework/` (step 6a) for a scoped fix, then back to `tickets/4-in-review/`
