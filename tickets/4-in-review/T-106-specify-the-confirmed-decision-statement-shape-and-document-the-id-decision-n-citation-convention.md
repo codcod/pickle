@@ -330,3 +330,4 @@ step 0).
   are filled in only at refinement. The step 4 acceptance test was corrected to check
   `TEMPLATE.md` directly (already covered by the existing grep) and keep `ticket new` +
   `board audit` only as a scaffolding/audit sanity check, not as a carrier check
+- 2026-08-17 — IN DEVELOPMENT → IN REVIEW: acceptance green
