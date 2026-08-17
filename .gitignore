@@ -13,3 +13,7 @@
 .claude/settings.json
 .claude/settings.local.json
 
+# graphify - regenerated locally via `graphify` / the post-commit & post-checkout
+# hooks (graphify hook install); not tracked, everyone rebuilds their own.
+graphify-out/
+
