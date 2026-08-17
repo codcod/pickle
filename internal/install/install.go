@@ -140,14 +140,24 @@ func ParseAgents(s string) (Agents, error) {
 
 // Options configures a single install run.
 type Options struct {
-	ProjectName string // first child-project name (required; caller defaults it)
-	ProjectPath string // first child path, relative to root (defaults to ".")
+	// ProjectName and ProjectPath register the first child-project. Leaving
+	// ProjectPath empty (T-108) registers no child at all — the umbrella
+	// layout's default, fresh-install state, with children added afterwards
+	// via `pickle project add`. ProjectName is required only when ProjectPath
+	// is non-empty.
+	ProjectName string
+	ProjectPath string
 	Build       string // optional child commands
 	Test        string
 	Lint        string
 	Docs        string
-	Agents      Agents // which agents to wire up (no autodetection)
-	ClaudeLink  bool   // make CLAUDE.md a symlink to AGENTS.md instead of a marker block
+	// InTree records the layout explicitly chosen by the caller (T-108
+	// decision 1: install never infers it). true writes layout = "in-tree";
+	// false writes layout = "umbrella" — always written explicitly, never left
+	// for ResolvedLayout's inference to fill in later.
+	InTree     bool
+	Agents     Agents // which agents to wire up (no autodetection)
+	ClaudeLink bool   // make CLAUDE.md a symlink to AGENTS.md instead of a marker block
 }
 
 // Result records what the run created, left in place, or removed, for the CLI
@@ -172,11 +182,13 @@ func (r *Result) note(n string)    { r.Notes = append(r.Notes, n) }
 // the binary's "skill" tree) and payloadVersion (stamped into pickle.toml).
 func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, error) {
 	var res Result
-	if opts.ProjectName == "" {
+	// A project name is only required when a child is actually being
+	// registered (T-108 decision 2): ProjectPath == "" is the umbrella
+	// layout's fresh-install state, with no child yet. ProjectPath is no
+	// longer defaulted to "." here — the CLI resolves that default itself,
+	// from an explicit --in-tree, so Run never has to guess it either.
+	if opts.ProjectPath != "" && opts.ProjectName == "" {
 		return res, fmt.Errorf("project name is required")
-	}
-	if opts.ProjectPath == "" {
-		opts.ProjectPath = "."
 	}
 
 	if err := copyPayload(payload, root, &res); err != nil {
@@ -466,8 +478,28 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		}
 	}
 
+	// Back-fill layout when absent (T-108 decision 6), independent of whether
+	// the payload_version itself needs a bump below — a project already at the
+	// current version must still gain the key the first time it upgrades on a
+	// binary that knows about it. The recorded value always wins (decision 5),
+	// so this never touches a config that already has the key, of any value.
+	layoutBackfilled := ""
+	if cfg.Layout == "" {
+		resolved := cfg.ResolvedLayout()
+		if err := config.SetLayoutInPlace(cfg.Path(), resolved); err != nil {
+			return res, err
+		}
+		if err := verifyLayoutBackfilled(cfg.Path(), resolved); err != nil {
+			return res, err
+		}
+		layoutBackfilled = resolved
+		res.created(config.FileName + " (layout -> " + resolved + ")")
+	}
+
 	if cfg.PayloadVersion == payloadVersion {
-		res.skipped(config.FileName + " (already at " + payloadVersion + ")")
+		if layoutBackfilled == "" {
+			res.skipped(config.FileName + " (already at " + payloadVersion + ")")
+		}
 		return res, nil
 	}
 	// Edit the one line rather than re-rendering: pickle.toml is the user's
@@ -494,6 +526,20 @@ func verifyStampedVersion(path, want string) error {
 	if after.PayloadVersion != want {
 		return fmt.Errorf("%s still reads payload_version = %q after stamping %q; set it by hand",
 			config.FileName, after.PayloadVersion, want)
+	}
+	return nil
+}
+
+// verifyLayoutBackfilled re-reads the config and confirms it now carries
+// want, mirroring verifyStampedVersion (T-108).
+func verifyLayoutBackfilled(path, want string) error {
+	after, err := config.Load(path)
+	if err != nil {
+		return fmt.Errorf("re-read %s after back-filling layout %s: %w", config.FileName, want, err)
+	}
+	if after.Layout != want {
+		return fmt.Errorf("%s still has no layout = %q after back-filling it; set it by hand",
+			config.FileName, want)
 	}
 	return nil
 }
@@ -777,22 +823,32 @@ func writeConfig(root, payloadVersion string, opts Options, res *Result) (*confi
 		res.skipped(config.FileName + " (exists)")
 		return config.Load(dst)
 	}
+	layout := config.LayoutUmbrella
+	if opts.InTree {
+		layout = config.LayoutInTree
+	}
 	cfg := &config.Config{
 		PayloadVersion: payloadVersion,
+		Layout:         layout,
 		Commit: config.CommitPolicy{
 			OverarchingAuto:   true,
 			ChildPublishGated: true,
 		},
 	}
-	if err := cfg.AddProject(config.Project{
-		Name:  opts.ProjectName,
-		Path:  opts.ProjectPath,
-		Build: opts.Build,
-		Test:  opts.Test,
-		Lint:  opts.Lint,
-		Docs:  opts.Docs,
-	}); err != nil {
-		return nil, err
+	// ProjectPath == "" (T-108 decision 2): the umbrella layout's fresh-install
+	// state registers no child at all; `pickle project add` registers the
+	// first one afterwards.
+	if opts.ProjectPath != "" {
+		if err := cfg.AddProject(config.Project{
+			Name:  opts.ProjectName,
+			Path:  opts.ProjectPath,
+			Build: opts.Build,
+			Test:  opts.Test,
+			Lint:  opts.Lint,
+			Docs:  opts.Docs,
+		}); err != nil {
+			return nil, err
+		}
 	}
 	if err := cfg.Save(dst); err != nil {
 		return nil, err
@@ -1007,6 +1063,19 @@ func MarkerBlock(cfg *config.Config) string {
 	if commands.Len() > 0 {
 		commandsBullet = "\n- **Commands** (each child's, from `pickle.toml`):" + commands.String()
 	}
+	// branchesBullet and wipLine mirror commandsBullet's empty-case guard
+	// (T-108 rework, finding F4): with no child registered yet — the umbrella
+	// layout's fresh-install state — branches.String()/wip.String() are empty,
+	// and appending them after a bare "Branch per child:"/"per child):" left a
+	// colon with nothing after it in every plain `pickle install`. Naming the
+	// same fix as the children fallback above keeps all three bullets legible
+	// in that state instead of only the one that already handled it.
+	branchesBullet := " Branch per child:" + branches.String()
+	wipLine := "- **WIP limits** (per child):" + wip.String()
+	if len(cfg.Projects) == 0 {
+		branchesBullet = " No children registered yet — see above."
+		wipLine = "- **WIP limits** (per child): (none yet — see above)"
+	}
 
 	childPolicy := "Child-projects are **publish-gated**: local WIP commits are encouraged;\n" +
 		"  **no push / no merge request without explicit user approval**; after approval, finalize\n" +
@@ -1046,8 +1115,8 @@ func MarkerBlock(cfg *config.Config) string {
 		"- **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of\n" +
 		"  the subject** (e.g. `feat(cli): add board audit (T-2)`) for child-project code. Ticket/board\n" +
 		"  bookkeeping uses its own `board: T-NNN <verb phrase>` form instead — grammar and scope in\n" +
-		"  the rules §0. Branch per child:" + branches.String() + "\n" +
-		"- **WIP limits** (per child):" + wip.String() + "\n" +
+		"  the rules §0." + branchesBullet + "\n" +
+		wipLine + "\n" +
 		"- **Commit policy.** " + childPolicy + "\n" +
 		"  " + overarching + " (`git add <paths>`, never `git add -A`/`.`).\n" +
 		"- **Where commits land.** Code goes on the child's feature branch; **ticket and board\n" +

@@ -61,8 +61,9 @@ instance data::
 == What to commit
 
 *Everything `pickle install` writes is meant to be tracked.* It produces no
-build artifacts, so a single-repo project (the default, `path = "."`) has
-nothing to add to `.gitignore` on pickle's account. A *second* child
+build artifacts, so a project using the in-tree layout (`--in-tree`,
+`path = "."` — see <<install-layout>>) has nothing to add to `.gitignore` on
+pickle's account. A *second* child
 registered at a nested path is different. It is another repository's working
 tree sitting inside this one, and until `.gitignore` ignores it, it is an
 ordinary stageable directory like any other. `pickle project add` and
@@ -128,20 +129,22 @@ case below.
 
 == The root child — one repo in both roles
 
-`pickle install` registers the first child itself: `--project` defaults to the
-root directory's name, `--path` defaults to `.`. Naming both is explicit about
-it:
+The in-tree layout (<<install-layout>>) is the shape where the overarching
+project and its sole child are the same repository. `--in-tree` registers
+that child itself, at `.`, naming a project only when you want one other than
+the root directory's own name:
 
 [source,sh]
 ----
-pickle install --project backend --path .
+pickle install --in-tree --project backend
 ----
 
-For a single-repo project this is the normal shape, and it is the *degenerate
-case of the multi-project model*, not a separate mode — nothing in the tool
-branches on `path = "."`. The child path simply resolves to the root, so the
-overarching project and its sole child are the same directory and the same git
-repository.
+This is the *degenerate case of the multi-project model*, not a separate
+mode: once `layout` is recorded, `pickle doctor` (<<cmd-doctor>>) checks that
+it agrees with the registered children, but nothing else about ticket/board
+mechanics differs by path — the child path simply resolves to the root, so
+the overarching project and its sole child are the same directory and the
+same git repository.
 
 What that changes in practice:
 

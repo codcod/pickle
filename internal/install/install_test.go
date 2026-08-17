@@ -605,19 +605,37 @@ path = "."
 	if !strings.Contains(string(got), `payload_version = "v2"`) {
 		t.Errorf("payload_version not stamped:\n%s", got)
 	}
-	// Exactly one line may differ from what the user wrote.
+	// T-108: layout is also back-filled on this same upgrade, since the
+	// hand-written config predates the key. That is an *inserted* line, not a
+	// rewrite of an existing one — the sole child is at ".", so it infers
+	// "in-tree".
+	if !strings.Contains(string(got), `layout = "in-tree"`) {
+		t.Errorf("layout not back-filled:\n%s", got)
+	}
+	// Exactly one line may be rewritten in place (payload_version), and exactly
+	// one line may be newly inserted (layout) — every other original line
+	// must survive byte-for-byte, in order.
 	before, after := strings.Split(handWritten, "\n"), strings.Split(string(got), "\n")
-	if len(before) != len(after) {
-		t.Fatalf("line count changed: %d -> %d", len(before), len(after))
+	if len(after) != len(before)+1 {
+		t.Fatalf("line count changed: %d -> %d, want %d (one inserted layout line)", len(before), len(after), len(before)+1)
+	}
+	afterWithoutLayout := make([]string, 0, len(after))
+	for _, l := range after {
+		if l != `layout = "in-tree"` {
+			afterWithoutLayout = append(afterWithoutLayout, l)
+		}
+	}
+	if len(afterWithoutLayout) != len(before) {
+		t.Fatalf("expected exactly one inserted layout line, got %d extra line(s)", len(afterWithoutLayout)-len(before))
 	}
 	diffs := 0
 	for i := range before {
-		if before[i] != after[i] {
+		if before[i] != afterWithoutLayout[i] {
 			diffs++
 		}
 	}
 	if diffs != 1 {
-		t.Errorf("upgrade changed %d lines, want 1", diffs)
+		t.Errorf("upgrade changed %d lines (excluding the inserted layout line), want 1", diffs)
 	}
 }
 
@@ -700,6 +718,30 @@ func TestMarkerBlockRendersChildrenFromConfig(t *testing.T) {
 	// beta defines no test/lint, so they must not be invented.
 	if strings.Contains(block, "- `beta`: build `make` · test") {
 		t.Error("marker block rendered a command the child does not define")
+	}
+}
+
+// TestMarkerBlockNoChildrenHasNoDanglingBullets pins a rework fix (T-108
+// review finding F4): the umbrella layout's fresh-install state registers no
+// child, and "Branch per child:"/"WIP limits (per child):" must not render
+// with nothing after the colon — the same empty-case guard the children
+// summary bullet already applies.
+func TestMarkerBlockNoChildrenHasNoDanglingBullets(t *testing.T) {
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
+	}
+	block := MarkerBlock(cfg)
+
+	for _, dangling := range []string{
+		"Branch per child:\n",
+		"(per child):\n",
+	} {
+		if strings.Contains(block, dangling) {
+			t.Errorf("marker block has a dangling bullet %q\n--- block ---\n%s", dangling, block)
+		}
+	}
+	if !strings.Contains(block, "(none yet — register with `pickle project add`)") {
+		t.Errorf("marker block missing the no-children build-target clause\n--- block ---\n%s", block)
 	}
 }
 

@@ -21,9 +21,12 @@ of the skill's rules.
 * children are registered explicitly with `pickle project add <name> <path>`
   (recorded in `pickle.toml`).
 
-A single-child project is just the degenerate case — `pickle install` registers
-the project itself (at `.`) as the first child; what that means on disk and for
-git is in <<project-structure>>.
+A single-child project is just the degenerate case — `pickle install --in-tree`
+registers the project itself (at `.`) as the sole child (<<install-layout>>);
+what that means on disk and for git is in <<project-structure>>. A plain
+`pickle install`, with neither `--in-tree` nor `--path`, registers no child at
+all; `pickle project add <name> <path>` registers the first one (and every one
+after it).
 
 == What a child carries
 

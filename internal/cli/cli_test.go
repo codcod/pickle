@@ -152,7 +152,9 @@ func newProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	if _, err := install.Run(os.DirFS(repoRoot), root, "test", install.Options{
-		ProjectName: "demo", ProjectPath: ".", Agents: install.Agents{},
+		// InTree: true — T-108: a root-path child must declare the in-tree layout,
+		// or doctor's layout invariant (checkLayoutInvariant) refuses it.
+		ProjectName: "demo", ProjectPath: ".", InTree: true, Agents: install.Agents{},
 	}); err != nil {
 		t.Fatalf("install: %v", err)
 	}
@@ -1153,7 +1155,7 @@ func TestInstallHooksFlag(t *testing.T) {
 		t.Chdir(root)
 		gitInit(t, root, "main")
 		out := captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); code != exitOK {
 				t.Fatalf("install --hooks = %d, want %d", code, exitOK)
 			}
 		})
@@ -1171,7 +1173,7 @@ func TestInstallHooksFlag(t *testing.T) {
 		var stderr string
 		_ = captureStdout(t, func() {
 			stderr = captureStderr(t, func() {
-				if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+				if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); code != exitOK {
 					t.Fatalf("install --hooks (no git) = %d, want %d (a hook failure is a warning, not a failed install)", code, exitOK)
 				}
 			})
@@ -1188,13 +1190,13 @@ func TestInstallHooksFlag(t *testing.T) {
 		root := t.TempDir()
 		t.Chdir(root)
 		gitInit(t, root, "main")
-		if code := Run(payload, "test", []string{"install", "--project", "demo", "--hooks"}); code != exitOK {
+		if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); code != exitOK {
 			t.Fatalf("first install --hooks = %d", code)
 		}
 		// A second install re-applies the whole scaffold; hook.Install must see
 		// its own shim already current and report "skipped" rather than an error.
 		out := captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--project", "demo2", "--hooks"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo2", "--hooks"}); code != exitOK {
 				t.Fatalf("second install --hooks = %d, want %d", code, exitOK)
 			}
 		})
@@ -1261,13 +1263,25 @@ func TestProjectAddSilentOnRootSpelledDotSlash(t *testing.T) {
 		t.Errorf("the repository root must not be called a nested git repository, got:\n%s", out)
 	}
 
+	// T-108: registering a second child at "./" — also the repository root —
+	// now trips the layout invariant (exactly one child may sit at "."), a
+	// real and separate finding from the nested-git-repository warning T-051
+	// guards against. doctor is expected to error for that reason; the point
+	// pinned here is narrower and unaffected: it must never *also* describe
+	// the "./"-spelled root as a nested git repository.
 	doctorOut := captureStdout(t, func() {
-		if got := Run(nil, "test", []string{"doctor"}); got != exitOK {
-			t.Fatalf("doctor = %d, want %d", got, exitOK)
+		if got := Run(nil, "test", []string{"doctor"}); got != exitError {
+			t.Fatalf("doctor = %d, want %d (two children now share the repo root)", got, exitError)
 		}
 	})
 	if strings.Contains(doctorOut, "WARNING:") {
 		t.Errorf("doctor must not warn about the repo root registered as %q, got:\n%s", "./", doctorOut)
+	}
+	if !strings.Contains(doctorOut, "layout") {
+		t.Errorf("expected the layout invariant to fire for two children sharing the repo root, got:\n%s", doctorOut)
+	}
+	if strings.Contains(doctorOut, "nested git repository") {
+		t.Errorf("doctor must not describe the \"./\"-spelled root as a nested git repository, got:\n%s", doctorOut)
 	}
 }
 

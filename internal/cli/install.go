@@ -18,7 +18,8 @@ import (
 func runInstall(args []string) int {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	project := fs.String("project", "", "first child-project name (default: the root dir name)")
-	path := fs.String("path", ".", "first child-project path, relative to the install root")
+	path := fs.String("path", "", "first child-project path, relative to the install root (registers no child if omitted)")
+	inTree := fs.Bool("in-tree", false, "select the in-tree layout: the board lives inside its sole child, registered at \".\"")
 	build := fs.String("build", "", "child build command (optional)")
 	test := fs.String("test", "", "child test command (optional)")
 	lint := fs.String("lint", "", "child lint command (optional)")
@@ -28,6 +29,28 @@ func runInstall(args []string) int {
 	agentSpec := fs.String("agent", "", `comma-separated agents to wire up: claude, opencode, pi (default "claude")`)
 	hooks := fs.Bool("hooks", false, "also install the bookkeeping guard hooks (same as `pickle hooks install`)")
 	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+
+	// The layout is never inferred (T-108 decision 1): --in-tree is the only
+	// way to select the in-tree layout, and it implies the sole child at ".".
+	// A bare --path "." without --in-tree is refused rather than silently
+	// treated as in-tree, so the choice is always the one the caller stated.
+	childFlagsGiven := *project != "" || *build != "" || *test != "" || *lint != "" || *docs != ""
+	switch {
+	case *inTree && *path != "" && *path != ".":
+		fmt.Fprintf(os.Stderr, "pickle install: --in-tree registers the child at \".\"; --path %q conflicts with it\n", *path)
+		return exitUsage
+	case *inTree:
+		*path = "."
+	case *path == ".":
+		fmt.Fprintln(os.Stderr, "pickle install: --path \".\" selects the in-tree layout; pass --in-tree explicitly")
+		return exitUsage
+	case *path == "" && childFlagsGiven:
+		// Silently discarding an explicit --project/--build/--test/--lint/--docs
+		// is exactly the kind of guess this ticket exists to remove (T-108
+		// decision 1's spirit, extended): say so instead.
+		fmt.Fprintln(os.Stderr, "pickle install: --project/--build/--test/--lint/--docs need --path (or --in-tree) to name a child; omit them to install the umbrella layout with no child yet")
 		return exitUsage
 	}
 
@@ -49,9 +72,15 @@ func runInstall(args []string) int {
 	if err != nil {
 		return errf("%v", err)
 	}
-	name := *project
-	if name == "" {
-		name = filepath.Base(root)
+	// A name is only meaningful when a child is actually being registered
+	// (T-108 decision 2): *path == "" is the umbrella layout's fresh-install
+	// state, with no child yet.
+	var name string
+	if *path != "" {
+		name = *project
+		if name == "" {
+			name = filepath.Base(root)
+		}
 	}
 
 	res, err := install.Run(Payload, root, Version, install.Options{
@@ -61,6 +90,7 @@ func runInstall(args []string) int {
 		Test:        *test,
 		Lint:        *lint,
 		Docs:        *docs,
+		InTree:      *inTree,
 		Agents:      agents,
 		ClaudeLink:  *claudeSymlink,
 	})
@@ -142,8 +172,12 @@ func runInstall(args []string) int {
 		}
 	}
 
-	fmt.Printf("\npickle installed in %s (child %q). Next: pickle ticket new \"<title>\" --project %s\n",
-		root, name, name)
+	if *path != "" {
+		fmt.Printf("\npickle installed in %s (child %q). Next: pickle ticket new \"<title>\" --project %s\n",
+			root, name, name)
+	} else {
+		fmt.Printf("\npickle installed in %s (umbrella layout, no child registered yet). Next: pickle project add\n", root)
+	}
 	return exitOK
 }
 

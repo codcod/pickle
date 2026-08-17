@@ -21,6 +21,7 @@ func piFixture(t *testing.T) string {
 	_, err := install.Run(os.DirFS(payloadRoot()), root, "test-ver", install.Options{
 		ProjectName: "demo",
 		ProjectPath: ".",
+		InTree:      true, // T-108: a root-path child must declare the in-tree layout
 		Agents:      install.Agents{Claude: true, Opencode: true, Pi: true},
 	})
 	if err != nil {

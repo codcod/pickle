@@ -342,8 +342,10 @@ func checkHooks(root string, r *Result) {
 // a .gitignore entry (or a deliberate gitlink) exists, the window between a
 // child appearing and someone remembering to ignore it is a staging accident
 // waiting to happen. The single-repo default (the child *is* the repo) and an
-// already-tracked gitlink are both silent — see vcs.ChildState.
+// already-tracked gitlink are both silent — see vcs.ChildState. It opens by
+// calling checkLayoutInvariant, below.
 func checkChildren(root string, cfg *config.Config, r *Result) {
+	checkLayoutInvariant(cfg, r)
 	for _, p := range cfg.Projects {
 		abs := filepath.Join(root, p.Path)
 		if _, err := os.Stat(filepath.Join(abs, ".git")); err != nil {
@@ -372,6 +374,30 @@ func checkChildren(root string, cfg *config.Config, r *Result) {
 			// no git on PATH, root not a repository, or an unexpected exit
 			// code — silent by design (vcs.State's zero value).
 		}
+	}
+}
+
+// checkLayoutInvariant enforces T-108 decision 7: the resolved layout and
+// the registered children must agree. "in-tree" means exactly one child at
+// "." (a root-path child, the same repository as the overarching project);
+// any other count — zero, or more than one, or a "." child while the layout
+// is "umbrella" — is a broken invariant, not a warning, because a doctor-clean
+// project must never carry a recorded claim the config itself contradicts.
+func checkLayoutInvariant(cfg *config.Config, r *Result) {
+	resolved := cfg.ResolvedLayout()
+	rootChildren := 0
+	for _, p := range cfg.Projects {
+		if vcs.IsRepoRoot(p.Path) {
+			rootChildren++
+		}
+	}
+	switch {
+	case resolved == config.LayoutInTree && rootChildren != 1:
+		r.errf("layout: %q requires exactly one child registered at \".\", found %d", resolved, rootChildren)
+	case resolved == config.LayoutUmbrella && rootChildren > 0:
+		r.errf("layout: %q must have no child registered at \".\", found %d", resolved, rootChildren)
+	default:
+		r.ok(fmt.Sprintf("layout %q is consistent with %d root-path child(ren)", resolved, rootChildren))
 	}
 }
 

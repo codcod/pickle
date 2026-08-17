@@ -80,7 +80,7 @@ the same tree. Wait for it to finish, then try again.
 == `pickle install`
 
 ----
-pickle install [--project <name>] [--path <path>] [--build/--test/--lint/--docs <cmd>]
+pickle install [--in-tree] [--project <name>] [--path <path>] [--build/--test/--lint/--docs <cmd>]
                [--agent claude,opencode,pi] [--claude-symlink] [--hooks]
 ----
 
@@ -95,13 +95,56 @@ Run once in a project to lay down the flow. It:
   notes, and writes a short `tickets/README.md` pointer;
 * injects an idempotent `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker
   block into `AGENTS.md`;
-* writes `pickle.toml` registering the first child-project (`--project`,
-  default: the root dir name; `--path`, default `.`);
+* writes `pickle.toml`, recording the *layout* and registering a first
+  child-project accordingly (see <<install-layout>> below);
 * wires up each agent named in `--agent` (see below);
 * with `--hooks`, also installs the bookkeeping guard hooks (`pre-commit` and
   `pre-push`), exactly as <<cmd-hooks>> does. They are opt-in because they
   write outside the install root (into `.git/`), and a failure there is
   reported as a warning: the install itself is already complete and correct.
+
+[#install-layout]
+=== Layout: umbrella (default) or in-tree
+
+Every project resolves to one of two layouts, recorded as `layout` in
+`pickle.toml` — never guessed, because only the human running `install` knows
+which one is intended:
+
+[cols="1,3"]
+|===
+| Layout | What it means
+
+| `umbrella` (default)
+| The overarching project and its children are separate git repositories.
+  Plain `pickle install`, with neither `--in-tree` nor `--path`, writes
+  `layout = "umbrella"` and registers *no child yet* — add the first one
+  afterwards with `pickle project add` (<<cmd-project>>). Passing `--path
+  <dir>` (a directory other than `.`) registers that first child immediately,
+  still under the umbrella layout.
+
+| `in-tree` (`--in-tree`)
+| The sole child and the overarching project are the *same* repository: pass
+  `--in-tree` to register it at `.` and record `layout = "in-tree"`. A bare
+  `--path .` without `--in-tree` is refused — spell out the flag, since it is
+  the one place this choice is made explicit rather than inferred.
+|===
+
+*Why the choice matters.* Ticket status is a directory name inside
+`tickets/`, and different git branches can disagree about where a file lives.
+Under the umbrella layout that cannot happen: the board is outside every
+child's repository, so a child's feature branches cannot fork it.
+
+Under the in-tree layout, they can. A feature branch cut before the latest
+bookkeeping commit on the base branch carries a stale copy of `tickets/`, and
+every command that reads it (including <<cmd-serve>>) reports that stale copy
+without otherwise saying so. In-tree is still a reasonable choice — it makes
+tickets visible to anyone who clones the code — but it is a trade-off, not a
+free default. That is why `install` insists on hearing the choice from you
+instead of inferring it from the directory you happen to be standing in.
+
+`pickle doctor` (<<cmd-doctor>>) checks that the recorded layout and the
+registered children actually agree, and `pickle upgrade` (<<cmd-upgrade>>)
+back-fills the key on a project installed before this existed.
 
 === `--agent` — which coding agents to wire up
 
@@ -221,7 +264,13 @@ pickle upgrade
 Refreshes an existing install to the running binary's payload. It re-copies
 the embedded skill payload into `{skill-dir}/` (removing files
 that the new payload dropped), re-injects the `AGENTS.md` marker block, and
-stamps `payload_version` in `pickle.toml`. Takes no flags and no arguments.
+stamps `payload_version` in `pickle.toml`. It also back-fills `layout`
+(<<install-layout>>) when the key is entirely absent — inferred the same way
+`install` would have chosen it (a child registered at `.` infers `in-tree`,
+otherwise `umbrella`) — so a project installed before the key existed gains it
+on its next upgrade with no separate migration step. A `layout` that is
+already present, of any value, is never touched: the recorded choice always
+wins over the inference. Takes no flags and no arguments.
 
 *It never reads or writes anything under `tickets/`* — your board and tickets
 are instance data and are not upgrade's business. Only artifacts that already
@@ -242,9 +291,14 @@ errors* — a warning (e.g. the board's generated layout being stale, see
 <<cmd-board-audit>>) is printed but does not fail the upgrade.
 
 Upgrade will not cost you hand-written content in `pickle.toml`: stamping a
-new version rewrites *only* the `payload_version` line, leaves every other
-line alone, and refuses outright if it cannot do so safely (see
-<<configuration>>). Two things it _does_ replace wholesale, by design:
+new version rewrites *only* the `payload_version` line, and back-filling
+`layout` inserts *only* that one new line — both leave every other line
+alone. Stamping `payload_version` refuses outright, changing nothing, when it
+cannot verify the edit is that narrow (see <<configuration>>); back-filling
+`layout` inserts the line and then re-reads the file to confirm the key is
+now there, erroring out if it is not — a check *after* the write rather than
+a refusal *before* it, since `layout` is only ever inserted, never rewritten
+in place. Two things it _does_ replace wholesale, by design:
 
 * the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region of
   `AGENTS.md`/`CLAUDE.md`. It is regenerated from `pickle.toml` by `install`,
@@ -327,6 +381,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   question, not a per-hook one — and reported as a *warning* naming the
   incapable binary's path and version when it cannot
   (<<hooks-version-skew,version skew>>);
+* the recorded `layout` (<<install-layout>>) agrees with the registered
+  children: `in-tree` requires *exactly one* child at `.`, and `umbrella`
+  requires *none*. Either mismatch is an *error*, not a warning — a
+  doctor-clean project must never carry a recorded layout its own config
+  contradicts. The resolved layout is otherwise reported as a passed line
+  under `--verbose`;
 * each registered child's `path` is a git repository;
 * a child registered at a path other than the repository root is either ignored by this
   repository's git or already tracked (a deliberate submodule/gitlink) —
@@ -1207,6 +1267,18 @@ A banner on every page reports what `pickle board audit` would say right now —
 including a stale board — plus each child's WIP counts against its limits. It
 *reports*; it never repairs. Fix findings with `pickle board sync` or by editing
 the ticket.
+
+The startup line also names the resolved <<install-layout,layout>>. In the
+`in-tree` layout, a second banner appears when the checked-out branch looks
+like a feature branch (it matches a registered child's `branch_prefix`, or
+`HEAD` is detached) — the one situation in which this page can be showing a
+ticket status behind the base branch, since bookkeeping only ever lands
+there. The banner names the branch and lives outside the polled board
+fragment, so it never flickers on the five-second refresh. It never appears
+under the `umbrella` layout: no board in that layout can be forked by a code
+branch in the first place. `serve` never guesses which branch is the *base* —
+it checks the shape of a *feature* branch instead, which every registered
+child already names.
 
 [WARNING]
 ====

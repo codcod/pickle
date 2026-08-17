@@ -23,6 +23,7 @@ func installFixture(t *testing.T) string {
 	_, err := install.Run(os.DirFS(payloadRoot()), root, "test-ver", install.Options{
 		ProjectName: "demo",
 		ProjectPath: ".",
+		InTree:      true, // T-108: a root-path child must declare the in-tree layout
 		Agents:      install.Agents{Claude: true},
 	})
 	if err != nil {
@@ -568,5 +569,63 @@ func TestCheckMarkersUnparseableConfigSkipsDrift(t *testing.T) {
 	}
 	if !hasErrContaining(res.Passed, "AGENTS.md marker block present") {
 		t.Errorf("presence check must still hold with no config: %v", res.Passed)
+	}
+}
+
+// TestCheckLayoutInvariantHealthyInTreeIsPassed (T-108 decision 7): the
+// default installFixture (one child at ".", layout "in-tree") earns an
+// informational passed line, visible under -v, alongside its existing zero
+// errors/warnings (already covered by TestCheckHealthyInstall).
+func TestCheckLayoutInvariantHealthyInTreeIsPassed(t *testing.T) {
+	root := installFixture(t)
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasPassedContaining(res.Passed, `layout "in-tree" is consistent with 1 root-path child`) {
+		t.Errorf("expected the layout consistency line, got passed=%v", res.Passed)
+	}
+}
+
+// TestCheckLayoutInvariantErrorsWhenInTreeHasNoRootChild (T-108 decision 7):
+// an in-tree layout with its sole child moved to a nested path is a broken
+// invariant \u2014 an error, not a warning \u2014 since a doctor-clean project must
+// never carry a recorded claim the config contradicts.
+func TestCheckLayoutInvariantErrorsWhenInTreeHasNoRootChild(t *testing.T) {
+	root := installFixture(t)
+	cfgPath := filepath.Join(root, config.FileName)
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	cfg.Projects[0].Path = "nested"
+	if err := os.Mkdir(filepath.Join(root, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Save(""); err != nil {
+		t.Fatalf("cfg.Save: %v", err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Errors, `layout: "in-tree" requires exactly one child registered at "."`) {
+		t.Errorf("expected the layout invariant error, got errors=%v", res.Errors)
+	}
+}
+
+// TestCheckLayoutInvariantErrorsWhenUmbrellaHasRootChild (T-108 decision 7):
+// the umbrella layout with a child registered at "." is the same
+// contradiction from the other side.
+func TestCheckLayoutInvariantErrorsWhenUmbrellaHasRootChild(t *testing.T) {
+	root := installFixture(t)
+	cfgPath := filepath.Join(root, config.FileName)
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	cfg.Layout = config.LayoutUmbrella
+	if err := cfg.Save(""); err != nil {
+		t.Fatalf("cfg.Save: %v", err)
+	}
+
+	res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+	if !hasErrContaining(res.Errors, `layout: "umbrella" must have no child registered at "."`) {
+		t.Errorf("expected the layout invariant error, got errors=%v", res.Errors)
 	}
 }

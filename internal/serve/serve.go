@@ -26,12 +26,14 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/vcs"
 )
 
 //go:embed templates static
@@ -163,15 +165,66 @@ func (h *handler) render(w http.ResponseWriter, name string, data page) {
 	}
 }
 
-// newPage assembles the shared parts of every page: the header label and the
-// health banner.
+// newPage assembles the shared parts of every page: the header label, the
+// health banner, and the T-108 stale-board warning.
 func (h *handler) newPage(title string, tickets []*ticket.Ticket) page {
 	def := flow.ForName(h.opts.Cfg.FlowName())
 	return page{
-		Title:   title,
-		Project: projectName(h.opts.Root),
-		Health:  buildHealth(def, h.opts.Root, tickets, h.opts.Cfg),
+		Title:      title,
+		Project:    projectName(h.opts.Root),
+		Health:     buildHealth(def, h.opts.Root, tickets, h.opts.Cfg),
+		StaleBoard: staleBoardBranch(h.opts.Root, h.opts.Cfg),
 	}
+}
+
+// staleBoardBranch names the checked-out branch when it may be showing a
+// stale copy of an in-tree board (T-108 decision 8): the layout is "in-tree"
+// and the branch is either detached or matches a registered child's
+// configured branch_prefix. It deliberately never guesses a *base*-branch
+// name (contrast internal/hook/prepush.go's "main"/"master" list) — instead
+// it checks the shape of a *feature* branch, which every registered child
+// already names via its own configured prefix, so nothing here is guessed.
+//
+// A git failure (no repository, git absent, timeout) degrades to no warning:
+// this is advisory, and a broken git probe must not turn a healthy dashboard
+// into one that looks wrong. The umbrella layout never even reaches the git
+// call, since no board in that layout can be forked by a code branch to begin
+// with (T-108's whole premise).
+//
+// `git symbolic-ref --short HEAD` is used rather than `rev-parse
+// --abbrev-ref HEAD`: the latter needs HEAD to resolve to a commit, and a
+// repository right after `pickle install --in-tree` — before its first
+// commit — has none yet (an "unborn" branch). symbolic-ref reads the ref
+// HEAD points at without resolving it, so it still names the branch in that
+// state; it fails only when HEAD is genuinely detached, which is exactly the
+// other case this function reports.
+func staleBoardBranch(root string, cfg *config.Config) string {
+	if cfg.ResolvedLayout() != config.LayoutInTree {
+		return ""
+	}
+	branch, err := vcs.Output(root, "symbolic-ref", "--short", "-q", "HEAD")
+	if err != nil {
+		// symbolic-ref fails both for "not a repository at all" and for a
+		// genuinely detached HEAD; a second, cheap probe tells them apart
+		// without needing a resolvable commit either.
+		if _, repoErr := vcs.Output(root, "rev-parse", "--git-dir"); repoErr != nil {
+			return "" // not a git repository (or git unavailable) — silent
+		}
+		return "HEAD" // a real repository, but HEAD is detached
+	}
+	if branch == "" {
+		return ""
+	}
+	for _, p := range cfg.Projects {
+		prefix := p.BranchPrefix
+		if prefix == "" {
+			prefix = config.DefaultBranchPrefix
+		}
+		if strings.HasPrefix(branch, prefix) {
+			return branch
+		}
+	}
+	return ""
 }
 
 func (h *handler) board(w http.ResponseWriter, r *http.Request) {

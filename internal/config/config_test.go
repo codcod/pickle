@@ -86,8 +86,11 @@ wip_in_review = 0
 
 func TestLoadErrors(t *testing.T) {
 	cases := map[string]string{
-		"no project": `payload_version = "1"
-[commit]
+		"bad layout": `payload_version = "1"
+layout = "sibling"
+[[project]]
+name = "a"
+path = "."
 `,
 		"empty name": `payload_version = "1"
 [[project]]
@@ -469,6 +472,126 @@ func TestValidateRejectsUnknownFlow(t *testing.T) {
 	}
 }
 
+// TestValidateRejectsUnknownLayout (T-108): only "umbrella" and "in-tree" are
+// legal, mirroring TestValidateRejectsUnknownFlow.
+func TestValidateRejectsUnknownLayout(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c.Layout = "sibling"
+	err = c.Validate()
+	if err == nil {
+		t.Fatal("Validate() = nil, want an error rejecting an unknown layout")
+	}
+	if !strings.Contains(err.Error(), "sibling") || !strings.Contains(err.Error(), LayoutUmbrella) || !strings.Contains(err.Error(), LayoutInTree) {
+		t.Errorf("Validate() error = %v, want it to name the rejected value and both legal layouts", err)
+	}
+}
+
+// TestLoadZeroProjectsIsLegal (T-108 decision 2): a freshly installed
+// umbrella project has no registered child until `pickle project add` adds
+// one, so a config with zero [[project]] entries must still Load.
+func TestLoadZeroProjectsIsLegal(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, "payload_version = \"1\"\n")
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() with zero projects = %v, want nil (T-108 decision 2)", err)
+	}
+	if len(c.Projects) != 0 {
+		t.Fatalf("Projects = %v, want empty", c.Projects)
+	}
+	if got := c.ResolvedLayout(); got != LayoutUmbrella {
+		t.Errorf("ResolvedLayout() = %q, want %q for a childless config", got, LayoutUmbrella)
+	}
+}
+
+// TestResolvedLayoutInference (T-108 decision 5): an absent layout key is
+// inferred from whether a child is registered at ".", and an explicit value
+// always wins over the inference.
+func TestResolvedLayoutInference(t *testing.T) {
+	cases := []struct {
+		name     string
+		body     string
+		explicit string
+		want     string
+	}{
+		{
+			name: "no layout key, child at root infers in-tree",
+			body: oneProject,
+			want: LayoutInTree,
+		},
+		{
+			name: "no layout key, nested child infers umbrella",
+			body: `payload_version = "1"
+[[project]]
+name = "a"
+path = "sub"
+`,
+			want: LayoutUmbrella,
+		},
+		{
+			name:     "explicit umbrella wins over a root-path child",
+			body:     oneProject,
+			explicit: LayoutUmbrella,
+			want:     LayoutUmbrella,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tc.name == "no layout key, nested child infers umbrella" {
+				if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+					t.Fatalf("mkdir sub: %v", err)
+				}
+			}
+			path := writeCfg(t, dir, tc.body)
+			c, err := Load(path)
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if tc.explicit != "" {
+				c.Layout = tc.explicit
+			}
+			if got := c.ResolvedLayout(); got != tc.want {
+				t.Errorf("ResolvedLayout() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestLayoutRoundTrips (T-108): an explicit layout survives Save/Load, and
+// Render only emits the key when it is set — mirroring TestFlowRoundTrips.
+func TestLayoutRoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c.Layout = LayoutInTree
+	if err := c.Save(""); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	rendered, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if !strings.Contains(string(rendered), `layout = "in-tree"`) {
+		t.Errorf("rendered pickle.toml does not contain layout = \"in-tree\":\n%s", rendered)
+	}
+	c2, err := Load(path)
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if c2.Layout != LayoutInTree || c2.ResolvedLayout() != LayoutInTree {
+		t.Errorf("Layout = %q, ResolvedLayout() = %q after round-trip, want %q both", c2.Layout, c2.ResolvedLayout(), LayoutInTree)
+	}
+}
+
 // TestValidateRejectsInvalidUTF8AtTopLevel covers the same UTF-8 check for the
 // two top-level string fields Render also quotes, alongside the per-project
 // coverage in TestAddProjectRejectsInvalidUTF8.
@@ -496,6 +619,12 @@ func TestValidateRejectsInvalidUTF8AtTopLevel(t *testing.T) {
 	c.Flow = "u\xffb"
 	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "flow") {
 		t.Errorf("flow: Validate() = %v, want a flow UTF-8 error", err)
+	}
+
+	c = *base
+	c.Layout = "u\xffb"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "layout") {
+		t.Errorf("layout: Validate() = %v, want a layout UTF-8 error", err)
 	}
 }
 
@@ -659,6 +788,123 @@ payload_version = "decoy-in-table"
 	}
 	if c.PayloadVersion != "4.5.6" {
 		t.Errorf("payload_version = %q, want 4.5.6", c.PayloadVersion)
+	}
+}
+
+// TestSetLayoutInPlaceInsertsWhenAbsent (T-108 decision 6): back-filling an
+// absent layout key uses the same surgical insert as payload_version —
+// everything else in the file survives, and a decoy layout inside a table is
+// never hijacked.
+func TestSetLayoutInPlaceInsertsWhenAbsent(t *testing.T) {
+	const noLayout = `# a comment worth keeping
+payload_version = "1.0.0"
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+[[project]]
+name = "pickle"
+path = "."
+layout = "decoy-in-table"
+`
+	dir := t.TempDir()
+	path := writeCfg(t, dir, noLayout)
+
+	if err := SetLayoutInPlace(path, LayoutInTree); err != nil {
+		t.Fatalf("SetLayoutInPlace: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(noLayout, "\n"), "\n") {
+		if !strings.Contains(string(got), line) {
+			t.Errorf("original line %q lost", line)
+		}
+	}
+	if !strings.Contains(string(got), `layout = "in-tree"`) {
+		t.Fatalf("layout not inserted:\n%s", got)
+	}
+	if !strings.Contains(string(got), `layout = "decoy-in-table"`) {
+		t.Errorf("the [[project]] layout was hijacked instead of inserting:\n%s", got)
+	}
+	if i, j := strings.Index(string(got), "layout"), strings.Index(string(got), "[commit]"); i > j {
+		t.Errorf("layout inserted below [commit] (%d > %d):\n%s", i, j, got)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load after insert: %v", err)
+	}
+	if c.Layout != LayoutInTree {
+		t.Errorf("Layout = %q, want %q", c.Layout, LayoutInTree)
+	}
+}
+
+// TestSetLayoutInPlaceNeverOverwritesAnExistingValue (T-108 decision 5): the
+// recorded value always wins over inference, so back-fill must be a strict
+// no-op — byte-for-byte — whenever the key is already present, regardless of
+// its value.
+func TestSetLayoutInPlaceNeverOverwritesAnExistingValue(t *testing.T) {
+	const hasLayout = `payload_version = "1.0.0"
+layout = "umbrella"
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+[[project]]
+name = "pickle"
+path = "."
+`
+	dir := t.TempDir()
+	path := writeCfg(t, dir, hasLayout)
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SetLayoutInPlace(path, LayoutInTree); err != nil {
+		t.Fatalf("SetLayoutInPlace: %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Errorf("file changed despite an existing layout key:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// TestSetLayoutInPlaceKeyPrefixIsNotAMatch mirrors
+// TestSetPayloadVersionInPlaceKeyPrefixIsNotAMatch: a key merely prefixed with
+// "layout" is not the key, so its presence must not suppress the back-fill.
+func TestSetLayoutInPlaceKeyPrefixIsNotAMatch(t *testing.T) {
+	const decoy = `layout_note = "not the key"
+payload_version = "1.0.0"
+
+[commit]
+overarching_auto = true
+child_publish_gated = true
+
+[[project]]
+name = "pickle"
+path = "."
+`
+	dir := t.TempDir()
+	path := writeCfg(t, dir, decoy)
+	if err := SetLayoutInPlace(path, LayoutInTree); err != nil {
+		t.Fatalf("SetLayoutInPlace: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), `layout_note = "not the key"`) {
+		t.Errorf("a key merely prefixed with layout was disturbed:\n%s", got)
+	}
+	if !strings.Contains(string(got), `layout = "in-tree"`) {
+		t.Errorf("layout not inserted:\n%s", got)
 	}
 }
 
