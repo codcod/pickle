@@ -19,7 +19,7 @@ func runInstall(args []string) int {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	project := fs.String("project", "", "first child-project name (default: the root dir name)")
 	path := fs.String("path", "", "first child-project path, relative to the install root (registers no child if omitted)")
-	inTree := fs.Bool("in-tree", false, "select the in-tree layout: the board lives inside its sole child, registered at \".\" (T-108)")
+	inTree := fs.Bool("in-tree", false, "select the in-tree layout: the board lives inside its sole child, registered at \".\"")
 	build := fs.String("build", "", "child build command (optional)")
 	test := fs.String("test", "", "child test command (optional)")
 	lint := fs.String("lint", "", "child lint command (optional)")

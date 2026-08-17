@@ -486,6 +486,13 @@ type page struct {
 	Board    BoardView
 	Ticket   TicketView
 	Activity ActivityView
+	// StaleBoard names the checked-out branch when this in-tree board (T-108)
+	// may be showing ticket status behind the base branch — "" when the
+	// layout is umbrella (no such board can exist) or the branch does not
+	// look like a feature branch. Set by newPage in serve.go, not a builder
+	// in this file: resolving it shells out to git, which the pure builders
+	// here deliberately never do.
+	StaleBoard string
 }
 
 // projectName is the label in the header: the overarching project root's directory

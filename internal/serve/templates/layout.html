@@ -21,6 +21,15 @@
   </nav>
 </header>
 {{template "health" .Health}}
+{{if .StaleBoard}}
+<section class="health health-warn stale-board">
+  <div class="health-line">
+    <strong>heads up:</strong> this board lives in the same repository as its code
+    (the in-tree layout), and you are on <code>{{.StaleBoard}}</code> —
+    ticket status here may be behind the base branch until it is merged.
+  </div>
+</section>
+{{end}}
 {{end}}
 
 {{define "foot"}}

@@ -99,12 +99,12 @@ func TestInstallBarePathDotIsRefused(t *testing.T) {
 	}
 }
 
-// TestInstallChildFlagsWithoutPathAreRefused pins the gap T-108 review found:
-// --project (or --build/--test/--lint/--docs) alone, with neither --path nor
-// --in-tree, used to silently install the umbrella layout while the final
-// message still claimed a child had been registered. Silently discarding an
-// explicit flag is exactly the guess this ticket removes elsewhere, so it is
-// refused instead.
+// TestInstallChildFlagsWithoutPathAreRefused pins a gap caught during
+// implementation: --project (or --build/--test/--lint/--docs) alone, with
+// neither --path nor --in-tree, used to silently install the umbrella layout
+// while the final message still claimed a child had been registered. Silently
+// discarding an explicit flag is exactly the guess this ticket removes
+// elsewhere, so it is refused instead.
 func TestInstallChildFlagsWithoutPathAreRefused(t *testing.T) {
 	payload := os.DirFS(repoRoot)
 	root := t.TempDir()

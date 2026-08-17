@@ -68,7 +68,13 @@ func runServe(args []string) int {
 			"pickle serve: WARNING — %s is not loopback: the dashboard has no authentication,\n"+
 				"  and anyone who can reach this port can read every ticket in the project.\n", addr)
 	}
-	fmt.Printf("pickle serve: board at http://%s (read-only; Ctrl-C to stop)\n", ln.Addr().String())
+	// T-108: name the resolved layout on the one line most likely to be seen —
+	// in-tree is the layout that can show a stale ticket status, so saying so
+	// up front costs nothing, and the in-page banner (staleBoardBranch) covers
+	// the case this line cannot: a long-running serve whose terminal has
+	// scrolled away by the time the status actually goes stale.
+	fmt.Printf("pickle serve: board at http://%s (%s layout; read-only; Ctrl-C to stop)\n",
+		ln.Addr().String(), cfg.ResolvedLayout())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
