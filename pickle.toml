@@ -6,7 +6,7 @@
 # tool-managed. Its schema is finalised by T-001.
 
 # Payload version pinned into this project (stamped by install/upgrade).
-payload_version = "0.9.0"
+payload_version = "0.10.0"
 
 # Optional overarching review addendum, applied to every ticket on top of the
 # generic review protocol (see skill/resources/review-protocol.md). None yet.
@@ -15,6 +15,7 @@ payload_version = "0.9.0"
 # Name of the flow this project runs (T-073). "brine" is the only legal value
 # today; exercising the key here, in the one place that matters most.
 flow = "brine"
+layout = "in-tree"
 
 [commit]
 # Overarching bookkeeping (tickets/, BOARD.md, docs) may be auto-committed, always
