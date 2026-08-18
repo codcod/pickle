@@ -106,10 +106,13 @@ referenced, not copied.
   `feat/T-NNN-<slug>` branch as a matter of course. **Under `umbrella` no *child*'s feature branch
   can trigger it**: the board is outside every child's repository, so bookkeeping tied to a
   ticket may be committed whenever it is ready, regardless of what branch a child happens to be
-  on. That is not the same as the rule being inert everywhere — the overarching project is still
-  the repository the rule binds, so a feature branch cut *there* (a docs change, a `pickle.toml`
-  edit, planning prose in `tickets/NOTES.md`) carries the identical fold-or-drop hazard, and the
-  sub-bullets below apply to it exactly as they would to an in-tree child.
+  on. That does not mean the rule is inert everywhere. The overarching project is still the
+  repository the rule binds, so a feature branch cut *there* (a docs change, a `pickle.toml`
+  edit, planning prose in `tickets/NOTES.md`) carries the same fold-or-drop hazard, and every
+  enforcement sub-bullet below — the hooks, the origin-base check, the stale-read hazard — applies
+  to it exactly as it would to an in-tree child. Only the merge-style preference in the next
+  sub-bullet is in-tree's alone: it exists because one history there carries both the code and the
+  bookkeeping, which an umbrella board's repository does not.
   - Sharing one branch namespace is exactly what makes the split easy to violate by accident —
     nothing about `git add tickets` looks wrong on a feature branch. Because that history also
     carries the child's own commits, prefer preserving them on

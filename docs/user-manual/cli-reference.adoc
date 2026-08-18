@@ -456,8 +456,10 @@ pickle hooks run pre-push
 ====
 **These guards protect one invariant, scoped to a repository, not to a layout:** ticket/board
 bookkeeping must not ride along on a feature branch *of whichever repository holds `tickets/`*.
-Installing them anywhere else has nothing to catch — the guard's own check is "does this repo
-have a `tickets/` to guard", so a repository without one is a silent no-op regardless of layout.
+That is also the repository `hooks install` arms: it resolves its target upward to the directory
+holding `pickle.toml`, so it is the board's repository that gets the shims no matter which
+directory you run it from. A repository without a `tickets/` in it has nothing for the guard to
+check, and a shim placed there by hand is a silent no-op regardless of layout.
 
 Under the **in-tree layout** (<<install-layout>>) that repository is the child's own — the same
 one the `feat/T-NNN-<slug>` branches are cut in — so the hazard is routine and the guards matter
@@ -465,8 +467,9 @@ on every commit.
 
 Under the **umbrella layout**, every *child* repository is unaffected: `tickets/` lives in the
 overarching project, a separate repository, so a commit in a child *cannot* stage a `tickets/`
-path and a child's push *cannot* carry one — installing the hooks there is harmless and they will
-simply never fire. But the **overarching** repository is a different matter: it is the one that
+path and a child's push *cannot* carry one — which is why `hooks install` never arms a child in
+the first place, and why a shim copied into one by hand would never fire. But the **overarching**
+repository is a different matter: it is the one that
 holds `tickets/`, so if *it* is ever worked on from a feature branch (docs, `pickle.toml`,
 planning prose in `tickets/NOTES.md`), the identical fold-or-drop hazard applies there too, and
 the guards will fire exactly as they would in-tree. "Umbrella" describes the *children*'s
