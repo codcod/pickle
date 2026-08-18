@@ -452,6 +452,72 @@ the guards and then made a fresh unconditional claim one clause over. The reliab
 the predicate once, in the one place that owns it (`cli-reference.adoc`'s "what the guards do and do
 not catch"), and have the other three surfaces point at it instead of restating it — the same
 single-source discipline the rules already use for the four dispositions and the `class` vocabulary.
+**2026-08-18 — review 4 (scoped re-review).** Branch `feat/T-109-layout-conditional-rules` at
+`79cc5f4`, read against `main`. Scope: S1. Verdict: **no blocking findings — to `6-done/`**. S1 is
+fixed at all four surfaces, and for the first time across four rounds the claims agree with each
+other *and* with a reproduction in both layouts.
+
+- [x] S1 re-verified at every surface it named (step 2, scoped)
+- [x] Acceptance test re-run: all 6 checks pass
+- [x] `just build && just test && just lint && just docs-check` clean (19 packages);
+      `pickle doctor` 0/0; `changelog check` clean; `board audit` 0/0
+- [x] Findings recorded with severity, class and disposition per the rules §5 (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6)
+- [x] Impact sweep re-checked (step 8) — unchanged, nothing depends on T-109
+- [ ] Docs-readability pass — **conscious skip**, second round: the only prose delta since review 3's
+      pass is the S1 hedge, already read closely here for factual accuracy
+
+**S1, re-verified surface by surface, against both reproductions:**
+
+| surface | verdict |
+|---|---|
+| `install.go` umbrella marker block | **fixed** — "catches that only when this project's own branch happens to match a registered child's `branch_prefix` — not guaranteed under `umbrella` — so the discipline rests on the operator here, with the hook as a bonus rather than a backstop". The `` `pickle hooks install` `` code span is also no longer split across lines. |
+| `hooks_test.go` | **fixed** — umbrella case asserts the hedge (`only when this project's own branch happens to match a registered`) and rejects `still catches that` alongside the two older phrases; doc comment records the S1 reasoning and the reproduction. `TestMarkerBlockGolden` still passes untouched. |
+| `cli-reference.adoc` NOTE + "do not catch" bullet | **fixed** — both name the `branch_prefix` dependency; the NOTE's contrast ("unlike the in-tree case above where a child's own prefix names exactly the branches that carry the hazard") is the most precise statement of it in the tree. |
+| `SKILL.md` commit-policy bullet | **fixed** — same dependency in summary register, with the discipline-still-applies clause. |
+| `tickets-README.md` §0 | **fixed, including the extra distinction S1 asked for** — the manual origin-base check and the stale-read hazard carry over ("neither depends on how the branch is named"); the `pickle hooks install` sub-bullet does not. |
+
+**Reproductions run this round** (throwaway `pickle-test` installs, both layouts, same staged
+`tickets/` paths):
+
+| layout | branch | guard | matches the docs? |
+|---|---|---|---|
+| `umbrella` (child at `child`) | `feat/T-001-demo` | refuses (exit 1) | yes |
+| `umbrella` | `docs/layout-notes` | silent (exit 0) | yes — this is the case three rounds of prose got wrong |
+| `in-tree` | `feat/T-001-demo` | refuses (exit 1) | yes |
+| `in-tree` | `docs/notes` | silent (exit 0) | yes, after this round's inline fix |
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| T1 | non-blocking | correctness | fixed inline | S1's fix closed with a parenthetical claiming that in-tree "hook's coverage is exact, **since the child and the overarching project are the same repository**". The causal attribution is wrong, and the fourth reproduction above shows why: an in-tree repo waves through staged `tickets/` paths on a `docs/notes` branch exactly as the umbrella case does. Sharing one repository is why the hazard *arises* in-tree; what makes the hook's coverage complete there is that a ticket's branch always carries the configured prefix by construction. The practical guidance was never wrong for anyone following the flow — every ticket branch is `feat/T-NNN-<slug>` — which is why this is non-blocking rather than a fifth round. | `internal/install/install.go` umbrella render as delivered in `79cc5f4`, vs the in-tree reproduction (`docs/notes`, exit 0) and `cli-reference.adoc:478-479`, which already had the correct framing. | Fixed in `5da2051`: "there the hooks see every branch that carries the hazard, since a ticket's branch always carries the configured prefix". This also removes the last disagreement between the four surfaces — they now state one predicate, one way. |
+
+**Disposition summary:** 0 blocking, 1 non-blocking `fixed inline` (T1, commit `5da2051`). No
+follow-up ticket minted. Standing records from earlier rounds are unchanged: review 1's N1 (the
+pre-T-108 "single-repo default" phrasing surviving in `cli-reference.adoc:395`,
+`project-structure.adoc:127` and `vcs.go:114`) and N2 (the unrecorded file-set extension), review
+2's R4/R5.
+
+cost: estimated L, actual XL — four review rounds. The estimate priced "make a rule conditional" as
+a prose edit. What it actually was: discovering, by reproduction, that the rule's condition is a
+claim about a guard's predicate, and that the predicate is *two* conditions (which repository holds
+`tickets/`, and whether the branch name matches a registered `branch_prefix`) rather than the one
+the ticket assumed. Each round found the previous fix true in substance and unconditional one clause
+over. Worth recording as an estimation lesson: a docs ticket whose subject is enforcement behaviour
+should be priced as a behaviour ticket, and its acceptance test should require a reproduction, not a
+grep. Both greps in this ticket's check 2 passed on every round, including the rounds that shipped
+false claims.
+
+**What review 3's structural suggestion would still buy.** The four surfaces now agree, but they
+agree by four parallel statements of the same predicate, kept in step by hand. `cli-reference.adoc`'s
+"what the guards do and do not catch" is the natural owner; the payload could point at the concept
+rather than restate it. Not filed as a ticket: the promotion test does not clear it on its own (the
+duplication is four sentences that are currently correct), and the natural moment to collapse them
+is the next ticket that touches hook applicability for any other reason.
+
+**Impact sweep (step 8).** Unchanged across all four rounds: nothing in `1-to-do/` or `2-ready/`
+lists T-109 in `depends-on:` or leans on its assumptions. T-050 edits
+`agents/pi/extensions/pickle-guardrails.ts` but touches the rule-1 verdict, not the header comment
+this ticket corrected — no collision.
 ## History
 
 - 2026-08-17 — created (TO DO). source: pickle ticket new
@@ -474,3 +540,5 @@ single-source discipline the rules already use for the four dispositions and the
 - 2026-08-18 — IN REVIEW → REWORK: review 3 (scoped): R1-R3 verified fixed; S1 — the replacement prose over-claims guard coverage in the umbrella overarching repo (no configured branch_prefix describes its own branches), on four surfaces including two of review 2's own inline fixes
 - 2026-08-18 — rework: fixed S1 on `feat/T-109-layout-conditional-rules` (commit `79cc5f4`). The four surfaces asserting the hooks catch a bookkeeping lapse in the umbrella overarching repo now hedge on the branch_prefix dependency instead: `install.go`'s marker block, `cli-reference.adoc`'s NOTE and its 'what the guards do and do not catch' bullet, `SKILL.md`'s commit-policy clause, and `tickets-README.md` §0 (which also now distinguishes the two naming-independent sub-bullets — the manual origin-base check, the stale-read hazard — from the hooks sub-bullet, which has the dependency). `hooks_test.go`'s umbrella case asserts the hedge and rejects the old absolute claim. Re-reproduced against the fixed build: refused on feat/T-001-demo, waved through on docs/layout-notes, matching what the docs now say. `just build && just test && just lint && just docs-check` clean; all 6 acceptance checks, `pickle doctor` and `changelog check` re-verified.
 - 2026-08-18 — REWORK → IN REVIEW: S1 fixed, ready for scoped re-review
+- 2026-08-18 — review 4 (scoped): S1 verified fixed at all four surfaces; reproductions in both layouts now match the prose in all four cases. One non-blocking finding fixed inline (`5da2051`): the in-tree coverage claim attributed exactness to the shared repository rather than to a ticket branch always carrying the configured prefix — an in-tree `docs/notes` branch is waved through exactly as the umbrella case is. Verdict: done.
+- 2026-08-18 — IN REVIEW → DONE: review 4 (scoped): S1 fixed at all four surfaces, reproductions match the prose in both layouts; 1 non-blocking fixed inline
