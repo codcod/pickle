@@ -15,11 +15,14 @@ cost: L
 
 After this ships, the flow's rules stop stating the base-branch bookkeeping requirement as
 universal law. A reader operating in the default umbrella layout is no longer instructed to
-follow a rule that cannot apply to them, and a reader in the in-tree layout gets the full
-consequence list spelled out: every command that reads tickets reports the checked-out branch's
-copy, that staleness is one-directional, CI fires on every bookkeeping push, and the base
-branch's history interleaves board moves with code. The user manual gains a section naming both
-layouts, stating which is the default, and stating what choosing in-tree costs.
+follow a rule that, for their **child repositories**, cannot apply — while the rule itself is
+restated correctly as binding whichever repository holds `tickets/`, not a layout name, so the
+overarching project is never mistakenly told it is exempt too. A reader in the in-tree layout
+gets the full consequence list spelled out: every command that reads tickets reports the
+checked-out branch's copy, that a stale worktree can never falsely show `DONE` but can show
+other statuses out of order, CI fires on every bookkeeping push, and the base branch's history
+interleaves board moves with code. The user manual gains a section naming both layouts, stating
+which is the default, and stating what choosing in-tree costs.
 
 ## Description
 
@@ -48,8 +51,10 @@ means:
 
 - Every reading command — `serve`, `board audit`, `board state --json` — reports the state of
   the checked-out branch's copy of `tickets/`, not the project's true state.
-- The staleness is **one-directional**: it can only under-report progress, never falsely claim
-  `DONE`. That makes it quiet and easy to shrug off, which is why it is worth stating.
+- A stale worktree can never show `DONE` for a ticket that is not — `6-done` is terminal, so a
+  ticket that reaches it stays there. That half is quiet and easy to shrug off, which is why it
+  is worth stating; it is not the whole picture, since a ticket sent backward (`in review` to
+  `rework`, `ready` dropped) shows through a stale copy as further along than it now is.
 - CI fires on every bookkeeping push. This project's own `.github/workflows/ci.yml` runs
   `on: push: branches: [main]`, so a run of bookkeeping commits triggers a full CI run per
   commit for zero code change. Recommending a `paths-ignore` entry for the ticket tree belongs
@@ -111,10 +116,13 @@ tree. Do not start until T-108's branch is merged, not merely approved.
 
 ### Confirmed design decisions (do not deviate without asking)
 
-1. **Every affected rule becomes conditional on the recorded layout; none is deleted.** The
-   base-branch bookkeeping rule stays true, mandatory and fully stated for the in-tree layout.
-   What changes is that it is marked as not applying to the umbrella layout, where no feature
-   branch can fork the board.
+1. **Every affected rule states which repository it binds — whichever holds `tickets/` — rather
+   than naming a layout as though the rule itself were conditional; none is deleted.** The
+   base-branch bookkeeping rule stays true, mandatory and fully stated. Under `in-tree` that
+   repository is the sole child, so the rule governs its branches as a matter of course. Under
+   `umbrella` it is the overarching project, not any child — so a **child**'s feature branch can
+   never fork the board, but the overarching project's own branches remain bound exactly as an
+   in-tree child's would.
 2. **The foreign-workspace test binds every sentence added under `skill/`.** No "this repo"
    meaning pickle's own; no count or claim drawn from a corpus the reader does not have; no
    ticket id the reader is told to go and look up; and no path that resolves only in pickle's
@@ -122,14 +130,19 @@ tree. Do not start until T-108's branch is merged, not merely approved.
 3. **`payload_lint_test.go` staying green is necessary but not sufficient.** It matches four
    mechanical shapes and cannot judge what a sentence means; the judgement remains the author's.
 4. **Nothing in the enforcement family is deleted or deprecated.** The guards from T-057, T-072,
-   T-082 and T-100 remain correct and load-bearing in the in-tree layout. The documentation
-   explains that they are inert in the umbrella layout, so an operator is never left wondering
-   why a guard never fires.
+   T-082 and T-100 remain correct and load-bearing wherever `tickets/` lives — every child's repo
+   under `in-tree`, the overarching project under `umbrella`. The documentation explains that
+   they are inert **inside every child repository under `umbrella`** (no `tickets/` there to
+   guard against), not that the rule or the guards are inert for the layout as a whole, so an
+   operator is never left wondering why a guard never fires in a child, nor mistakenly assumes
+   the same of the overarching project.
 5. **The manual states the default explicitly and gives the in-tree consequence list in full.**
-   That list is: every reading command reports the checked-out branch's copy; the staleness is
-   one-directional (it can only under-report progress, never falsely claim `DONE`); CI fires on
-   every bookkeeping push, with a `paths-ignore` entry for the ticket tree recommended as the
-   mitigation; and the base branch's history interleaves board moves with code.
+   That list is: every reading command reports the checked-out branch's copy; a stale worktree
+   can never show `DONE` for a ticket that is not (`6-done` is terminal), though a ticket sent
+   backward (`in review` to `rework`, `ready` dropped) can show through a stale copy as further
+   along than it now is; CI fires on every bookkeeping push, with a `paths-ignore` entry for the
+   ticket tree recommended as the mitigation; and the base branch's history interleaves board
+   moves with code.
 6. **Terminology is fixed to `umbrella` and `in-tree`, matching T-108's config values exactly.**
    The word "sibling" is not used for either layout: it was used during design for two opposite
    arrangements and would arrive in the manual already ambiguous.
@@ -183,8 +196,9 @@ duplicate shipped prose.
 
 What is genuinely missing is **three of decision 5's four consequences**:
 
-1. the staleness is **one-directional** — it can only under-report progress, never falsely claim
-   `DONE`, which is what makes it quiet and easy to shrug off;
+1. a stale worktree can never show `DONE` for a ticket that is not (`6-done` is terminal), which
+   is what makes it quiet and easy to shrug off — though a ticket sent backward can show through
+   a stale copy as further along than it now is;
 2. **CI fires on every bookkeeping push**, with a `paths-ignore` entry for the ticket tree as the
    recommended mitigation;
 3. the base branch's **history interleaves board moves with code**, so changelog and release
@@ -238,8 +252,8 @@ Run from the repository root on the feature branch.
    config files, not layouts). Only a *new* hit, or one of these repurposed, fails the check.
 5. **The consequence list is present and complete:** across `[#install-layout]` (which already
    carries per-branch reads) and Task 5's addition, the manual names all four items from
-   decision 5 — per-branch reads, one-directional staleness, CI-on-every-bookkeeping-push with
-   the `paths-ignore` mitigation, and interleaved history.
+   decision 5 — per-branch reads, the DONE-is-terminal staleness asymmetry, CI-on-every-bookkeeping-push
+   with the `paths-ignore` mitigation, and interleaved history.
 6. **The guards' applicability is documented:** the `pickle hooks` section states both that the
    guards matter in in-tree and that they are inert in umbrella.
 
@@ -351,3 +365,5 @@ change prose, not the guard predicate.
 - 2026-08-17 — publish approved by user: pushed `feat/T-109-layout-conditional-rules`, opened MR #54. Base `main` was pushed first — the origin-base check fired on the two unpushed `board:` commits, the exact leak this ticket documents. Awaiting review; merging is the human's.
 - 2026-08-18 — plan amended inline: review 1 fixed two plan defects it found (rules §5 `fixed inline`) — the Docs-update step still demanded a new chapter registered in the `include::` tree, which Task 5's rescope had retired, and it gained F4's `CHANGELOG.md` obligation; acceptance check 2 widened from `skill/` to `skill/ agents/`, the blind spot that hid F3's residual unconditional statement in the shipped pi guardrail scaffold.
 - 2026-08-18 — IN REVIEW → REWORK: review 1: 5 blocking findings — the guards are repo-scoped, not layout-scoped, so the umbrella 'never fires' claims are false (F1/F2); residual unconditional statement in the pi guardrail payload (F3); no CHANGELOG entry (F4); the one-directional-staleness invariant overclaims (F5)
+- 2026-08-18 — plan amended inline: rework fixed F1–F5 on `feat/T-109-layout-conditional-rules` (commit `6421c95`) and, per F1/F2/F5's authority to correct a false confirmed decision (rules §5 `plan-wrong`), rewrote decisions 1, 4 and 5 plus the Outcome, Description, Task 5 body and acceptance checks 1 and 5 to match: the base-branch rule binds whichever repository holds `tickets/` rather than being conditional on a layout name (decisions 1, 4), and the staleness claim is now DONE-is-terminal (never falsely `DONE`) rather than strictly one-directional, since a backward move or a drop lets a stale copy over-report (decision 5). Also applied, as polish (not a finding): two docs-readability suggestions on `review-protocol.md` §1/§9 that review 1 flagged as landing on this branch's own prose. `just build && just test && just lint && just docs-check` clean; all 6 acceptance checks re-verified.
+- 2026-08-18 — REWORK → IN REVIEW: fixes complete, ready for scoped re-review

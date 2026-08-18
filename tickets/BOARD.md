@@ -20,10 +20,11 @@ Last updated: 2026-08-18
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | [T-108] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-18
 
 | id | title | open findings |
 |---|---|---|
-| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | review 1: 5 blocking findings — the guards are repo-scoped, not layout-scoped, so the umbrella 'never fires' claims are… |
 
 ## READY (impact order, per child)
 
