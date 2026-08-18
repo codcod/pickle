@@ -542,3 +542,4 @@ this ticket corrected — no collision.
 - 2026-08-18 — REWORK → IN REVIEW: S1 fixed, ready for scoped re-review
 - 2026-08-18 — review 4 (scoped): S1 verified fixed at all four surfaces; reproductions in both layouts now match the prose in all four cases. One non-blocking finding fixed inline (`5da2051`): the in-tree coverage claim attributed exactness to the shared repository rather than to a ticket branch always carrying the configured prefix — an in-tree `docs/notes` branch is waved through exactly as the umbrella case is. Verdict: done.
 - 2026-08-18 — IN REVIEW → DONE: review 4 (scoped): S1 fixed at all four surfaces, reproductions match the prose in both layouts; 1 non-blocking fixed inline
+- 2026-08-18 — merged to main (MR #54, commit `35214fd`) — partial: only round 1's fixes (`6421c95`); rounds 2–4's reviewed fixes never pushed. See NOTES.md §"T-109 partial merge". Follow-up PR in flight; a second merged line follows.

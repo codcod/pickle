@@ -1223,3 +1223,38 @@ immediately preceding commit) from a stale directory listing read earlier in the
 also that T-065's refinement re-graded it to `impact: low` because "no consumer exists, and the
 2026-08-04 precedent refuses to credit prospective demand" — **decision retrieval is exactly such
 a prospective consumer and must not be cited to re-inflate that grade.**
+
+## T-109 partial merge (2026-08-18) — the branch was pushed once, reviewed four times
+
+PR #54 (`feat/T-109-layout-conditional-rules`) was pushed to `origin` exactly once, right after
+round 1's rework landed a fix for review 1's five blocking findings. Three more review/rework
+rounds followed — review 2 found three more blocking findings (R1–R3) in surfaces the first fix
+had not reached, plus two non-blocking ones fixed inline; review 3 found a fourth blocking finding
+(S1) in the *replacement* prose from round 2; review 4 found one non-blocking finding (T1) in the
+replacement for S1 — and every one of those fixes was committed locally and never pushed again.
+Each review's summary correctly reported "nothing pushed, needs approval" without triggering a
+second push, and the human's merge action for PR #54 necessarily merged whatever was on GitHub:
+commit `6421c95`, the round-1 state.
+
+**What that means concretely.** `main` shipped review 1's fixes but not rounds 2–4's, so the exact
+false claims those rounds found and blocking-flagged are live in the built binary until the
+follow-up PR merges: `internal/install/install.go`'s `MarkerBlock` renders, for every **umbrella**
+project (the default layout), a "Where commits land" bullet claiming no feature branch can fork
+the board and bookkeeping "is committed there, whenever it is ready" — reproduced false against
+the shipped `pre-commit` guard, which still refuses that exact commit in the overarching repo.
+`hooks_test.go` on `main` still asserts that wording and forbids the fix. `CHANGELOG.md` still
+contradicts its own `project-structure.adoc` entry from the same commit ("one-directional
+staleness"). None of this is a *new* defect distinct from what the ticket's own `## Review` already
+found and fixed — it is the same, already-reviewed fix, just never published.
+
+**The gap in the flow this exposes.** Nothing in the procedure re-checks, at merge time, that the
+remote branch's tip is the same commit the ticket's `## Review` section certifies. "Present for
+approval, then push" assumes the next action after approval is always a push; here, four rounds of
+review happened between one approval and the next push, and the merge request the human acted on
+was silently stale for three of them. A mechanical check — comparing `git rev-parse
+origin/<branch>` against the commit named in the ticket's most recent Review entry before
+presenting anything for approval or reporting a push as done — would have caught this on review 2's
+own approval-adjacent step. Not filed as a ticket yet: T-109's own remediation (a follow-up PR) is
+in flight, and whether the check belongs in `review-protocol.md` prose or as a `pickle` command
+(e.g. `board audit` warning when a ticket's branch, per `git ls-remote`, is behind its own Review
+section) is worth deciding once, deliberately, rather than folded into the ticket that surfaced it.

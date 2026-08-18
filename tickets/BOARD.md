@@ -133,7 +133,7 @@ Last updated: 2026-08-18
 | T-105 | pickle board decisions: query a child's confirmed design decisions | yes — MERGED: feat/T-105-board-decisions → main (9343299, PR #51), user-approved; history kept (4 commits); branch not … |
 | T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | yes — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52), |
 | T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | yes — merged to main (PR #53, baeab0f, https://github.com/codcod/pickle/commit/baeab0f); |
-| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | no — publish-gated |
+| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | yes — merged to main (MR #54, commit `35214fd`) — partial: only round 1's fixes (`6421c95`); rounds 2–4's reviewed fixe… |
 
 ## DROPPED
 
