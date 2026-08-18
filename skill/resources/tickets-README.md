@@ -108,11 +108,15 @@ referenced, not copied.
   ticket may be committed whenever it is ready, regardless of what branch a child happens to be
   on. That does not mean the rule is inert everywhere. The overarching project is still the
   repository the rule binds, so a feature branch cut *there* (a docs change, a `pickle.toml`
-  edit, planning prose in `tickets/NOTES.md`) carries the same fold-or-drop hazard, and every
-  enforcement sub-bullet below — the hooks, the origin-base check, the stale-read hazard — applies
-  to it exactly as it would to an in-tree child. Only the merge-style preference in the next
-  sub-bullet is in-tree's alone: it exists because one history there carries both the code and the
-  bookkeeping, which an umbrella board's repository does not.
+  edit, planning prose in `tickets/NOTES.md`) carries the same fold-or-drop hazard. **The manual
+  origin-base check and the stale-read hazard, two sub-bullets below, apply to it exactly as they
+  would to an in-tree child** — neither depends on how the branch is named. **The `pickle hooks
+  install` sub-bullet immediately below does not carry over the same way**: it recognises a
+  feature branch only by matching a registered child's `branch_prefix`, and under `umbrella` no
+  registered prefix names the overarching project's own branches, so the installed hooks may not
+  catch a lapse there even though the discipline itself still applies. Only the merge-style
+  preference in the next sub-bullet is in-tree's alone: it exists because one history there
+  carries both the code and the bookkeeping, which an umbrella board's repository does not.
   - Sharing one branch namespace is exactly what makes the split easy to violate by accident —
     nothing about `git add tickets` looks wrong on a feature branch. Because that history also
     carries the child's own commits, prefer preserving them on

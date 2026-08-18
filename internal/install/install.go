@@ -1097,17 +1097,26 @@ func MarkerBlock(cfg *config.Config) string {
 	// never fork the board, but the overarching project's own branches remain
 	// bound exactly as an in-tree child's would — review 1 found the first cut
 	// of this render claimed the rule was inert for the whole layout, which a
-	// throwaway install disproved (the guard still refuses a feature-branch
-	// commit in the overarching repo). Rendering rather than hedging in prose
-	// follows childPolicy/overarching above.
+	// throwaway install disproved (the guard refused a feature-branch commit in
+	// the overarching repo, there named to match a registered child's
+	// branch_prefix). Review 3 (S1) found that fix over-corrected into the
+	// opposite claim — that the hooks always catch it there — which the same
+	// predicate (onFeatureBranch, internal/hook) disproves for any overarching
+	// branch name that does not happen to match a registered prefix: the guard
+	// has no way to tell "this project's own branch" from "an unrelated branch"
+	// except by that name. This render now states the discipline and hedges the
+	// guard's coverage of it, rather than asserting either extreme.
 	commitsLandBullet := "- **Where commits land.** Code goes on the child's feature branch. The board lives in\n" +
 		"  the overarching project, a different repository from every child, so no **child's** feature\n" +
 		"  branch can fork it. Ticket and board bookkeeping is still committed on **this** project's\n" +
 		"  base branch: this project uses the `umbrella` layout, so a feature branch cut in a child\n" +
-		"  never carries it, but one cut in the overarching project itself would — and `pickle hooks\n" +
-		"  install` run here still catches that. (Projects using the `in-tree` layout keep bookkeeping\n" +
-		"  off every child's feature branches instead, since there the child and the overarching\n" +
-		"  project are the same repository — rules §0.)"
+		"  never carries it, but one cut in the overarching project itself would. `pickle hooks install`\n" +
+		"  run here catches that only when this project's own branch happens to match a registered\n" +
+		"  child's `branch_prefix` — not guaranteed under `umbrella` — so the discipline rests on the\n" +
+		"  operator here, with the hook as a bonus rather than a backstop. (Projects using the\n" +
+		"  `in-tree` layout keep bookkeeping off every child's feature branches instead, and there the\n" +
+		"  hook's coverage is exact, since the child and the overarching project are the same\n" +
+		"  repository — rules §0.)"
 	if cfg.ResolvedLayout() == config.LayoutInTree {
 		commitsLandBullet = "- **Where commits land.** Code goes on the child's feature branch; **ticket and board\n" +
 			"  bookkeeping is committed on the base branch**, never on a feature branch — a squash-merge\n" +

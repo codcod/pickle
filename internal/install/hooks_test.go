@@ -216,9 +216,17 @@ func TestUninstallLeavesAForeignHook(t *testing.T) {
 // ("no feature branch can [fork it]", full stop, with "bookkeeping is committed
 // on the base branch" as `unwanted`) — a throwaway install showed the installed
 // guard still refusing that exact commit in the overarching repo, so the
-// assertion was locking in a defect rather than guarding against one. Both
-// directions are still asserted, since a one-sided test would pass on a block
-// that states the rule unconditionally in either direction.
+// assertion was locking in a defect rather than guarding against one. Review 3
+// (S1) then found the corrected render over-claimed the *guard's* coverage of
+// that discipline: `onFeatureBranch` (internal/hook) only recognises a branch
+// as a registered child's feature branch by its `branch_prefix`, and under
+// `umbrella` no registered prefix describes the overarching project's own
+// branches, so a differently-named branch there is invisible to the hooks
+// (reproduced: `feat/T-001-demo` refused, `docs/layout-notes` waved through,
+// same staged paths). The render now states the discipline unconditionally but
+// hedges the hooks' coverage of it. Both directions are still asserted, since
+// a one-sided test would pass on a block that states the rule, or the guard's
+// reach, unconditionally in either direction.
 func TestMarkerBlockStatesWhereCommitsLand(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -236,17 +244,19 @@ func TestMarkerBlockStatesWhereCommitsLand(t *testing.T) {
 			},
 		},
 		{
-			name: "umbrella exempts child branches but still binds its own",
+			name: "umbrella exempts child branches, binds its own, and hedges the hooks' reach",
 			opts: Options{ProjectName: "demo", ProjectPath: "child"},
 			want: []string{
 				"Where commits land",
 				"no **child's** feature",
 				"bookkeeping is still committed on",
 				"cut in the overarching project itself would",
+				"only when this project's own branch happens to match a registered",
 			},
 			unwanted: []string{
 				"no feature branch can fork it",
 				"whenever it is ready",
+				"still catches that",
 			},
 		},
 	} {

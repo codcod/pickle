@@ -84,7 +84,10 @@ WIP limits, and an optional per-child review addendum. Defaults:
   `feat/T-NNN-<slug>` branches. Under the default `umbrella` layout no **child**'s feature branch
   can fork the board — it lives in the overarching project instead — but the overarching
   repository is still the one the rule binds: a feature branch cut there carries the identical
-  hazard, and the hooks, if installed there, still catch it.
+  hazard. Whether the hooks catch it depends on that branch matching a registered child's
+  `branch_prefix`, which is guaranteed in-tree (the child's own branches) but not under `umbrella`
+  (no registered prefix names the overarching project's own branches) — there the discipline
+  still applies, the hooks just cannot always see a lapse.
 - **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced **per child**.
 
 > **Project configuration wins.** The bullets above state the flow's defaults, once.
