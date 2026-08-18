@@ -1258,3 +1258,13 @@ own approval-adjacent step. Not filed as a ticket yet: T-109's own remediation (
 in flight, and whether the check belongs in `review-protocol.md` prose or as a `pickle` command
 (e.g. `board audit` warning when a ticket's branch, per `git ls-remote`, is behind its own Review
 section) is worth deciding once, deliberately, rather than folded into the ticket that surfaced it.
+
+**Closed (2026-08-18): PR #55 merged (`6a7a458`).** `5da2051` — the full reviewed tip — confirmed
+an ancestor of `origin/main` before recording this, not assumed from the merge notification alone
+(the check this note itself argues should be mechanical). Re-verified against `main` directly
+rather than a local build: `just build/test/lint/docs-check`, `pickle doctor`, `pickle changelog
+check` all clean, and both reproductions from the review (`feat/T-001-demo` refused,
+`docs/x` waved through) re-run against the merged binary and matching the shipped docs exactly.
+The mechanical-check proposal above (compare a ticket's branch tip against its Review section
+before reporting a push, or as a `board audit` check) is unaffected by this closing — still not
+filed, for the same reason.

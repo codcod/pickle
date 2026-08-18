@@ -544,3 +544,4 @@ this ticket corrected — no collision.
 - 2026-08-18 — IN REVIEW → DONE: review 4 (scoped): S1 fixed at all four surfaces, reproductions match the prose in both layouts; 1 non-blocking fixed inline
 - 2026-08-18 — merged to main (MR #54, commit `35214fd`) — partial: only round 1's fixes (`6421c95`); rounds 2–4's reviewed fixes never pushed. See NOTES.md §"T-109 partial merge". Follow-up PR in flight; a second merged line follows.
 - 2026-08-18 — follow-up PR #55 opened (`feat/T-109-layout-conditional-rules` → `main`), carrying the remaining reviewed commits (`2d0ee7a`, `c21e4f3`, `79cc5f4`, `5da2051`) PR #54 missed. No new review — already verified in this ticket's Review section; awaiting merge.
+- 2026-08-18 — merged to main (MR #55, commit `6a7a458`) — complete: `5da2051` confirmed on `main`, re-verified against the merged state, gap closed. See NOTES.md §"T-109 partial merge".
