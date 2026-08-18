@@ -40,22 +40,38 @@ referenced, not copied.
 ## 0. Child-projects (the multi-project model)
 
 - **Registered children.** Each connected child-project is registered with
-  `pickle project add <name> <path>` and lives as its own git repo nested under the overarching
-  project. `pickle.toml` records each child's name, path, build/validate commands, branch &
-  commit policy, and per-child WIP limits.
+  `pickle project add <name> <path>`. `pickle.toml` records each child's name, path,
+  build/validate commands, branch & commit policy, and per-child WIP limits. Whether a child is
+  its own git repo nested under the overarching project, or is that project, is the layout
+  question in the next bullet.
+- **Two layouts, recorded not guessed.** `pickle.toml` also records a `layout` key, chosen by the
+  human who ran `pickle install`, with one of two values:
+  - **`umbrella`** (the default) — the overarching project holding `tickets/`, `BOARD.md` and
+    `pickle.toml` is a *different* git repository from every registered child.
+  - **`in-tree`** (`pickle install --in-tree`) — there is one child, registered at `path = "."`,
+    and it *is* the overarching project: a single repository serving both roles.
+
+  The distinction matters here because ticket status is a single-valued fact stored as a directory
+  name, while git exists to let branches disagree about where a file lives. Under `umbrella` no
+  branch cut in a **child** can fork the board, because the board is not in that child's
+  repository. Under `in-tree` it can, in every child, on every ticket. **Every rule below that
+  names the base branch binds whichever repository holds `tickets/`** — under `in-tree` that is
+  the child itself, so the rule governs its `feat/T-NNN-<slug>` branches as a matter of course;
+  under `umbrella` it is the *overarching* project, not any child, so the rule is inapplicable to
+  a child's branches but still binds the overarching project's own, if it ever uses one.
 - **Every ticket targets exactly one child**, named in its `project:` frontmatter (a registered
   child name). The `feat/T-NNN-<slug>` branch for a ticket is cut **inside that child's repo**.
 - **One shared board, sub-grouped by child** (§6). **One global id namespace** (§3) regardless
   of child. **WIP limits are enforced per child** (§6).
 - **Where commits land.** The code for a ticket is committed on that child's
-  `feat/T-NNN-<slug>` branch. **The bookkeeping — the ticket file, its History lines, the
-  generated `BOARD.md` — is committed on the base branch of the overarching project**, never on
-  a feature branch. This is not tidiness: a squash-merge of the feature branch folds every
-  bookkeeping commit into the code commit, or drops it, and the board then indexes tickets whose
-  recorded status disagrees with where the files are. It applies to every move a ticket makes,
-  including the ones a *review* performs.
-  - **Bookkeeping commits use their own `board:` form, not Conventional Commits.** A
-    bookkeeping commit is a ticket's state transition, not a product change, so forcing it
+  `feat/T-NNN-<slug>` branch. The bookkeeping — the ticket file, its History lines, the generated
+  `BOARD.md` — is committed in the overarching project, in its own commit, in the `board:` form
+  below. *Which branch* that commit must land on is answered in the bullet that follows this one
+  — it binds whichever repository holds `tickets/`, which under `in-tree` is every child and
+  under `umbrella` is the overarching project rather than any child.
+  - **Bookkeeping commits use their own `board:` form, not Conventional Commits.** This holds in
+    both layouts — it follows from what a bookkeeping commit *is*, not from where the board sits.
+    A bookkeeping commit is a ticket's state transition, not a product change, so forcing it
     through Conventional Commits' `type(scope)` grammar either produces an uninformative scope
     (`tickets`, always) or an artificial one picked by whichever directory happened to be
     touched — either way it misdescribes what the commit actually is. Instead: `board: T-NNN[,
@@ -80,17 +96,30 @@ referenced, not copied.
     those would reintroduce the exact uncommitted-bookkeeping-crosses-a-branch-switch hazard the
     pre-commit hook (below) and the origin-base check (below, and `review-protocol.md` step 9)
     exist to prevent.
-  - In the **single-repo default** (`path = "."`, one child at the overarching root) the code and
-    the board share one repository and one branch namespace, which is exactly what makes the
-    split easy to violate by accident — nothing about `git add tickets` looks wrong on a feature
-    branch. Because that history also carries the child's own commits, prefer preserving them on
+- **Bookkeeping is committed on the base branch of whichever repository holds `tickets/`, never
+  on a feature branch of it.** This is not
+  tidiness: a squash-merge of the feature branch folds every bookkeeping commit into the code
+  commit, or drops it, and the board then indexes tickets whose recorded status disagrees with
+  where the files are. It applies to every move a ticket makes, including the ones a *review*
+  performs. **Under the `in-tree` layout that repository is the child's own** — code and the board
+  share one repository and one branch namespace — so the rule governs every ticket's
+  `feat/T-NNN-<slug>` branch as a matter of course. **Under `umbrella` no *child*'s feature branch
+  can trigger it**: the board is outside every child's repository, so bookkeeping tied to a
+  ticket may be committed whenever it is ready, regardless of what branch a child happens to be
+  on. That is not the same as the rule being inert everywhere — the overarching project is still
+  the repository the rule binds, so a feature branch cut *there* (a docs change, a `pickle.toml`
+  edit, planning prose in `tickets/NOTES.md`) carries the identical fold-or-drop hazard, and the
+  sub-bullets below apply to it exactly as they would to an in-tree child.
+  - Sharing one branch namespace is exactly what makes the split easy to violate by accident —
+    nothing about `git add tickets` looks wrong on a feature branch. Because that history also
+    carries the child's own commits, prefer preserving them on
     merge (rebase, or a keep-history merge) over squashing there — squashing flattens whatever
     `feat`/`fix`/`ci`/`test` structure the branch had into one commit, discarding exactly the
     granularity the `board:` form above exists to keep clean of. A child registered at a nested
-    path is unaffected: squashing there does not cost the same thing, since that child's history
-    isn't sharing a log with bookkeeping. This is operator guidance — no `pickle.toml` key reads
-    or enforces it; see §4 item 7 and the ticket template's Finish step for the resulting
-    tidy-up-before-approval obligation.
+    path under `umbrella` is unaffected: squashing there does not cost the same thing, since that
+    child's history isn't sharing a log with bookkeeping. This is operator guidance — no
+    `pickle.toml` key reads or enforces it; see §4 item 7 and the ticket template's Finish step
+    for the resulting tidy-up-before-approval obligation.
   - `pickle hooks install` enforces it locally: a `pre-commit` hook that refuses staged
     `tickets/` paths while HEAD is a feature branch, **and** a `pre-push` hook that refuses a
     push whose *destination* is a feature branch when the range against the remote base still
@@ -115,11 +144,12 @@ referenced, not copied.
     the fetch matters because a stale remote-tracking ref makes the check fire on a base that is
     in fact already pushed). Any output means push `origin <base>` first — unless the branch's
     own product is a file under `tickets/`, the same exception the hook bullets above carve out,
-    in which case pushing the base will not silence it and you publish deliberately. This bites
-    wherever the board and the code share a repository, which is the single-repo default above.
+    in which case pushing the base will not silence it and you publish deliberately.
   - The mirror-image hazard, for readers: a feature branch cut *before* the bookkeeping landed
     on the base branch shows a **stale ticket** in its worktree. Read the ticket and the board
-    from the base branch (`git show <base>:tickets/…`), not from the branch under review.
+    from the base branch (`git show <base>:tickets/…`), not from the branch under review. This
+    reaches every command that reads `tickets/`, not only a human reading a file: each reports
+    the checked-out branch's copy of the board.
 
 > **Project configuration wins.** Branch prefix, ticket-id prefix, WIP limits and commit policy
 > are all per-child (or overarching) `pickle.toml` settings; this document states the flow's

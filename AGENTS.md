@@ -99,7 +99,9 @@ earns a **disposition** (rules §5), and most are resolved without a new ticket.
   bookkeeping is committed on the base branch**, never on a feature branch — a squash-merge
   folds or drops it and the board then disagrees with the tickets it indexes. This covers a
   review's own moves too, and it is why a reviewer on a feature branch reads the ticket from
-  the base branch. `pickle hooks install` enforces it locally, once per clone: a `pre-commit`
+  the base branch. This project uses the `in-tree` layout, where the board and the code share
+  one repository, which is what makes the rule load-bearing here.
+  `pickle hooks install` enforces it locally, once per clone: a `pre-commit`
   hook refuses the commit, and a `pre-push` hook refuses the push if it still slipped through
   (bypass either with `--no-verify`).
 

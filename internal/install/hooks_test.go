@@ -204,24 +204,67 @@ func TestUninstallLeavesAForeignHook(t *testing.T) {
 
 // TestMarkerBlockStatesWhereCommitsLand: the hook enforces a rule, and an
 // enforced rule that is written down nowhere is not a rule. The marker block is
-// what every agent session reads, so the statement has to be there.
+// what every agent session reads, so the statement has to be there — but only
+// where the rule actually applies (T-109). Under the in-tree layout the board
+// shares a repository with the code and the obligation is load-bearing; under
+// the umbrella layout no feature branch can fork the board, so stating the
+// obligation would hand the reader a rule whose justification is absent from
+// their setup and send them hunting for a guard that never fires. Both
+// directions are asserted, since a one-sided test would pass on a block that
+// states the rule unconditionally — exactly the defect this replaced.
 func TestMarkerBlockStatesWhereCommitsLand(t *testing.T) {
-	root := t.TempDir()
-	res, err := Run(os.DirFS(payloadRoot()), root, "v1", Options{ProjectName: "demo", ProjectPath: "."})
-	if err != nil {
-		t.Fatalf("install.Run: %v (%v)", err, res)
-	}
-	body, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{
-		"Where commits land",
-		"bookkeeping is committed on the base branch",
-		"pickle hooks install",
+	for _, tc := range []struct {
+		name     string
+		opts     Options
+		want     []string
+		unwanted []string
+	}{
+		{
+			name: "in-tree states the obligation and its enforcement",
+			opts: Options{ProjectName: "demo", ProjectPath: ".", InTree: true},
+			want: []string{
+				"Where commits land",
+				"bookkeeping is committed on the base branch",
+				"pickle hooks install",
+			},
+		},
+		{
+			name: "umbrella explains why there is nothing to guard",
+			opts: Options{ProjectName: "demo", ProjectPath: "child"},
+			want: []string{
+				"Where commits land",
+				"no feature branch can",
+			},
+			unwanted: []string{
+				"bookkeeping is committed on the base branch",
+			},
+		},
 	} {
-		if !strings.Contains(string(body), want) {
-			t.Errorf("AGENTS.md marker block does not mention %q", want)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tc.opts.ProjectPath != "" && tc.opts.ProjectPath != "." {
+				if err := os.MkdirAll(filepath.Join(root, tc.opts.ProjectPath), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			res, err := Run(os.DirFS(payloadRoot()), root, "v1", tc.opts)
+			if err != nil {
+				t.Fatalf("install.Run: %v (%v)", err, res)
+			}
+			body, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(string(body), want) {
+					t.Errorf("AGENTS.md marker block does not mention %q", want)
+				}
+			}
+			for _, unwanted := range tc.unwanted {
+				if strings.Contains(string(body), unwanted) {
+					t.Errorf("AGENTS.md marker block states %q, which does not apply in this layout", unwanted)
+				}
+			}
+		})
 	}
 }

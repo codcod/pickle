@@ -41,6 +41,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   learned only by imitation: a confirmed design decision is a numbered item whose leading bold
   run is the decision statement, numbered in one unbroken list that is never renumbered, and cited
   from another ticket as `<ID> decision <N>` (T-106).
+- **The base-branch bookkeeping rule, in both the rendered `AGENTS.md`/`CLAUDE.md` marker block
+  and the shipped skill, now states which repository it binds instead of naming a layout that
+  never enforces it.** Previously the rule read as universal law, instructing an `umbrella`
+  project (the default) to follow a base-branch discipline that only ever matters for the
+  repository holding `tickets/` — the overarching project under `umbrella`, the sole child under
+  `in-tree`. `install`/`upgrade`/`project add` render the marker block's "Where commits land"
+  bullet accordingly, and the user manual documents what choosing `in-tree` costs beyond the
+  stale-board read: one-directional staleness, a CI run per bookkeeping push, and interleaved
+  release history (T-109).
 
 ## [0.9.0] - 2026-08-16
 

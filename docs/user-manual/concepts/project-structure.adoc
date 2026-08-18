@@ -182,3 +182,55 @@ What that changes in practice:
 Adding a second child later needs no rework: `pickle project add <name>
 <path>` registers it, the root child stays exactly as it is, and the board
 grows a sub-group.
+
+=== What choosing in-tree costs
+
+Keeping bookkeeping on the base branch is the rule that makes the layout work,
+but it is not free. Four consequences follow from it, and none of them is a
+bug to be fixed — they are the price of having tickets live in the code
+repository, worth knowing before you choose it.
+
+*Every command that reads tickets reports the checked-out branch's copy.*
+This is stated for `pickle serve` in <<install-layout>>, but it is not
+specific to `serve`: `pickle board audit` and `pickle board state --json` read
+`tickets/` the same way. On a feature branch cut last week, all three describe
+the board as it stood last week.
+
+*A stale worktree can never show `DONE` for a ticket that is not — but it can
+show other statuses out of order.* `DONE` is a terminal status with no move
+back out of it, so a worktree that lags the base branch may show a ticket as
+`IN DEVELOPMENT` when it is really `DONE`, but never the reverse. That half is
+a reassuring property and a hazard at once: nothing ever looks alarming
+enough to investigate, so the wrong answer is easy to accept and act on. It is
+not the whole picture, though — a ticket can also move *backward*
+(`in review` sent to `rework`, `ready` dropped), and there a stale worktree
+shows the **earlier**, further-along-looking status instead of the
+correction: over-reporting, not under. Either way, when a status reads
+different from what you expected, check which branch you are on before you
+conclude the board is wrong.
+
+*CI fires on every bookkeeping push.* Bookkeeping lands on the base branch, so
+a workflow triggered by pushes to that branch runs once per bookkeeping
+commit — a full pipeline for a change that touched one markdown file and no
+code. A run of ticket moves can therefore cost several CI runs for zero
+product change. The mitigation is a `paths-ignore` entry for the ticket tree:
+
+[source,yaml]
+----
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'tickets/**'
+----
+
+Prefer `paths-ignore` over `paths`, so a new top-level directory is covered by
+CI by default rather than silently skipped.
+
+*The base branch's history interleaves board moves with code.* `git log` on
+the base branch alternates between `feat:`/`fix:` commits and `board:` ones.
+The distinct `board:` prefix exists partly for this reason: it makes the
+bookkeeping filterable, so changelog and release tooling can exclude it
+(`git log --invert-grep --grep '^board:'`, or a path exclusion such as `git
+log -- . ':(exclude)tickets'`). Tooling that does *not* filter will list
+ticket moves among the release's changes.

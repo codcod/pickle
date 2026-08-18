@@ -61,9 +61,11 @@ approval): end with a summary and a suggested commit message (see Finish, below)
 commits into atomic ones first for a root-path child (`path = "."`, tickets/README.md §0); once
 the user approves, finalize the branch (squash to the approved commit, or — the root-path
 default — keep the tidied history; the user chooses at approval time).
-**Before pushing, verify the remote base is not behind your local base** —
+Under `layout = "in-tree"` only, **before pushing, verify the remote base is not behind your
+local base** —
 `git fetch origin <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must
-print nothing, or push `origin <base>` first (rules §0 explains why) — then push and open the
+print nothing, or push `origin <base>` first (rules §0 explains why, and why the default
+`umbrella` layout has nothing to check here) — then push and open the
 merge request — **merging is always the human's.**
 
 > **Project configuration wins.** The branch name above uses the flow's default prefixes
@@ -134,7 +136,8 @@ non-empty body, so deleting it fails that check instead of satisfying it.>
 6. Commit locally on the ticket branch. Publish only per the project's commit policy
    (default: do **not** push or open a merge request without user approval). Present the
    commit message; only after approval finalize the branch (squash, or — the root-path default
-   above — keep the tidied history; the user chooses at approval time). Before pushing, verify
+   above — keep the tidied history; the user chooses at approval time). Under `layout =
+   "in-tree"` only, before pushing verify
    the remote base is not behind your local base — `git fetch
    origin <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must print
    nothing, or push `origin <base>` first (rules §0) — then push and open the merge request

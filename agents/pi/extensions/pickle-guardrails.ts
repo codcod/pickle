@@ -11,10 +11,13 @@
  *      merging is always the human's.
  *
  * The marker block's remaining git rule — *where commits land*: code on the
- * feature branch, ticket/board bookkeeping on the base branch — is deliberately
- * NOT mirrored here. It is enforced by `pickle hooks install`, a `pre-commit` hook
- * that guards every committer (agent, human or script) rather than only a pi
- * session, and that reads each child's `branch_prefix` from `pickle.toml`.
+ * feature branch, ticket/board bookkeeping on the base branch of whichever
+ * repository holds `tickets/` (mandatory in practice under `layout = "in-tree"`;
+ * under the default `umbrella` layout it binds the overarching project's own
+ * repository, not any child's) — is deliberately NOT mirrored here. It is
+ * enforced by `pickle hooks install`, a `pre-commit` hook that guards every
+ * committer (agent, human or script) rather than only a pi session, and that
+ * reads each child's `branch_prefix` from `pickle.toml`.
  *
  * This file is pickle-owned: `pickle upgrade` refreshes it in place and
  * `pickle uninstall` removes it. Put project-specific rules in a SEPARATE
