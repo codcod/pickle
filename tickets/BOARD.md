@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-17
+Last updated: 2026-08-18
 
 ## IN DEVELOPMENT
 
@@ -20,11 +20,10 @@ Last updated: 2026-08-17
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | [T-108] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-17
 
 | id | title | open findings |
 |---|---|---|
+| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | review 1: 5 blocking findings — the guards are repo-scoped, not layout-scoped, so the umbrella 'never fires' claims are… |
 
 ## READY (impact order, per child)
 
