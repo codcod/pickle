@@ -353,6 +353,61 @@ depends on its assumptions. T-050 is the only open ticket that edits
 comment F3 touches — no collision, no patch needed. T-071 (hook PATH probe) is unaffected: F1/F2
 change prose, not the guard predicate.
 
+**2026-08-18 — review 2 (scoped re-review).** Branch `feat/T-109-layout-conditional-rules` at
+`6421c95`, read against `main`. Scope: the five blocking findings of review 1 only. Verdict:
+**blocking findings — back to `5-rework/`**. F1, F3 and F5 are fixed and verified; F4's mechanical
+half is fixed but its content misdescribes what shipped; **F2's correction reached two of the four
+surfaces that carry the claim** — the rendered marker block and the review protocol still state it
+the old way, and a test now locks the marker block's wording in place.
+
+- [x] Blocking findings re-verified individually (step 2, scoped — no full re-audit)
+- [x] Acceptance test re-run: all 6 checks, including check 2 over the widened `skill/ agents/`
+- [x] `just build && just test && just lint && just docs-check` clean (19 packages ok)
+- [x] Docs-readability pass on the rework's changed `.adoc`/`.md` (step 4b) — 26 suggestions, 24 on
+      prose neither pass authored (out of scope); 1 applied, 1 rejected with reason (below)
+- [x] Findings recorded with severity, class and disposition per the rules §5 (step 5)
+- [x] Ticket moved to `5-rework/`; `## History` appended (step 6)
+- [x] Impact sweep re-checked — unchanged from review 1, nothing depends on T-109 (step 8)
+
+**Review-1 findings, re-verified one by one:**
+
+| finding | verdict | evidence |
+|---|---|---|
+| F1 (manual claims hooks cannot fire under umbrella) | **fixed** | `cli-reference.adoc:456-473` NOTE and `:604-612` bullet now scope the guards to *the repository holding `tickets/`*, name the in-tree and umbrella cases separately, and keep the "silence is not a fault" reassurance attached to child repos. Reproduced both directions again: umbrella overarching repo on `feat/T-001-demo` → `pre-commit` exits 1; the same project's child repo → exits 0. |
+| F2 (payload over-reach) | **partially fixed — see R1, R3** | `SKILL.md:79-87` and `tickets-README.md:53-58, 99-112` are correct now. But `install.go:1101-1104` (rendered marker block) and `review-protocol.md:49` still carry the original claim verbatim. |
+| F3 (pi guardrail scaffold) | **fixed** | `pickle-guardrails.ts:13-20` now names the binding repository and both layouts; widened check 2 (`rg -l 'base branch' skill/ agents/ \| xargs rg --files-without-match 'in-tree'`) prints nothing. |
+| F4 (no CHANGELOG entry) | **entry added, content wrong — see R2** | `pickle changelog check` → "no candidates — every shipped ticket is mentioned". The entry itself misstates two things. |
+| F5 (one-directional staleness overclaim) | **fixed** | `project-structure.adoc:199-210` now leads with the invariant that holds (`DONE` is terminal, so a stale read can never show it falsely) and states the backward-move case (`in review` → `rework`, `ready` dropped) as over-reporting. Decision 5, the Outcome, the Description and Task 5 were amended to match, with a `plan amended inline` History line. |
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | blocking | correctness | — | F2's fix skipped the surface with the widest reach. `MarkerBlock`'s umbrella branch still renders "The board lives in the overarching project, a different repository from every child, so **no feature branch can fork it**: ticket and board bookkeeping is committed there, **whenever it is ready**" — the two phrases review 1 quoted as false, now corrected everywhere except here. This is the block injected into every umbrella project's `AGENTS.md`/`CLAUDE.md`, i.e. what every agent session reads before touching the flow. Worse, `hooks_test.go` **locks the defect in**: the umbrella case asserts `want: "no feature branch can"` and `unwanted: "bookkeeping is committed on the base branch"`, so a corrected block fails the test. The code comment above the string, and the test's own doc comment ("a guard that never fires"), repeat decision 4's disproved premise. | Reproduced in one throwaway workspace: `pickle-test install` + `project add web child` renders the bullet above with `layout = "umbrella"`; `hooks install` + `git add tickets` on `feat/T-001-demo` in that same repo → `refusing to commit ticket bookkeeping on a feature branch`. Sources: `internal/install/install.go:1094-1104`, `internal/install/hooks_test.go:206-240`. | Render the same repo-scoped framing the payload now uses: under `umbrella`, no *child*'s feature branch can fork the board, and the rule binds the overarching project's own branches. Then invert the test — assert the umbrella block *states* the rule with its repository named, and drop the `unwanted` entry that currently forbids it. Fix the two comments in the same pass, since both still assert the umbrella-inert premise. |
+| R2 | blocking | docs-gap | — | The new `CHANGELOG.md` entry misdescribes the change twice, and one of the two contradicts F5's fix in the very same commit. It says the manual documents "**one-directional staleness**" — the exact claim F5 established is false and which `project-structure.adoc` no longer makes. It also says the rule "in both the rendered marker block **and** the shipped skill, now states which repository it binds", which is not true of the marker block while R1 stands. A changelog is read at release time by people who cannot check it against the diff. | `CHANGELOG.md:44-52` vs `project-structure.adoc:199-210` (F5's fix) and `install.go:1101-1104` (R1). Both landed in `6421c95`. | Replace "one-directional staleness" with the shipped claim (a stale read can never show `DONE` falsely, though a backward move can over-report). Re-check the marker-block clause once R1 lands — it becomes true then, so the sentence needs no second edit if R1 is fixed first. |
+| R3 | blocking | correctness | — | The third surface F2's fix missed, and the one that matters most for this flow's own operation: `review-protocol.md`'s box still tells every reviewer "Under the default `umbrella` layout **none of that arises**: … the worktree copy of the ticket is the only copy and reading it directly is correct." It reasons only about *the child's* branch checkout. But the reviewer reads the ticket from, and commits this review's own bookkeeping to, the **overarching** repository — the one that holds `tickets/` — and if that repository is itself on a feature branch, the stale-ticket hazard the box exists to prevent applies in full. The corrected `tickets-README.md` §0 now says exactly this; the protocol has not caught up, so the two payload files disagree. | `skill/resources/review-protocol.md:49-51` vs `skill/resources/tickets-README.md:105-112`. Step 1's own bullet (`:62-67`) carries the same absolute umbrella clause. | Keep "read it directly" as the umbrella default — it is right in the common case — but qualify it the way §0 now does: the copy you read is the overarching project's worktree, so if *that* repository is on a feature branch, read from its base branch instead. Update the step-1 bullet in the same pass. |
+| R4 | non-blocking | docs-gap | fixed inline | The reframed hooks NOTE said "installing the hooks there is harmless" of a child repository, implying `pickle hooks install` can arm one. It cannot: `hookRoot()` resolves the target upward to the directory holding `pickle.toml`, so it always arms the board's repository whatever directory you run it from. Reproduced: running it from `child/` installed into the *overarching* `.git/hooks`. | `internal/cli/hooks.go:57-68`; reproduction in the umbrella throwaway workspace. | Fixed in `2d0ee7a`: the NOTE now names the repository `hooks install` arms and frames child-repo inertness as what a hand-placed shim would do. |
+| R5 | non-blocking | spec-unclear | fixed inline | `tickets-README.md` §0's corrected bullet ended "the sub-bullets below apply to it exactly as they would to an in-tree child" — over-carrying in the opposite direction from F2. The merge-style preference sub-bullet is in-tree's alone: it exists because one history there carries both the code and the bookkeeping, which an umbrella board's repository does not. | `skill/resources/tickets-README.md` §0, the bullet as delivered in `6421c95`, vs the merge-preference sub-bullet directly beneath it. | Fixed in `2d0ee7a`: names the enforcement sub-bullets that do carry (hooks, origin-base check, stale-read hazard) and exempts the merge-style one. The sentence was also split in two, applying the one in-scope docs-readability suggestion. |
+
+**Disposition summary:** 3 blocking (R1, R2, R3 — the rework scope; all three are one root cause,
+F2's correction not reaching every surface that carries the claim, plus the changelog written from
+the pre-fix wording), 2 non-blocking both `fixed inline` (R4, R5, in commit `2d0ee7a`). No
+follow-up ticket minted; N1 and N2 from review 1 stand as recorded.
+
+cost: estimated L, actual L — unchanged; the remaining work is three prose surfaces and one test
+inversion.
+
+**Docs-readability (step 4b).** 26 suggestions; 24 landed on prose neither the original pass nor
+the rework authored, so they are out of scope for this ticket. Applied: the split of §0's
+"That is not the same as the rule being inert everywhere" sentence (folded into R5's fix).
+Rejected with reason: rewriting F5's "That half is a reassuring property and a hazard at once" to
+"That is both reassuring and hazardous" — it reads better but drops the "half" antecedent that
+F5's fix introduced precisely to separate the invariant claim from the backward-move case.
+
+**Impact sweep (step 8).** Unchanged from review 1: no ticket in `1-to-do/` or `2-ready/` lists
+T-109 in `depends-on:` or leans on its assumptions. T-050 still edits
+`agents/pi/extensions/pickle-guardrails.ts` but touches the rule-1 verdict, not the header comment
+F3 corrected — no collision. R1 adds `internal/install/install.go` and
+`internal/install/hooks_test.go` to the rework's file set; no open ticket names either.
+
 ## History
 
 - 2026-08-17 — created (TO DO). source: pickle ticket new
@@ -367,3 +422,5 @@ change prose, not the guard predicate.
 - 2026-08-18 — IN REVIEW → REWORK: review 1: 5 blocking findings — the guards are repo-scoped, not layout-scoped, so the umbrella 'never fires' claims are false (F1/F2); residual unconditional statement in the pi guardrail payload (F3); no CHANGELOG entry (F4); the one-directional-staleness invariant overclaims (F5)
 - 2026-08-18 — plan amended inline: rework fixed F1–F5 on `feat/T-109-layout-conditional-rules` (commit `6421c95`) and, per F1/F2/F5's authority to correct a false confirmed decision (rules §5 `plan-wrong`), rewrote decisions 1, 4 and 5 plus the Outcome, Description, Task 5 body and acceptance checks 1 and 5 to match: the base-branch rule binds whichever repository holds `tickets/` rather than being conditional on a layout name (decisions 1, 4), and the staleness claim is now DONE-is-terminal (never falsely `DONE`) rather than strictly one-directional, since a backward move or a drop lets a stale copy over-report (decision 5). Also applied, as polish (not a finding): two docs-readability suggestions on `review-protocol.md` §1/§9 that review 1 flagged as landing on this branch's own prose. `just build && just test && just lint && just docs-check` clean; all 6 acceptance checks re-verified.
 - 2026-08-18 — REWORK → IN REVIEW: fixes complete, ready for scoped re-review
+- 2026-08-18 — review 2 (scoped): F1, F3, F5 verified fixed; F4's entry added but its content misstates what shipped (R2); F2's correction reached the two payload docs but not the rendered marker block (R1, with a test that locks the old wording) nor the review protocol (R3). Two non-blocking findings fixed inline in `2d0ee7a`: the repository `hooks install` actually arms (R4) and which §0 sub-bullets carry to an umbrella board repo (R5).
+- 2026-08-18 — IN REVIEW → REWORK: review 2 (scoped): F1/F3/F5 fixed; F2's correction missed the rendered marker block (R1) and the review protocol (R3), and the new CHANGELOG entry misstates what shipped (R2)
