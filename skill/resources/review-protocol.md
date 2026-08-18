@@ -46,9 +46,15 @@ child addendum** (whichever exist).
 > `git show <base>:tickets/4-in-review/T-NNN-*.md` (or from a checkout of the base branch), and
 > record this review's own findings and moves on the base branch too.
 >
-> Under the default `umbrella` layout none of that arises: the board lives in the overarching
-> project, which is a different repository from the child whose branch you just checked out, so
-> the worktree copy of the ticket is the only copy and reading it directly is correct.
+> Under the default `umbrella` layout, checking out the *child's* branch never exposes you to
+> this: the board lives in the overarching project, a different repository from the child whose
+> branch you just checked out, so there is only one copy of the ticket and the child's worktree
+> was never a candidate to hold a stale one. But the overarching project's *own* worktree is a
+> copy like any other, and the identical hazard applies to it if it is ever checked out on a
+> feature branch of its own (rules §0) — rare, since bookkeeping there is usually committed
+> straight to its base branch, but not impossible. Read the ticket directly only when the
+> overarching project's worktree is itself on its base branch; otherwise read it from there the
+> same way, `git show <base>:tickets/4-in-review/T-NNN-*.md`.
 >
 > **Project configuration wins.** The branch prefix (`feat/`), the ticket-id prefix (`T`, in
 > every `T-NNN` here), the commit policy above, and any WIP limit named elsewhere in this
@@ -63,7 +69,9 @@ child addendum** (whichever exist).
   exists on the base branch** — if the feature branch is already checked out,
   `git show <base>:tickets/4-in-review/T-NNN-*.md` rather than the worktree copy, since a stale
   read there makes a review audit the wrong plan (see the box above). Under the default `umbrella`
-  layout the worktree copy is the only copy, so read it directly. Then read it in full:
+  layout the child's branch is never the hazard — read the ticket from the overarching project's
+  worktree directly, unless *that* worktree is itself on a feature branch of its own, in which
+  case read it from its base branch the same way (see the box above). Then read it in full:
   `## Description`,
   `## Implementation Plan` (its acceptance test, tasks, and confirmed decisions are the
   checklist for step 2), and `## History`.

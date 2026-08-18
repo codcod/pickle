@@ -48,8 +48,9 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   repository holding `tickets/` — the overarching project under `umbrella`, the sole child under
   `in-tree`. `install`/`upgrade`/`project add` render the marker block's "Where commits land"
   bullet accordingly, and the user manual documents what choosing `in-tree` costs beyond the
-  stale-board read: one-directional staleness, a CI run per bookkeeping push, and interleaved
-  release history (T-109).
+  stale-board read: a stale worktree can never show `DONE` for a ticket that is not, though a
+  ticket sent backward can show through it as further along than it now is; a CI run per
+  bookkeeping push; and interleaved release history (T-109).
 
 ## [0.9.0] - 2026-08-16
 
