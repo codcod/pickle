@@ -76,12 +76,15 @@ WIP limits, and an optional per-child review addendum. Defaults:
   finalize + push + open MR; the human merges; a root-path child (`path = "."`) tidies WIP
   commits into atomic ones first and defaults to keeping that history over squashing — rules
   §0). The overarching project's bookkeeping (tickets, board, docs) may be committed
-  automatically, always with explicit pathspecs. **Under `layout = "in-tree"` it must land on the
-  base branch — never on a feature branch** (rules §0): there the board shares a repository with
-  the code, so a squash-merge would fold or drop the bookkeeping and leave the board disagreeing
-  with the tickets. `pickle hooks install` enforces that locally, per clone. Under the default
-  `umbrella` layout the rule does not apply — the board is in a different repository from every
-  child, so no feature branch can fork it, and the hooks have nothing to catch.
+  automatically, always with explicit pathspecs. **It must land on the base branch — never on a
+  feature branch — of whichever repository holds `tickets/`** (rules §0): a squash-merge there
+  would fold or drop the bookkeeping and leave the board disagreeing with the tickets.
+  `pickle hooks install` enforces that locally, per clone, in that repository. Under `layout =
+  "in-tree"` that repository is the child's own, so the rule governs every commit on its
+  `feat/T-NNN-<slug>` branches. Under the default `umbrella` layout no **child**'s feature branch
+  can fork the board — it lives in the overarching project instead — but the overarching
+  repository is still the one the rule binds: a feature branch cut there carries the identical
+  hazard, and the hooks, if installed there, still catch it.
 - **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced **per child**.
 
 > **Project configuration wins.** The bullets above state the flow's defaults, once.

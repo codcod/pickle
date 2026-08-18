@@ -454,15 +454,23 @@ pickle hooks run pre-push
 
 [NOTE]
 ====
-**These guards are meaningful only in the in-tree layout** (<<install-layout>>). They protect one
-invariant: ticket/board bookkeeping must not ride along on a feature branch. That can only happen
-where `tickets/` and the `feat/T-NNN-<slug>` branches share a repository, which is exactly what
-`layout = "in-tree"` means.
+**These guards protect one invariant, scoped to a repository, not to a layout:** ticket/board
+bookkeeping must not ride along on a feature branch *of whichever repository holds `tickets/`*.
+Installing them anywhere else has nothing to catch — the guard's own check is "does this repo
+have a `tickets/` to guard", so a repository without one is a silent no-op regardless of layout.
 
-Under the default `umbrella` layout the board lives in the overarching project and every child is
-a separate repository, so a commit in a child *cannot* stage a `tickets/` path and a child's push
-*cannot* carry one. Installing the hooks there is harmless and they will simply never fire — which
-is worth knowing before you go looking for a fault to explain the silence.
+Under the **in-tree layout** (<<install-layout>>) that repository is the child's own — the same
+one the `feat/T-NNN-<slug>` branches are cut in — so the hazard is routine and the guards matter
+on every commit.
+
+Under the **umbrella layout**, every *child* repository is unaffected: `tickets/` lives in the
+overarching project, a separate repository, so a commit in a child *cannot* stage a `tickets/`
+path and a child's push *cannot* carry one — installing the hooks there is harmless and they will
+simply never fire. But the **overarching** repository is a different matter: it is the one that
+holds `tickets/`, so if *it* is ever worked on from a feature branch (docs, `pickle.toml`,
+planning prose in `tickets/NOTES.md`), the identical fold-or-drop hazard applies there too, and
+the guards will fire exactly as they would in-tree. "Umbrella" describes the *children*'s
+relationship to the board, not an exemption for the repository that contains it.
 ====
 
 Installs, inspects and runs two guards, both written by the same shared shim
@@ -593,12 +601,15 @@ that wants the guard already has it.
   so.** `hooks install`, `hooks status` and `doctor` each warn when the
   binary a shim will actually resolve cannot run the guard — see
   <<hooks-version-skew,version skew>>.
-* **Under the `umbrella` layout they never fire, and that is correct — not a
-  fault.** The invariant they guard cannot be violated when the board is in a
-  different repository from the code (<<install-layout>>). A guard that stays
-  silent for the whole life of an umbrella project is inert by construction,
-  so do not read the silence as a broken hook or a missing install; check
-  `layout` in `pickle.toml` first.
+* **They are scoped to a repository, not a layout.** A repository with no `tickets/` in it has
+  nothing for the guard to catch, so installing it there is a harmless, permanent no-op — that is
+  every **child** repository under the `umbrella` layout (<<install-layout>>), since `tickets/`
+  lives in the overarching project instead. It is *not* the overarching repository itself: that
+  one holds `tickets/`, so a feature branch cut there carries the same fold-or-drop hazard a
+  child's would in-tree, and the guards fire on it identically. If a child repository's guard
+  stays silent for the whole life of an umbrella project, that is correct, not a fault — do not
+  read it as a broken hook or a missing install; check `layout` in `pickle.toml` first, and which
+  repository you are asking about.
 * **Both fail open, always.** No `pickle` on `PATH`, no `pickle.toml`, an
   unparseable config, no git, an unresolvable base — each of those skips the
   check and allows the commit or push, with one line on stderr naming which

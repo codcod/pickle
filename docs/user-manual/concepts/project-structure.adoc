@@ -196,13 +196,18 @@ specific to `serve`: `pickle board audit` and `pickle board state --json` read
 `tickets/` the same way. On a feature branch cut last week, all three describe
 the board as it stood last week.
 
-*The staleness is one-directional.* Because bookkeeping only ever lands on the
-base branch, a stale worktree can only *under*-report progress — it may show
-a ticket as `IN DEVELOPMENT` that is really `DONE`, but it can never show
-`DONE` for a ticket that is not. That is a reassuring property and a hazard at
-once: nothing ever looks alarming enough to investigate, so the wrong answer
-is easy to accept and act on. When a status reads older than you expected,
-check which branch you are on before you conclude the board is wrong.
+*A stale worktree can never show `DONE` for a ticket that is not — but it can
+show other statuses out of order.* `DONE` is a terminal status with no move
+back out of it, so a worktree that lags the base branch may show a ticket as
+`IN DEVELOPMENT` when it is really `DONE`, but never the reverse. That half is
+a reassuring property and a hazard at once: nothing ever looks alarming
+enough to investigate, so the wrong answer is easy to accept and act on. It is
+not the whole picture, though — a ticket can also move *backward*
+(`in review` sent to `rework`, `ready` dropped), and there a stale worktree
+shows the **earlier**, further-along-looking status instead of the
+correction: over-reporting, not under. Either way, when a status reads
+different from what you expected, check which branch you are on before you
+conclude the board is wrong.
 
 *CI fires on every bookkeeping push.* Bookkeeping lands on the base branch, so
 a workflow triggered by pushes to that branch runs once per bookkeeping

@@ -63,7 +63,7 @@ child addendum** (whichever exist).
   exists on the base branch** — if the feature branch is already checked out,
   `git show <base>:tickets/4-in-review/T-NNN-*.md` rather than the worktree copy, since a stale
   read there makes a review audit the wrong plan (see the box above). Under the default `umbrella`
-  layout the worktree copy is the only copy, so read it directly. Read it in full —
+  layout the worktree copy is the only copy, so read it directly. Then read it in full:
   `## Description`,
   `## Implementation Plan` (its acceptance test, tasks, and confirmed decisions are the
   checklist for step 2), and `## History`.
@@ -259,9 +259,9 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
   root-path default above — keep the tidied history; the user chooses at approval time).
   Under `layout = "in-tree"`, **before pushing, verify the remote base is not behind your local
   base**: `git fetch origin <base> && git diff --name-only origin/<base>...HEAD | grep
-  '^tickets/'` must print nothing (§0 explains the three-dot choice, the fetch, and the failure
-  this catches). Any output means push `origin <base>` first and re-check. An installed
-  `pre-push` hook performs the same check automatically on push (§0), but it does not replace the
+  '^tickets/'` must print nothing. §0 explains the three-dot choice, the fetch, and the failure
+  this catches. Any output means push `origin <base>` first and re-check. An installed
+  `pre-push` hook (§0) performs the same check automatically on push, but it does not replace the
   manual step: hooks are per-clone and bypassable with `--no-verify`, so run the check by hand
   regardless of whether the hook is armed. Under the default `umbrella` layout this check has
   nothing to find — the child's repository contains no `tickets/` path to leak — so skip it.

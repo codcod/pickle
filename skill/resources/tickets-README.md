@@ -53,10 +53,12 @@ referenced, not copied.
 
   The distinction matters here because ticket status is a single-valued fact stored as a directory
   name, while git exists to let branches disagree about where a file lives. Under `umbrella` no
-  branch cut in a child can fork the board, because the board is not in that child's repository.
-  Under `in-tree` it can. **Every rule below that names the base branch belongs to `in-tree` and
-  is inert under `umbrella`** — not relaxed as a courtesy, but inapplicable, because the hazard it
-  guards against cannot arise there.
+  branch cut in a **child** can fork the board, because the board is not in that child's
+  repository. Under `in-tree` it can, in every child, on every ticket. **Every rule below that
+  names the base branch binds whichever repository holds `tickets/`** — under `in-tree` that is
+  the child itself, so the rule governs its `feat/T-NNN-<slug>` branches as a matter of course;
+  under `umbrella` it is the *overarching* project, not any child, so the rule is inapplicable to
+  a child's branches but still binds the overarching project's own, if it ever uses one.
 - **Every ticket targets exactly one child**, named in its `project:` frontmatter (a registered
   child name). The `feat/T-NNN-<slug>` branch for a ticket is cut **inside that child's repo**.
 - **One shared board, sub-grouped by child** (§6). **One global id namespace** (§3) regardless
@@ -64,8 +66,9 @@ referenced, not copied.
 - **Where commits land.** The code for a ticket is committed on that child's
   `feat/T-NNN-<slug>` branch. The bookkeeping — the ticket file, its History lines, the generated
   `BOARD.md` — is committed in the overarching project, in its own commit, in the `board:` form
-  below. *Which branch* that commit must land on is a question only the `in-tree` layout asks, and
-  it is answered in the in-tree bullet that follows this one.
+  below. *Which branch* that commit must land on is answered in the bullet that follows this one
+  — it binds whichever repository holds `tickets/`, which under `in-tree` is every child and
+  under `umbrella` is the overarching project rather than any child.
   - **Bookkeeping commits use their own `board:` form, not Conventional Commits.** This holds in
     both layouts — it follows from what a bookkeeping commit *is*, not from where the board sits.
     A bookkeeping commit is a ticket's state transition, not a product change, so forcing it
@@ -93,14 +96,20 @@ referenced, not copied.
     those would reintroduce the exact uncommitted-bookkeeping-crosses-a-branch-switch hazard the
     pre-commit hook (below) and the origin-base check (below, and `review-protocol.md` step 9)
     exist to prevent.
-- **In the `in-tree` layout only: bookkeeping lives on the base branch.** The code and the board
-  share one repository and one branch namespace, so **the bookkeeping is committed on the base
-  branch**, never on a feature branch. This is not tidiness: a squash-merge of the feature branch
-  folds every bookkeeping commit into the code commit, or drops it, and the board then indexes
-  tickets whose recorded status disagrees with where the files are. It applies to every move a
-  ticket makes, including the ones a *review* performs. **Under `umbrella` this bullet and all of
-  its sub-bullets do not apply**: the board is outside every child's repository, so no feature
-  branch can fork it, and bookkeeping may be committed whenever it is ready.
+- **Bookkeeping is committed on the base branch of whichever repository holds `tickets/`, never
+  on a feature branch of it.** This is not
+  tidiness: a squash-merge of the feature branch folds every bookkeeping commit into the code
+  commit, or drops it, and the board then indexes tickets whose recorded status disagrees with
+  where the files are. It applies to every move a ticket makes, including the ones a *review*
+  performs. **Under the `in-tree` layout that repository is the child's own** — code and the board
+  share one repository and one branch namespace — so the rule governs every ticket's
+  `feat/T-NNN-<slug>` branch as a matter of course. **Under `umbrella` no *child*'s feature branch
+  can trigger it**: the board is outside every child's repository, so bookkeeping tied to a
+  ticket may be committed whenever it is ready, regardless of what branch a child happens to be
+  on. That is not the same as the rule being inert everywhere — the overarching project is still
+  the repository the rule binds, so a feature branch cut *there* (a docs change, a `pickle.toml`
+  edit, planning prose in `tickets/NOTES.md`) carries the identical fold-or-drop hazard, and the
+  sub-bullets below apply to it exactly as they would to an in-tree child.
   - Sharing one branch namespace is exactly what makes the split easy to violate by accident —
     nothing about `git add tickets` looks wrong on a feature branch. Because that history also
     carries the child's own commits, prefer preserving them on
