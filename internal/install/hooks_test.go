@@ -204,14 +204,21 @@ func TestUninstallLeavesAForeignHook(t *testing.T) {
 
 // TestMarkerBlockStatesWhereCommitsLand: the hook enforces a rule, and an
 // enforced rule that is written down nowhere is not a rule. The marker block is
-// what every agent session reads, so the statement has to be there — but only
-// where the rule actually applies (T-109). Under the in-tree layout the board
-// shares a repository with the code and the obligation is load-bearing; under
-// the umbrella layout no feature branch can fork the board, so stating the
-// obligation would hand the reader a rule whose justification is absent from
-// their setup and send them hunting for a guard that never fires. Both
-// directions are asserted, since a one-sided test would pass on a block that
-// states the rule unconditionally — exactly the defect this replaced.
+// what every agent session reads, so the statement has to be there — and it has
+// to name which repository it binds, not a layout (T-109 review 2, R1): the
+// rule is "bookkeeping lands on the base branch of whichever repository holds
+// tickets/", true in both layouts. Under `in-tree` that repository is the sole
+// child, so every one of its branches is bound as a matter of course. Under
+// `umbrella` it is the overarching project, not any child, so a **child's**
+// feature branch can never fork the board — but the overarching project's own
+// branches remain bound exactly as an in-tree child's would. Review 1 found an
+// earlier render of the umbrella branch, and this test, asserting the opposite
+// ("no feature branch can [fork it]", full stop, with "bookkeeping is committed
+// on the base branch" as `unwanted`) — a throwaway install showed the installed
+// guard still refusing that exact commit in the overarching repo, so the
+// assertion was locking in a defect rather than guarding against one. Both
+// directions are still asserted, since a one-sided test would pass on a block
+// that states the rule unconditionally in either direction.
 func TestMarkerBlockStatesWhereCommitsLand(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -229,14 +236,17 @@ func TestMarkerBlockStatesWhereCommitsLand(t *testing.T) {
 			},
 		},
 		{
-			name: "umbrella explains why there is nothing to guard",
+			name: "umbrella exempts child branches but still binds its own",
 			opts: Options{ProjectName: "demo", ProjectPath: "child"},
 			want: []string{
 				"Where commits land",
-				"no feature branch can",
+				"no **child's** feature",
+				"bookkeeping is still committed on",
+				"cut in the overarching project itself would",
 			},
 			unwanted: []string{
-				"bookkeeping is committed on the base branch",
+				"no feature branch can fork it",
+				"whenever it is ready",
 			},
 		},
 	} {
@@ -262,7 +272,7 @@ func TestMarkerBlockStatesWhereCommitsLand(t *testing.T) {
 			}
 			for _, unwanted := range tc.unwanted {
 				if strings.Contains(string(body), unwanted) {
-					t.Errorf("AGENTS.md marker block states %q, which does not apply in this layout", unwanted)
+					t.Errorf("AGENTS.md marker block states %q, which overclaims for this layout", unwanted)
 				}
 			}
 		})

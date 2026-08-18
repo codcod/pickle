@@ -1091,17 +1091,23 @@ func MarkerBlock(cfg *config.Config) string {
 			"  user asks, and always with **explicit pathspecs**"
 	}
 
-	// The base-branch bookkeeping rule is layout-conditional, and the block
-	// renders only the branch that applies (T-109). Under the umbrella layout
-	// the board is not in any child's repository, so no feature branch can fork
-	// it: stating the rule there would hand the reader an obligation whose
-	// entire justification is absent from their setup, and send them looking for
-	// a guard that by construction never fires. Rendering rather than hedging in
-	// prose follows childPolicy/overarching above.
+	// The base-branch bookkeeping rule binds whichever repository holds
+	// tickets/, not a layout name (T-109, review 2 R1): under umbrella that is
+	// the overarching project, not any child, so a child's feature branch can
+	// never fork the board, but the overarching project's own branches remain
+	// bound exactly as an in-tree child's would — review 1 found the first cut
+	// of this render claimed the rule was inert for the whole layout, which a
+	// throwaway install disproved (the guard still refuses a feature-branch
+	// commit in the overarching repo). Rendering rather than hedging in prose
+	// follows childPolicy/overarching above.
 	commitsLandBullet := "- **Where commits land.** Code goes on the child's feature branch. The board lives in\n" +
-		"  the overarching project, a different repository from every child, so no feature branch can\n" +
-		"  fork it: ticket and board bookkeeping is committed there, whenever it is ready. (Projects\n" +
-		"  using the `in-tree` layout must instead keep bookkeeping off feature branches — rules §0.)"
+		"  the overarching project, a different repository from every child, so no **child's** feature\n" +
+		"  branch can fork it. Ticket and board bookkeeping is still committed on **this** project's\n" +
+		"  base branch: this project uses the `umbrella` layout, so a feature branch cut in a child\n" +
+		"  never carries it, but one cut in the overarching project itself would — and `pickle hooks\n" +
+		"  install` run here still catches that. (Projects using the `in-tree` layout keep bookkeeping\n" +
+		"  off every child's feature branches instead, since there the child and the overarching\n" +
+		"  project are the same repository — rules §0.)"
 	if cfg.ResolvedLayout() == config.LayoutInTree {
 		commitsLandBullet = "- **Where commits land.** Code goes on the child's feature branch; **ticket and board\n" +
 			"  bookkeeping is committed on the base branch**, never on a feature branch — a squash-merge\n" +
