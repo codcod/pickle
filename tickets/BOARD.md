@@ -20,11 +20,10 @@ Last updated: 2026-08-18
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | [T-108] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-18
 
 | id | title | open findings |
 |---|---|---|
+| T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | review 3 (scoped): R1-R3 verified fixed; S1 — the replacement prose over-claims guard coverage in the umbrella overarch… |
 
 ## READY (impact order, per child)
 

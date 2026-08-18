@@ -408,6 +408,50 @@ T-109 in `depends-on:` or leans on its assumptions. T-050 still edits
 F3 corrected — no collision. R1 adds `internal/install/install.go` and
 `internal/install/hooks_test.go` to the rework's file set; no open ticket names either.
 
+**2026-08-18 — review 3 (scoped re-review).** Branch `feat/T-109-layout-conditional-rules` at
+`c21e4f3`, read against `main`. Scope: R1, R2, R3. Verdict: **one blocking finding — back to
+`5-rework/`**. All three fixes landed and are structurally correct; R1's replacement prose then
+made the mirror-image claim of the one it repaired, and it did so on four surfaces at once.
+
+- [x] R1/R2/R3 re-verified individually (step 2, scoped)
+- [x] Acceptance test re-run: all 6 checks pass; `pickle doctor` 0/0; `changelog check` clean
+- [x] `just build && just test && just lint && just docs-check` clean (19 packages)
+- [x] Findings recorded with severity, class and disposition per the rules §5 (step 5)
+- [x] Ticket moved to `5-rework/`; `## History` appended (step 6)
+- [x] Impact sweep re-checked (step 8) — unchanged; nothing depends on T-109
+- [ ] Docs-readability pass — **conscious skip**: the rework's prose deltas are the four sentences
+      under audit in S1 and are about to be rewritten; a readability pass on wording that is
+      changing again would be discarded unread
+
+**R1/R2/R3, re-verified:**
+
+| finding | verdict | evidence |
+|---|---|---|
+| R1 (marker block + test lock) | **structurally fixed; new claim defective — see S1** | The umbrella render now says "no **child's** feature branch can fork it" and states the rule binds this project's base branch; `hooks_test.go`'s umbrella case asserts the corrected wording and rejects both old phrases (`want`: `no **child's** feature`, `bookkeeping is still committed on`, `cut in the overarching project itself would`; `unwanted`: `no feature branch can fork it`, `whenever it is ready`). Both doc comments corrected. `TestMarkerBlockGolden` still passes untouched — correctly, since only the umbrella branch changed and the golden's fixture (`alpha` at `.`) resolves in-tree. |
+| R2 (CHANGELOG contradicted F5) | **fixed** | `CHANGELOG.md:50-53` now carries the shipped claim ("a stale worktree can never show `DONE` for a ticket that is not, though a ticket sent backward can show through it as further along") and no longer says "one-directional". The marker-block clause in the same entry became true when R1 landed, as review 2 predicted, so it needed no second edit. |
+| R3 (review protocol vs §0) | **fixed** | `review-protocol.md:49-57` and the step-1 bullet at `:69-74` now distinguish the child's checkout (never the hazard) from the overarching project's own worktree (the hazard, if it is on a feature branch), matching `tickets-README.md` §0. Correctly hedged as "rare … but not impossible". |
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| S1 | blocking | correctness | — | R1's replacement prose over-claims the guard's *coverage* in the umbrella overarching repo, the mirror image of the defect it fixed. A branch is a "feature branch" to the guards only when it matches **a registered child's `branch_prefix`** (`onFeatureBranch`, shared by `hook.go` and `prepush.go:145`). Under `umbrella` no registered prefix describes the *overarching* project's own branches — a child's `feat/` says nothing about how the board's repository names its docs branches — so the guard's protection there is a coincidence of naming, not a guarantee. Four surfaces now assert it flatly, and the failure direction is worse than F1's: F1 sent a reader hunting for a fault that did not exist, S1 invites reliance on protection that is not there. The docs never state the prefix dependency in the hooks section at all (only `serve`'s banner spells it out, `cli-reference.adoc:1306`). | Reproduced in one umbrella throwaway (`branch_prefix = "feat/"`, child `web` at `child`): overarching repo on `feat/T-001-demo` + `git add tickets` → `hooks run pre-commit` exits **1**; same repo, same staged paths, on `docs/layout-notes` → exits **0**, guard silent. Claims: `internal/install/install.go` umbrella render ("and `pickle hooks install` run here still catches that"), `docs/user-manual/cli-reference.adoc:475` ("the guards will fire exactly as they would in-tree") and `:612` ("the guards fire on it identically"), `skill/SKILL.md:87` ("the hooks, if installed there, still catch it"), `skill/resources/tickets-README.md:112` ("every enforcement sub-bullet below — the hooks, the origin-base check, the stale-read hazard — applies to it exactly as it would to an in-tree child"). | One hedging clause per surface, not a rewrite: the guards catch it **when the overarching project's branch name matches a registered child's `branch_prefix`**, which under `umbrella` is not guaranteed — so the base-branch discipline there rests on the operator, with the hook as a bonus rather than a backstop. The `tickets-README.md` line needs one extra distinction: the *manual* origin-base check (`git diff … origin/<base>...HEAD`) has no naming dependency and does carry over unchanged; only the two hooks do. Two of the four surfaces (`cli-reference.adoc:475`, and the `:612` bullet) were authored by **this review's own inline fixes in `2d0ee7a`** — recorded here rather than quietly repaired, since the same standard applies to a reviewer's edit as to the branch's. While in the marker-block string, also unsplit the `` `pickle hooks\n  install` `` code span: CommonMark renders the break as a space so it is harmless, but no neighbouring bullet splits one. |
+
+**Disposition summary:** 1 blocking (S1 — the rework scope), 0 non-blocking. No follow-up ticket
+minted. Review 1's N1/N2 and review 2's R4/R5 stand as recorded.
+
+cost: estimated L, actual XL — three review rounds, each finding the previous fix true in substance
+and over-stated at one more surface. The estimate was not wrong about the *work*; it was wrong that
+"make a rule conditional" is a prose edit, when the rule's condition turned out to be a claim about
+a guard's predicate that only a reproduction could settle.
+
+**Impact sweep (step 8).** Unchanged: nothing in `1-to-do/` or `2-ready/` lists T-109 in
+`depends-on:` or leans on its assumptions; T-050 still does not collide with the guardrail header.
+S1's fix touches only files already in this ticket's set.
+
+**Note for the next pass — the pattern to break.** Three rounds have each corrected a claim about
+the guards and then made a fresh unconditional claim one clause over. The reliable fix is to state
+the predicate once, in the one place that owns it (`cli-reference.adoc`'s "what the guards do and do
+not catch"), and have the other three surfaces point at it instead of restating it — the same
+single-source discipline the rules already use for the four dispositions and the `class` vocabulary.
 ## History
 
 - 2026-08-17 — created (TO DO). source: pickle ticket new
@@ -426,3 +470,5 @@ F3 corrected — no collision. R1 adds `internal/install/install.go` and
 - 2026-08-18 — IN REVIEW → REWORK: review 2 (scoped): F1/F3/F5 fixed; F2's correction missed the rendered marker block (R1) and the review protocol (R3), and the new CHANGELOG entry misstates what shipped (R2)
 - 2026-08-18 — rework: fixed R1–R3 on `feat/T-109-layout-conditional-rules` (commit `c21e4f3`). R1: MarkerBlock's umbrella render and its hooks_test.go assertions both stated the old 'inert under umbrella, full stop' claim — the test even forbade the corrected wording — fixed and inverted, reproduced against a throwaway install. R2: the CHANGELOG entry's 'one-directional staleness' phrase (self-contradicting F5's own fix in the same commit) replaced with the shipped DONE-is-terminal claim. R3: review-protocol.md's box and step-1 bullet now qualify 'read it directly' under umbrella to the overarching project's own worktree, matching tickets-README.md §0. `just build && just test && just lint && just docs-check` clean; all 6 acceptance checks, `pickle doctor` and `changelog check` re-verified.
 - 2026-08-18 — REWORK → IN REVIEW: R1-R3 fixed, ready for scoped re-review
+- 2026-08-18 — review 3 (scoped): R1, R2, R3 all verified fixed. One new blocking finding (S1): R1 replacement prose, plus review 2 own inline fixes, now over-claim the guard coverage in the umbrella overarching repo — a branch is a feature branch to the guards only when it matches a registered child branch_prefix, and under umbrella no configured prefix describes the board repository own branches. Reproduced: same staged tickets/ paths refused on feat/T-001-demo, waved through on docs/layout-notes.
+- 2026-08-18 — IN REVIEW → REWORK: review 3 (scoped): R1-R3 verified fixed; S1 — the replacement prose over-claims guard coverage in the umbrella overarching repo (no configured branch_prefix describes its own branches), on four surfaces including two of review 2's own inline fixes
