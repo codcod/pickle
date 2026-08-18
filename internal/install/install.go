@@ -1115,8 +1115,8 @@ func MarkerBlock(cfg *config.Config) string {
 		"  child's `branch_prefix` — not guaranteed under `umbrella` — so the discipline rests on the\n" +
 		"  operator here, with the hook as a bonus rather than a backstop. (Projects using the\n" +
 		"  `in-tree` layout keep bookkeeping off every child's feature branches instead, and there the\n" +
-		"  hook's coverage is exact, since the child and the overarching project are the same\n" +
-		"  repository — rules §0.)"
+		"  hooks see every branch that carries the hazard, since a ticket's branch always carries the\n" +
+		"  configured prefix — rules §0.)"
 	if cfg.ResolvedLayout() == config.LayoutInTree {
 		commitsLandBullet = "- **Where commits land.** Code goes on the child's feature branch; **ticket and board\n" +
 			"  bookkeeping is committed on the base branch**, never on a feature branch — a squash-merge\n" +
