@@ -8,6 +8,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-18
+
 ### Added
 
 - **`pickle install --in-tree` explicitly selects the layout where the board lives inside its
@@ -644,7 +646,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/codcod/pickle/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/codcod/pickle/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/codcod/pickle/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/codcod/pickle/compare/v0.6.0...v0.7.0
