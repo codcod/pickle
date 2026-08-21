@@ -180,13 +180,19 @@ Create, under `scaffold/docs-template/`:
   {product} does ... (describe what it does here).
   ```
 - `workflows/docs-release.yml` — a full workflow: header comment stating the GitHub-only
-  assumption (decision 7), `on: release: types: [published]`, one job that installs snowball
-  (`brew install codcod/tap/snowball && snowball setup`), runs `snowball build -o dist/docs`
-  with `continue-on-error: true` (soft-fail, matching this repo's own
-  `.github/workflows/release.yml` rationale), then a guarded step that uploads whatever exists
-  in `dist/docs/*.{pdf,epub}` via `gh release upload "$TAG" ... --clobber\` and exits 0 with a
-  `::warning::` annotation when nothing was built — same shape as this repo's own
-  "Attach user manual to release" step, minus the goreleaser coupling and the
+  assumption (decision 7), `permissions: contents: write` declared explicitly (matching this
+  repo's own workflows' always-explicit convention — `gh release upload` needs it, and an
+  adopting repo's default token permissions should not be relied on), `on: release: types:
+  [published]`, one job that installs snowball defensively — `brew update --quiet` before
+  `brew install codcod/tap/snowball`, then `snowball setup` — rather than the bare two-command
+  form, because a stale preinstalled Homebrew snapshot is a known cause of install failures on
+  fresh runners (self-contained hardening, written into the template directly; the generated
+  file must stand on its own and must not cite this repo's own ticket ids or script paths),
+  runs `snowball build -o dist/docs` with `continue-on-error: true` (soft-fail, matching this
+  repo's own `.github/workflows/release.yml` rationale), then a guarded step that uploads
+  whatever exists in `dist/docs/*.{pdf,epub}` via `gh release upload "$TAG" ... --clobber` and
+  exits 0 with a `::warning::` annotation when nothing was built — same shape as this repo's
+  own "Attach user manual to release" step, minus the goreleaser coupling and the
   version-from-archive-name renaming (there is no goreleaser archive here to match names
   against).
 
@@ -311,3 +317,5 @@ rather than introducing a new YAML linter.)
 
 - 2026-08-21 — created (TO DO). source: chat: user asked pickle to scaffold docs/release tooling (docs dir, snowball.yaml, release-attach GitHub Action, justfile targets) modeled on this repo; idea was challenged (mission mismatch, tool-assumption stacking, `snowball init` duplication) and the user chose to proceed scoped down as a separate opt-in subcommand rather than folding it into `pickle install`
 - 2026-08-21 — TO DO → READY: plan complete
+- 2026-08-21 — plan amended inline: pre-pickup applicability gate (fresh sub-agent audit, no blocking findings) folded two gaps into Task 1's `docs-release.yml` template — defensive `brew update` before `snowball` install (mirrors this repo's own runner-flakiness fix, written in generically rather than cited by ticket id) and an explicit `permissions: contents: write` block (matches this repo's always-explicit convention; `gh release upload` needs it)
+- 2026-08-21 — READY → IN DEVELOPMENT: picked up

@@ -13,10 +13,11 @@ Last updated: 2026-08-21
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-110 | opt-in scaffold command for a docs/release template (docs skeleton, snowball config, release-attach action, justfile), … | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-21
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-110 | opt-in scaffold command for a docs/release template (docs skeleton, snowball config, release-attach action, justfile), … | low-medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
