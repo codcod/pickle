@@ -20,11 +20,10 @@ Last updated: 2026-08-22
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-22
 
 | id | title | open findings |
 |---|---|---|
+| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | review round 1: 3 blocking (F1 reason-fold leading space regresses main; F2 deferred board sync turns CI red on merge; … |
 
 ## READY (impact order, per child)
 
@@ -86,11 +86,11 @@ Last updated: 2026-08-22
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — MERGED: feat/T-030-validate-ticket-new-input → main (a29fde1, squashed) |
 | T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | yes — MERGED: feat/T-036-review-disposition-valves → main (5367843, squashed) |
-| T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | yes — merged to main (PR #11, 8a61d3e), user-approved as an exception **ahead of the |
+| T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | yes — merged to main (PR #11, 8a61d3e), user-approved as an exception **ahead of the review protocol** (out of the usua… |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | yes — merged to main (PR #10, 25d2152), user-approved as an exception; squashed to one commit; branch deleted |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | yes — merged to main (PR #15, 17e2341), user-approved; squashed to 5291aeb; branch deleted |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
-| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | yes — merged to `main` (`b5af6ab`, PR #38): 4 commits kept, not squashed; CI green. |
+| T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | yes — merged to `main` (`b5af6ab`, PR #38): 4 commits kept, not squashed; CI green. Post-merge verification on `main`: … |
 | T-047 | AsciiDoc user manual in docs/ + slim README to about & install | yes — merged to main (local squash merge 7a0995d) |
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | yes — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted |
@@ -98,45 +98,45 @@ Last updated: 2026-08-22
 | T-051 | surface the workspace-side consequences of registering a child-project | yes — merged to main (PR #20, ee1086e); kept full history (6 commits across 3 review cycles); branch deleted |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | yes — merged to main (PR #21, 0918c1c); kept both commits (impl + review fixes), user-approved; branch not deleted |
 | T-053 | pickle serve — local web dashboard to visualize the board and its changes | yes — merged to main (PR #2, 8c33f5c), user-approved as an exception; squashed to one commit; branch deleted |
-| T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | yes — merged to main (PR #3, b70e238), user-approved as an exception; kept both |
+| T-054 | pickle serve: follow the system light/dark theme instead of hardcoding dark | yes — merged to main (PR #3, b70e238), user-approved as an exception; kept both commits unsquashed (0ab98f0 the change,… |
 | T-057 | guard ticket bookkeeping from landing on a feat/ branch (pre-commit hook) | yes — merged to main (PR #14, 9a9af59) |
 | T-058 | per-child ticket_prefix: optional id prefix per child-project, default T | yes — merged to main (0f3049f) |
 | T-059 | family: group tickets under an umbrella ticket id for curated pickup order | yes — merged to main (#7) |
 | T-061 | Board child-project filter buttons in the serve dashboard | yes — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed |
-| T-065 | expose board and ticket state as a versioned JSON read projection | yes — merged to `main` via PR #50 (`83a4d39`); 7 commits kept, not squashed, so the |
+| T-065 | expose board and ticket state as a versioned JSON read projection | yes — merged to `main` via PR #50 (`83a4d39`); 7 commits kept, not squashed, so the `e05f402`/`8b4caa6` hashes cited in… |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | yes — merged to `main` via PR #57 (`c87caaa`): 2 commits kept, not squashed |
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | yes — merged to main (PR #60, 2e29b50); 3 commits kept, not squashed; CI green (build-test, ci-surface, goreleaser-chec… |
-| T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives |
+| T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives verbatim on `main` rather th… |
 | T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | yes — MERGED: feat/T-069-config-writers-safe → main (152fea8, #17, squash), user-approved |
 | T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | yes — merged to main (PR #19, 236d859), squashed |
 | T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | yes — MERGED: feat/T-073-introduce-brine-name (squashed) → main (7b33876, #18), user-approved; branch deleted |
-| T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | yes — MERGED: PR #44 (`feat/T-074-rename-skill-dir-to-brine`, kept history, not |
+| T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | yes — MERGED: PR #44 (`feat/T-074-rename-skill-dir-to-brine`, kept history, not squashed) → main (21d4906), user-approv… |
 | T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | yes — merged to main (PR #28, e214ee3, https://github.com/codcod/pickle/commit/e214ee3); merge commit, 15 commits kept |
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | yes — merged to main (PR #30, 904e460, https://github.com/codcod/pickle/commit/904e460); merge commit, 8 commits kept |
-| T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | yes — merged to main (PR #45, 6d11b4b, https://github.com/codcod/pickle/commit/6d11b4b); |
+| T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | yes — merged to main (PR #45, 6d11b4b, https://github.com/codcod/pickle/commit/6d11b4b); merge commit, 2 commits kept |
 | T-083 | a ticket does not say what you get from it: add an Outcome section and warn when it is missing | yes — merged to main (#23) |
 | T-084 | give bookkeeping commits their own board: convention, distinct from child-project Conventional Commits | yes — merged to main (PR #24, 6d70fb3) |
-| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | yes — merged to main (PR #42, 89bccc5, https://github.com/codcod/pickle/commit/89bccc5); |
+| T-085 | make the per-ticket record aggregable: finding class, plan-amendment line, cost actual, provenance class | yes — merged to main (PR #42, 89bccc5, https://github.com/codcod/pickle/commit/89bccc5); merge commit, 7 commits kept r… |
 | T-086 | release CI: stale runner Homebrew rejects fresh bottle install steps, breaking the user-manual build | yes — merged to main (PR #22, bd508be) |
 | T-087 | release CI: make the user-manual build visible and testable without cutting a release | yes — merged to main (PR #25, 084ff7e) |
 | T-088 | static-check the CI workflow and shell surface: actionlint + shellcheck, and manual-smoke's missing permissions/concurr… | yes — merged to main (PR #41, 64a3794) |
-| T-089 | Record a commit reference alongside the merge History line | yes — merged to main (PR #26, 1ceaead, https://github.com/codcod/pickle/commit/1ceaead); |
+| T-089 | Record a commit reference alongside the merge History line | yes — merged to main (PR #26, 1ceaead, https://github.com/codcod/pickle/commit/1ceaead); merge commit, 2 commits kept. … |
 | T-090 | Harden linkifyURLs: escape/trim ordering, empty-host links, adjacent URLs, and noreferrer | yes — merged to main (PR #27, b232d0a, https://github.com/codcod/pickle/commit/b232d0a); merge commit, 3 commits kept |
 | T-091 | a bookkeeping commit can stage a ticket move's add without its delete: move prints only the new path | yes — merged to main (PR #39, 7e60dce, https://github.com/codcod/pickle/commit/7e60dce); merge commit, 1 commit kept |
-| T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | yes — merged to `main` (`7b8cbdd`, PR #37): 3 commits kept, CI green — its own new CI |
-| T-093 | reconcile merged tickets against the changelog's Unreleased section | yes — merged to main (PR #31, 212730c, https://github.com/codcod/pickle/commit/212730c); merge commit, 4 commits kept |
+| T-092 | detect an unfinalized merge: audit every DONE ticket for its merge line, and run board audit in CI | yes — merged to `main` (`7b8cbdd`, PR #37): 3 commits kept, CI green — its own new CI step ran in that PR and warned ab… |
+| T-093 | reconcile merged tickets against the changelog's Unreleased section | yes — merged to main (PR #31, 212730c, https://github.com/codcod/pickle/commit/212730c); merge commit, 4 commits kept —… |
 | T-094 | make changelog check usable outside the post-release moment: a range end, a quieter exclusion list, and subjects a squa… | yes — merged to main (PR #33, 876e63d, https://github.com/codcod/pickle/commit/876e63d); merge commit, 4 commits kept |
 | T-095 | changelog check's default report is inaccurate at two edges: a multi-id board: commit's extra ids and a tagged --until | yes — merged to `main` (`eed6b3e`, PR #35): the rework loop closed, history kept |
 | T-096 | replace the pinned docs-readability model gemini-2.5-pro with github-copilot/gpt-5.4 | yes — merged to `main` (`bf02f33`, PR #36): 2 commits kept, CI green |
 | T-097 | changelog check's permissive id scan invents ticket ids and silences the no-id drift alarm | yes — merged to main (PR #40, 801b09b, https://github.com/codcod/pickle/commit/801b09b); merge commit, 3 commits kept |
-| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | yes — merged to main (PR #43, ee85bf3, https://github.com/codcod/pickle/commit/ee85bf3); |
+| T-098 | the shipped payload cites this repo's own ticket ids and corpus as if the reader could look them up | yes — merged to main (PR #43, ee85bf3, https://github.com/codcod/pickle/commit/ee85bf3); merge commit, 5 commits kept r… |
 | T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | yes — merged to `main` via PR #47 (`3640db6`) |
-| T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | yes — merged to main (PR #46, 1c55323, https://github.com/codcod/pickle/commit/1c55323); |
-| T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | yes — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than |
+| T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | yes — merged to main (PR #46, 1c55323, https://github.com/codcod/pickle/commit/1c55323); merge commit, 4 commits kept |
+| T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | yes — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than squashed (root-path child defaul… |
 | T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | yes — merged to main (3104977, PR #48) |
 | T-105 | pickle board decisions: query a child's confirmed design decisions | yes — MERGED: feat/T-105-board-decisions → main (9343299, PR #51), user-approved; history kept (4 commits); branch not … |
-| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | yes — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52), |
-| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | yes — merged to main (PR #53, baeab0f, https://github.com/codcod/pickle/commit/baeab0f); |
+| T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | yes — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52), user-approved; history kept (4 commits);… |
+| T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | yes — merged to main (PR #53, baeab0f, https://github.com/codcod/pickle/commit/baeab0f); merge commit, all 6 atomic com… |
 | T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | yes — merged to main (MR #55, commit `6a7a458`) — complete: `5da2051` confirmed on `main`, re-verified against the merg… |
 | T-110 | opt-in scaffold command for a docs/release template (docs skeleton, snowball config, release-attach action, justfile), … | yes — merged to main (PR #56, `323add9`); branch deleted |
 | T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | yes — merged to main (PR #59, merge commit `0a7aad3`); history kept rather than squashed, the root-path default. Step 0… |
