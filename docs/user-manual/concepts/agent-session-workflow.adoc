@@ -71,7 +71,11 @@ cheap.
 | New session
 | Heavier
 | Severity-and-disposition calls benefit from both independence from the
-  implementer and stronger judgement.
+  implementer and stronger judgement. The independence half is a rule, not
+  only a scheduling suggestion: the skill's `resources/review-protocol.md`
+  step 0 requires the audits to be delegated whenever the reviewing agent
+  wrote the branch it is auditing. The session and tier split below stays a
+  suggestion.
 
 | Commit / push / open the MR
 | Same session as the review, switch tier

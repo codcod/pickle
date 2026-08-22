@@ -63,6 +63,47 @@ child addendum** (whichever exist).
 
 ---
 
+## 0. Reviewer independence — who runs the audits
+
+An agent that just wrote a branch is a poor auditor of it: the code reads as obviously correct
+to whoever just decided, line by line, that it was — the same reasoning that produced it is the
+reasoning that would have to catch a flaw in itself. This is the same bias the ticket-pickup gate
+already guards against by requiring a spawned, unbiased sub-agent (this skill's
+`resources/tickets-README.md` §8); a review needs the same handoff, because the reviewer may be
+auditing work it just wrote rather than work it merely inherited.
+
+**Trigger.** When the agent about to run this review authored the branch under review in this
+same session, delegate the audits (steps 2 through 4a) to an independent reviewer: spawned
+fresh, with no memory of writing the code, briefed adversarially and instructed to find defects
+rather than confirm the work. Hand it the ticket as step 1 reads it, the branch to audit, and
+the child's configured commands — an independent reviewer starts with no context, and one left
+to find its own can audit a stale ticket or the wrong branch. A reviewer with no hand in the
+branch is already independent — nothing needs delegating.
+
+**Boundary.** Delegation covers the audits only. Classification and severity, the four
+dispositions, moving the ticket, and the approval gate (step 9) stay with the orchestrating
+reviewer — delegating those would replace the reviewer rather than de-bias it.
+
+**Verify before recording.** An independent reviewer has no stake in the outcome, but equally no
+context, so expect it to report things that are wrong. Re-verify every delegated finding by hand
+before it enters the findings table (step 5) — delegation buys independence, not accuracy.
+
+**Record which happened, every time.** Independent, delegated, or skipped — the review's
+checklist says which. This is not only a degradation notice: a review that ran its own audits
+because the reviewer had no hand in the branch records that too. Silence cannot distinguish an
+independent review from a self-review, which is what makes the archive unauditable later.
+
+**When the host cannot spawn an independent reviewer**, the next-best handoff is a fresh session
+with no memory of writing the branch (see below). When neither is available, this step degrades
+to a recorded conscious skip, the same shape as step 4b's below: it never blocks the review, but
+the skip is written into the checklist rather than left silent.
+
+**Session and tier.** Entering review is a natural point to start a fresh session at a heavier
+reasoning tier — the judgement calls in step 5 benefit from both independence from whoever
+implemented the ticket and stronger reasoning. Once the verdict is reached, the remaining steps
+(record, move, publish) are mechanical and do not need that tier — offer to drop back down rather
+than carrying the heavier session through the publish steps by default.
+
 ## 1. Load context
 
 - Locate the ticket: `tickets/4-in-review/T-NNN-*.md`. Under `layout = "in-tree"`, read it **as it
@@ -292,6 +333,7 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
 
 ### Checklist (paste into the ticket's `## Review` section)
 
+- [ ] Reviewer independence settled (step 0): audits run independently, delegated, or a recorded conscious skip — name which
 - [ ] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
 - [ ] Quality audit (step 3)
 - [ ] Consistency audit (step 4)

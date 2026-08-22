@@ -538,6 +538,9 @@ longer worth building, is routed back to `2-ready/`/`1-to-do/` to be re-refined 
 assumption no longer holds and re-refining would not save it, **dropped**: `7-dropped/` is
 already a legal target from `2-ready/` (with a reason), and DROP is as legitimate a verdict here
 as proceed or route-back.
+The same bias governs the review that follows, on a narrower trigger — there the handoff is
+required only when the reviewing agent wrote the branch it is auditing (this skill's
+`resources/review-protocol.md` step 0).
 The gate's own findings take **the four dispositions of §5**, with the same default: an
 amendment to the plan under pickup is `fixed inline` (edit the plan, record it in History) or
 `folded`; genuinely adjacent work is `noted` unless it passes the promotion test. A gate that
