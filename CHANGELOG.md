@@ -44,6 +44,18 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   A markup bug that opened an unconstrained bold span at a glob (`` `.pi/extensions/*.ts` ``)
   and swallowed the next two lines of the rendered PDF/EPUB is also fixed (T-066).
 
+- **A merge line wrapped across a continuation line no longer truncates the board's `merged`
+  cell.** `MergeLine` carried its own private copy of the `## History` section walk and, unlike
+  every other reader of a ticket's history, never folded a continuation line back into the entry
+  above it — so a merge note wrapped onto a second physical line (routine once the recommended
+  form grew a full commit URL, T-089) silently showed only its first line in `pickle board`'s
+  DONE `merged` column, `pickle serve`'s ticket view, and `pickle state`'s `merged` field.
+  `MergeLine` now reads through the same shared `HistoryEntries` walk the other readers already
+  use. A related bug is fixed alongside it: a hand-written transition whose continuation line
+  happened to contain its own `OLD → NEW: reason` could make `LastHistoryReason` report that
+  unrelated reason instead of the transition's own (or none at all) — resolving a transition's
+  target and reason from the same arrow, in one pass, closes it (T-070).
+
 ## [0.10.0] - 2026-08-18
 
 ### Added
