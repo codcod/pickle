@@ -57,6 +57,19 @@ export default function (pi: ExtensionAPI) {
     }
   });
 
+  // NOTE ON THIS GATE'S NATURE: every rule below is a reminder that encodes
+  // the AGENTS.md commit policy for a cooperative agent — it is NOT a
+  // security boundary and is trivially bypassable by design: a
+  // variable-indirected `git` (`g=git; $g add -A`), a piped `xargs` (`echo -A
+  // | xargs git add`), or a quoted flag (`git commit "-""a"`) all sail past
+  // every check here. Its job is to catch the common, unintentional slip, at
+  // the cost of an occasional false positive that a single confirm keypress
+  // clears — not to guarantee compliance. Do not file tickets to harden the
+  // matcher against deliberate evasion: it would trade this false-positive
+  // cost for a real bypass, since the segmenter below has no notion of shell
+  // quoting or heredocs (a quote/heredoc-aware skip turns a heredoc into a
+  // one-line bypass of every rule; anchoring the match to a segment start
+  // loses every `then`/`env`/`sudo`/`time` prefix).
   pi.on("tool_call", async (event, ctx): Promise<Block | undefined> => {
     if (!isToolCallEventType("bash", event)) return;
     const raw = event.input.command ?? "";
@@ -67,21 +80,21 @@ export default function (pi: ExtensionAPI) {
       if (/\bgit\s+(?:add|stage)\b/.test(seg)) {
         const args = gitStageArgs(seg);
         if (args.some((a) => a === "-A" || a === "--all" || a === ".")) {
-          return {
-            block: true,
-            reason:
-              "Blocked: never `git add -A` / `git add .` in this project. " +
-              "Stage with explicit pathspecs (`git add <paths>`).",
-          };
+          const reason =
+            "Never `git add -A` / `git add .` in this project. " +
+            "Stage with explicit pathspecs (`git add <paths>`).";
+          if (!ctx.hasUI) return { block: true, reason };
+          const ok = await ctx.ui.confirm("Staging discipline", reason + "\n\nProceed?");
+          if (!ok) return { block: true, reason: "User declined the staging discipline gate." };
         }
       }
       if (/\bgit\s+commit\b/.test(seg) && /\s(-a|--all)\b/.test(seg)) {
-        return {
-          block: true,
-          reason:
-            "Blocked: `git commit -a/--all` bypasses explicit pathspecs. " +
-            "Stage explicit paths first, then commit.",
-        };
+        const reason =
+          "`git commit -a/--all` bypasses explicit pathspecs. " +
+          "Stage explicit paths first, then commit.";
+        if (!ctx.hasUI) return { block: true, reason };
+        const ok = await ctx.ui.confirm("Staging discipline", reason + "\n\nProceed?");
+        if (!ok) return { block: true, reason: "User declined the staging discipline gate." };
       }
 
       // Rule 2 — publish gate (push / merge request).

@@ -18,6 +18,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Fixed
 
+- **The Pi guardrail's staging-discipline rule (`git add -A` / `git add .` / `git commit -a`)
+  now prompts for confirmation instead of hard-blocking**, matching the publish gate and
+  self-modify guard it ships alongside. A command that merely *mentions* one of those phrases in
+  its own text (e.g. inside a documentation heredoc) used to be refused outright; it now asks,
+  and an unattended session (no UI) keeps today's strictness. Shipped identically in
+  `agents/pi/extensions/pickle-guardrails.ts` (the installed payload) and this repo's own
+  `.pi/extensions/workspace-guardrails.ts` (T-050).
+
 - **`docs/user-manual/cli-reference.adoc` documents every flag the CLI actually accepts.**
   `pickle ticket new --family`, and `pickle project add`'s `--build`/`--test`/`--lint`/`--docs`/
   `--branch-prefix`/`--wip-dev`/`--wip-review`, existed but were never mentioned in the manual;
