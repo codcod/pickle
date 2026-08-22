@@ -285,6 +285,16 @@ Disposition summary: 1 blocking (F1, routes to rework), 1 `noted` (F2), 1 `fixed
 
 cost: estimated S, actual S
 
+**Scoped re-review (2026-08-22).** F1 only, per the rework procedure. Verified independently on
+`feat/T-050-pi-guardrail-confirm`: rework commit `3fbef32` touches only the header comment in
+`agents/pi/extensions/pickle-guardrails.ts` (`git show 3fbef32` — one file, comment-only diff);
+`grep -n "T-[0-9]" agents/pi/extensions/pickle-guardrails.ts` matches nothing;
+`TestPayloadSpeaksToAForeignReader` and all four `TestPayloadLintRule*`/`TestPayloadLint*` tests
+pass; `just build/test/lint/docs-check` all clean; a fresh harness re-run reproduces identical
+confirm/decline/no-UI behaviour for both the heredoc PoC and a literal `git add -A`/`git commit
+-a`, confirming no behavioural regression from the comment rewrite. F1 resolved, no new findings.
+Verdict: **done**.
+
 ## History
 
 - 2026-07-27 — created (TO DO). source: field finding, pickle 0.1.0 guardrail false positive;
@@ -330,3 +340,4 @@ cost: estimated S, actual S
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-22 — IN REVIEW → REWORK: F1 blocking: shipped header comment fails the foreign-workspace test (ticket-lookup phrasing in payload)
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
+- 2026-08-22 — IN REVIEW → DONE: scoped re-review: F1 confirmed fixed, no new findings

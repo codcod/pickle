@@ -20,11 +20,10 @@ Last updated: 2026-08-22
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-050 | pi guardrail: make the staging gate a confirm, not a hard block | [] |
 
 ## REWORK
 
@@ -93,6 +92,7 @@ Last updated: 2026-08-22
 | T-047 | AsciiDoc user manual in docs/ + slim README to about & install | yes — merged to main (local squash merge 7a0995d) |
 | T-048 | render the user manual to PDF and EPUB with snowball | yes — merged to main (commit 6606b63, fast-forward after rebase; user-approved) |
 | T-049 | board cells have no length contract: cap rendered cell width at the sanitizeCell choke point | yes — merged to main (PR #1, 07b8294), user-approved; history kept per F9; branch deleted |
+| T-050 | pi guardrail: make the staging gate a confirm, not a hard block | no — publish-gated |
 | T-051 | surface the workspace-side consequences of registering a child-project | yes — merged to main (PR #20, ee1086e); kept full history (6 commits across 3 review cycles); branch deleted |
 | T-052 | post-upgrade audit cannot tell a registry-changed board from a hand-edited one | yes — merged to main (PR #21, 0918c1c); kept both commits (impl + review fixes), user-approved; branch not deleted |
 | T-053 | pickle serve — local web dashboard to visualize the board and its changes | yes — merged to main (PR #2, 8c33f5c), user-approved as an exception; squashed to one commit; branch deleted |
