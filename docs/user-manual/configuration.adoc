@@ -47,6 +47,9 @@ Hand-edits are always preserved on load.
   the key nor a child at `.` is `"umbrella"`; a config with no key but a
   child at `.` is `"in-tree"` — the pre-`layout` compatibility inference,
   never a substitute for the recorded value once it exists.
+* `flow` — the flow this project runs, read by `pickle flow show|list`
+  (<<cmd-flow>>); defaults to `{flow}` when unset, currently the only legal
+  value (`Config.Validate()` rejects any other).
 * `review_addendum` (optional) — a project-wide review addendum layered on the
   skill's review protocol.
 * `[commit]` table — `overarching_auto`, `child_publish_gated`. Both default
