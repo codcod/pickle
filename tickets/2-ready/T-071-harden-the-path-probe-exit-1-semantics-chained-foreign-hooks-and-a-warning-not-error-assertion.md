@@ -89,7 +89,126 @@ assertion closes it.
 
 ## Implementation Plan
 
-<!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->
+### 0. Feature branch (mandatory)
+
+```
+cd .
+git checkout main
+git checkout -b feat/T-071-harden-path-probe
+```
+
+Root-path child. Tidy WIP commits before presenting (Finish, below).
+
+### Prerequisite gate (hard)
+
+None (`depends-on: []`). `spawned-by: [T-068]`; T-068, T-046, T-082 and T-100 are all in
+`6-done/`, and their impact sweeps on this ticket (recorded in History) are all discharged, so
+the tree this plan describes is current, not a moving target.
+
+### Confirmed design decisions (do not deviate without asking)
+
+1. **Item 1 (R3): accept exit `0` *or* `1` as capable in `probeCapable`
+   (`internal/hook/probe.go`); no other hardening.** The manual's own documented contract
+   (`docs/user-manual/cli-reference.adoc`'s "Both fail open, always" bullet, verified at
+   refinement) states `pickle hooks run <hook>` exits `1` **only** for a real violation, `0`
+   otherwise, `2` for a bad invocation — so *any* exit code a genuinely capable binary can
+   produce (0 or 1) now reads as capable, and the `TMPDIR`-inside-a-project collision stops
+   mattering: whichever outcome the real check produces (clean or a real violation) is now read
+   correctly. **This makes the ticket's own "optionally pin the working directory / set
+   `GIT_CEILING_DIRECTORIES`" alternative unnecessary** — it would add complexity to a gap that
+   accepting both exit codes already closes completely, not partially. The exit-2-and-above
+   mapping (and the "couldn't even run the probe" fallback) is unchanged: still incapable.
+2. **Item 2 (R5): document the limitation, no code change** — the ticket's own sanctioned
+   "defensible outcome". `checkHooks`'s `KindForeign` line (`internal/doctor/doctor.go:304`)
+   already tells the truth ("hook present but not pickle's — left alone"); it does not claim
+   the chained guard (if any) is healthy, so there is no lie to fix, only an adjacent capability
+   question doctor structurally cannot answer without parsing the foreign hook's content. Add one
+   bullet to `docs/user-manual/cli-reference.adoc`'s existing "What the guards do and do not
+   catch" list (`:653-664`, right after "Both fail open, always") naming the gap for both hooks
+   (T-082's chaining example already shows both `pre-commit` and `pre-push`). Rejected
+   alternatives: grepping the foreign hook for `hooks run` before probing (a content heuristic
+   with both false-positive and false-negative failure modes, for a line that is advisory text
+   only — not worth the maintenance surface for this ticket's grade); probing `KindForeign`
+   unconditionally (execs a process for a hook pickle does not own and may not even be able to
+   parse the intent of).
+3. **Item 3 (R11): one assertion, no new test function.** Add `if len(res.Errors) != 0 { ... }`
+   to the existing `"incapable pickle on PATH warns and is inert"` subtest in
+   `internal/doctor/hooks_test.go` (`:214-228`) — pin that an inert guard is a warning, never an
+   error, so promoting it later would fail this suite instead of only ever showing up in a
+   manual acceptance transcript.
+4. **Line numbers re-verified against the current tree** (T-068/T-046/T-082/T-100 are all
+   `6-done/`): `probeCapable` at `internal/hook/probe.go` (function body, no change to its
+   signature or callers); `checkHooks`'s `KindForeign` case at `internal/doctor/doctor.go:304`;
+   the R11 subtest at `internal/doctor/hooks_test.go:214-228`; `stubPickle`/`stubPickleAt` in both
+   test files already take an arbitrary exit code (`rc int`), so no test-helper change is needed
+   for the exit-1 case either package needs.
+
+### Tasks
+
+#### Task 1 — `probeCapable` accepts exit 0 or 1 (item 1 / R3)
+In `internal/hook/probe.go`'s `probeCapable`, replace `return cmd.Run() == nil` with logic that
+inspects the error via `errors.As(err, &exitErr *exec.ExitError)`: `err == nil` → true (exit 0);
+`exitErr != nil` → `exitErr.ExitCode() == 1`; any other error (timeout, exec failure) → false.
+Add the `errors` import. Update the function's doc comment to state the widened contract and
+cite the manual's own exit-code table (decision 1) as the source of truth for why 1 is safe to
+accept.
+
+#### Task 2 — tests for Task 1
+- `internal/hook/probe_test.go`: add `TestProbeCapableOnExitOne` mirroring
+  `TestProbeCapablePickle`/`TestProbeIncapablePickle` (`stubPickleAt(t, bin, 1)`), asserting
+  `r.OK == true` and `r.Problem() == ""`.
+- `internal/doctor/hooks_test.go`: add a `"guard ran and found a violation still passes"` subtest
+  next to `"capable pickle on PATH passes"` (`:230-243`), using `stubPickle(t, 1)`, asserting zero
+  warnings/errors and the same `"can run the installed guards"` pass line.
+
+#### Task 3 — R11 assertion (item 3)
+In `internal/doctor/hooks_test.go`'s `"incapable pickle on PATH warns and is inert"` subtest
+(`:214-228`), add `if len(res.Errors) != 0 { t.Errorf("inert guard must warn, not error: %v",
+res.Errors) }`.
+
+#### Task 4 — docs bullet for item 2 (R5)
+In `docs/user-manual/cli-reference.adoc`'s "What the guards do and do not catch" list
+(`:653-664`), add one bullet after "Both fail open, always": a foreign `pre-commit`/`pre-push`
+that chains `pickle hooks run` (the pattern the manual itself recommends just above, in the
+"chain it" examples) carries the identical PATH-skew exposure as a pickle-owned shim, but neither
+`doctor` nor `hooks status` probes it — they only probe when a hook is pickle-owned and current
+— because presence alone does not say whether a foreign hook actually chains the guard. Verify
+PATH capability yourself (`pickle hooks run pre-commit` from the same shell a commit would use)
+if you chain the guard into your own hook.
+
+### Acceptance test
+
+```
+just build
+go test ./internal/hook/... ./internal/doctor/... -v -run 'TestProbe|TestCheckHooks'
+just test
+just lint
+just docs-check
+```
+All clean; the targeted `-run` output shows the new exit-1-is-capable coverage in both packages
+and the R11 assertion passing.
+
+### Docs update (mandatory when user-facing)
+
+Task 4 above: one bullet in `docs/user-manual/cli-reference.adoc`'s "What the guards do and do
+not catch" list. Nothing else user-facing changes — item 1 is an internal correctness fix (a
+previously-mis-reported warning stops firing; no new flag, output shape, or documented behaviour
+changes), and item 3 is test-only.
+
+### Finish (mandatory)
+
+1. Acceptance test green.
+2. Docs updated (Task 4).
+3. Write a summary noting the "pin the working directory" alternative was considered and
+   rejected as unnecessary (decision 1), and that item 2 resolved to docs-only, per the ticket's
+   own sanctioned outcome.
+4. Suggested commit message:
+   ```
+   fix(hooks): read a probe's exit 1 as capable, not inert (T-071)
+   ```
+5. Tidy WIP commits into atomic ones (root-path child) before presenting.
+6. Commit locally; do not push or open an MR without explicit user approval. Hand back with
+   `pickle ticket move T-071 in-review --reason "acceptance green"`.
 
 ## Review
 
@@ -155,3 +274,12 @@ assertion closes it.
   match on `can run the installed guards`. T-100 confined itself to that one string, leaving
   `checkHooks`' structure untouched, so this ticket's `probeCapable`/`checkHooks` scope is
   unchanged — only the literal to re-read has moved. Scope and grade unchanged
+- 2026-08-20 — refined: confirmed the manual's own "Both fail open, always" bullet already
+  documents the exact 0/1/2 exit-code contract R3 relies on, so item 1's fix is a pure code
+  change (no doc update needed for it). Decided item 1 needs only the exit-0-or-1 widening —
+  the working-directory-pinning alternative is unnecessary once that lands, since every exit code
+  a capable binary can produce is then read correctly. Decided item 2 resolves to a single new
+  docs bullet, no code change (the ticket's own sanctioned outcome): `checkHooks`'s foreign-hook
+  line does not currently lie, it simply cannot see into a foreign hook's content. Grade
+  unchanged. TO DO → READY: implementation plan complete.
+- 2026-08-22 — TO DO → READY: plan complete

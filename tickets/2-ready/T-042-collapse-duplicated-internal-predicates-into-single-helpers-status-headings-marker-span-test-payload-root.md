@@ -144,7 +144,145 @@ path, would otherwise have to be made twice — the same argument as items 1 and
 
 ## Implementation Plan
 
-<!-- empty until refined; must meet the READY gate before moving to 2-ready/ -->
+### 0. Feature branch (mandatory)
+
+```
+cd .
+git checkout main
+git checkout -b feat/T-042-collapse-duplicated-predicates
+```
+
+Root-path child. Tidy WIP commits into atomic ones (one per item reads cleanly) before
+presenting (Finish, below).
+
+### Prerequisite gate (hard)
+
+None (`depends-on: []`). T-041, T-044, T-043, T-040, T-046 and T-082 (whose review sweeps grew
+this epic) are all `6-done/`; T-015/T-017/T-032 (the epic's origin) are `7-dropped/` as absorbed.
+**T-013 item 6** (project-root resolution triplication) is confirmed still owned by T-013's own
+Implementation Plan (just refined, `2-ready/`, Task 9) — per this ticket's own sequencing note,
+fold it in here only if T-013 is not picked up first; since T-013 hasn't been picked up yet
+either, no action needed now, just do not duplicate that task into this plan.
+
+### Confirmed design decisions (do not deviate without asking)
+
+1. **Item 1 (skill-dir dry-run labels): the dry-run branch gains the same symlink-vs-directory
+   distinction the real run already makes**, so a preview names what the real run will actually
+   do to it (`os.Remove` a symlink and leave the target alone, vs `os.RemoveAll` a real
+   directory) — not just that *something* will be removed. Labels: dry-run symlink →
+   `SkillDir + " (dry-run, symlink)"`; dry-run directory → `SkillDir + "/ (dry-run)"` (keeping
+   the trailing slash the real run's directory branch already uses).
+2. **Item 3 (test payload root): one new package, `internal/testutil`, not five one-off
+   fixes.** `RepoRoot() string` computed via `runtime.Caller(0)` against `testutil.go`'s own
+   compile-time source path (three `filepath.Dir` calls up from
+   `internal/testutil/testutil.go` to the module root) — correct by construction regardless of
+   the test process's CWD, which is exactly what makes `cli_test.go`'s `TestMain` validation
+   (`os.Stat(skill/SKILL.md)`, added defensively over a *guessed* relative path) genuinely dead
+   weight once this lands, per this ticket's own sequencing note: delete it, do not port it.
+   **Caveat, recorded rather than solved:** `runtime.Caller` returns a non-absolute path under
+   `-trimpath`; `go test` (this project's own `just test`/CI) never passes it, so this is a
+   documented assumption in the new package's doc comment, not a defect to guard against here.
+3. **Item 4a (`copyPayload`'s Lstat guard): a literal swap to `install.SkillLinked(root)`.** No
+   behaviour change — confirmed character-for-character equivalent in the Description's own
+   analysis (same `dst`, `fi` used for nothing but the mode test).
+4. **Item 4b (self-host symlink test fixture): one unexported helper, `linkSkill(t, root)`,
+   inside `internal/doctor`** (both `selfHostFixture` and
+   `TestCheckSelfHostLinkStillReportsIncapablePATHPickle` are `package doctor` — no
+   cross-package plumbing needed, unlike item 3).
+5. **Item 5 (hook offender scan): one unexported helper, `ticketsOffenders(diffOutput, prefix
+   string) []string`, in `internal/hook`**, called from both `CheckPreCommit` and
+   `CheckPrePush` — same package, same trivial swap-in.
+6. **The deferred `T-\d+` shape unification (T-040 D6):** export `ticket.IDShapePattern` as a
+   bare regex-fragment string constant (not a compiled `*regexp.Regexp` — `filenameRE`/`rowRE`
+   each embed it inside a *larger* anchored pattern, so a fragment composes, a compiled regex
+   would not); `internal/ticket`'s `filenameRE`/`idRE` and `internal/board`'s `rowRE` (already
+   importing `ticket`) all build from it. Byte-identical compiled patterns before and after —
+   this is a pure de-duplication, not a behaviour change.
+7. **Every item lands as its own atomic commit** (six independent, unrelated call sites) so a
+   reviewer can verify "behaviour unchanged" per item rather than for one large diff.
+
+### Tasks
+
+#### Task 1 — skill-dir dry-run labels (item 1)
+In `internal/install/install.go`'s `Uninstall` (dry-run branch, `:572-574`), branch on
+`fi.Mode()&os.ModeSymlink != 0` the same way the real-run branch below it already does, and emit
+the two labels from decision 1. Add `TestUninstallDryRunAgreesOnSkillDirKind` to
+`internal/install/install_test.go` (mirroring `TestUninstallDryRunAgreesOnReversedMarkers`,
+`:1108+`): one subtest with a real skill dir, one with a self-host symlink, asserting the
+dry-run label names the same kind (symlink vs directory) the real run's label would.
+
+#### Task 2 — `internal/testutil` + item 3's five call sites
+- New file `internal/testutil/testutil.go`: `func RepoRoot() string` per decision 2, with a doc
+  comment stating the `-trimpath` caveat.
+- Replace `internal/install/install_test.go:17`'s `payloadRoot()` and
+  `internal/doctor/doctor_test.go:16`'s duplicate with a call to `testutil.RepoRoot()` (keep each
+  package's own `payloadRoot()` as a thin one-line wrapper only if removing it would touch too
+  many call sites to review comfortably in one sitting; prefer deleting the wrapper and updating
+  call sites directly if the count is small — check at implementation time).
+- Replace the inlined `os.DirFS(filepath.Join("..", ".."))` in `internal/move/move_test.go:21`
+  and `internal/sync/sync_test.go:21` with `os.DirFS(testutil.RepoRoot())`.
+- In `internal/cli/cli_test.go`'s `TestMain` (`:42-61`), replace the `wd`/`filepath.Abs(wd, "..",
+  "..")` computation and the subsequent `os.Stat(skill/SKILL.md)` validation with
+  `repoRoot = testutil.RepoRoot()` — delete both, per decision 2, not merely the stat.
+
+#### Task 3 — `copyPayload` collapse + `linkSkill` test helper (item 4)
+- `internal/install/install.go:709`'s `copyPayload`: replace its `os.Lstat`-based symlink guard
+  with `if install.SkillLinked(root) { ... }` (decision 3) — note `copyPayload` is itself inside
+  package `install`, so this is `SkillLinked(root)`, an in-package call, not `install.SkillLinked`.
+- `internal/doctor`: add `func linkSkill(t *testing.T, root string)` (decision 4) to
+  `doctor_test.go`, replacing the duplicated 6-line body in `selfHostFixture` (`:44-59`) and
+  `TestCheckSelfHostLinkStillReportsIncapablePATHPickle` (`hooks_test.go:181-193`) with a call to
+  it, passing each their own already-different root (`installFixture(t)` / `gitFixture(t)`
+  respectively — unchanged, only the symlink-creation body collapses).
+
+#### Task 4 — hook offender-scan collapse (item 5)
+In `internal/hook/hook.go`, add `func ticketsOffenders(diffOutput, prefix string) []string` per
+decision 5, next to `ticketsPrefix`. Replace the inline loop in `CheckPreCommit` (`:505-513`) and
+in `CheckPrePush` (`internal/hook/prepush.go:163-171`) with a call to it.
+
+#### Task 5 — `T-\d+` shape unification (T-040 D6)
+In `internal/ticket/ticket.go`, add an exported raw-string constant `IDShapePattern` holding the
+bare id-shape fragment (an uppercase-led prefix of uppercase letters/digits, a hyphen, then
+digits) near `filenameRE`/`idRE` (`:52-63`), and rebuild both from it. In
+`internal/board/board.go`, rebuild `rowRE` (`:36`) from `ticket.IDShapePattern` the same way.
+Update `ticket.go`'s existing comment (which already names T-042 as the owner) to point at the
+new constant instead of describing the unification as future work.
+
+### Acceptance test
+
+```
+just build
+go test ./... -v -run 'TestUninstallDryRunAgreesOnSkillDirKind|TestCheckSelfHostLink|TestPreCommit|TestCheckPrePush|TestParsePushRefs'
+just test
+just lint
+just docs-check
+./pickle board audit
+```
+All clean. The full `just test` run is the real regression guard for items 3–5 (no behaviour
+change is claimed anywhere; every existing test in `internal/install`, `internal/doctor`,
+`internal/move`, `internal/sync`, `internal/cli`, `internal/hook`, `internal/ticket` and
+`internal/board` must pass with zero literal changes to their assertions).
+
+### Docs update (mandatory when user-facing)
+
+No user-facing surface — internal de-duplication only; no CLI/output/doc-visible behaviour
+changes (item 1's dry-run label wording is new text, but it is diagnostic CLI output, not a
+documented contract anywhere in the manual — verified: `cli-reference.adoc`'s `uninstall`
+section does not quote the dry-run label text).
+
+### Finish (mandatory)
+
+1. Acceptance test green.
+2. No docs to update (verified above).
+3. Write a summary listing all five items closed, plus the T-040 D6 regex unification, and
+   confirm zero existing test assertions needed editing.
+4. Suggested commit message (broad, no single scope — omit parens):
+   ```
+   refactor: collapse five duplicated internal predicates into shared helpers (T-042)
+   ```
+5. Tidy WIP commits into atomic ones, one per item (decision 7), before presenting.
+6. Commit locally; do not push or open an MR without explicit user approval. Hand back with
+   `pickle ticket move T-042 in-review --reason "acceptance green"`.
 
 ## Review
 
@@ -192,3 +330,13 @@ path, would otherwise have to be made twice — the same argument as items 1 and
 - 2026-08-14 — patched by **T-082's review impact sweep**: gained **item 5** (the bookkeeping-guard
   offender scan, now written once per hook in `internal/hook`). A `folded` disposition from that
   review, no new ticket. Scope grows by one small item; not re-graded (still low/low/S)
+- 2026-08-20 — refined: verified all five remaining items live against the current tree (dry-run
+  label mismatch at `install.go:572-585`; five payload-root variants; `copyPayload`'s exact-match
+  `SkillLinked` collapse; the two self-host symlink test fixtures; the two hook offender-scan
+  copies) plus the T-040 D6 regex triplication (`idRE`/`filenameRE`/`board.rowRE`), still spelled
+  out three times. Designed the item-3 fix as a new `internal/testutil` package
+  (`RepoRoot()` via `runtime.Caller`), which is what makes deleting `TestMain`'s defensive
+  `os.Stat(skill/SKILL.md)` correct rather than merely convenient. Confirmed T-013 item 6 stays
+  out of this ticket's scope (still owned by T-013's own, just-refined plan). Grade unchanged.
+  TO DO → READY: implementation plan complete.
+- 2026-08-22 — TO DO → READY: plan complete
