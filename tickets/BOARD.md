@@ -39,6 +39,7 @@ Last updated: 2026-08-22
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | medium | medium | M | [T-004] |  |
+| T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | medium | low | S | [] |  |
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
@@ -59,7 +60,6 @@ Last updated: 2026-08-22
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
-| T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 
 ## DONE
