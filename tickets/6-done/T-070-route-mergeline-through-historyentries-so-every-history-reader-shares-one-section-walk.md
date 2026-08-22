@@ -462,4 +462,4 @@ local; nothing in the work itself argued for a bigger grade than the S it was gi
   goreleaser-check — which is F2's fix confirmed end-to-end, since `build-test` is the job that
   runs `pickle board audit`. `mergeable: MERGEABLE`. Awaiting the human's merge
 - 2026-08-22 — merged to main (PR #61, 02874d4, https://github.com/codcod/pickle/commit/02874d4);
-  merge commit, all 5 atomic commits kept rather than squashed
+  merge commit, all 5 atomic commits kept rather than squashed; branch deleted
