@@ -60,6 +60,7 @@ Last updated: 2026-08-22
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
+| T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | low | low | S | [] |  |
 
 ## DONE
 
