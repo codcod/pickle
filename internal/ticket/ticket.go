@@ -115,7 +115,7 @@ func historyKind(def *flow.Definition, body string) HistoryKind {
 	case createdRE.MatchString(body):
 		return HistoryCreated
 	default:
-		if _, _, ok := transitionParts(def, body); ok {
+		if _, _, _, ok := transitionParts(def, body); ok {
 			return HistoryTransition
 		}
 		return HistoryNote
@@ -149,19 +149,28 @@ const arrow = "→"
 // Requiring the candidate to be a legal status *exactly* (not merely to start
 // with one) is what keeps a note that happens to mention an arrow — "clarified
 // that a merge → DONE requires a human" — a note.
-func transitionParts(def *flow.Definition, body string) (target, reason string, ok bool) {
+// The fourth return, hasReason, reports whether the accepting arrow's candidate
+// was found via the colon branch (true) or the no-colon branch (false) — i.e.
+// whether a reason clause was opened at all on this first physical line, as
+// distinct from one opened but empty. Callers that fold continuation lines into
+// a reason (HistoryEntries) use it to decide whether a continuation extends that
+// clause; a bare "OLD → NEW" with no colon opens none, so a hand-written
+// continuation note never gets mistaken for a reason.
+func transitionParts(def *flow.Definition, body string) (target, reason string, hasReason, ok bool) {
 	for rest := body; ; {
 		i := strings.Index(rest, arrow)
 		if i < 0 {
-			return "", "", false
+			return "", "", false, false
 		}
 		rest = rest[i+len(arrow):]
 		candidate, tail := rest, ""
+		opened := false
 		if j := strings.Index(rest, ":"); j >= 0 {
 			candidate, tail = rest[:j], strings.TrimSpace(rest[j+1:])
+			opened = true
 		}
 		if name := strings.ToUpper(strings.TrimSpace(candidate)); statusExists(def, name) {
-			return name, tail, true
+			return name, tail, opened, true
 		}
 	}
 }
@@ -185,6 +194,17 @@ type HistoryEntry struct {
 	// candidate target is no longer a legal status, so the entry classified as a
 	// transition and then resolved to no status at all (T-043 review, R1).
 	Target string
+	// Reason is the transition's ": <reason>" clause, or "" unless Kind is
+	// HistoryTransition or no clause was opened. It is resolved in the same pass
+	// and from the same accepting arrow as Target (via transitionParts on the
+	// entry's first physical line), then folded forward exactly like Text — but
+	// only when reasonOpen says a clause was actually opened on that first line,
+	// so a later, unrelated arrow in a continuation line can never be mistaken for
+	// this entry's reason (T-043 review, R7).
+	Reason string
+	// reasonOpen records whether Reason's clause was opened on the entry's first
+	// physical line, i.e. whether a continuation line should keep extending it.
+	reasonOpen bool
 }
 
 // HistoryEntries returns every dated entry of a ticket's `## History` section in
@@ -219,7 +239,10 @@ func HistoryEntries(def *flow.Definition, text string) []HistoryEntry {
 			if e.Kind == HistoryTransition {
 				// Same input as historyKind just classified, so Kind and Target
 				// are decided together and stay true after folding (T-043 R1).
-				e.Target, _, _ = transitionParts(def, body)
+				// Reason and reasonOpen come from the same call, anchored at the
+				// same accepting arrow as Target, so the pair provably belongs to
+				// one transition (T-043 R7).
+				e.Target, e.Reason, e.reasonOpen, _ = transitionParts(def, body)
 			}
 			out = append(out, e)
 			continue
@@ -233,6 +256,9 @@ func HistoryEntries(def *flow.Definition, text string) []HistoryEntry {
 		}
 		last := &out[len(out)-1]
 		last.Text += " " + trimmed
+		if last.Kind == HistoryTransition && last.reasonOpen {
+			last.Reason += " " + trimmed
+		}
 	}
 	return out
 }
@@ -359,21 +385,18 @@ func LastHistoryStatus(def *flow.Definition, text string) string {
 // truncated to its first physical line, because the old per-line walk never saw
 // the fold HistoryEntries already performs for every other reader.
 //
-// The reason — unlike the target, which is frozen with Kind on the entry's first
-// physical line — is read from the *folded* Text, since folding it back together
-// is the whole point. When the folded text no longer presents a transition (a
-// reason-less "TO DO → READY" whose continuation line is plain prose), there is
-// no reason clause to report and "" is the answer.
+// It reads HistoryEntry.Reason directly rather than re-deriving it from the
+// folded Text: re-derivation is what let this disagree with Target when a
+// continuation line carried an arrow of its own (T-043 review, R7). Reason is
+// resolved by HistoryEntries in the same pass, anchored at the same accepting
+// arrow as Target, so the two cannot disagree.
 func LastHistoryReason(def *flow.Definition, text string) string {
 	reason := ""
 	for _, e := range HistoryEntries(def, text) {
 		if e.Kind != HistoryTransition {
 			continue // merge note, created line, or free-form note
 		}
-		reason = ""
-		if _, r, ok := transitionParts(def, e.Text); ok {
-			reason = r
-		}
+		reason = e.Reason
 	}
 	return reason
 }
@@ -382,21 +405,17 @@ func LastHistoryReason(def *flow.Definition, text string) string {
 // (MR !12, abc1234)" from "- 2026-07-23 — merged to main (MR !12, abc1234)"), or "" when the
 // History records no merge. The board renderer derives the DONE `merged` cell
 // from this (D3), so HasMergeLine and the cell can never disagree.
+//
+// A thin fold over HistoryEntries, exactly like LastHistoryStatus/
+// LastHistoryReason: routing through the one shared section walk means a merge
+// line wrapped across a continuation line folds the same way every other
+// reader's does, instead of MergeLine truncating it with its own copy of the
+// walk (T-070).
 func MergeLine(def *flow.Definition, text string) string {
-	inHistory := false
 	merge := ""
-	for _, line := range strings.Split(text, "\n") {
-		if strings.HasPrefix(line, "## ") {
-			inHistory = strings.TrimSpace(line) == "## History"
-			continue
-		}
-		if !inHistory {
-			continue
-		}
-		if m := historyRE.FindStringSubmatch(strings.TrimSpace(line)); m != nil {
-			if body := strings.TrimSpace(m[1]); historyKind(def, body) == HistoryMerged {
-				merge = body
-			}
+	for _, e := range HistoryEntries(def, text) {
+		if e.Kind == HistoryMerged {
+			merge = e.Text
 		}
 	}
 	return merge

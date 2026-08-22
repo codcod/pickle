@@ -309,6 +309,51 @@ func TestTransitionSurvivesContinuationFolding(t *testing.T) {
 	}
 }
 
+// TestLastHistoryReasonAnchoredAtSameArrowAsTarget is the T-070 review's folded
+// finding, T-043 review R7: before this fix, Target froze on the entry's first
+// physical line while Reason was re-derived from the *folded* Text, so nothing
+// checked the two came from the same arrow. A hand-written continuation line
+// that itself contains "OLD → NEW: reason" used to hijack LastHistoryReason,
+// even though LastHistoryStatus (reading Target) correctly ignored it. Now
+// Reason is resolved in the same transitionParts call as Target, anchored at
+// the same accepting arrow, and folding only ever appends raw continuation text
+// onto an already-open clause — it never re-parses the continuation for arrows.
+func TestLastHistoryReasonAnchoredAtSameArrowAsTarget(t *testing.T) {
+	const doc = "## History\n- 2026-08-06 — TO DO → READY\n  and later IN REVIEW → DONE: some clause\n"
+	if got := LastHistoryStatus(testDef, doc); got != "READY" {
+		t.Errorf("LastHistoryStatus = %q, want READY (target frozen on the first physical line)", got)
+	}
+	if got := LastHistoryReason(testDef, doc); got != "" {
+		t.Errorf("LastHistoryReason = %q, want \"\" (no clause was opened at the same arrow as Target; the continuation's own arrow+colon must not be read as this entry's reason)", got)
+	}
+}
+
+// TestMergeLineFoldsContinuations pins the T-070 defect: MergeLine used to walk
+// `## History` itself, reading only an entry's first physical line, so a merge
+// line wrapped onto a continuation line was silently truncated. Routing it
+// through HistoryEntries (like LastHistoryStatus/LastHistoryReason already are)
+// folds it the same way every other reader does.
+func TestMergeLineFoldsContinuations(t *testing.T) {
+	const doc = "## History\n- 2026-08-06 — merged to main\n  (abc1234) after review\n"
+	want := "merged to main (abc1234) after review"
+	if got := MergeLine(testDef, doc); got != want {
+		t.Errorf("MergeLine = %q, want %q (continuation folded, not truncated)", got, want)
+	}
+
+	// T-089's recommended form: a full commit URL pushes the line past this
+	// tree's prose wrap width, which is the realistic case the re-grade cites.
+	const wrappedURL = "## History\n" +
+		"- 2026-08-10 — merged to main (MR !12,\n" +
+		"  https://example.com/group/subgroup/project/-/merge_requests/12/diffs?commit_id=abc1234def5678901234567890abcdef1234567)\n"
+	wantURL := "merged to main (MR !12, https://example.com/group/subgroup/project/-/merge_requests/12/diffs?commit_id=abc1234def5678901234567890abcdef1234567)"
+	if got := MergeLine(testDef, wrappedURL); got != wantURL {
+		t.Errorf("MergeLine = %q, want %q (wrapped commit URL folded in full)", got, wantURL)
+	}
+	if !HasMergeLine(testDef, wrappedURL) {
+		t.Error("HasMergeLine = false, want true")
+	}
+}
+
 // TestLastHistoryStatusUnexercisedShapes rounds out coverage the ticket found
 // missing entirely: no History, an empty one, case-insensitive status matching,
 // an unknown target ignored as a note rather than accepted, and a trailing note
@@ -909,15 +954,18 @@ func TestHistoryEntries(t *testing.T) {
 	// the rework rests on — Kind and Target are decided together, from the
 	// entry's first physical line, so a folded entry cannot claim to be a
 	// transition to nowhere.
+	// Reason/reasonOpen were added by T-070 alongside Target: a transition's
+	// reason clause is resolved in the same pass, from the same accepting arrow,
+	// and folds forward exactly like Text.
 	want := []HistoryEntry{
 		{Date: "2026-07-23", Text: "created (TO DO). source: test", Kind: HistoryCreated},
-		{Date: "2026-07-24", Text: "TO DO → READY: plain-hyphen separator", Kind: HistoryTransition, Target: "READY"},
-		{Date: "2026-07-25", Text: "READY → IN DEVELOPMENT: extra spaces", Kind: HistoryTransition, Target: "IN DEVELOPMENT"},
+		{Date: "2026-07-24", Text: "TO DO → READY: plain-hyphen separator", Kind: HistoryTransition, Target: "READY", Reason: "plain-hyphen separator", reasonOpen: true},
+		{Date: "2026-07-25", Text: "READY → IN DEVELOPMENT: extra spaces", Kind: HistoryTransition, Target: "IN DEVELOPMENT", Reason: "extra spaces", reasonOpen: true},
 		{Date: "2026-07-26", Text: "merged to main (abc1234)", Kind: HistoryMerged},
 		// Wrapped entries fold back into one logical entry: truncating at the
 		// first physical line would cut this reason mid-sentence.
-		{Date: "2026-07-27", Text: "IN REVIEW → DONE: a reason so long that it wraps onto a second line and even a third", Kind: HistoryTransition, Target: "DONE"},
-		{Date: "2026-07-28", Text: "TO DO → READY: not a continuation of the above", Kind: HistoryTransition, Target: "READY"},
+		{Date: "2026-07-27", Text: "IN REVIEW → DONE: a reason so long that it wraps onto a second line and even a third", Kind: HistoryTransition, Target: "DONE", Reason: "a reason so long that it wraps onto a second line and even a third", reasonOpen: true},
+		{Date: "2026-07-28", Text: "TO DO → READY: not a continuation of the above", Kind: HistoryTransition, Target: "READY", Reason: "not a continuation of the above", reasonOpen: true},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("HistoryEntries returned %d entries, want %d: %+v", len(got), len(want), got)
@@ -986,7 +1034,7 @@ unindented prose must not fold
 	got := HistoryEntries(testDef, doc)
 	want := []HistoryEntry{
 		{Date: "2026-07-23", Text: "created (TO DO). source: test wrapped tail", Kind: HistoryCreated},
-		{Date: "2026-07-24", Text: "TO DO → READY: second entry", Kind: HistoryTransition, Target: "READY"},
+		{Date: "2026-07-24", Text: "TO DO → READY: second entry", Kind: HistoryTransition, Target: "READY", Reason: "second entry", reasonOpen: true},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d entries, want %d: %+v", len(got), len(want), got)
