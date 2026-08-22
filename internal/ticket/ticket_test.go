@@ -328,6 +328,25 @@ func TestLastHistoryReasonAnchoredAtSameArrowAsTarget(t *testing.T) {
 	}
 }
 
+// TestLastHistoryReasonOpenedButEmptyClauseFolds is the T-070 review's F1
+// regression: a reason clause opened but left empty on the entry's first
+// physical line ("OLD → NEW:" with the reason wrapped onto the continuation)
+// used to fold with a leading space, because the first append onto an empty
+// Reason unconditionally prefixed " ". Guard the first append instead.
+func TestLastHistoryReasonOpenedButEmptyClauseFolds(t *testing.T) {
+	const doc = "## History\n- 2026-08-22 — IN REVIEW → DONE:\n  review clean; 6 non-blocking, all dispositioned\n"
+	want := "review clean; 6 non-blocking, all dispositioned"
+	if got := LastHistoryReason(testDef, doc); got != want {
+		t.Errorf("LastHistoryReason = %q, want %q (no leading space from the opened-but-empty first line)", got, want)
+	}
+
+	// Two continuation lines: only the first append is exempt from the space.
+	const twoLines = "## History\n- 2026-08-22 — TO DO → READY:\n  first\n  second\n"
+	if got := LastHistoryReason(testDef, twoLines); got != "first second" {
+		t.Errorf("LastHistoryReason = %q, want %q", got, "first second")
+	}
+}
+
 // TestMergeLineFoldsContinuations pins the T-070 defect: MergeLine used to walk
 // `## History` itself, reading only an entry's first physical line, so a merge
 // line wrapped onto a continuation line was silently truncated. Routing it

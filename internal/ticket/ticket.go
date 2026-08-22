@@ -260,7 +260,15 @@ func HistoryEntries(def *flow.Definition, text string) []HistoryEntry {
 		last := &out[len(out)-1]
 		last.Text += " " + trimmed
 		if last.Kind == HistoryTransition && last.reasonOpen {
-			last.Reason += " " + trimmed
+			// Reason starts "" when the clause was opened but left empty on the
+			// first physical line ("OLD → NEW:" with the reason wrapped below) —
+			// guard the first append so that case does not fold in with a leading
+			// space (T-070 review, F1).
+			if last.Reason == "" {
+				last.Reason = trimmed
+			} else {
+				last.Reason += " " + trimmed
+			}
 		}
 	}
 	return out
