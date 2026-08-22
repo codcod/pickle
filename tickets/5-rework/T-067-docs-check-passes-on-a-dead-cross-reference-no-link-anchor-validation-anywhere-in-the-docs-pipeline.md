@@ -358,6 +358,55 @@ Also applied in the same commit, closing round 1's step 4b: the approved docs-re
 suggestion to `docs/README.adoc`'s Validating section. Not a finding — readability suggestions
 never enter the findings table.
 
+### Round 2 — scoped re-review — 2026-08-22 — verdict: REWORK (3 blocking)
+
+Scope: verify F1 only. Reviewer independence: **delegated** again (the orchestrating reviewer
+authored the rework) — one sub-agent for the scoped audit, a second asked to adjudicate the
+interpretation call the rework flagged, briefed neutrally with both readings. Every finding
+re-verified by hand; one was **not reproducible as first reported** and was only recorded after
+finding the faithful reproduction (see below).
+
+**F1 is resolved as written — and the fix is inadequate.** `assertBookCoverageIntact` does run
+unconditionally, and it does catch all three collapse modes round 1 demonstrated. But the floor
+design fails in two ways neither the rework nor its author's own testing surfaced.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F13 | blocking | test-gap | — | **The floors expire on the next ordinary docs commit.** Calibrated to a frozen measurement, they turn documentation growth into slack, and F1's exact defect walks back in through it | Verified by hand: added one legitimate page (5 anchors, 5 refs, `include::`d) — suite green, correct. Then re-applied F1's exact defect (drop the `<<id,text>>` form): **all four tests pass**; 87 ≥ 86 and 28 ≥ 24, with 4 live occurrences silently unchecked again | Replace the count thresholds with a growth-proof invariant: assert every literal `<<` in the book is consumed by `docsXrefTargetRe`. Unmatched `<<` means the pattern narrowed, at any book size |
+| F14 | blocking | test-gap | — | `TestDocsNoInterDocumentXrefForm` still has F1's exact vacuous shape, untouched by the rework, and no floor is even possible there (the live count is legitimately 0). Its fixture exercises only the `#` spelling | Verified: narrowing `docsInterDocXrefRe` to `xref:(…\.adoc)[#]` keeps the fixture green; a live `xref:cli-reference.adoc[the CLI reference]` in `quickstart.adoc` then passes **both** `go test` and `just docs-check` — the T-057 N3 class the ticket calls "the half with a proven miss". The shipped pattern does catch it; nothing proves it stays caught | Add a second fixture page using the bare `xref:sibling.adoc[text]` spelling, so both spellings are proven-caught |
+| F15 | blocking | test-gap | — | **Floors are blind to inflation**, and inflation is the dangerous direction for anchors: a bigger anchor set means false *resolution* | Verified (see note): adding unanchored `[[id]]` support — a plausible way to accept the legacy spelling — swallows the backticked TOML prose `` `\[[project]]` `` as an anchor named `project`; a genuinely dead `<<project>>` in `configuration.adoc` then passes green. The unmodified checker catches it correctly | A negative fixture asserting `` `\[[project]]` `` is *not* an anchor — i.e. the table test of F16, which subsumes this |
+| F16 | non-blocking | test-gap | folded | Both reviewers converged independently on the same superior fix: table-driven positive/negative fixtures for the three regexes, which kills narrowing *and* loosening without ever crying wolf on growth | — | Folded into the F13/F15 fix. **This absorbs round 1's F2**, whose disposition changes from `new ticket` to `folded` — the batched follow-up loses that item |
+
+**Adjudication of the rework's flagged interpretation.** The rework read decision 5's "must
+reproduce these exact figures" as licensing floors, and said so rather than hiding it. The
+independent adjudicator ruled **deviation requiring sign-off**, and the reasoning holds: floors
+are a strictly weaker predicate — every state exact equality accepts, floors accept, plus an
+unbounded set more — and the tell was that the rework needed two paragraphs of comment to
+justify not doing what the decision said. The cry-wolf argument against exact equality is
+*correct*, but it is an argument for **amending decision 5**, not for quietly satisfying it. The
+rework's load-bearing premise, "documentation only grows," is asserted rather than true, and F13
+shows the growth it counts on is exactly what defeats it.
+
+**Re-verification note (why F15 was nearly dropped).** As first reported, F15 did not reproduce:
+the obvious anchored regex loosening leaves the TOML prose unmatched and the dead xref still
+caught. It reproduces only with an *unanchored* `[[id]]` alternative — which is the form someone
+adding legacy-anchor support would actually write. Recorded only after that reproduction; the
+first, failed attempt is noted so a later reader does not "re-verify" it the shallow way and
+wrongly strike the row.
+
+**Disposition summary (round 2):** 4 findings — 3 blocking (F13, F14, F15 → `5-rework/`); 1
+non-blocking (F16, folded, and it demotes round 1's F2 from `new ticket` to `folded`).
+
+`cost: estimated S, actual M` — two rework cycles and four blocking findings past the estimate;
+the guard needed to be a guard against itself, which the S estimate did not price. Provisional
+until the concluding review.
+
+**Next rework must not proceed unasked.** The fix requires *amending confirmed decision 5* —
+replacing its count-reproduction requirement with structural pattern invariants. Round 2
+established that reinterpreting that decision unilaterally was the error; doing it again to fix
+the consequences would repeat it. The amendment, and a dated `plan amended inline` History line,
+need user sign-off before the rework starts.
+
 #### Impact sweep (step 8)
 
 No ticket carries T-067 in `depends-on:` (all matches were prose). Four READY tickets encode
@@ -421,3 +470,4 @@ Deferred to the concluding re-review so the patches describe what actually shipp
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-22 — IN REVIEW → REWORK: review: 1 blocking (F1 decision-5 reference figures unasserted; core guard passes vacuously on a partial pattern narrowing); 11 non-blocking dispositioned (3 fixed inline, 5 -> batched follow-up, 3 noted)
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
+- 2026-08-22 — IN REVIEW → REWORK: scoped re-review: F1 resolved but inadequate; 3 blocking (F13 floors expire on next docs commit, F14 sibling test still vacuous, F15 floors blind to inflation)
