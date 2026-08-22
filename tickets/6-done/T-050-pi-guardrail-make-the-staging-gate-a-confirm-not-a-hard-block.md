@@ -341,3 +341,4 @@ Verdict: **done**.
 - 2026-08-22 — IN REVIEW → REWORK: F1 blocking: shipped header comment fails the foreign-workspace test (ticket-lookup phrasing in payload)
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
 - 2026-08-22 — IN REVIEW → DONE: scoped re-review: F1 confirmed fixed, no new findings
+- 2026-08-22 — merged to main (PR #58, aeefd6f), user-approved; branch deleted
