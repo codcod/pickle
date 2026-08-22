@@ -95,6 +95,24 @@ halves, and the second is what makes the first load-bearing:
    `just docs-check` extension needs `snowball` installed in the workflow. Refinement should price
    both (a Go test needs no new CI dependency; a `snowball` job also validates the render).
 
+### Applicability-gate addendum (2026-08-22 pickup)
+
+A fresh sub-agent re-verified the plan's load-bearing claims against the live tree at pickup:
+book-structure figures (13 files, 30 anchors, 86 `<<…>>` occurrences, 0 unresolved, 0 `xref:`
+forms, 0 orphans), `[[id]]`-unused, the precedent files, and the CI premise all confirmed
+exactly. Three non-blocking findings, all dispositioned note-and-close, none changing the plan:
+
+1. The Description/plan cite `justfile:23-24` for the `docs-check` recipe; it has drifted to
+   `justfile:30-31` (content unchanged, only the line numbers moved).
+2. Two literal `\[[project]]` strings in `configuration.adoc`/`multi-project.adoc` describe
+   TOML array-of-tables syntax in backtick-quoted prose, not AsciiDoc `[[id]]` anchors — noted
+   as a comment in `docs_xref_test.go` so a future naive grep for `[[` isn't misread as
+   contradicting decision 4.
+3. `.github/workflows/ci.yml`'s `build-test` job has grown a `board audit` step and gained two
+   sibling jobs (`goreleaser-check`, `ci-surface`) since the plan was written — decision 1's
+   "no new CI job needed" conclusion is unaffected: `go test ./...` still runs unconditionally
+   in `build-test`.
+
 ### Soft couplings
 
 - **T-066** — also docs-surface, but a *content* gap (undocumented flags, a dropped command
@@ -268,4 +286,21 @@ from that listing today, the same gap this ticket exists to catch mechanically g
   as a side effect, that `docs/README.adoc`'s "Validating" section already claims the exact
   behaviour this ticket ships — folded into the Docs update task rather than filing separately.
 - 2026-08-22 — TO DO → READY: plan complete
-- 2026-08-22 — READY → IN DEVELOPMENT: picked up
+- 2026-08-22 — READY → IN DEVELOPMENT: picked up; applicability gate clean (fresh sub-agent;
+  3 non-blocking citation-drift findings, all note-and-close — see Description addendum)
+- 2026-08-22 — implemented: `docs_xref_test.go` (repo root, `package main`) — `bookFiles`
+  follows `include::` recursively from `docs/user-manual.adoc`; `scanBook` collects explicit
+  `[#id]` anchors, `<<target>>` occurrences and `xref:<file>.adoc…` occurrences with file:line;
+  four tests — `TestDocsXrefsResolve`, `TestDocsNoInterDocumentXrefForm`,
+  `TestDocsUserManualHasNoOrphanPages`, `TestDocsXrefCheckerCatchesTheFieldFindings` (synthetic
+  fixture reproducing both proven-live bugs from the Description). `justfile`'s `docs-check`
+  recipe now also runs `go test . -run '^TestDocs'`. `docs/README.adoc`'s "Validating" section
+  rewritten to describe the real two-part check (was claiming behaviour the Description proved
+  false); its "Layout" tree gained the previously-missing `agent-session-workflow.adoc` line.
+  Hand-verified the regression bar: reintroduced the original field defect (`<<the-flow>>` →
+  `<<no-such-anchor-xyz>>` in `agent-session-workflow.adoc`) and confirmed both
+  `go test . -run '^TestDocs'` and `just docs-check` fail naming the file, line and dangling
+  target; reverted before committing. `just build`, `just docs-check`, `just test`, `just lint`
+  all green. No new `.github/workflows/ci.yml` job added — `go test ./...` already covers it
+  (decision 1).
+- 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
