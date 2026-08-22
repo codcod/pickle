@@ -43,6 +43,7 @@ Last updated: 2026-08-22
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
 | T-111 | document the 'cut a release' convention in the user manual: RELEASING.md + CHANGELOG.md as the agent's inputs | low-medium | low | S | [] |  |
+| T-113 | extend 'pickle scaffold' with a release verb: skeleton CHANGELOG.md + RELEASING.md (headings only, no prescribed toolin… | low-medium | low | S | [] |  |
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-103 | board.Sort: break impact ties by cost lexicographically instead of by id | low | low | S | [] |  |
@@ -60,7 +61,6 @@ Last updated: 2026-08-22
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
-| T-113 | extend 'pickle scaffold' with a release verb: skeleton CHANGELOG.md + RELEASING.md (headings only, no prescribed toolin… | low-medium | low | S | [] |  |
 
 ## DONE
 
