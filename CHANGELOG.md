@@ -8,6 +8,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle scaffold docs` writes a minimal AsciiDoc docs skeleton, a best-effort `snowball
+  init`, additive `justfile` `docs-check`/`docs-build` recipes, and a standalone GitHub Action
+  that attaches the built manual to a release** — entirely optional and unrelated to the ticket
+  flow: `pickle install` continues to scaffold brine only, and nothing this command writes is
+  read back by `pickle doctor` or `pickle board audit` (T-110).
+
 ## [0.10.0] - 2026-08-18
 
 ### Added

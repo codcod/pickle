@@ -12,11 +12,15 @@ import "embed"
 //     resolve.
 //   - agents/ — the per-agent scaffolds `pickle install --agent …` lays down:
 //     agents/opencode/opencode.jsonc and agents/pi/extensions/*.ts.
+//   - scaffold/docs-template/ — the minimal AsciiDoc docs skeleton + GitHub Action
+//     `pickle scaffold docs` (T-110) writes into a target repo, entirely unrelated
+//     to brine: attributes.adoc, user-manual.adoc, user-manual/introduction.adoc,
+//     and workflows/docs-release.yml.
 //
-// Embedding both in the binary lets pickle install the flow with no network and
-// no runtime dependency. `all:` includes files that begin with `.` or `_`.
+// Embedding all three in the binary lets pickle scaffold either surface with no
+// network and no runtime dependency. `all:` includes files that begin with `.` or `_`.
 //
-//go:embed all:skill all:agents
+//go:embed all:skill all:agents all:scaffold
 var payloadFS embed.FS
 
 // version is the build version. Override at build time with:

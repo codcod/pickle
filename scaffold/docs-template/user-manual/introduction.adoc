@@ -1,0 +1,6 @@
+== Introduction
+
+// TODO: replace this placeholder chapter. This file (and user-manual.adoc's include of
+// it) was scaffolded by `pickle scaffold docs` — it is a starting point, not content.
+
+{product} does ... (replace this with a one-sentence summary of what it does).

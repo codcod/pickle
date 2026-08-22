@@ -124,6 +124,9 @@ func TestRunExitCodes(t *testing.T) {
 		{"serve stray arg", []string{"serve", "extra"}, exitUsage},
 		{"serve missing addr value", []string{"serve", "--addr"}, exitUsage},
 		{"serve empty addr", []string{"serve", "--addr="}, exitUsage},
+		{"scaffold no subcommand", []string{"scaffold"}, exitUsage},
+		{"scaffold unknown subcommand", []string{"scaffold", "xyz"}, exitUsage},
+		{"scaffold docs bad flag", []string{"scaffold", "docs", "--bogus"}, exitUsage},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -955,6 +958,49 @@ func TestServeHelpIsAdvertised(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("pickle help does not mention %q", want)
 		}
+	}
+}
+
+// TestScaffoldDocsIsUnrelatedToBrine (T-110): pickle scaffold docs writes its
+// files into a plain directory with no pickle.toml / brine install at all —
+// unlike every newProject-based test in this file, on purpose, since the
+// whole point of the command is that it does not require (or touch) brine.
+func TestScaffoldDocsIsUnrelatedToBrine(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	if got := Run(os.DirFS(repoRoot), "test", []string{"scaffold", "docs", "--project-name", "demo"}); got != exitOK {
+		t.Fatalf("scaffold docs = %d, want exitOK", got)
+	}
+	for _, f := range []string{"docs/attributes.adoc", "docs/user-manual.adoc", "docs/user-manual/introduction.adoc", ".github/workflows/docs-release.yml"} {
+		if _, err := os.Stat(filepath.Join(root, f)); err != nil {
+			t.Errorf("expected %s to exist: %v", f, err)
+		}
+	}
+	// Nothing brine-owned was written.
+	for _, f := range []string{"pickle.toml", "tickets", "AGENTS.md", ".agents"} {
+		if _, err := os.Stat(filepath.Join(root, f)); !os.IsNotExist(err) {
+			t.Errorf("%s exists (err=%v) — scaffold docs must never touch brine", f, err)
+		}
+	}
+}
+
+// TestScaffoldDocsDryRunWritesNothing exercises the CLI flag end to end (the
+// Options plumbing itself is covered in internal/scaffold's own tests).
+func TestScaffoldDocsDryRunWritesNothing(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	out := captureStdout(t, func() {
+		if got := Run(os.DirFS(repoRoot), "test", []string{"scaffold", "docs", "--dry-run"}); got != exitOK {
+			t.Fatalf("scaffold docs --dry-run = %d, want exitOK", got)
+		}
+	})
+	if _, err := os.Stat(filepath.Join(root, "docs")); !os.IsNotExist(err) {
+		t.Errorf("docs/ exists after --dry-run (err=%v)", err)
+	}
+	if !strings.Contains(out, "would create") {
+		t.Errorf("output = %q, want a dry-run preview", out)
 	}
 }
 
