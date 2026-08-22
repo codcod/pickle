@@ -454,6 +454,61 @@ including 3 subtests) · `just docs-check` ✓ · `just test` ✓ (0 failures) �
 `gofmt -l .` clean. Original-bug regression check re-run: injecting `<<no-such-anchor-xyz>>` still
 fails naming file, line and dangling target.
 
+### Round 3 — scoped re-review — 2026-08-22 — verdict: REWORK (2 blocking), then fixed
+
+Reviewer independence: **delegated** (the orchestrating reviewer had authored all three rounds),
+briefed to attack the *new* invariant specifically, on the observation that rounds 1 and 2 both
+found the fix rather than the original code. All findings re-verified by hand.
+
+**F13, F14, F15 confirmed fixed** by independent sabotage, and scope was clean (`ef567a1` touched
+only `docs_xref_test.go`). Two new blocking findings in rework 2's own code:
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| N1 | blocking | test-gap | — | The invariant guarded the **pattern**, not the **scanner**: it re-ran the regex itself, so it could only ever prove the pattern still matched. F1's shape, one level down | Verified: making `scanBook` take only the first match per line passes all six tests, and a real dead reference planted second on a live line (`lifecycle.adoc:51`) goes unreported. Control: with the scanner intact, the same plant fails correctly | Compare reference-shaped sites against what `scanBook` returned (file:line:column), not against a fresh regex run |
+| N2 | blocking | spec-unclear | — | The failure message prescribed a fix that breaks the build: "put it in a literal block (----) or an inline code span, which are both exempt" — `scanBook` honoured neither, so a contributor following the advice trades a coverage failure for an unresolved failure with no exit. Introduced by rework 2 | Verified both: a backticked `` `<<anchor-id>>` `` example and the same line inside `----` each fail `TestDocsXrefsResolve` as unresolved | Move literal-block awareness into `scanBook` so the advice is true, or drop the sentence |
+| N3 | non-blocking | test-gap | folded | The exemption helpers had no fixtures, though amended decision 5 asks for them per pattern | Broadening `docsLiteralBlockDelim` to any `--` prefix guts the invariant with the suite still green | Folded into the N1/N2 fix — they became load-bearing once `scanBook` depended on them |
+| N4 | non-blocking | design | folded | Delimiter model was a kind-blind toggle, so a `----` nested in a `....` block closes it and silently disables checking for the rest of the file | Verified with a control: the tail reference is reported without the nested block, not reported with it | Folded — same reason as N3 |
+| N5 | non-blocking | design | new ticket | More inter-document spellings uncovered: extensionless `xref:cli-reference#id[]` and `link:file.adoc#id[]` | both match nothing today | Extends the batched follow-up (joins F3–F6) |
+| N6 | non-blocking | design | new ticket | `bookFiles` follows an `include::` shown inside a sample block | pre-existing; verified | Joins the batched follow-up |
+
+**Disposition summary (round 3):** 6 findings — 2 blocking (N1, N2, fixed below); 4 non-blocking:
+2 folded into that fix (N3, N4), 2 to the batched follow-up (N5, N6).
+
+#### Rework pass 3 — N1, N2 fixed (`a3e5c03`)
+
+- **N1** — `assertEveryXrefSiteScanned` now compares against `scanBook`'s actual output by
+  file:line:column. Losing an occurrence is caught whether the pattern or the scanner is at
+  fault; `docsXrefOccurrence` gained a `col` field to make that possible.
+- **N2** — literal-block awareness moved into `scanBook`, behind a shared `docsProseLines`
+  helper used by both checks, so they agree by construction rather than coincidence. This is
+  also the semantically correct reading: asciidoctor does not resolve a cross-reference inside
+  a listing block either. Confirmed no anchor or reference sits inside a literal block today,
+  so no current result changes.
+- **The backtick-parity exemption is gone**, not tuned. It misfired on ordinary wrapped prose —
+  `cli-reference.adoc:588` opens with a closing backtick, making the per-line count odd and
+  silently exempting a real `<<cmd-doctor>>` from coverage. Reference-shaped sites are now
+  defined by requiring a closing `>>`, which excludes heredocs and stream insertions by syntax
+  instead of guessing from position. That live reference is covered for the first time.
+
+**Verification — nine sabotages, each reverted:**
+
+| sabotage | result |
+|---|---|
+| N1 `scanBook` first-match-per-line | **caught** |
+| N3 delimiter broadened to any `--` | **caught** |
+| N4 kind-blind delimiter toggle | **caught** |
+| F13 drop `<<id,text>>` (incl. after growth) | **caught** |
+| F15 loosen anchors to unanchored `[[id]]` | **caught** |
+| F14 narrow interdoc to `#` only | **caught** |
+| N2's advice: example inside `----` | **passes** — the advice now works |
+| dead reference in prose | **caught** — no over-exemption |
+| second dead reference on a live line | **caught** — N1's real consequence |
+
+Acceptance test re-run verbatim: `just build` ✓ · `go test . -run '^TestDocs' -v` ✓ (13 passing
+tests/subtests) · `just docs-check` ✓ · `just test` ✓ (0 failures) · `just lint` ✓ · `gofmt -l .`
+clean · original-bug regression still caught.
+
 #### Impact sweep (step 8)
 
 No ticket carries T-067 in `depends-on:` (all matches were prose). Four READY tickets encode
@@ -531,4 +586,6 @@ Deferred to the concluding re-review so the patches describe what actually shipp
   loosening alike at any book size and never fires on ordinary work. The first rework read the
   original wording as licensing floors and said so; an independent adjudicator ruled that a
   deviation needing sign-off, which is why this amendment is recorded here rather than assumed
+- 2026-08-22 — REWORK → IN REVIEW: findings fixed
+- 2026-08-22 — IN REVIEW → REWORK: scoped re-review: F13/F14/F15 fixed; 2 new blocking in rework 2 (N1 invariant guards the pattern not the scanner, N2 failure message prescribes a fix that breaks the build)
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
