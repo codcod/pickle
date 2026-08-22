@@ -689,7 +689,7 @@ defaulting to `[]`. It is provenance, not a dependency: it never gates pickup.
 Each id is checked for *shape* (`T-NNN`) at creation, while whether it
 *exists* is checked by `board audit` — a forward reference to a ticket not yet
 filed is legal input. Repeated ids are de-duplicated. `--family <T-NNN>` sets a single
-umbrella ticket id this one groups under for board ordering (same child only); it is
+umbrella ticket id this one groups under for board ordering (same child only). It is
 shape-checked at creation (`<PREFIX>-NNN`) and, like `--spawned-by`, never gates pickup —
 whether the umbrella exists, is in the same child, and is not itself a family member is left
 to `pickle board audit`. The agent fills the
