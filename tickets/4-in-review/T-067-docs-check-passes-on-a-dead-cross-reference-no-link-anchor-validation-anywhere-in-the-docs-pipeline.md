@@ -174,8 +174,17 @@ None.
    Verified at refinement with a throwaway script against the live tree: 13 files reachable
    (`user-manual.adoc`, `attributes.adoc`, and 11 files under `docs/user-manual/`), 30 explicit
    anchors, 86 `<<…>>` occurrences (24 distinct targets), 0 unresolved, 0 `xref:*.adoc` forms, 0
-   orphans — the new tests must reproduce these exact figures as their reference point (a
-   material drift is a signal the parser mis-walked the tree, not that the docs regressed).
+   orphans. **Amended 2026-08-22** (see History; original wording: "the new tests must reproduce
+   these exact figures as their reference point (a material drift is a signal the parser
+   mis-walked the tree, not that the docs regressed)"). The tests instead assert **structural
+   invariants over the scanner's patterns**: every literal `<<` site in the book must be consumed
+   by the xref pattern, and each pattern carries positive *and* negative fixtures. The figures
+   above stay in the code as history, asserted by nothing. Rationale, from two rounds of review:
+   a count reproduces the tree's size on one day, and both ways of asserting it fail — exact
+   equality cries wolf on every legitimate docs commit (which trains contributors to bump the
+   constant unread), while a floor turns docs growth into slack and is blind to the inflation
+   that makes dead references *resolve*. An invariant over the patterns catches narrowing and
+   loosening alike, at any book size, and never fires on ordinary work.
 
 ### Tasks
 
@@ -407,6 +416,44 @@ established that reinterpreting that decision unilaterally was the error; doing 
 the consequences would repeat it. The amendment, and a dated `plan amended inline` History line,
 need user sign-off before the rework starts.
 
+### Rework pass 2 — 2026-08-22 — F13, F14, F15 fixed
+
+Scope was the three blocking findings. Fixed in `ef567a1`, after user sign-off on the decision-5
+amendment (recorded in the plan and in History).
+
+The count floors are gone. What replaced them:
+
+- **`assertEveryXrefSiteScanned`** — every literal `<<` in the book's prose must be consumed by
+  `docsXrefTargetRe`. This is the F13 fix: it holds at any book size, so growth cannot restore
+  the slack that let a narrowed pattern hide. Literal blocks (`----`, `....`, `++++`) and inline
+  code spans are exempt, because a `<<` there is sample text — without that, the first shell
+  heredoc in a code sample would make the guard cry wolf, which is how the previous design was
+  argued into existence in the first place.
+- **`TestDocsScannerPatternsMatchWhatTheyClaim`** — positive and negative fixtures per pattern.
+  This is the F15 fix: the backticked `[[project]]` TOML prose is a negative row, so an anchor
+  pattern loosened to accept the legacy spelling fails immediately instead of silently gaining a
+  phantom anchor. It also subsumes round 1's **F2** (its disposition moved to `folded`).
+- **A third fixture page** using the bare `xref:sibling.adoc[text]` spelling — the F14 fix, so
+  both inter-document spellings are proven-caught rather than only the `#` one.
+
+**Verification — seven sabotages, each reverted:**
+
+| sabotage | floors (round 2) | now |
+|---|---|---|
+| drop the `<<id,text>>` spelling | caught | **caught** |
+| **growth, then drop `<<id,text>>`** (F13) | **passed** | **caught** — "4 cross-reference site(s) that docsXrefTargetRe did not consume" |
+| **loosen anchors to unanchored `[[id]]`** (F15) | **passed** | **caught** — "pattern loosened: … should not match but does" |
+| **narrow interdoc to the `#` spelling** (F14) | **passed** | **caught** |
+| mis-walked include tree | caught | **caught** |
+| narrow anchors to `[A-Za-z]+` | caught | **caught** |
+| ordinary docs growth, alone | passed | **passes** — no false alarm |
+| literal block containing `<<EOF` | n/a | **passes** — exemption works |
+
+Acceptance test re-run verbatim: `just build` ✓ · `go test . -run '^TestDocs' -v` ✓ (6 tests
+including 3 subtests) · `just docs-check` ✓ · `just test` ✓ (0 failures) · `just lint` ✓ ·
+`gofmt -l .` clean. Original-bug regression check re-run: injecting `<<no-such-anchor-xyz>>` still
+fails naming file, line and dangling target.
+
 #### Impact sweep (step 8)
 
 No ticket carries T-067 in `depends-on:` (all matches were prose). Four READY tickets encode
@@ -471,3 +518,17 @@ Deferred to the concluding re-review so the patches describe what actually shipp
 - 2026-08-22 — IN REVIEW → REWORK: review: 1 blocking (F1 decision-5 reference figures unasserted; core guard passes vacuously on a partial pattern narrowing); 11 non-blocking dispositioned (3 fixed inline, 5 -> batched follow-up, 3 noted)
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
 - 2026-08-22 — IN REVIEW → REWORK: scoped re-review: F1 resolved but inadequate; 3 blocking (F13 floors expire on next docs commit, F14 sibling test still vacuous, F15 floors blind to inflation)
+- 2026-08-22 — plan amended inline: **confirmed decision 5**, with user sign-off. Its requirement
+  that "the new tests must reproduce these exact figures as their reference point" is replaced by
+  structural invariants over the scanner's patterns — every literal `<<` site in the book must be
+  consumed by the xref pattern, and each pattern carries positive and negative fixtures. The
+  refinement figures remain in the code as history, asserted by nothing. Why: the review cycle
+  established that *neither* way of asserting a count works. Exact equality fails on every
+  legitimate docs commit and trains contributors to bump the constant unread; a floor turns docs
+  growth into slack (F13 — after one added page, a whole spelling could stop being matched and
+  still clear the number) and is blind to inflation (F15 — a loosened anchor pattern swallowing
+  prose makes dead references resolve). An invariant over the patterns catches narrowing and
+  loosening alike at any book size and never fires on ordinary work. The first rework read the
+  original wording as licensing floors and said so; an independent adjudicator ruled that a
+  deviation needing sign-off, which is why this amendment is recorded here rather than assumed
+- 2026-08-22 — REWORK → IN REVIEW: findings fixed
