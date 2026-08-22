@@ -287,3 +287,17 @@ feature to document).
   literal changes. Grade unchanged. TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
 - 2026-08-22 — READY → IN DEVELOPMENT: picked up
+- 2026-08-22 — plan amended inline: Task 6 assumed the real-tree guard would be a scratch,
+  reverted-before-commit edit because no ticket in the tree was expected to already carry a
+  wrapped merge line. Hand-verified against the actual tree (old binary vs. fixed binary, same
+  ticket files) that this was wrong: several real `6-done/` tickets (e.g. T-108) already have a
+  merge line wrapped across a continuation line, and the pre-fix `MergeLine` was silently
+  truncating their board `merged` cell today — the defect T-089 flagged as reachable was already
+  live, not merely likely. `pickle board sync` with the fixed binary regenerates ~16 DONE rows to
+  their full, correct text; `board audit` on the feature branch reports `tickets/BOARD.md` as
+  stale until that sync is committed. Per this repo's own commit-landing rule, that regeneration
+  is board bookkeeping and cannot land on `feat/T-070-mergeline-historyentries` (the pre-commit
+  hook refuses it) — it is committed here, on the base branch, once this ticket's code has merged
+  to `main`, as an ordinary `pickle board sync` bookkeeping commit. Code, tests, build, lint and
+  docs-check are green on the feature branch now; only that post-merge sync remains
+- 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green (build/test/lint/docs-check clean; board sync deferred to post-merge, see amendment)
