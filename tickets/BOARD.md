@@ -137,7 +137,7 @@ Last updated: 2026-08-22
 | T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | yes — merged to main (PR #53, baeab0f, https://github.com/codcod/pickle/commit/baeab0f); |
 | T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | yes — merged to main (MR #55, commit `6a7a458`) — complete: `5da2051` confirmed on `main`, re-verified against the merg… |
 | T-110 | opt-in scaffold command for a docs/release template (docs skeleton, snowball config, release-attach action, justfile), … | yes — merged to main (PR #56, `323add9`); branch deleted |
-| T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | no — publish-gated |
+| T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | yes — merged to main (PR #59, merge commit `0a7aad3`); history kept rather than squashed, the root-path default. Step 0… |
 
 ## DROPPED
 

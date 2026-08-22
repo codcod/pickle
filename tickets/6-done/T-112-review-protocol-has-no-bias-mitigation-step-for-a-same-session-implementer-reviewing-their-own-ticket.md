@@ -389,3 +389,4 @@ T-113 and T-111 (the next READY items) touch release/scaffold ground and are una
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-22 — IN REVIEW → DONE: review passed: 0 blocking, 8 non-blocking (6 fixed inline, 2 noted); audits delegated per step 0
 - 2026-08-22 — publish approved by user: pushed `feat/T-112-review-reviewer-independence`, opened PR #59. Base `main` was pushed first — the origin-base check fired on the three unpushed `board:` commits, the documented in-tree remedy. Awaiting review; merging is the human's.
+- 2026-08-22 — merged to main (PR #59, merge commit `0a7aad3`); history kept rather than squashed, the root-path default. Step 0 and the checklist line verified present on `main`, step numbering `0.`–`9.` with `4a`/`4b` intact.
