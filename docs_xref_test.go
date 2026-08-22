@@ -40,6 +40,31 @@ const (
 	docsUserManualDir = "docs/user-manual"
 )
 
+// The book measured 13 files / 30 anchors / 86 `<<…>>` occurrences / 24 distinct
+// targets at refinement (2026-08-20). Those figures are recorded here as history
+// and asserted by nothing — see the amendment to T-067 decision 5.
+//
+// They were briefly asserted as floors, to answer the question the resolution
+// check cannot ask of itself: "did I actually look at the book?" That failed
+// twice over. Floors expire, because they turn documentation growth into slack:
+// after one ordinary page is added, a pattern can silently stop matching a whole
+// spelling and still clear the old number. And floors are blind upward, which is
+// the dangerous direction for anchors — a loosened anchor pattern that swallows
+// prose inflates the set and makes dead cross-references *resolve*.
+//
+// What replaces them is structural, so it neither expires nor cries wolf:
+//
+//   - assertEveryXrefSiteScanned — every literal "<<" in the book must be consumed
+//     by docsXrefTargetRe. An unmatched site means the pattern narrowed, at any
+//     book size.
+//   - TestDocsScannerPatternsMatchWhatTheyClaim — positive and negative fixtures
+//     pinning each pattern, so loosening is caught as precisely as narrowing.
+//   - TestDocsUserManualHasNoOrphanPages — already catches a mis-walked include
+//     tree, since a page the walk stops reaching becomes an orphan.
+//
+// Together those cover collapse, inflation and mis-walking without a single
+// number that a normal docs commit can invalidate.
+
 var (
 	docsIncludeLineRe  = regexp.MustCompile(`^include::([^\[\]]+)\[`)
 	docsAnchorLineRe   = regexp.MustCompile(`^\[#([A-Za-z0-9_-]+)\]\s*$`)
@@ -97,12 +122,20 @@ func bookFiles(master string) ([]string, error) {
 type docsXrefOccurrence struct {
 	file   string
 	line   int
+	col    int // byte offset of the match within the line
 	target string
 }
 
 // scanBook reads every file in files and returns: the set of explicit anchor ids
 // ([#id] lines), every <<id>>/<<id,text>> occurrence, and every xref:<file>.adoc...
-// occurrence — each with its file:line.
+// occurrence — each with its file:line:column.
+//
+// Only prose is scanned (docsProseLines): asciidoctor does not resolve a cross-
+// reference written inside a listing block either, so reporting one would be a false
+// positive with no legal fix — the contributor could neither make it resolve nor
+// escape it. Nothing in the manual relies on this today (no anchor or reference sits
+// inside a literal block), so it changes no current result; it makes the two checks
+// agree by construction rather than by coincidence.
 func scanBook(files []string) (anchors map[string]bool, xrefs, interDoc []docsXrefOccurrence, err error) {
 	anchors = map[string]bool{}
 	for _, f := range files {
@@ -110,25 +143,151 @@ func scanBook(files []string) (anchors map[string]bool, xrefs, interDoc []docsXr
 		if rerr != nil {
 			return nil, nil, nil, fmt.Errorf("reading %s: %w", f, rerr)
 		}
-		for i, line := range strings.Split(string(data), "\n") {
-			lineNo := i + 1
+		for _, pl := range docsProseLines(string(data)) {
+			lineNo, line := pl.no, pl.text
 			if m := docsAnchorLineRe.FindStringSubmatch(line); m != nil {
 				anchors[m[1]] = true
 			}
-			for _, m := range docsXrefTargetRe.FindAllStringSubmatch(line, -1) {
-				xrefs = append(xrefs, docsXrefOccurrence{file: f, line: lineNo, target: m[1]})
+			for _, m := range docsXrefTargetRe.FindAllStringSubmatchIndex(line, -1) {
+				xrefs = append(xrefs, docsXrefOccurrence{
+					file: f, line: lineNo, col: m[0], target: line[m[2]:m[3]],
+				})
 			}
-			for _, m := range docsInterDocXrefRe.FindAllStringSubmatch(line, -1) {
-				interDoc = append(interDoc, docsXrefOccurrence{file: f, line: lineNo, target: m[1]})
+			for _, m := range docsInterDocXrefRe.FindAllStringSubmatchIndex(line, -1) {
+				interDoc = append(interDoc, docsXrefOccurrence{
+					file: f, line: lineNo, col: m[0], target: line[m[2]:m[3]],
+				})
 			}
 		}
 	}
 	return anchors, xrefs, interDoc, nil
 }
 
+// docsRefShapedSiteRe is a deliberately permissive superset of docsXrefTargetRe: it
+// matches anything shaped like a cross-reference, whatever spelling. The coverage
+// invariant works by difference — a site this matches that the strict pattern did not
+// produce is a reference the scanner has stopped reading.
+//
+// Requiring a closing ">>" is what keeps it quiet on code: a shell heredoc
+// (cat <<EOF) and a C++ stream insertion (cout << x) have no ">>", so they are not
+// reference-shaped at all. That is a property of the syntax rather than a guess about
+// where the "<<" sits, which is why it replaced an inline-code exemption based on
+// counting backticks per line. That heuristic misfired on ordinary wrapped prose:
+// cli-reference.adoc has a paragraph whose continuation line opens with a closing
+// backtick, making the count odd and silently exempting a real <<cmd-doctor>> from
+// coverage. A guard that quietly stops covering things is the defect this ticket
+// exists to remove, so the heuristic is gone rather than tuned.
+var docsRefShapedSiteRe = regexp.MustCompile(`<<[^>\s][^>]*>>`)
+
+// docsLiteralBlockDelim reports whether a trimmed line delimits an AsciiDoc block
+// whose contents are literal — four or more repeats of '-' (listing), '.' (literal)
+// or '+' (passthrough) — returning which character, so a block closes only on its own
+// delimiter. Tracking the kind matters: a toggle flipped by any delimiter treats a
+// "----" nested inside a "...." block as a close, and every line after it in that file
+// silently stops being checked.
+func docsLiteralBlockDelim(trimmed string) (byte, bool) {
+	if len(trimmed) < 4 {
+		return 0, false
+	}
+	c := trimmed[0]
+	if c != '-' && c != '.' && c != '+' {
+		return 0, false
+	}
+	for i := 0; i < len(trimmed); i++ {
+		if trimmed[i] != c {
+			return 0, false
+		}
+	}
+	return c, true
+}
+
+// docsLine is one line of scannable prose, carrying its 1-based number so findings
+// keep pointing at the right place in the file after literal blocks are dropped.
+type docsLine struct {
+	no   int
+	text string
+}
+
+// docsProseLines returns the lines of content outside any literal block — the single
+// definition of "text a reader sees as prose", shared by scanBook and the coverage
+// invariant so the two cannot drift into disagreeing about what is exempt.
+func docsProseLines(content string) []docsLine {
+	var out []docsLine
+	var openDelim byte
+	for i, line := range strings.Split(content, "\n") {
+		if c, ok := docsLiteralBlockDelim(strings.TrimSpace(line)); ok {
+			switch {
+			case openDelim == 0:
+				openDelim = c
+			case openDelim == c:
+				openDelim = 0
+			}
+			continue
+		}
+		if openDelim != 0 {
+			continue
+		}
+		out = append(out, docsLine{no: i + 1, text: line})
+	}
+	return out
+}
+
+// assertEveryXrefSiteScanned is the invariant that replaced the count floors: every
+// reference-shaped site in the book's prose must appear in what scanBook actually
+// returned. It answers the question the resolution check cannot ask of itself — "did
+// I look at every cross-reference?" — without depending on how big the book is.
+//
+// It compares against scanBook's own output, by file:line:column, rather than re-running
+// the regex here. Re-running it would only ever prove the pattern still matches, which
+// left the scanner unguarded: making scanBook take just the first match per line passed
+// every test while a second, dead reference on a live line went unreported (review
+// finding N1). Checking the output means any way of losing an occurrence is caught,
+// pattern or scanner alike.
+func assertEveryXrefSiteScanned(t *testing.T, files []string, xrefs []docsXrefOccurrence) {
+	t.Helper()
+
+	scanned := map[string]bool{}
+	for _, x := range xrefs {
+		scanned[fmt.Sprintf("%s:%d:%d", x.file, x.line, x.col)] = true
+	}
+
+	var missed []string
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("reading %s: %v", f, err)
+		}
+		for _, pl := range docsProseLines(string(data)) {
+			for _, loc := range docsRefShapedSiteRe.FindAllStringIndex(pl.text, -1) {
+				if !scanned[fmt.Sprintf("%s:%d:%d", f, pl.no, loc[0])] {
+					missed = append(missed, fmt.Sprintf("%s:%d: %s", f, pl.no, pl.text[loc[0]:loc[1]]))
+				}
+			}
+		}
+	}
+	if len(missed) == 0 {
+		return
+	}
+
+	sort.Strings(missed)
+	t.Errorf("%d reference-shaped site(s) the scanner did not report:\n\n%s\n\n"+
+		"    Each of these looks like a cross-reference but is absent from scanBook's "+
+		"results, so nothing checked whether it resolves. Either docsXrefTargetRe stopped "+
+		"matching a spelling the docs use, or scanBook stopped reporting every match.\n"+
+		"    If a site above is deliberately not a reference, it still has to resolve — the "+
+		"resolution check reads it too. Give it an id that exists, or move the example into "+
+		"a literal block (----), which this check and that one both skip.",
+		len(missed), strings.Join(missed, "\n"))
+}
+
 // TestDocsXrefsResolve walks the real docs/user-manual.adoc book and fails listing
 // every <<target>> that does not resolve to any [#target] anchor in the assembled
 // book — the core check this ticket exists to add (T-067).
+//
+// It first asserts the scan actually covered every cross-reference site (review
+// findings F1 and F13): the resolution check below is a loop over what was matched,
+// so on a narrowed pattern it would otherwise pass while verifying less than it
+// appears to — or, on an empty scan, nothing at all.
 func TestDocsXrefsResolve(t *testing.T) {
 	files, err := bookFiles(docsBookMaster)
 	if err != nil {
@@ -138,6 +297,8 @@ func TestDocsXrefsResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	assertEveryXrefSiteScanned(t, files, xrefs)
 
 	var bad []string
 	for _, x := range xrefs {
@@ -244,22 +405,149 @@ func TestDocsUserManualHasNoOrphanPages(t *testing.T) {
 	t.Fatal(b.String())
 }
 
+// TestDocsScannerPatternsMatchWhatTheyClaim pins each scanner pattern with positive
+// and negative fixtures. Counts could only ever catch a pattern matching *less*, and
+// only until the next docs commit restored the slack (review findings F13, F15); a
+// fixture table catches narrowing and loosening alike, at any book size, and says
+// which pattern broke instead of only that some number moved.
+//
+// The negative rows are the ones with teeth. `[[project]]` in backticked prose is
+// real text in this manual describing TOML's array-of-tables syntax: an anchor
+// pattern loosened to accept the legacy [[id]] spelling swallows it as an anchor
+// named "project", and every dead <<project>> reference then resolves against it.
+func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
+	cases := []struct {
+		name    string
+		re      *regexp.Regexp
+		match   []string
+		noMatch []string
+	}{
+		{
+			name:  "anchor definitions",
+			re:    docsAnchorLineRe,
+			match: []string{"[#the-flow]", "[#cmd-hooks]", "[#a_b-c9]", "[#id]   "},
+			noMatch: []string{
+				"  *Per child — the `\\[[project]]` array*", // TOML prose, not an anchor (F15)
+				"Each `\\[[project]]` entry in `pickle.toml`",
+				"[[legacy]]",           // legacy spelling: unused here, deliberately not accepted
+				"prose [#id] mid-line", // an anchor is a line of its own
+				"[#id] trailing prose",
+			},
+		},
+		{
+			name:  "cross-reference targets",
+			re:    docsXrefTargetRe,
+			match: []string{"<<the-flow>>", "<<lifecycle,the lifecycle>>", "see <<a-b_c9>> here"},
+			noMatch: []string{
+				"<<>>",
+				"<< >>",
+				"a << b",
+			},
+		},
+		{
+			name: "inter-document xref: forms",
+			re:   docsInterDocXrefRe,
+			// Both spellings must stay caught: with an anchor (#) and without (F14).
+			match: []string{
+				"xref:cli-reference.adoc#cmd-hooks[hooks]",
+				"xref:cli-reference.adoc[the CLI reference]",
+				"xref:../proposals/thing.adoc#x[y]",
+			},
+			noMatch: []string{
+				"<<cmd-hooks>>",
+				"xref:#local-anchor[text]", // no .adoc: an intra-document xref, legal
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			for _, s := range c.match {
+				if !c.re.MatchString(s) {
+					t.Errorf("pattern narrowed: %q should match but does not — "+
+						"references written this way are going unchecked", s)
+				}
+			}
+			for _, s := range c.noMatch {
+				if c.re.MatchString(s) {
+					t.Errorf("pattern loosened: %q should not match but does — "+
+						"a false positive here, or a phantom anchor that makes dead "+
+						"references resolve", s)
+				}
+			}
+		})
+	}
+}
+
+// TestDocsProseLineSelection pins the literal-block machinery. It earns fixtures of
+// its own because scanBook now depends on it: anything it wrongly calls a block stops
+// being checked at all, silently. Broadening the delimiter test to any "--" prefix,
+// for instance, swallows every AsciiDoc open block and guts the checker while leaving
+// the whole suite green (review finding N3).
+func TestDocsProseLineSelection(t *testing.T) {
+	t.Run("delimiters recognised", func(t *testing.T) {
+		for _, s := range []string{"----", "....", "++++", "-----", "........"} {
+			if _, ok := docsLiteralBlockDelim(s); !ok {
+				t.Errorf("%q should be a literal-block delimiter", s)
+			}
+		}
+	})
+
+	t.Run("non-delimiters rejected", func(t *testing.T) {
+		// "--" is AsciiDoc's open block and "====" an example block: neither makes its
+		// contents literal, so treating them as such would hide real prose.
+		for _, s := range []string{"--", "---", "----x", "x----", "[source,sh]", "====", "", "..."} {
+			if _, ok := docsLiteralBlockDelim(s); ok {
+				t.Errorf("%q should not be a literal-block delimiter", s)
+			}
+		}
+	})
+
+	t.Run("a block closes only on its own delimiter", func(t *testing.T) {
+		// The "----" inside the "...." block must not close it. A kind-blind toggle
+		// would reopen here and silently drop every later line in the file (N4).
+		got := docsProseLines("before\n....\n----\n....\nafter\n")
+		var texts []string
+		for _, l := range got {
+			texts = append(texts, l.text)
+		}
+		if strings.Join(texts, ",") != "before,after," {
+			t.Errorf("expected prose [before after \"\"], got %q", texts)
+		}
+	})
+
+	t.Run("line numbers survive dropped blocks", func(t *testing.T) {
+		got := docsProseLines("one\n----\nhidden\n----\nfive\n")
+		if len(got) < 2 || got[len(got)-2].no != 5 || got[len(got)-2].text != "five" {
+			t.Errorf(`expected "five" to keep line number 5, got %+v`, got)
+		}
+	})
+}
+
 // TestDocsXrefCheckerCatchesTheFieldFindings is the regression proof: a synthetic
-// two-file fixture under t.TempDir(), reproducing both proven-live bugs from the
-// ticket's Description at once — a dead <<anchor>> and an xref:<file>.adoc#...
-// pointing at a real anchor in a sibling file. It fails today's *code* if either
+// fixture under t.TempDir(), reproducing the proven-live bugs from the ticket's
+// Description — a dead <<anchor>>, and both spellings of the inter-document xref:
+// form pointing at a real anchor in a sibling file. It fails today's *code* if any
 // detector regresses, independent of the real docs tree's current content.
+//
+// Page C carries the bare xref:sibling.adoc[text] spelling, with no #anchor. Without
+// it, narrowing the pattern to the # form alone left the fixture green while a live
+// bare xref shipped through both the test and `just docs-check` (review finding F14).
 func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 	dir := t.TempDir()
 	master := filepath.Join(dir, "book.adoc")
 	pageA := filepath.Join(dir, "page-a.adoc")
 	pageB := filepath.Join(dir, "page-b.adoc")
+	pageC := filepath.Join(dir, "page-c.adoc")
 
-	docsMustWriteFixture(t, master, "include::page-a.adoc[]\n\ninclude::page-b.adoc[]\n")
+	docsMustWriteFixture(t, master,
+		"include::page-a.adoc[]\n\ninclude::page-b.adoc[]\n\ninclude::page-c.adoc[]\n")
 	docsMustWriteFixture(t, pageA,
 		"[#real-anchor]\n== Page A\n\nSee <<no-such-anchor-xyz>> for details.\n")
 	docsMustWriteFixture(t, pageB,
 		"== Page B\n\nSee xref:page-a.adoc#real-anchor[Page A] for details.\n")
+	docsMustWriteFixture(t, pageC,
+		"== Page C\n\nSee xref:page-a.adoc[Page A] for details.\n")
 
 	files, err := bookFiles(master)
 	if err != nil {
@@ -280,14 +568,18 @@ func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 		t.Errorf("expected <<no-such-anchor-xyz>> in %s to be flagged as unresolved", pageA)
 	}
 
-	foundInterDoc := false
+	flaggedIn := map[string]bool{}
 	for _, x := range interDoc {
 		if x.target == "page-a.adoc" {
-			foundInterDoc = true
+			flaggedIn[x.file] = true
 		}
 	}
-	if !foundInterDoc {
-		t.Errorf("expected xref:page-a.adoc#... in %s to be flagged as an inter-document form", pageB)
+	if !flaggedIn[pageB] {
+		t.Errorf("expected xref:page-a.adoc#real-anchor[...] in %s to be flagged", pageB)
+	}
+	if !flaggedIn[pageC] {
+		t.Errorf("expected the bare xref:page-a.adoc[...] spelling in %s to be flagged "+
+			"(F14: narrowing the pattern to the # form alone must not pass)", pageC)
 	}
 }
 

@@ -53,9 +53,9 @@ docs/
 
 == Validating
 
-`just docs-check` runs two checks. First, a render pass that fails on any
-warning, such as broken includes. Second, a Go test that catches issues the
-render pass misses silently — a dead `<<anchor>>` cross-reference, an
+`just docs-check` runs two checks. First, it does a render pass that fails on
+any warning, such as broken includes. Second, it runs a Go test that catches
+issues the render pass can miss: a dead `<<anchor>>` cross-reference, an
 inter-document `xref:<file>.adoc` form (dead once split into PDF/EPUB
 chapters), or a page under `docs/user-manual/` that nothing `include::`s:
 
