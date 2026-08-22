@@ -452,3 +452,12 @@ local; nothing in the work itself argued for a bigger grade than the S it was gi
 - 2026-08-22 — IN REVIEW → REWORK: review round 1: 3 blocking (F1 reason-fold leading space regresses main; F2 deferred board sync turns CI red on merge; F3 missing CHANGELOG entry for a user-visible fix); 6 non-blocking, 3 fixed inline, 3 noted
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed (F1 reason-fold leading space, F2 board sync committed --no-verify per human approval, F3 CHANGELOG entry added)
 - 2026-08-22 — IN REVIEW → DONE: scoped re-review PASS: F1/F2/F3 resolved; 2 new non-blocking (G1, G2), both fixed inline
+- 2026-08-22 — published: user-approved. `main` pushed first (5 bookkeeping commits) so the remote
+  base was not behind, then the branch pushed with `git push --no-verify` — the same approved
+  exception as the commit, since the `pre-push` guard filters on the `tickets/` prefix with no
+  `BOARD.md` carve-out (re-review G1). Pre-push check run by hand: `origin/main...HEAD` carries
+  `tickets/BOARD.md` and nothing else, which is the deliberate exception rather than a leak. MR
+  #61 opened (https://github.com/codcod/pickle/pull/61), 5 atomic commits kept rather than
+  squashed (root-path child default). CI green on the PR — build-test, ci-surface,
+  goreleaser-check — which is F2's fix confirmed end-to-end, since `build-test` is the job that
+  runs `pickle board audit`. `mergeable: MERGEABLE`. Awaiting the human's merge
