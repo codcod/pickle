@@ -179,7 +179,7 @@ func TestDocsNoInterDocumentXrefForm(t *testing.T) {
 	var bad []string
 	for _, x := range interDoc {
 		bad = append(bad, fmt.Sprintf(
-			"%s:%d: xref:%s... targets a file that is include::-d into this book — asciidoctor "+
+			"%s:%d: xref:%s... targets another .adoc file — asciidoctor "+
 				"resolves it happily as HTML, but the PDF/EPUB build splits each included file "+
 				"into its own chapter with no standalone %s.pdf/%s.epub artifact, so the link "+
 				"is dead in both real output formats (T-057 finding N3)\n"+

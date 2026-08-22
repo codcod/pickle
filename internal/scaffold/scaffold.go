@@ -118,8 +118,12 @@ func Docs(payload fs.FS, root string, opts Options) (Result, error) {
 	return res, nil
 }
 
-// justfileRecipe is one docs recipe scaffoldJustfile may append. The body
-// mirrors this repo's own justfile recipes verbatim (T-048).
+// justfileRecipe is one docs recipe scaffoldJustfile may append. Each body
+// matches this repo's own `snowball` invocation for that recipe (T-048).
+// pickle's own docs-check additionally runs a repo-local Go test that guards
+// its manual's cross-references (T-067); that has no scaffolded equivalent, so
+// the bodies here are no longer character-for-character identical to this
+// repo's justfile.
 type justfileRecipe struct {
 	Name    string // e.g. "docs-check" — matched as a "<name>:" line prefix
 	Comment string
