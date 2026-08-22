@@ -20,11 +20,10 @@ Last updated: 2026-08-22
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | [] |
 
 ## REWORK
 
@@ -108,6 +107,7 @@ Last updated: 2026-08-22
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | yes — merged to main (PR #60, 2e29b50); 3 commits kept, not squashed; CI green (build-test, ci-surface, goreleaser-chec… |
 | T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives |
 | T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | yes — MERGED: feat/T-069-config-writers-safe → main (152fea8, #17, squash), user-approved |
+| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | no — publish-gated |
 | T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | yes — merged to main (PR #19, 236d859), squashed |
 | T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | yes — MERGED: feat/T-073-introduce-brine-name (squashed) → main (7b33876, #18), user-approved; branch deleted |
 | T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | yes — MERGED: PR #44 (`feat/T-074-rename-skill-dir-to-brine`, kept history, not |

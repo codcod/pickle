@@ -325,6 +325,9 @@ option. Do not re-audit the rest — the next review is scoped to these three.
   fix rendering existing History data correctly, not a ticket move; `main`'s un-fixed binary
   cannot regenerate them correctly first, so code and board must land together). Committed
   `a32fdbe`. `./pickle board audit` now passes clean on the branch (`0 errors, 0 warnings`).
+  **The same approved exception extends to the push** (re-review G1): the `pre-push` guard filters
+  on the `tickets/` prefix with no `BOARD.md` carve-out, so step 9's push must also use
+  `git push --no-verify`, for the identical reason.
 - **F3 fixed.** Added a `### Fixed` bullet to `CHANGELOG.md`'s `[Unreleased]` section naming both
   the `MergeLine` truncation fix and the R7 target/reason-anchoring fix, in user-observable terms
   (the board `merged` cell, `pickle serve`'s ticket view, `pickle state`'s `merged` field).
@@ -335,6 +338,67 @@ option. Do not re-audit the rest — the next review is scoped to these three.
 (now 15 tests/subtests, +1 from F1's regression test) · `just test` PASS (20 packages) ·
 `just lint` PASS · `just docs-check` PASS · **`./pickle board audit` PASS** (0 errors, 0 warnings)
 — all green. Scope was F1/F2/F3 only; nothing else was touched, per the rework rule.
+
+### Round 2 — 2026-08-22 — scoped re-review — verdict: **PASS** → `6-done/`
+
+Scoped to F1, F2 and F3 per rules §5: the feature was not re-audited from scratch.
+
+- [x] Reviewer independence (step 0): **delegated** again — the reviewing agent authored both the
+      branch and the rework in this session, so the scoped audits ran in a second independently
+      spawned reviewer. Every verdict below was re-verified by hand before recording: F1's test
+      was re-proved load-bearing in a throwaway worktree, F2's commit contents and row counts
+      re-derived from `git show`/`diff`, G1 read out of `internal/hook/prepush.go`, G2 reproduced
+      with a scratch probe.
+- [x] F1/F2/F3 re-verified (step 2); acceptance test re-run verbatim, **all six commands clean**
+- [x] Docs-readability pass (step 4b): **run** — newly applicable, since the rework made
+      `CHANGELOG.md` the branch's first changed prose file. One suggestion landed on this
+      ticket's own bullet; the other four fell on pre-existing bullets belonging to T-050, T-066,
+      T-110 and T-112, which are out of scope here (rules §5: pre-existing prose is not
+      `fixed inline` material). Presented to the human for approval rather than applied silently.
+- [x] Findings recorded with severity, class and disposition; disposition + cost lines present
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6b)
+- [x] Impact sweep re-checked (step 8): still no ticket anywhere lists T-070 in `depends-on:` or
+      references it in a Description — nothing to patch
+
+**F1 — resolved.** The guard is correct and provably load-bearing: reverting *only* the guard hunk
+in a detached worktree at `a32fdbe` makes `TestLastHistoryReasonOpenedButEmptyClauseFolds` fail on
+**both** assertions (`" review clean; …"` and `" first second"`). `trimmed == ""` continuations are
+skipped before the fold, so `Reason` can never return to `""` mid-entry and the guard is exactly
+"first append". The `Text`/`Reason` asymmetry is principled rather than accidental — `Text` is
+seeded from `historyRE`'s non-empty body and so never starts empty.
+
+**F2 — resolved.** `board audit` clean on a freshly built binary. The `--no-verify` commit carried
+**nothing** it should not: `git show --name-status a32fdbe` is exactly `M tickets/BOARD.md`, which
+is the precise failure mode the bypassed hook exists to catch. The regenerated board loses,
+adds and reorders nothing — 115 ticket rows before and after, byte-identical id sequence, only the
+`merged` column differing on the 16 changed rows. A non-destructive merge simulation
+(`git merge-tree` + a throwaway worktree, both removed) confirms the merged tree's own
+`board audit`, `go vet`, `gofmt` and full `go test ./...` are green — so CI will be green on the PR
+and on `push: main`, which was the whole of F2.
+
+**F3 — resolved.** `changelog check` no longer names T-070. The bullet sits in the right section,
+matches the T-050/T-066 house style, and every claim in it was verified against the code:
+`board.go:185` → the DONE `merged` column, `serve/view.go:216` → `templates/ticket.html`'s
+`<dt>merged</dt>`, `state/build.go:146` → `state.go`'s `json:"merged"`, and the R7 claim reproduced
+against a `main` baseline.
+
+**Scope discipline — pass.** `git diff 5d0e0dd..a32fdbe` is confined to the four expected files,
+with nothing unattributable to F1, F2 or F3.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| G1 | non-blocking | spec-unclear | fixed inline | The approved `--no-verify` exception was recorded for the **commit** only, but the `pre-push` guard refuses any push whose range carries a `tickets/` path, with no `BOARD.md` carve-out — so step 9's push is blocked too, and the human would hit an unexplained refusal. Prose this review authored, under-specified for execution. | `internal/hook/prepush.go:164-171` filters on `p == "tickets"` or `strings.HasPrefix(p, "tickets/")`; no per-file exemption anywhere in `CheckPrePush`. | Fixed inline: the F2 rework bullet above now states that the same exception extends to `git push --no-verify`, and step 9's hand-back below repeats it. |
+| G2 | non-blocking | spec-unclear | fixed inline | `HistoryEntry.Reason`'s doc enumerated two `""` cases and omitted the third — a clause opened but left empty with no continuation (`"OLD → NEW:"` alone) — which is precisely the shape F1 is about. Prose this branch authored. | Probe: `"- 2026-08-22 — TO DO → READY:\n"` → `Kind=transition Target=READY Reason="" reasonOpen=true`, a case the comment did not cover. | Fixed inline in `1bbdd1a`: the contract now lists all three `""` cases and explains why the `Reason` fold differs from `Text`'s. |
+
+**Disposition summary:** 2 new findings, both non-blocking, both `fixed inline` (G1 in this ticket's
+own record, G2 in `1bbdd1a`). No blocking findings; F1, F2 and F3 from round 1 are closed. No
+`folded`, no `noted`, no new tickets — nothing here passed the promotion test. Round-1's three
+`noted` findings (F4, F7, F9) stand as recorded and remain promotable by citing their rows.
+
+```
+cost: estimated S, actual S — two review rounds and a rework, but every change was small and
+local; nothing in the work itself argued for a bigger grade than the S it was given.
+```
 
 ## History
 
@@ -387,3 +451,4 @@ option. Do not re-audit the rest — the next review is scoped to these three.
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green (build/test/lint/docs-check clean; board sync deferred to post-merge, see amendment)
 - 2026-08-22 — IN REVIEW → REWORK: review round 1: 3 blocking (F1 reason-fold leading space regresses main; F2 deferred board sync turns CI red on merge; F3 missing CHANGELOG entry for a user-visible fix); 6 non-blocking, 3 fixed inline, 3 noted
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed (F1 reason-fold leading space, F2 board sync committed --no-verify per human approval, F3 CHANGELOG entry added)
+- 2026-08-22 — IN REVIEW → DONE: scoped re-review PASS: F1/F2/F3 resolved; 2 new non-blocking (G1, G2), both fixed inline
