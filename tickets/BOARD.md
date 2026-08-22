@@ -60,6 +60,7 @@ Last updated: 2026-08-22
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
+| T-113 | extend 'pickle scaffold' with a release verb: skeleton CHANGELOG.md + RELEASING.md (headings only, no prescribed toolin… | low-medium | low | S | [] |  |
 
 ## DONE
 
