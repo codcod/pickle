@@ -386,3 +386,4 @@ the fix commit.
 - 2026-08-22 — READY → IN DEVELOPMENT: picked up
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-22 — IN REVIEW → DONE: review: no blocking findings; F1 (docs-gap, CHANGELOG entry) fixed inline
+- 2026-08-22 — merged to `main` via PR #57 (`c87caaa`): 2 commits kept, not squashed
