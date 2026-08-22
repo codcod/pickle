@@ -10,6 +10,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Added
 
+- **The review protocol gains a step 0, reviewer independence, and every review now records who ran
+  the audits.** When the agent about to review a ticket authored its branch in this same session,
+  it must delegate the implementation/quality/consistency/docs audits to an independently spawned
+  reviewer, hand-verify every delegated finding, and record which happened (independent, delegated,
+  or a conscious skip) in the checklist; classification, dispositions, and the ticket move stay with
+  the reviewer. Shipped in `resources/review-protocol.md`, `SKILL.md`'s validate-a-ticket summary,
+  and a cross-reference from the rules' pickup-gate clause, so the flow names implementer bias in
+  both the places it can occur (T-112).
+
 - **`pickle scaffold docs` writes a minimal AsciiDoc docs skeleton, a best-effort `snowball
   init`, additive `justfile` `docs-check`/`docs-build` recipes, and a standalone GitHub Action
   that attaches the built manual to a release** — entirely optional and unrelated to the ticket

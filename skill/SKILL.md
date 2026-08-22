@@ -261,7 +261,10 @@ When asked to rework ticket T-NNN (a review found blocking findings):
 
 "Validate ticket T-NNN" and "review ticket T-NNN" are the same procedure. Follow
 `resources/review-protocol.md` (plus the project's layered addenda — overarching + the ticket's
-child). In short:
+child). Before auditing, settle reviewer independence (the protocol's step 0): delegate the
+audits to an independent reviewer if the reviewing agent authored the branch in this same
+session, and record which happened either way — independent, delegated, or a conscious skip when
+none is available. In short:
 
 1. The ticket must be in `4-in-review/`. Audit implementation, quality, consistency, and docs
    (running the child's configured commands); classify each finding **blocking** (→
