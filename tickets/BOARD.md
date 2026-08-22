@@ -13,10 +13,11 @@ Last updated: 2026-08-22
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-22
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | medium | medium | M | [T-004] |  |
-| T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | medium | low | S | [] |  |
 | T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | low-medium | low | S | [] |  |
 | T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |

@@ -339,3 +339,4 @@ executable as written rather than merely well-phrased.
   (six tasks, five files, one policy — splitting would leave the tree stating two different rules
   mid-flight).
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-22 — READY → IN DEVELOPMENT: picked up
