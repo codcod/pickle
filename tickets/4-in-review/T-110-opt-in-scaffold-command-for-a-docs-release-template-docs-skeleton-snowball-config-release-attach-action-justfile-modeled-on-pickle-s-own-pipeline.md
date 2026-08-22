@@ -319,3 +319,4 @@ rather than introducing a new YAML linter.)
 - 2026-08-21 — TO DO → READY: plan complete
 - 2026-08-21 — plan amended inline: pre-pickup applicability gate (fresh sub-agent audit, no blocking findings) folded two gaps into Task 1's `docs-release.yml` template — defensive `brew update` before `snowball` install (mirrors this repo's own runner-flakiness fix, written in generically rather than cited by ticket id) and an explicit `permissions: contents: write` block (matches this repo's always-explicit convention; `gh release upload` needs it)
 - 2026-08-21 — READY → IN DEVELOPMENT: picked up
+- 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
