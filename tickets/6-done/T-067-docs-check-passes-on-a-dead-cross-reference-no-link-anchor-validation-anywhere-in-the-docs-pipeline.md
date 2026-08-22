@@ -631,3 +631,4 @@ Deferred to the concluding re-review so the patches describe what actually shipp
 - 2026-08-22 — IN REVIEW → REWORK: scoped re-review: F13/F14/F15 fixed; 2 new blocking in rework 2 (N1 invariant guards the pattern not the scanner, N2 failure message prescribes a fix that breaks the build)
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
 - 2026-08-22 — IN REVIEW → DONE: review PASS (round 4): N1/N2 verified fixed by independent sabotage; 4 non-blocking -> T-115 (batched); F9 noted. Acceptance green
+- 2026-08-22 — merged to main (PR #60, 2e29b50); 3 commits kept, not squashed; CI green (build-test, ci-surface, goreleaser-check, smoke). https://github.com/codcod/pickle/commit/2e29b50

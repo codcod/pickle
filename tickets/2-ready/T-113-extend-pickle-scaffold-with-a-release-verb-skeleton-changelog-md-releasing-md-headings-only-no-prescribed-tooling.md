@@ -160,10 +160,10 @@ on `main`.
    `scaffoldJustfile`, `hasRecipe` or `scaffoldSnowballConfig`: `Release` uses none of them.
 7. **No cross-reference to T-111's manual page.** T-111 (`docs/user-manual/concepts/releasing.adoc`,
    anchor `[#releasing]`) is still `2-ready/` and may ship after this ticket; an `<<releasing>>`
-   xref would be a dangling target. (`docs-check` gained exactly that check in T-067, done
-   2026-08-22 — patched here by its review's impact sweep — but its branch is unmerged, so the
-   check is not on the base branch yet; either way a dangling target stays a defect worth not
-   writing.) This ticket's docs cite only `<<cmd-scaffold-docs>>` and its own new anchor.
+   xref would be a dangling target — and since T-067 merged to `main` on 2026-08-22 (PR #60,
+   patched here by its review's impact sweep), `just docs-check` and `go test ./...` now **fail
+   the build** on one rather than rendering past it. So this is no longer a judgement call: do
+   not write the xref until T-111's anchor exists. This ticket's docs cite only `<<cmd-scaffold-docs>>` and its own new anchor.
    Adding the connecting sentence once both exist is a follow-up, not this ticket's work.
 8. **`Release` writes exactly two files and nothing else.** No justfile recipes, no GitHub
    Actions workflow, no shell-out to any release tool, no `--lang` flag, no `pickle.toml` read,
@@ -410,3 +410,4 @@ not a flow rule, so the foreign-workspace test does not come into play.
   says so inline so the indent is not tidied away.
 - 2026-08-22 — TO DO → READY: plan complete
 - 2026-08-22 — patched by **T-067's review impact sweep**: T-067 is now `6-done/` (branch `feat/T-067-docs-xref-check` not yet merged), so this ticket's "docs-check cannot catch a dangling xref" assumption holds only until that branch lands. Wording updated to say which state applies and how to tell.
+- 2026-08-22 — patched again by **T-067's impact sweep**, on merge: T-067 landed on `main` (PR #60, 2e29b50), so the "docs-check cannot catch a dangling xref" caveat is now simply false and has been removed rather than re-qualified. The gate is live for this ticket's cross-references.
