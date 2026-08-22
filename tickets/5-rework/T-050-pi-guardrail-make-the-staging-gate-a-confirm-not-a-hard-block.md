@@ -234,7 +234,56 @@ surface).
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass — run via the `docs_readability` tool on `CHANGELOG.md` (the one
+      `.md` file this ticket changed that carries shipped, user-facing prose; `tickets/NOTES.md`
+      and the ticket file itself are internal bookkeeping, not in scope). All suggestions
+      returned were on pre-existing entries this ticket did not touch (T-110, T-108, etc.); the
+      new T-050 entry drew no suggestion. Nothing to apply.
+- [x] Findings recorded with severity, class, disposition; disposition summary + cost line (step 5)
+- [x] Ticket moved; `## History` appended (step 6)
+- [x] Other references checked (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [ ] Summary + commit message/MR attributes presented for approval (step 9) — pending: this
+      ticket returns to `5-rework/` first (F1 is blocking)
+
+**Implementation audit (step 2).** All three tasks done, on `feat/T-050-pi-guardrail-confirm`
+(commit `16c99e8`, plus a review-added `977fe2c`). Task 1/2: rule 1's `git add`/`stage` block and
+`git commit -a` block both flipped from unconditional `return { block: true, reason }` to the
+confirm idiom, identically in `agents/pi/extensions/pickle-guardrails.ts` and
+`.pi/extensions/workspace-guardrails.ts` — verified line-by-line, `diff`-clean between the two
+files apart from the two project-name/title strings the original files already varied by. Task 3:
+`opencode.jsonc` (both copies) verified unchanged, per decision 3. Acceptance test re-run on this
+branch: `just build`, `just test`, `just lint`, `just docs-check` all clean. Manual verification
+re-run independently (a fresh throwaway Node harness driving the actual extension modules through
+mocked `ExtensionAPI` contexts, per the ticket's own note that neither file has a committed one):
+both files, with a UI, route the heredoc field PoC and a literal `git add -A`/`git commit -a`
+through `ctx.ui.confirm` (approve → proceeds, decline → `"User declined the staging discipline
+gate."`); without a UI, both still hard-block — matches decision 1 and the plan's manual-
+verification steps 1–2 exactly. Task 3's `tickets/NOTES.md` entry (step 3 of the plan's manual
+verification) present and dated 2026-08-22, citing both the opencode docs quote and the smoke-test
+JSON output as its two methods.
+
+**Quality/consistency audit (steps 3–4).** Control flow after an approved confirm falls through to
+the remaining checks in the same segment exactly as rule 2 already does — no early-return bug
+introduced. Wording (`"Staging discipline"` title, `"User declined the staging discipline
+gate."`) matches rule 2's established style. Whole-tree search for other `"hard block"` /
+`"Rule 1"` references found nothing else stale. `docs/user-manual/cli-reference.adoc`'s
+agent-artifact table (`:164-183`, re-checked at its current line numbers) stays generic under
+either verdict, confirming the plan's own "no docs change" call.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | docs-gap | — | The new header comment in the **shipped payload** file `agents/pi/extensions/pickle-guardrails.ts` tells the reader to "see T-050's ticket" / "see T-050's Description" — a ticket-lookup reference that resolves to nothing (or something unrelated) in any project other than pickle itself once `pickle install --agent pi` embeds this file elsewhere. This is exactly the first failing shape in AGENTS.md's foreign-workspace test ("a ticket id the reader is told to go and look up"). `payload_lint_test.go`'s rule 1 does not catch this phrasing (its pattern only matches a `tickets/<dir>/T-\d+` path or a `T-\d+\s*F\d+` finding shape, not "see T-NNN's ticket/Description" prose), so `just test` stays green — confirmed by re-running `TestPayloadSpeaksToAForeignReader` on this branch. `.pi/extensions/workspace-guardrails.ts` carries the identical sentence but is **not** shipped payload (never embedded, self-host-only), so it is unaffected. | `agents/pi/extensions/pickle-guardrails.ts:64,68` | Rewrite the two sentences to stand on their own, without naming a ticket — e.g. state the evasions and the hardening trade-off directly ("a variable-indirected `git`, a piped `xargs`, or a quoted flag all sail past every check here — trivially, by design; hardening the matcher would trade this false positive for a real bypass, since the segmenter has no notion of shell quoting or heredocs") instead of "see T-050's ticket/Description". The self-host copy may keep its own T-050 reference (it is legitimately self-referential) or be reworded to match — implementer's call, since only the shipped copy fails the test. |
+| F2 | non-blocking | stale-xref | noted | The Description's own "why the fix is the verdict, not the matcher" section still cites `assets.go:19` for the `go:embed` directive; the directive is at `assets.go:23` today (drifted by the unrelated T-110, which added header-comment lines to `assets.go`, not by this branch). The bar for `fixed inline` is "did this branch break it", and this branch did not — T-110 already had. | `assets.go:23` (current), ticket Description (`assets.go:19` citation) | Leave as noted; a future editor of that paragraph can correct it in passing. |
+| F3 | non-blocking | docs-gap | fixed inline | `CHANGELOG.md`'s `[Unreleased]` → `Fixed` section had no entry for this ticket's shipped, user-facing behaviour change (rule 1 confirm instead of hard block), unlike sibling entries for T-110/T-066 already in the same section. This branch is what created the gap (a new shipped behaviour with no announcement), so the inline-fix bar ("made false by this branch") is met, and the fix is pure prose addition with no behaviour change. | `CHANGELOG.md` (`[Unreleased]` → `Fixed`, before the existing T-066 entry) | Fixed inline this review, commit `977fe2c` on `feat/T-050-pi-guardrail-confirm`; passed a `docs_readability` pass with no suggestions on the new entry. |
+
+Disposition summary: 1 blocking (F1, routes to rework), 1 `noted` (F2), 1 `fixed inline` (F3).
+
+cost: estimated S, actual S
 
 ## History
 
@@ -279,3 +328,4 @@ surface).
   check` all clean; both manual-verification cases (heredoc PoC and literal `git add -A`) now
   produce a confirm prompt rather than a silent allow or an unconditional block.
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-22 — IN REVIEW → REWORK: F1 blocking: shipped header comment fails the foreign-workspace test (ticket-lookup phrasing in payload)

@@ -20,11 +20,10 @@ Last updated: 2026-08-22
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-050 | pi guardrail: make the staging gate a confirm, not a hard block | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-22
 
 | id | title | open findings |
 |---|---|---|
+| T-050 | pi guardrail: make the staging gate a confirm, not a hard block | F1 blocking: shipped header comment fails the foreign-workspace test (ticket-lookup phrasing in payload) |
 
 ## READY (impact order, per child)
 
