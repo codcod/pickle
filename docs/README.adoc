@@ -45,19 +45,23 @@ docs/
     │   ├── tickets.adoc
     │   ├── lifecycle.adoc
     │   ├── multi-project.adoc
-    │   └── project-structure.adoc
+    │   ├── project-structure.adoc
+    │   └── agent-session-workflow.adoc
     ├── cli-reference.adoc
     └── configuration.adoc
 ----
 
 == Validating
 
-A validation pass renders the book and discards the output, failing on any
-warning (broken includes, dangling cross-references):
+`just docs-check` runs two checks. First, it does a render pass that fails on
+any warning, such as broken includes. Second, it runs a Go test that catches
+issues the render pass can miss: a dead `<<anchor>>` cross-reference, an
+inter-document `xref:<file>.adoc` form (dead once split into PDF/EPUB
+chapters), or a page under `docs/user-manual/` that nothing `include::`s:
 
 [source,sh]
 ----
-just docs-check    # snowball check — render-and-discard, fails on warnings
+just docs-check    # snowball check (render-and-discard) + go test . -run '^TestDocs'
 ----
 
 == Building

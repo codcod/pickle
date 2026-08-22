@@ -26,9 +26,13 @@ lint-ci-surface:
     @if command -v actionlint >/dev/null 2>&1; then actionlint; else echo "warning: actionlint not installed — skipping workflow lint (CI still runs it)"; fi
     @if command -v shellcheck >/dev/null 2>&1; then shellcheck .github/scripts/*.sh; else echo "warning: shellcheck not installed — skipping shell lint (CI still runs it)"; fi
 
-# Validate the AsciiDoc manual via snowball (broken includes/xrefs fail the check)
+# Validate the AsciiDoc manual: snowball check (render-and-discard, catches broken
+# includes) plus the Go tests that catch what rendering silently lets through — a
+# dead <<anchor>>, an inter-document xref:<file>.adoc form, or an orphaned page
+# under docs/user-manual/ (T-067).
 docs-check:
     snowball check
+    go test . -run '^TestDocs'
 
 # Render the user manual to PDF + EPUB into dist/docs/ (never committed)
 docs-build:
