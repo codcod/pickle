@@ -196,14 +196,19 @@ type HistoryEntry struct {
 	// candidate target is no longer a legal status, so the entry classified as a
 	// transition and then resolved to no status at all (T-043 review, R1).
 	Target string
-	// Reason is the transition's ": <reason>" clause. It is "" when Kind is not
-	// HistoryTransition, and "" when the entry opened no reason clause at all (a
-	// bare "OLD → NEW"). It is resolved in the same pass
-	// and from the same accepting arrow as Target (via transitionParts on the
-	// entry's first physical line), then folded forward exactly like Text — but
-	// only when reasonOpen says a clause was actually opened on that first line,
-	// so a later, unrelated arrow in a continuation line can never be mistaken for
-	// this entry's reason (T-043 review, R7).
+	// Reason is the transition's ": <reason>" clause. It is "" in three cases:
+	// when Kind is not HistoryTransition; when the entry opened no reason clause
+	// at all (a bare "OLD → NEW"); and when it opened one but nothing followed,
+	// on that line or any continuation ("OLD → NEW:" alone). It is resolved in
+	// the same pass and from the same accepting arrow as Target (via
+	// transitionParts on the entry's first physical line), then folded forward
+	// like Text — but only when reasonOpen says a clause was actually opened on
+	// that first line, so a later, unrelated arrow in a continuation line can
+	// never be mistaken for this entry's reason (T-043 review, R7). The fold
+	// differs from Text's in one detail: the first continuation *replaces* an
+	// empty Reason rather than appending to it, since a clause opened but left
+	// empty would otherwise gain a leading space (T-070 review, F1). Text needs
+	// no such guard — it is seeded from a non-empty body.
 	Reason string
 	// reasonOpen records whether Reason's clause was opened on the entry's first
 	// physical line, i.e. whether a continuation line should keep extending it.
