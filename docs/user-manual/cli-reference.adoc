@@ -34,6 +34,9 @@ the same tree. Wait for it to finish, then try again.
 | `pickle project add\|list\|remove`
 | Manage connected child-projects.
 
+| `pickle flow show\|list`
+| Print, or list, the configured flow name.
+
 | `pickle upgrade`
 | Refresh the installed skill payload + marker block to the binary's version.
 
@@ -230,7 +233,12 @@ Manages the registry of connected child-projects in `pickle.toml` (see
   namespace); two children may not share the same _explicit_ prefix. `board
   audit` checks that each ticket's id prefix matches its child's configured
   prefix — so changing a populated child's prefix reports every not-yet-renamed
-  ticket until you renumber them.
+  ticket until you renumber them. The other per-child keys can also be set
+  directly as `add` flags instead of hand-editing `pickle.toml` afterwards:
+  `--build <cmd>`, `--test <cmd>`, `--lint <cmd>`, `--docs <cmd>` (the child's
+  own commands), `--branch-prefix <prefix>` (default `feat/`), and
+  `--wip-dev <n>` / `--wip-review <n>` (default `1` each, the per-child WIP
+  limits).
 * `list` prints the registered children (including each child's `PREFIX`).
 * `remove` unregisters a child — *refused while the child has live tickets*,
   so a board can never reference an unknown target.
@@ -258,6 +266,21 @@ repeats the same check on every run, so a child that drifts into this state
 later (an entry deleted, or a child registered before the check existed) is
 still caught. pickle never writes to `.gitignore` itself — see
 <<project-structure>>.
+
+[#cmd-flow]
+== `pickle flow show | list`
+
+----
+pickle flow show
+pickle flow list
+----
+
+Both read `pickle.toml` and take no arguments. `show` prints the project's configured
+flow — the `flow` key (default `{flow}` when unset, <<configuration>>). `list` prints
+every legal flow name, one per line. Today that is exactly one name, `{flow}`, because
+`Config.Validate()` rejects any other value, so treat it as a fixed constant until a
+second flow ships. Both fail the same way any other command does when `pickle.toml`
+does not parse.
 
 [#cmd-upgrade]
 == `pickle upgrade`
@@ -365,7 +388,7 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   config change) is a *warning* pointing at `pickle upgrade` (customizations
   belong outside the markers, the same rule the agent-scaffold check below
   follows);
-* pickle-owned agent scaffolds (`.pi/extensions/*.ts`) match the shipped
+* pickle-owned agent scaffolds (`.pi/extensions/+*+.ts`) match the shipped
   version — a drifted file is a *warning* pointing at `pickle upgrade`
   (customizations belong in sibling files);
 * *neither* pre-brine legacy path (T-074) is still present —
@@ -644,7 +667,7 @@ that wants the guard already has it.
 == `pickle ticket new`
 
 ----
-pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"]
+pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"] [--family T-NNN]
 ----
 
 Allocates the next id for the target child's prefix — `<PREFIX>-NNN`, where
@@ -665,7 +688,11 @@ time.) `--spawned-by` records *lineage* — the ticket(s) this one was born from
 defaulting to `[]`. It is provenance, not a dependency: it never gates pickup.
 Each id is checked for *shape* (`T-NNN`) at creation, while whether it
 *exists* is checked by `board audit` — a forward reference to a ticket not yet
-filed is legal input. Repeated ids are de-duplicated. The agent fills the
+filed is legal input. Repeated ids are de-duplicated. `--family <T-NNN>` sets a single
+umbrella ticket id this one groups under for board ordering (same child only). It is
+shape-checked at creation (`<PREFIX>-NNN`) and, like `--spawned-by`, never gates pickup —
+whether the umbrella exists, is in the same child, and is not itself a family member is left
+to `pickle board audit`. The agent fills the
 Description prose afterwards; the full `TEMPLATE.md` (installed with the
 skill) is the authoring guide.
 

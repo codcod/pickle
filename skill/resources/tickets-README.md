@@ -263,8 +263,10 @@ All other transitions are forward-only, as diagrammed.
   written in full (`RICK-137`, never "137"). `pickle board audit` checks a ticket's id prefix
   matches its `project:`'s configured prefix. The id is stable for the ticket's life; only the
   slug in the filename may be tidied. Because a child's prefix is part of its ids, **re-homing a
-  ticket to a differently-prefixed child is a renumber, not a free relabel** (`pickle ticket
-  renumber`). **Tickets are never deleted:** `6-done/` and `7-dropped/` are permanent archives —
+  ticket to a differently-prefixed child is a renumber, not a free relabel** — pickle ships no
+  command for it, so treat it as a one-time manual migration: rename the file to the new
+  prefix, edit the id in its frontmatter and heading, and fix any cross-references that named
+  the old id. **Tickets are never deleted:** `6-done/` and `7-dropped/` are permanent archives —
   pruning them would both lose the record and break the `max()+1` rule.
 - **Filename.** `<PREFIX>-NNN-<slug>.md`. The slug is derived from the title, so a **title is a single
   line of text**: `pickle ticket new` rejects an empty or multi-line title outright rather than

@@ -100,7 +100,9 @@ func Audit(root string, cfg *config.Config) Result {
 			// (T-058). This catches a ticket filed under the wrong project, and
 			// it is the guard that keeps a child from being half-migrated to a new
 			// prefix: change ticket_prefix on a populated child and every unrenamed
-			// ticket goes red here until `pickle ticket renumber` (T-060) runs.
+			// ticket goes red here until it is manually renumbered (T-060 considered
+			// and dropped a `pickle ticket renumber` command: the one real case is a
+			// one-time guided migration, not automation worth shipping).
 			r.errf("%s: id prefix %q does not match project %q ticket_prefix %q", ref, got, p, cp.Prefix())
 		}
 		for _, dep := range t.DependsOn {

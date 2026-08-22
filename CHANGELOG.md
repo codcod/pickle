@@ -16,6 +16,17 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   flow: `pickle install` continues to scaffold brine only, and nothing this command writes is
   read back by `pickle doctor` or `pickle board audit` (T-110).
 
+### Fixed
+
+- **`docs/user-manual/cli-reference.adoc` documents every flag the CLI actually accepts.**
+  `pickle ticket new --family`, and `pickle project add`'s `--build`/`--test`/`--lint`/`--docs`/
+  `--branch-prefix`/`--wip-dev`/`--wip-review`, existed but were never mentioned in the manual;
+  `pickle flow show|list` had no section at all. The shipped rules also pointed at a
+  `pickle ticket renumber` command that was never built — re-homing a ticket to a
+  differently-prefixed child is now documented as the manual, one-time migration it always was.
+  A markup bug that opened an unconstrained bold span at a glob (`` `.pi/extensions/*.ts` ``)
+  and swallowed the next two lines of the rendered PDF/EPUB is also fixed (T-066).
+
 ## [0.10.0] - 2026-08-18
 
 ### Added
