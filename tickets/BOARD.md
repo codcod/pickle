@@ -20,11 +20,10 @@ Last updated: 2026-08-22
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | [] |
 
 ## REWORK
 
@@ -61,6 +60,7 @@ Last updated: 2026-08-22
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
+| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | low-medium | low | S | [] |  |
 
 ## DONE
 
@@ -105,6 +105,7 @@ Last updated: 2026-08-22
 | T-061 | Board child-project filter buttons in the serve dashboard | yes — merged to main (PR #8, 8edb0e6), user-approved as an exception; squashed |
 | T-065 | expose board and ticket state as a versioned JSON read projection | yes — merged to `main` via PR #50 (`83a4d39`); 7 commits kept, not squashed, so the |
 | T-066 | close the CLI-surface documentation gaps: undocumented flags in cli-reference.adoc and a dropped renumber command in th… | yes — merged to `main` via PR #57 (`c87caaa`): 2 commits kept, not squashed |
+| T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | no — publish-gated |
 | T-068 | the pre-commit guard can be silently inert: nothing checks the pickle on PATH that the shim actually runs | yes — merged to main (PR #16, 4136f2d), user-approved; a merge commit, so 741f06a survives |
 | T-069 | make config's two writers safe: TOML-correct escaping, atomic mode-preserving Save, and the line editor's residual wedg… | yes — MERGED: feat/T-069-config-writers-safe → main (152fea8, #17, squash), user-approved |
 | T-072 | review protocol step 9: verify origin/<base> already contains the branch's base before opening an MR | yes — merged to main (PR #19, 236d859), squashed |

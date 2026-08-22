@@ -509,6 +509,47 @@ Acceptance test re-run verbatim: `just build` ✓ · `go test . -run '^TestDocs'
 tests/subtests) · `just docs-check` ✓ · `just test` ✓ (0 failures) · `just lint` ✓ · `gofmt -l .`
 clean · original-bug regression still caught.
 
+### Round 4 — final scoped verification — 2026-08-22 — verdict: **PASS, ship**
+
+Reviewer independence: **delegated**, briefed both to verify N1/N2 and to answer the stopping
+question explicitly — three consecutive rounds had found a defect in the previous round's fix,
+so "is this converging?" needed an answer from someone without a stake in it.
+
+**N1 fixed.** Seven scanner-only sabotages (regex untouched) all caught: first-match-per-line,
+dropping every third match, skipping a whole file, `col` always 0, `col` off by one, a hardcoded
+target, and dropping inter-document occurrences. The column-keyed comparison detects
+wrong-but-consistent columns rather than accepting them.
+
+**N2 fixed.** The advice works: an example reference inside a `----` block passes, a dead
+reference in prose one line later still fails. The reverse risk is not a hole — asciidoctor
+treats a `<<x>>` in a listing block as verbatim text, so there is no link to be dead. Removing
+the backtick heuristic cost nothing live, and `cli-reference.adoc:588`'s real `<<cmd-doctor>>` is
+covered for the first time. `docsProseLines` survived CRLF, delimiters at EOF, first/last-line
+delimiters, whole-file blocks, nested delimiters and empty files.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | non-blocking | test-gap | new ticket (T-115) | Anchor inflation is unguarded at the *scanner* level — F15's defect one layer below the pinned pattern | Verified: adding a legacy `[[id]]` match inside `scanBook` swallows the backticked `\[[project]]` TOML prose as an anchor; a planted dead `<<project>>` passes all six tests | A negative fixture calling `scanBook` over that prose, asserting `anchors["project"]` is false |
+| R2 | non-blocking | test-gap | new ticket (T-115) | `docsProseLines` over-exemption is invisible by construction — both checks share it, so anything it wrongly drops is dropped from both | Verified: adding "skip indented lines" plus a dead reference on a real indented line passes everything | A fixture asserting a delimiter-free document yields every line unchanged |
+| R3 | non-blocking | design | new ticket (T-115) | An unterminated `----` silently blanks the rest of a file, and the consequence is **CI-visible**: `go test` (what CI runs) passes, only `snowball check` objects | Verified both halves by hand | Fail when a block is still open at EOF — flagged in T-115 as the item to do first |
+| R4 | non-blocking | docs-gap | new ticket (T-115) | AsciiDoc's two literal-reference escapes (`\<<x>>`, `+<<x>>+`) are false-positived, and the unresolved message omits the literal-block escape its sibling offers | none occur today | Handle both escapes; align the two messages |
+
+**Disposition summary (round 4):** 4 findings, 0 blocking, all 4 → **T-115** (batched by theme,
+`spawned-by: [T-067]`). Round 1's F9 stays `noted` and is deliberately *not* folded in — it is a
+scaffold-payload accuracy question, not a checker one.
+
+**Stopping rationale**, recorded because three rounds of "the fix had a flaw" is exactly the
+pattern that can run forever. The independent verdict was ship, on a distinction worth keeping:
+N1 shipped an invariant that *could not do the job it claimed*, whereas R1–R4 are missing
+fixtures and unhandled edges that require modifying the checker before they bite. The shipped
+gate is correct on the live tree, amended decision 5 is satisfied, and another round would buy
+fixtures rather than behaviour — fixtures that would themselves need guarding.
+
+`cost: estimated S, actual L` — final. The feature was S and was right in round 1; the four
+rounds went into making the guard hold when the guard itself is edited, which the estimate did
+not price. The ticket's own subject is a check that silently stopped checking, so the overrun is
+the ticket being true about itself rather than scope creep.
+
 #### Impact sweep (step 8)
 
 No ticket carries T-067 in `depends-on:` (all matches were prose). Four READY tickets encode
@@ -589,3 +630,4 @@ Deferred to the concluding re-review so the patches describe what actually shipp
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
 - 2026-08-22 — IN REVIEW → REWORK: scoped re-review: F13/F14/F15 fixed; 2 new blocking in rework 2 (N1 invariant guards the pattern not the scanner, N2 failure message prescribes a fix that breaks the build)
 - 2026-08-22 — REWORK → IN REVIEW: findings fixed
+- 2026-08-22 — IN REVIEW → DONE: review PASS (round 4): N1/N2 verified fixed by independent sabotage; 4 non-blocking -> T-115 (batched); F9 noted. Acceptance green

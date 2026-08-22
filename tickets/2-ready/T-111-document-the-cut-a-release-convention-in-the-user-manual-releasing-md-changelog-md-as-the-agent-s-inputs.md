@@ -101,9 +101,13 @@ whether the agent may run it or must hand back.
 - **T-093 / T-094 / T-095 / T-097** (done) — the `changelog check` family this page frames. The
   page must not contradict the command's documented advisory contract: it always exits `0` when
   it finds candidates and must never become a CI gate.
-- **T-067** (`1-to-do/`) — `docs-check` performs no link/anchor validation, so the new page's
-  xrefs (`<<releasing>>`, `<<cmd-changelog-check>>`, `<<agent-session-workflow>>`) will not be
-  machine-verified; check them by hand until T-067 lands.
+- **T-067** (`6-done/`, **branch not yet merged** — patched by its review's impact sweep,
+  2026-08-22) — it adds exactly the link/anchor validation this bullet said was missing: a Go
+  test wired into both `go test ./...` and `just docs-check` that fails on a dead `<<anchor>>`.
+  Once `feat/T-067-docs-xref-check` merges, the new page's xrefs (`<<releasing>>`,
+  `<<cmd-changelog-check>>`, `<<agent-session-workflow>>`) are machine-verified and the by-hand
+  check below is redundant. Until then it still applies, because the check does not exist on the
+  base branch yet.
 - **T-047** (done) — established the AsciiDoc manual and its `docs-check` pipeline this page
   plugs into.
 
@@ -208,11 +212,13 @@ just docs-check
 just lint
 just test
 ```
-All clean. **T-067 (docs xref/anchor validation) is not yet done**, so `just docs-check` will not
-mechanically catch a dangling `<<releasing>>`/`<<cmd-changelog-check>>`/`<<agent-session-workflow>>`
-target — verify each of the three new/added cross-references by hand (grep the target anchor
-exists: `grep -rn '\[#releasing\]' docs/`, etc.) before presenting, and re-run this check if T-067
-lands first and this ticket rebases onto it. Also render the manual locally once
+All clean. **T-067 (docs xref/anchor validation) is done but its branch is not yet merged**
+(patched 2026-08-22 by its review's impact sweep). If it has merged by the time this ticket is
+picked up, `just docs-check` catches a dangling
+`<<releasing>>`/`<<cmd-changelog-check>>`/`<<agent-session-workflow>>` target on its own and no
+by-hand step is needed. If it has not, verify each of the three new/added cross-references by
+hand (grep the target anchor exists: `grep -rn '\[#releasing\]' docs/`, etc.) before presenting.
+Check which is the case first — `git log origin/main --oneline -- docs_xref_test.go` answers it. Also render the manual locally once
 (`just docs-build`) and skim the new page's rendered output for the definition-list and bullet
 formatting.
 
@@ -254,3 +260,4 @@ This ticket *is* the docs update (Tasks 1–4). No other surface changes.
   `2-ready/`, not done, so this ticket's own new cross-references need a by-hand check instead of
   a mechanical one. TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-22 — patched by **T-067's review impact sweep**: T-067 is now `6-done/` (branch `feat/T-067-docs-xref-check` not yet merged), so this ticket's "docs-check cannot catch a dangling xref" assumption holds only until that branch lands. Wording updated to say which state applies and how to tell.

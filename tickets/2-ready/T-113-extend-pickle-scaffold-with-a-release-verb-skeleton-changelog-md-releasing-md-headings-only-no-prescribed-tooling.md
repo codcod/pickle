@@ -160,8 +160,10 @@ on `main`.
    `scaffoldJustfile`, `hasRecipe` or `scaffoldSnowballConfig`: `Release` uses none of them.
 7. **No cross-reference to T-111's manual page.** T-111 (`docs/user-manual/concepts/releasing.adoc`,
    anchor `[#releasing]`) is still `2-ready/` and may ship after this ticket; an `<<releasing>>`
-   xref would be a dangling target, and `docs-check` cannot catch that yet (T-067 is also
-   unshipped). This ticket's docs cite only `<<cmd-scaffold-docs>>` and its own new anchor.
+   xref would be a dangling target. (`docs-check` gained exactly that check in T-067, done
+   2026-08-22 — patched here by its review's impact sweep — but its branch is unmerged, so the
+   check is not on the base branch yet; either way a dangling target stays a defect worth not
+   writing.) This ticket's docs cite only `<<cmd-scaffold-docs>>` and its own new anchor.
    Adding the connecting sentence once both exist is a follow-up, not this ticket's work.
 8. **`Release` writes exactly two files and nothing else.** No justfile recipes, no GitHub
    Actions workflow, no shell-out to any release tool, no `--lang` flag, no `pickle.toml` read,
@@ -407,3 +409,4 @@ not a flow rule, so the foreign-workspace test does not come into play.
   fence-blind section walk (a documented, accepted limitation — T-083/T-081/T-105); the plan
   says so inline so the indent is not tidied away.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-22 — patched by **T-067's review impact sweep**: T-067 is now `6-done/` (branch `feat/T-067-docs-xref-check` not yet merged), so this ticket's "docs-check cannot catch a dangling xref" assumption holds only until that branch lands. Wording updated to say which state applies and how to tell.
