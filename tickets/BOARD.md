@@ -47,6 +47,7 @@ Last updated: 2026-08-22
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | low | low | S | [] |  |
 | T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | low | low | S | [] |  |
 | T-103 | board.Sort: break impact ties by cost lexicographically instead of by id | low | low | S | [] |  |
+| T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -60,7 +61,6 @@ Last updated: 2026-08-22
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
-| T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | low | low | S | [] |  |
 
 ## DONE
 
