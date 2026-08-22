@@ -305,3 +305,4 @@ cover their respective commands.
   refinement, it is more machinery than this ticket's scope justifies (recorded as Confirmed
   design decision 1)
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-22 — READY → IN DEVELOPMENT: picked up
