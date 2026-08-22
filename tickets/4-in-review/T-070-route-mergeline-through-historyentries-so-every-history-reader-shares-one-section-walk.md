@@ -311,6 +311,31 @@ out of S.
 add the `### Fixed` CHANGELOG entry; resolve the board-sync/CI ordering with the human's chosen
 option. Do not re-audit the rest — the next review is scoped to these three.
 
+### Rework — 2026-08-22 — F1, F2, F3 fixed
+
+- **F1 fixed.** Guarded the first append onto an entry's `Reason` in `HistoryEntries`'s fold step
+  (`internal/ticket/ticket.go`): when `Reason == ""` the continuation *replaces* it instead of
+  prefixing a space, so a clause opened-but-empty on the first physical line (`"… → DONE:"` with
+  the reason wrapped onto the continuation) folds without a leading space. Regression test added:
+  `TestLastHistoryReasonOpenedButEmptyClauseFolds` (single continuation line, and a
+  two-continuation-line case proving only the *first* append is exempt). Committed `400a538`.
+- **F2 fixed, option 1 (human-approved):** committed the `tickets/BOARD.md` regeneration on this
+  branch with `git commit --no-verify` — 16 rows change, matching the review's own count exactly.
+  The commit message records why the bypass is sound here (the rows are this branch's own code
+  fix rendering existing History data correctly, not a ticket move; `main`'s un-fixed binary
+  cannot regenerate them correctly first, so code and board must land together). Committed
+  `a32fdbe`. `./pickle board audit` now passes clean on the branch (`0 errors, 0 warnings`).
+- **F3 fixed.** Added a `### Fixed` bullet to `CHANGELOG.md`'s `[Unreleased]` section naming both
+  the `MergeLine` truncation fix and the R7 target/reason-anchoring fix, in user-observable terms
+  (the board `merged` cell, `pickle serve`'s ticket view, `pickle state`'s `merged` field).
+  `./pickle changelog check` no longer names T-070 (T-067's pre-existing, out-of-scope gap from F9
+  remains, unrelated to this branch). Committed `400a538`.
+
+**Acceptance test, re-run verbatim after the fixes:** `just build` PASS · targeted `go test` PASS
+(now 15 tests/subtests, +1 from F1's regression test) · `just test` PASS (20 packages) ·
+`just lint` PASS · `just docs-check` PASS · **`./pickle board audit` PASS** (0 errors, 0 warnings)
+— all green. Scope was F1/F2/F3 only; nothing else was touched, per the rework rule.
+
 ## History
 
 - 2026-08-06 — created (TO DO). source: T-043 review finding R2 (disposition `new ticket`) — the
@@ -361,3 +386,4 @@ option. Do not re-audit the rest — the next review is scoped to these three.
   docs-check are green on the feature branch now; only that post-merge sync remains
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green (build/test/lint/docs-check clean; board sync deferred to post-merge, see amendment)
 - 2026-08-22 — IN REVIEW → REWORK: review round 1: 3 blocking (F1 reason-fold leading space regresses main; F2 deferred board sync turns CI red on merge; F3 missing CHANGELOG entry for a user-visible fix); 6 non-blocking, 3 fixed inline, 3 noted
+- 2026-08-22 — REWORK → IN REVIEW: findings fixed (F1 reason-fold leading space, F2 board sync committed --no-verify per human approval, F3 CHANGELOG entry added)
