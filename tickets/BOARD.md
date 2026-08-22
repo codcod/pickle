@@ -20,11 +20,10 @@ Last updated: 2026-08-22
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-110 | opt-in scaffold command for a docs/release template (docs skeleton, snowball config, release-attach action, justfile), … | [] |
 
 ## REWORK
 
@@ -135,6 +134,7 @@ Last updated: 2026-08-22
 | T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | yes — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52), |
 | T-108 | pickle install --in-tree: record the board layout in config, and warn when an in-tree board is read from a feature bran… | yes — merged to main (PR #53, baeab0f, https://github.com/codcod/pickle/commit/baeab0f); |
 | T-109 | make the base-branch bookkeeping rule layout-conditional in the payload and user manual | yes — merged to main (MR #55, commit `6a7a458`) — complete: `5da2051` confirmed on `main`, re-verified against the merg… |
+| T-110 | opt-in scaffold command for a docs/release template (docs skeleton, snowball config, release-attach action, justfile), … | no — publish-gated |
 
 ## DROPPED
 
