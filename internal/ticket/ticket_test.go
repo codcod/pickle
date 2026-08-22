@@ -986,10 +986,11 @@ func TestHistoryEntriesEmpty(t *testing.T) {
 }
 
 // TestHistoryEntriesDoesNotShiftPositionalCallers is the regression guard for the
-// hazard HistoryEntries was written around: LastHistoryStatus, LastHistoryReason
-// and MergeLine all read historyRE's body as m[1], so capturing the date would
-// silently renumber it. Read the date and the body from the same lines and assert
-// the three keep working.
+// hazard HistoryEntries was written around: it reads historyRE's body as m[1], so
+// capturing the date would silently renumber it and every reader that resolves
+// through it — LastHistoryStatus, LastHistoryReason and, since T-070, MergeLine
+// — would read the wrong group. Read the date and the body from the same lines
+// and assert the three keep working.
 func TestHistoryEntriesDoesNotShiftPositionalCallers(t *testing.T) {
 	if got := LastHistoryStatus(testDef, sample); got != "DONE" {
 		t.Errorf("LastHistoryStatus = %q, want DONE", got)

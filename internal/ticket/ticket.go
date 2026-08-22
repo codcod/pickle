@@ -128,9 +128,11 @@ const arrow = "→"
 // transitionParts locates the transition inside a History entry body
 // ("OLD → NEW[: reason]") and returns NEW plus the reason clause, reporting ok
 // only when NEW is a legal status name. It is the single place that decides
-// whether a body is a status transition at all: historyKind, HistoryEntries and
-// LastHistoryReason all resolve to this one function instead of each re-deriving
-// the split, which is what let three readers drift out of sync before T-043.
+// whether a body is a status transition at all: historyKind and HistoryEntries
+// resolve to this one function instead of each re-deriving the split, which is
+// what let three readers drift out of sync before T-043. LastHistoryReason no
+// longer calls it at all — it reads HistoryEntry.Reason, which HistoryEntries
+// filled from this function in the same pass that set Target (T-070).
 //
 // The rule is **the leftmost arrow whose candidate target is a legal status
 // name**, where the candidate ends at the next colon. Three shapes, all real,
@@ -194,8 +196,9 @@ type HistoryEntry struct {
 	// candidate target is no longer a legal status, so the entry classified as a
 	// transition and then resolved to no status at all (T-043 review, R1).
 	Target string
-	// Reason is the transition's ": <reason>" clause, or "" unless Kind is
-	// HistoryTransition or no clause was opened. It is resolved in the same pass
+	// Reason is the transition's ": <reason>" clause. It is "" when Kind is not
+	// HistoryTransition, and "" when the entry opened no reason clause at all (a
+	// bare "OLD → NEW"). It is resolved in the same pass
 	// and from the same accepting arrow as Target (via transitionParts on the
 	// entry's first physical line), then folded forward exactly like Text — but
 	// only when reasonOpen says a clause was actually opened on that first line,
