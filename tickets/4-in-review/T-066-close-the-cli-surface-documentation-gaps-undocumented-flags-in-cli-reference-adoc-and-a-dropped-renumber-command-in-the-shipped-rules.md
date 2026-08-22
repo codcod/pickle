@@ -306,3 +306,4 @@ cover their respective commands.
   design decision 1)
 - 2026-08-22 — TO DO → READY: plan complete
 - 2026-08-22 — READY → IN DEVELOPMENT: picked up
+- 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
