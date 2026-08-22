@@ -253,3 +253,4 @@ surface).
   matcher-immunity question (item 3) is left as a plan task, not resolved at refinement, since its
   answer is only decidable by reading or exercising opencode's own matching code.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-22 — READY → IN DEVELOPMENT: picked up
