@@ -59,14 +59,17 @@ export default function (pi: ExtensionAPI) {
 
   // NOTE ON THIS GATE'S NATURE: every rule below is a reminder that encodes
   // the AGENTS.md commit policy for a cooperative agent — it is NOT a
-  // security boundary and is trivially bypassable by design (a
-  // variable-indirected `git`, a piped `xargs`, or a quoted flag all sail past
-  // every check here; see T-050's ticket for the harness that demonstrated
-  // it). Its job is to catch the common, unintentional slip, at the cost of
-  // an occasional false positive that a single confirm keypress clears — not
-  // to guarantee compliance. Do not file tickets to harden the matcher
-  // against deliberate evasion; that trade removes protection (see T-050's
-  // Description) without buying any.
+  // security boundary and is trivially bypassable by design: a
+  // variable-indirected `git` (`g=git; $g add -A`), a piped `xargs` (`echo -A
+  // | xargs git add`), or a quoted flag (`git commit "-""a"`) all sail past
+  // every check here. Its job is to catch the common, unintentional slip, at
+  // the cost of an occasional false positive that a single confirm keypress
+  // clears — not to guarantee compliance. Do not file tickets to harden the
+  // matcher against deliberate evasion: it would trade this false-positive
+  // cost for a real bypass, since the segmenter below has no notion of shell
+  // quoting or heredocs (a quote/heredoc-aware skip turns a heredoc into a
+  // one-line bypass of every rule; anchoring the match to a segment start
+  // loses every `then`/`env`/`sudo`/`time` prefix).
   pi.on("tool_call", async (event, ctx): Promise<Block | undefined> => {
     if (!isToolCallEventType("bash", event)) return;
     const raw = event.input.command ?? "";
