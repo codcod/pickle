@@ -67,6 +67,8 @@ func Run(payload fs.FS, version string, args []string) int {
 		return runChangelog(args[1:])
 	case "serve":
 		return runServe(args[1:])
+	case "scaffold":
+		return runScaffold(args[1:])
 	case "version", "--version", "-v":
 		return runVersion(args[1:])
 	case "help", "--help", "-h":
@@ -138,6 +140,13 @@ Flow commands:
                           in the changelog's named section (default "Unreleased").
                           Excluded board: bookkeeping commits summarize to one line unless
                           --show-excluded. Read-only and advisory — always exits 0.
+
+Other scaffolding (unrelated to brine):
+  scaffold docs [--project-name <name>] [--force] [--dry-run]
+                          Write a minimal AsciiDoc docs skeleton, best-effort snowball init,
+                          additive justfile docs-check/docs-build recipes (only if a justfile
+                          already exists), and a standalone GitHub Action that attaches the
+                          built manual to a release. Entirely separate from pickle install.
 
 Visualize:
   serve [--addr host:port]

@@ -72,6 +72,11 @@ the same tree. Wait for it to finish, then try again.
 | `pickle serve [--addr …]`
 | Serve a read-only browser view of the board, the tickets, and their history.
 
+| `pickle scaffold docs [--project-name …] [--force] [--dry-run]`
+| Write a minimal AsciiDoc docs skeleton, best-effort `snowball init`, additive
+  justfile recipes and a standalone release-attach GitHub Action. Entirely
+  separate from `pickle install` — unrelated to {flow}.
+
 | `pickle version` · `pickle help`
 | Print the version / the usage summary.
 |===
@@ -1330,6 +1335,60 @@ that reason. `--addr` accepts any address, and a non-loopback one prints a
 warning: anyone who can reach the port can read every ticket in the project. Do
 not expose it.
 ====
+
+[#cmd-scaffold-docs]
+== `pickle scaffold docs`
+
+----
+pickle scaffold docs [--project-name <name>] [--force] [--dry-run]
+----
+
+An entirely optional, standalone scaffold, unrelated to {flow}: `pickle install`
+continues to lay down only the ticket flow (`tickets/`, `BOARD.md`, the skill,
+the `AGENTS.md`/`CLAUDE.md` markers); this command touches none of that, reads
+and writes no `pickle.toml`, and is never checked by `pickle doctor` or
+`pickle board audit` — it is a one-shot scaffold, not an ongoing invariant
+pickle owns.
+
+It writes, into the current directory:
+
+[cols="2,3"]
+|===
+| Path | What
+
+| `docs/attributes.adoc`
+| Minimal AsciiDoc shared attributes (`:product: <project-name>`).
+
+| `docs/user-manual.adoc`
+| A book master including `attributes.adoc` and one placeholder chapter.
+
+| `docs/user-manual/introduction.adoc`
+| One placeholder chapter, marked `TODO` — a starting point, not content.
+
+| `.github/workflows/docs-release.yml`
+| A standalone GitHub Action, triggered on `release: types: [published]`
+  (decoupled from any particular release tool), that builds the manual with
+  `snowball` and attaches the PDF/EPUB to the release. GitHub-only — it uses
+  `gh` and the `release` event, both GitHub-specific; the file says so in its
+  own header comment.
+|===
+
+`--project-name` (default: the current directory's name) is substituted for
+every `<project-name>` above. `--force` overwrites files that already exist
+(without it, an existing file is left untouched and reported as skipped).
+`--dry-run` prints what would be created or changed without writing anything.
+
+Two more things happen, best-effort:
+
+- If a `justfile` already exists, `docs-check`/`docs-build` recipes
+  (`snowball check` / `snowball build -o dist/docs`) are appended for whichever
+  of the two is not already defined. No `justfile` is ever created from
+  scratch — a repo with no task runner does not get one invented for it.
+- If the `snowball` binary is on `PATH`, `snowball init` is run to write a
+  starter `snowball.yaml`; pickle never hand-writes or edits that file. A
+  missing or failing `snowball` is reported as a note, never a failure —
+  either way, the command prints a reminder to point `snowball.yaml`'s `src`/
+  `out` at the scaffolded manual.
 
 [#cmd-version]
 == `pickle version` and `pickle help`
