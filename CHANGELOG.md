@@ -8,53 +8,55 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-22
+
 ### Added
 
 - **The review protocol gains a step 0, reviewer independence, and every review now records who ran
-  the audits.** When the agent about to review a ticket authored its branch in this same session,
-  it must delegate the implementation/quality/consistency/docs audits to an independently spawned
-  reviewer, hand-verify every delegated finding, and record which happened (independent, delegated,
-  or a conscious skip) in the checklist; classification, dispositions, and the ticket move stay with
-  the reviewer. Shipped in `resources/review-protocol.md`, `SKILL.md`'s validate-a-ticket summary,
-  and a cross-reference from the rules' pickup-gate clause, so the flow names implementer bias in
-  both the places it can occur (T-112).
+  the audits.** When the reviewing agent also authored the branch in the same session, it must
+  delegate the implementation/quality/consistency/docs audits to an independently spawned reviewer.
+  It must then hand-verify every delegated finding and record in the checklist what happened
+  (independent, delegated, or a conscious skip); classification, dispositions, and the ticket move
+  still stay with the reviewer. Shipped in `resources/review-protocol.md`, `SKILL.md`'s
+  validate-a-ticket summary, and a cross-reference from the rules' pickup-gate clause, so the flow
+  names implementer bias in both the places it can occur (T-112).
 
 - **`pickle scaffold docs` writes a minimal AsciiDoc docs skeleton, a best-effort `snowball
   init`, additive `justfile` `docs-check`/`docs-build` recipes, and a standalone GitHub Action
-  that attaches the built manual to a release** — entirely optional and unrelated to the ticket
-  flow: `pickle install` continues to scaffold brine only, and nothing this command writes is
-  read back by `pickle doctor` or `pickle board audit` (T-110).
+  that attaches the built manual to a release** — entirely optional and separate from the ticket
+  flow: `pickle install` still scaffolds brine only, and `pickle doctor` and `pickle board audit`
+  do not read anything this command writes (T-110).
 
 ### Fixed
 
 - **The Pi guardrail's staging-discipline rule (`git add -A` / `git add .` / `git commit -a`)
   now prompts for confirmation instead of hard-blocking**, matching the publish gate and
-  self-modify guard it ships alongside. A command that merely *mentions* one of those phrases in
-  its own text (e.g. inside a documentation heredoc) used to be refused outright; it now asks,
-  and an unattended session (no UI) keeps today's strictness. Shipped identically in
-  `agents/pi/extensions/pickle-guardrails.ts` (the installed payload) and this repo's own
-  `.pi/extensions/workspace-guardrails.ts` (T-050).
+  self-modify guard it ships alongside. Previously, a command could be refused just for
+  *mentioning* one of those phrases in its own text, such as inside a documentation heredoc.
+  It now prompts instead, while an unattended session (no UI) keeps today's strictness. Shipped
+  identically in `agents/pi/extensions/pickle-guardrails.ts` (the installed payload) and this
+  repo's own `.pi/extensions/workspace-guardrails.ts` (T-050).
 
 - **`docs/user-manual/cli-reference.adoc` documents every flag the CLI actually accepts.**
   `pickle ticket new --family`, and `pickle project add`'s `--build`/`--test`/`--lint`/`--docs`/
   `--branch-prefix`/`--wip-dev`/`--wip-review`, existed but were never mentioned in the manual;
-  `pickle flow show|list` had no section at all. The shipped rules also pointed at a
-  `pickle ticket renumber` command that was never built — re-homing a ticket to a
-  differently-prefixed child is now documented as the manual, one-time migration it always was.
-  A markup bug that opened an unconstrained bold span at a glob (`` `.pi/extensions/*.ts` ``)
+  `pickle flow show|list` had no section at all. The shipped rules also pointed to a
+  `pickle ticket renumber` command that was never built. Re-homing a ticket to a
+  differently-prefixed child is now documented as what it always was: a manual, one-time
+  migration. A markup bug that opened an unconstrained bold span at a glob (`` `.pi/extensions/*.ts` ``)
   and swallowed the next two lines of the rendered PDF/EPUB is also fixed (T-066).
 
 - **A merge line wrapped across a continuation line no longer truncates the board's `merged`
-  cell.** `MergeLine` carried its own private copy of the `## History` section walk and, unlike
-  every other reader of a ticket's history, never folded a continuation line back into the entry
-  above it — so a merge note wrapped onto a second physical line (routine once the recommended
-  form grew a full commit URL, T-089) silently showed only its first line in `pickle board`'s
-  DONE `merged` column, `pickle serve`'s ticket view, and `pickle state`'s `merged` field.
-  `MergeLine` now reads through the same shared `HistoryEntries` walk the other readers already
-  use. A related bug is fixed alongside it: a hand-written transition whose continuation line
-  happened to contain its own `OLD → NEW: reason` could make `LastHistoryReason` report that
-  unrelated reason instead of the transition's own (or none at all) — resolving a transition's
-  target and reason from the same arrow, in one pass, closes it (T-070).
+  cell.** `MergeLine` had its own private walk over the `## History` section. Unlike every other
+  reader of a ticket's history, it never folded a continuation line back into the entry above it.
+  As a result, a merge note that wrapped onto a second physical line (routine once the
+  recommended form grew a full commit URL, T-089) silently showed only its first line in
+  `pickle board`'s DONE `merged` column, `pickle serve`'s ticket view, and `pickle state`'s
+  `merged` field. `MergeLine` now reads through the same shared `HistoryEntries` walk the other
+  readers already use. A related bug is fixed alongside it: if a hand-written transition had a
+  continuation line that happened to contain its own `OLD → NEW: reason`, `LastHistoryReason`
+  could report that unrelated reason instead of the transition's own (or none at all). Resolving
+  a transition's target and reason from the same arrow, in one pass, closes that gap (T-070).
 
 ## [0.10.0] - 2026-08-18
 
@@ -694,7 +696,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/codcod/pickle/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/codcod/pickle/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/codcod/pickle/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/codcod/pickle/compare/v0.7.0...v0.8.0
