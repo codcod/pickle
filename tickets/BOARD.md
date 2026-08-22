@@ -13,10 +13,11 @@ Last updated: 2026-08-22
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-22
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | medium | medium | M | [T-004] |  |
-| T-070 | route MergeLine through HistoryEntries so every ## History reader shares one section walk | low-medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
 | T-111 | document the 'cut a release' convention in the user manual: RELEASING.md + CHANGELOG.md as the agent's inputs | low-medium | low | S | [] |  |
 | T-113 | extend 'pickle scaffold' with a release verb: skeleton CHANGELOG.md + RELEASING.md (headings only, no prescribed toolin… | low-medium | low | S | [] |  |

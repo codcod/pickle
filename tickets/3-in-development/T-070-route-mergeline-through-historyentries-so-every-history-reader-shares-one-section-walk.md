@@ -286,3 +286,4 @@ feature to document).
   would have silently broken — confirmed the chosen design reproduces all of them with zero
   literal changes. Grade unchanged. TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-22 — READY → IN DEVELOPMENT: picked up
