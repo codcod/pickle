@@ -20,10 +20,11 @@ Last updated: 2026-08-22
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-22
 
 | id | title | open findings |
 |---|---|---|
-| T-067 | docs-check passes on a dead cross-reference: no link/anchor validation anywhere in the docs pipeline | review: 1 blocking (F1 decision-5 reference figures unasserted; core guard passes vacuously on a partial pattern narrow… |
 
 ## READY (impact order, per child)
 

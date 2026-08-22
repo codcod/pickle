@@ -317,6 +317,47 @@ F1 rework lands.
   **partial** narrowing — a pattern that still matches the fixture but silently drops real
   occurrences — which is precisely the case decision 5's figures were specified to catch.
 
+### Rework pass — 2026-08-22 — F1 fixed
+
+Scope was F1 alone; no other finding was touched. Fixed in `09f94c8` on the same branch.
+
+**F1 — resolved.** `assertBookCoverageIntact` (`docs_xref_test.go`) now runs inside
+`TestDocsXrefsResolve`, before the resolution loop, asserting that the scan still reaches at
+least the figures decision 5 measured at refinement: 13 book files, 30 anchors, 86 `<<…>>`
+occurrences, 24 distinct targets. The core check can no longer report "no unresolved xrefs"
+over a book it never actually read.
+
+**One interpretation to flag for the re-review.** Decision 5's wording is "must reproduce these
+exact figures as their reference point". They are asserted as **floors**, not equalities. The
+reasoning: the failure mode decision 5 names is the parser mis-walking the tree — coverage
+*collapsing* — and documentation only grows, so any drop is the signal. Exact equality would
+additionally fail on every legitimate docs addition, and a guard that cries wolf on ordinary
+work trains contributors to bump the constant without reading it, which is precisely how it
+would rot back into the decoration F1 found. The exact figures are still what the floors are
+calibrated to and still appear in the file as the reference point, so this is read as serving
+decision 5 rather than departing from it — but it is recorded here rather than left silent, and
+the re-review should overrule it if it disagrees.
+
+**Verification that the fix bites** (each by deliberate sabotage, reverted after):
+
+| sabotage | before F1's fix | after |
+|---|---|---|
+| drop the `<<id,text>>` form from the xref pattern | all 4 tests **passed** (4 live occurrences silently unchecked) | **FAIL** — "occurrences scanned = 82, expected at least 86"; "distinct targets = 23, expected at least 24" |
+| include walk stops matching `[leveloffset=+1]` | orphan test only | **FAIL** — all four counts, led by "book files = 2, expected at least 13" |
+| anchor pattern narrowed to `[A-Za-z]+` | resolution failures only | **FAIL** — "anchors = 5, expected at least 30", plus 67 unresolved |
+| **a normal docs addition** (+1 anchor, +2 xrefs on a live page) | n/a | **passes** — no false positive |
+
+The distinct failure signatures are deliberate: files dropping with everything else points at
+the include walk, occurrences dropping alone points at the xref pattern.
+
+Acceptance test re-run verbatim after the fix: `just build` ✓ · `go test . -run '^TestDocs' -v` ✓
+(4/4) · `just docs-check` ✓ · `just test` ✓ (20 packages, 0 failures) · `just lint` ✓ ·
+`gofmt -l .` clean.
+
+Also applied in the same commit, closing round 1's step 4b: the approved docs-readability
+suggestion to `docs/README.adoc`'s Validating section. Not a finding — readability suggestions
+never enter the findings table.
+
 #### Impact sweep (step 8)
 
 No ticket carries T-067 in `depends-on:` (all matches were prose). Four READY tickets encode
@@ -379,3 +420,4 @@ Deferred to the concluding re-review so the patches describe what actually shipp
   (decision 1).
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-22 — IN REVIEW → REWORK: review: 1 blocking (F1 decision-5 reference figures unasserted; core guard passes vacuously on a partial pattern narrowing); 11 non-blocking dispositioned (3 fixed inline, 5 -> batched follow-up, 3 noted)
+- 2026-08-22 — REWORK → IN REVIEW: findings fixed
