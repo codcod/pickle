@@ -396,3 +396,4 @@ all re-verified clean after both fix commits.
 - 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-22 — IN REVIEW → DONE: review clean: 0 blocking, 3 fixed inline (F1 actions/checkout version, F2 dry-run test coverage, F3 changelog entry)
 - 2026-08-22 — PR #56 opened (`feat/T-110-scaffold-docs-command` → `main`, commit `cb64264`), user-approved; awaiting merge
+- 2026-08-22 — merged to main (PR #56, `323add9`); branch deleted
