@@ -643,6 +643,22 @@ are prefix-anchored globs, so quoted prose inside a heredoc should not match —
 extensions. Untested. T-050 task 3 verifies it rather than assuming; if the declarative form is
 immune, that is evidence about which guard shape to prefer, not a bug to fix.
 
+**Confirmed (2026-08-22, T-050 Task 3): the declarative mirror is immune.** Two methods, both
+pointing the same way. (1) opencode's own published docs (`https://opencode.ai/docs/permissions`)
+state `bash` permission rules match "parsed commands like `git status --porcelain`", i.e. against
+the command opencode's own parser resolves per tool call — not a naive `&&`/`;`/newline text split
+that would expose a heredoc's body line as its own match target the way the TS `segments()` does.
+(2) Smoke-tested directly: a scratch project with opencode.jsonc's actual rule-1 patterns, run
+non-interactively (`opencode run --format json`) against this ticket's own field PoC — a
+`python3 - <<'EOF'` heredoc whose body line reads "blocks git add -A, git add ., git commit -a" —
+executed clean (`"status":"completed"`, exit 0), while a literal `git add -A` in the same session
+was denied (`"status":"error"`, citing the `"git add -A*": "deny"` rule). So the matcher is sound
+and the permission engine is live; the heredoc simply never reaches it as a match candidate. This
+is evidence for preferring a real command parser over a text splitter when a guard's matching
+logic is designed from scratch — not a reason to retrofit parsing into the two TS files (T-050
+rejected that outright: a shell-parser dependency is a bigger change than the verdict fix the
+ticket actually makes, and the false-positive cost is now one keypress either way).
+
 **Noted, not filed — the repro was an anti-pattern.** The blocked command was a `python3 - <<'EOF'`
 heredoc writing a markdown file, in a harness that has `write`/`edit` tools for exactly that. The
 guardrail's false positive is real and T-050 fixes the verdict, but do not harden the guard to make

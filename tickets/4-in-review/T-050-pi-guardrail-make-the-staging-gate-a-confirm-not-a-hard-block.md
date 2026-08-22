@@ -40,7 +40,7 @@ trick a guard should not train into an agent.
 The obvious reading — "the matcher is too loose, make it quote/heredoc-aware" — is wrong twice.
 
 **First, the stated mechanism is wrong.** The guard does *not* match against the whole command
-string: `segments()` (`:24-29`) splits on `&&`, `||`, `;` and `\n`, so the heredoc's body line
+string: `segments()` (`:32-38`) splits on `&&`, `||`, `;` and `\n`, so the heredoc's body line
 becomes its own segment and matches *there*. The defect is that the segmenter is a text splitter
 with no notion of shell quoting or heredocs, and so inspects prose as if it were argv.
 
@@ -254,3 +254,28 @@ surface).
   answer is only decidable by reading or exercising opencode's own matching code.
 - 2026-08-22 — TO DO → READY: plan complete
 - 2026-08-22 — READY → IN DEVELOPMENT: picked up
+- 2026-08-22 — implemented: applicability-gate audit (fresh sub-agent) found zero blocking
+  findings and one non-blocking cosmetic finding (a stale `segments()` line citation, `:24-29`,
+  in the Description's explanatory prose, unconnected to any Task step) — fixed inline, corrected
+  to `:32-38`. Task 1 + Task 2: flipped rule 1's staging-discipline verdict (both the `git
+  add`/`stage` block and the `git commit -a` block) from an unconditional hard `block` to the
+  confirm idiom mirrored verbatim from rule 2, identically in `agents/pi/extensions/pickle-
+  guardrails.ts` and `.pi/extensions/workspace-guardrails.ts`; added the header-comment paragraph
+  stating the gate's reminder-not-boundary nature to both files, immediately above the `tool_call`
+  handler. Verified with a throwaway Node harness (not committed, per the ticket's own note that
+  neither file has one) driving the actual extension modules through mocked `ExtensionAPI`
+  contexts: with a UI, both the field-PoC heredoc and a literal `git add -A`/`git commit -a` now
+  route through `ctx.ui.confirm` (proceeding on approve, `"User declined ..."` on decline);
+  without a UI (`!ctx.hasUI`), both still hard-block, matching decision 1's unattended-stays-
+  strict requirement — identical results from both TS files. Task 3: verified (not assumed)
+  that `opencode.jsonc`'s rule 1 is immune to the same class of false positive, by two methods —
+  opencode's published docs (`https://opencode.ai/docs/permissions`) state `bash` permission rules
+  match "parsed commands", i.e. against the command opencode's own parser resolves per tool call,
+  not a naive text split; and a live smoke test (`opencode run --format json` against a scratch
+  project carrying the actual rule-1 patterns) showed the exact field PoC executing clean while a
+  literal `git add -A` in the same session was denied. Recorded as a dated entry in
+  `tickets/NOTES.md` (appended after the pre-existing "Noted, not filed" paragraph); no change
+  to `opencode.jsonc` itself (decision 3). Acceptance test green: `just build/test/lint/docs-
+  check` all clean; both manual-verification cases (heredoc PoC and literal `git add -A`) now
+  produce a confirm prompt rather than a silent allow or an unconditional block.
+- 2026-08-22 — IN DEVELOPMENT → IN REVIEW: acceptance green
