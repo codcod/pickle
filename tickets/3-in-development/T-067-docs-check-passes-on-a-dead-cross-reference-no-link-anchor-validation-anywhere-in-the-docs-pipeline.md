@@ -268,3 +268,4 @@ from that listing today, the same gap this ticket exists to catch mechanically g
   as a side effect, that `docs/README.adoc`'s "Validating" section already claims the exact
   behaviour this ticket ships — folded into the Docs update task rather than filing separately.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-22 — READY → IN DEVELOPMENT: picked up
