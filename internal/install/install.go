@@ -570,7 +570,14 @@ func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error
 	skillDir := filepath.Join(root, filepath.FromSlash(SkillDir))
 	if fi, err := os.Lstat(skillDir); err == nil {
 		if opts.DryRun {
-			res.removed(SkillDir + " (dry-run)")
+			// Name what the real run below would actually do to it, not just
+			// that something will be removed: a symlink is unlinked, a real
+			// directory is removed wholesale (T-042).
+			if fi.Mode()&os.ModeSymlink != 0 {
+				res.removed(SkillDir + " (dry-run, symlink)")
+			} else {
+				res.removed(SkillDir + "/ (dry-run)")
+			}
 		} else if fi.Mode()&os.ModeSymlink != 0 {
 			// Never RemoveAll a symlink: that would delete the real skill/ tree
 			// it points at (self-host). Remove the link itself only.
