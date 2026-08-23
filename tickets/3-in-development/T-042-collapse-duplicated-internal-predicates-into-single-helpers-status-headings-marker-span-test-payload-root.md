@@ -340,3 +340,4 @@ section does not quote the dry-run label text).
   out of this ticket's scope (still owned by T-013's own, just-refined plan). Grade unchanged.
   TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-23 — READY → IN DEVELOPMENT: picked up
