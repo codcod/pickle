@@ -341,5 +341,6 @@ cost: estimated S, actual S
 - 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-23 — IN REVIEW → DONE: reviewed: 0 findings
 - 2026-08-23 — pushed `feat/T-071-harden-path-probe` (eb57fb9) and opened
-  https://github.com/codcod/pickle/pull/62 against `main`, user-approved. Awaiting human merge —
-  no `merged` line yet.
+  https://github.com/codcod/pickle/pull/62 against `main`, user-approved.
+- 2026-08-23 — MERGED: feat/T-071-harden-path-probe → main (37ebea8, merge commit, history
+  kept per root-path default), user-approved via PR #62; branch left up to the user to delete.
