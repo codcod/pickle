@@ -283,3 +283,4 @@ changes), and item 3 is test-only.
   line does not currently lie, it simply cannot see into a foreign hook's content. Grade
   unchanged. TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-23 — READY → IN DEVELOPMENT: picked up
