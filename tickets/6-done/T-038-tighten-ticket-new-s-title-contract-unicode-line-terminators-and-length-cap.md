@@ -337,3 +337,5 @@ cost: estimated S, actual S
   a throwaway dir — all four hostile titles exit 1, write no file, leave the audit clean).
 - 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-23 — IN REVIEW → DONE: reviewed: 7 non-blocking, 5 fixed inline
+- 2026-08-23 — published: feat branch pushed, PR #64 opened
+- 2026-08-23 — merged to main (e5d2a11)
