@@ -261,8 +261,9 @@ This ticket *is* the docs update (Tasks 1–4). No other surface changes.
 - 2026-08-22 — patched by **T-067's review impact sweep**: T-067 is now `6-done/` (branch `feat/T-067-docs-xref-check` not yet merged), so this ticket's "docs-check cannot catch a dangling xref" assumption holds only until that branch lands. Wording updated to say which state applies and how to tell.
 - 2026-08-22 — patched again by **T-067's impact sweep**, on merge: T-067 landed on `main` (PR #60, 2e29b50), so the "docs-check cannot catch a dangling xref" caveat is now simply false and has been removed rather than re-qualified. The gate is live for this ticket's cross-references.
 - 2026-08-23 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent): all
-  structural assumptions hold (include order in `user-manual.adoc`, the project-structure table's
-  location, T-067's xref check is live). One non-blocking note: T-071's merge shifted
-  `cli-reference.adoc`'s `#cmd-changelog-check` section by 10 lines (`:1278`/`:1280` →
-  `:1288`/`:1290`) — harmless, Task 3 anchors on text ("...flagging that would be noise.", before
-  `[#cmd-serve]`), not line numbers. No blocking findings; proceeded as written.
+  assumptions hold; one non-blocking note (T-071 shifted `cli-reference.adoc` line numbers,
+  harmless — Task 3 anchors on text, not lines). No blocking findings.
+- 2026-08-23 — implemented per plan, all four tasks; see Description for detail. Acceptance
+  green (`just build/docs-check/lint/test`, `just docs-build` rendered clean). `docs_readability`
+  applied on the new page only. One atomic commit (`625dc6a`).
+- 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green

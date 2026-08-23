@@ -13,18 +13,18 @@ Last updated: 2026-08-23
 
 ## IN DEVELOPMENT
 
+### pickle (0/1)
+
+| id | title | depends-on |
+|---|---|---|
+
+## IN REVIEW
+
 ### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
 | T-111 | document the 'cut a release' convention in the user manual: RELEASING.md + CHANGELOG.md as the agent's inputs | [] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | depends-on |
-|---|---|---|
 
 ## REWORK
 
