@@ -13,11 +13,12 @@ cost: S
 
 ## Outcome
 
-`pickle` no longer has a `scaffold docs` command, embedded docs-template payload, or
-`internal/scaffold` package; `pickle help`/usage stops mentioning it. Scaffolding an AsciiDoc
-docs skeleton, its `snowball.yaml`, justfile fragments and a release-attach GitHub Action for a
-project's user manual becomes `snowball`'s job (tracked as a companion ticket in the `unity`
-workspace against the `snowball` child), not pickle's.
+`pickle` no longer has a `scaffold docs` subcommand, embedded docs-template payload, or
+`internal/scaffold` package; `pickle help`/usage stops mentioning `scaffold docs`. The
+`scaffold` command itself stays (T-113 is adding a `release` subcommand under it). Scaffolding
+an AsciiDoc docs skeleton, its `snowball.yaml`, justfile fragments and a release-attach GitHub
+Action for a project's user manual becomes `snowball`'s job (tracked as `SNOW-003` in the
+`unity` workspace), not pickle's.
 
 ## Description
 
@@ -55,33 +56,38 @@ convention; only it can keep a scaffolded doc skeleton and the config it targets
 because it controls both sides. Moving the capability there turns three foreign-tool facts
 pickle had to chase into one project's own facts about itself.
 
-**Scope of removal:** everything T-110 added — `internal/scaffold/` (package + tests),
-`internal/cli/scaffold.go`, the `scaffold` case in `internal/cli/cli.go`'s dispatch and
-`usage()`, the `scaffold/docs-template/` embedded payload tree, the `all:scaffold` embed root
-in `assets.go`, and the `== \`pickle scaffold docs\`` section + Overview row in
-`docs/user-manual/cli-reference.adoc`. A `CHANGELOG.md` entry records the removal as
-`### Breaking` (or this project's equivalent convention for a removed command — confirm at
-refinement).
+**Scope of removal:** everything T-110 added, minus the `scaffold` command surface itself
+(kept for T-113's `release` subcommand, see below) — `internal/scaffold/` (package + tests),
+the `runScaffoldDocs` function and its `"docs"` case in `internal/cli/scaffold.go`'s dispatch
+(`runScaffold` itself, and the top-level `case "scaffold":` in `internal/cli/cli.go`, stay),
+the `scaffold/docs-template/` embedded payload tree, the `all:scaffold` embed root's docs-
+template half in `assets.go` (the `go:embed` line itself can likely stay if T-113 needs its own
+embedded assets under `scaffold/` — confirm at refinement whichever shape T-113 takes), the
+`usage()` line documenting `scaffold docs [...]`, and the `== \`pickle scaffold docs\`` section
++ Overview row in `docs/user-manual/cli-reference.adoc`. A `CHANGELOG.md` entry records the
+removal as `### Breaking` (or this project's equivalent convention for a removed command —
+confirm at refinement).
 
-**Open questions for refinement (flagging now, not resolved by this filing):**
+**Resolved at filing (user decisions):**
 
-1. **T-116** (`2-ready/`, this repo) fixes bugs in exactly the feature this ticket deletes.
-   Building T-116's fix first only to delete it right after would be wasted work — dropping
-   T-116 once this ticket is confirmed seems right, but that's the user's call, not this
-   ticket's to make unilaterally.
-2. **T-113** (`2-ready/`, this repo) extends `pickle scaffold` with a *different* subcommand
-   (`release`: skeleton `CHANGELOG.md`/`RELEASING.md`, no AsciiDoc/snowball involved) and is
-   `spawned-by: [T-110, T-111]`. It doesn't touch the docs/snowball pipeline this ticket
-   removes, so it may be unaffected in scope — but if the `docs` subcommand is `scaffold`'s only
-   reason to exist today, refinement must decide whether the `scaffold` verb group itself stays
-   (as an empty shell for T-113's `release` verb to land in later) or whether T-113 is
-   reconsidered too. Not this ticket's call either.
+1. **T-116** (fixed bugs in exactly the feature this ticket deletes) — dropped
+   (`7-dropped/`, superseded by this ticket); its findings (the `-theme.yml` naming
+   requirement, the phantom-book origin, the heading/`leveloffset` mismatch, and the missing
+   check/build regression test) were transplanted into the companion ticket below before it
+   was dropped, so none of that investigation is lost.
+2. **T-113** (extends `pickle scaffold` with a different, unrelated `release` subcommand:
+   skeleton `CHANGELOG.md`/`RELEASING.md`, no AsciiDoc/snowball involved) **stays** — the
+   `scaffold` command surface is not going away, only the `docs` subcommand under it. This
+   ticket's removal must leave `pickle scaffold`'s dispatch structure intact (`runScaffold` in
+   `internal/cli/scaffold.go`) for T-113 to add its `release` case to; only the `docs` case, and
+   everything solely reachable from it, is removed.
 
 Soft coupling: spawned by T-116 (this repo) — filed once T-116's refinement made the
 cost-of-tracking-a-foreign-tool's-internals concrete enough to question the whole feature, not
-just its bugs. A companion ticket describing the equivalent capability, ported and corrected,
-belongs in the `unity` workspace's own board against `project: snowball` — out of scope for
-this repo's ticket ids (a separate installation, not a registered child here).
+just its bugs. The companion ticket describing the equivalent capability, ported and corrected
+(including T-116's findings), is `SNOW-003` in the `unity` workspace's own board, against
+`project: snowball` — out of scope for this repo's ticket ids (a separate installation, not a
+registered child here).
 
 ## Implementation Plan
 
