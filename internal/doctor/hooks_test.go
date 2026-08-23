@@ -225,6 +225,31 @@ func TestCheckHooksProbesPATH(t *testing.T) {
 		if !hasWarnContaining(res.Warnings, filepath.Join(bin, "pickle")) {
 			t.Errorf("warning does not name the incapable binary's path: %v", res.Warnings)
 		}
+		if len(res.Errors) != 0 {
+			t.Errorf("inert guard must warn, not error: %v", res.Errors)
+		}
+	})
+
+	t.Run("guard ran and found a violation still passes", func(t *testing.T) {
+		// T-071 R3: exit 1 proves the guard ran and found a violation — that is
+		// proof of capability, not incapability, per the shim's own contract
+		// (docs/user-manual/cli-reference.adoc's "Both fail open, always"
+		// bullet: 1 only for a real violation, never for "can't run").
+		root := gitFixture(t)
+		if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
+			t.Fatalf("hook.Install: %v", err)
+		}
+		pinPATH(t, stubPickle(t, 1))
+		res := Check(root, "test-ver", os.DirFS(payloadRoot()))
+		if len(res.Warnings) != 0 {
+			t.Errorf("a capable (exit 1) PATH pickle warned: %v", res.Warnings)
+		}
+		if len(res.Errors) != 0 {
+			t.Errorf("a capable (exit 1) PATH pickle errored: %v", res.Errors)
+		}
+		if !hasPassedContaining(res.Passed, "can run the installed guards") {
+			t.Errorf("capable (exit 1) PATH pickle not reported as such: %v", res.Passed)
+		}
 	})
 
 	t.Run("capable pickle on PATH passes", func(t *testing.T) {

@@ -40,6 +40,23 @@ func TestProbeCapablePickle(t *testing.T) {
 	}
 }
 
+// TestProbeCapableOnExitOne proves exit 1 — the guard ran and found a
+// violation — reads as capable, not incapable: exit 1 is proof the verb
+// dispatched, which is exactly what Probe is trying to answer (T-071 R3).
+func TestProbeCapableOnExitOne(t *testing.T) {
+	bin := t.TempDir()
+	stubPickleAt(t, bin, 1)
+	t.Setenv("PATH", bin)
+
+	r := Probe()
+	if !r.OK {
+		t.Fatalf("Probe() = %+v, want OK for exit 1 (ran, found a violation)", r)
+	}
+	if r.Problem() != "" {
+		t.Errorf("Problem() = %q, want empty for a capable pickle", r.Problem())
+	}
+}
+
 func TestProbeIncapablePickle(t *testing.T) {
 	bin := t.TempDir()
 	stubPickleAt(t, bin, 2) // mirrors an older pickle's exit 2 on the (then) unknown `hooks` verb
