@@ -340,3 +340,6 @@ cost: estimated S, actual S
   pre-existing, none on the new bullet. One atomic commit (`eb57fb9`), nothing to tidy.
 - 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-23 — IN REVIEW → DONE: reviewed: 0 findings
+- 2026-08-23 — pushed `feat/T-071-harden-path-probe` (eb57fb9) and opened
+  https://github.com/codcod/pickle/pull/62 against `main`, user-approved. Awaiting human merge —
+  no `merged` line yet.
