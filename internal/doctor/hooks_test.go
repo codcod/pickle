@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/codcod/pickle/internal/hook"
-	"github.com/codcod/pickle/internal/install"
 )
 
 // gitFixture upgrades installFixture's fake .git directory into a real
@@ -180,17 +179,7 @@ func TestCheckHooksForeignIsLeftAlone(t *testing.T) {
 // PATH pickle must still warn exactly as an ordinary install would.
 func TestCheckSelfHostLinkStillReportsIncapablePATHPickle(t *testing.T) {
 	root := gitFixture(t)
-	skillPath := filepath.Join(root, filepath.FromSlash(install.SkillDir))
-	if err := os.RemoveAll(skillPath); err != nil {
-		t.Fatal(err)
-	}
-	target, err := filepath.Abs(filepath.Join(payloadRoot(), "skill"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(target, skillPath); err != nil {
-		t.Fatal(err)
-	}
+	linkSkill(t, root)
 	if _, err := hook.Install(root, hook.PreCommit, false); err != nil {
 		t.Fatalf("hook.Install: %v", err)
 	}

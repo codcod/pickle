@@ -48,6 +48,21 @@ func installFixture(t *testing.T) string {
 func selfHostFixture(t *testing.T) string {
 	t.Helper()
 	root := installFixture(t)
+	linkSkill(t, root)
+	return root
+}
+
+// linkSkill replaces root's installed skill dir with a symlink to this
+// repo's own payload skill/ tree — the self-hosting arrangement
+// (.agents/skills/brine -> ../../skill). The link points at an absolute
+// path, mirroring TestUpgradeSelfHostSymlinkGuard in the install package, so
+// checkSkill still resolves SKILL.md and resources/tickets-README.md through
+// it. Shared by selfHostFixture (over installFixture's root) and
+// TestCheckSelfHostLinkStillReportsIncapablePATHPickle (over gitFixture's
+// root, in hooks_test.go) — both package doctor, so no cross-package plumbing
+// is needed (T-042 item 4).
+func linkSkill(t *testing.T, root string) {
+	t.Helper()
 	skillPath := filepath.Join(root, filepath.FromSlash(install.SkillDir))
 	if err := os.RemoveAll(skillPath); err != nil {
 		t.Fatal(err)
@@ -59,7 +74,6 @@ func selfHostFixture(t *testing.T) string {
 	if err := os.Symlink(target, skillPath); err != nil {
 		t.Fatal(err)
 	}
-	return root
 }
 
 func hasErrContaining(errs []string, sub string) bool {

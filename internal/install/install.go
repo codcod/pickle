@@ -715,7 +715,10 @@ func uninstallMarkerFile(path string, opts UninstallOptions, res *Result) error 
 // it is left untouched.
 func copyPayload(payload fs.FS, root string, res *Result) error {
 	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
-	if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+	// SkillLinked(root) is an in-package call to the exact same predicate
+	// (same dst, same Lstat-then-mode test); copyPayload needs only the mode
+	// answer, never Lstat's FileInfo for anything else (T-042 item 4).
+	if SkillLinked(root) {
 		res.skipped(SkillDir + " (existing symlink)")
 		return nil
 	}
