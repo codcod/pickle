@@ -259,7 +259,41 @@ repo-only path, and no ticket id, so it is already foreign-workspace-safe by ins
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): the orchestrating reviewer authored the branch in
+  this same session, so steps 2–4a were **delegated** to an independently spawned sub-agent,
+  briefed adversarially with no memory of writing the code. Every delegated finding below was
+  then re-verified by hand before recording, per the protocol.
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass on the ticket's changed files (step 4b) — run twice (once during
+  implementation, once during this review, both times on
+  `docs/user-manual/cli-reference.adoc`, `skill/SKILL.md`, `skill/resources/tickets-README.md`);
+  every suggestion both times targeted pre-existing prose outside this branch's diff, so none
+  applied to this ticket's scope.
+
+**Acceptance test re-run** (independent reviewer, on `feat/T-103-sort-cost-tiebreak`), all green:
+`just build`; `go test ./internal/board/... -v -run 'TestSort|TestRenderFamily'` (including the
+new `TestSortBreaksImpactTiesByCost` and its 4 subtests); `just test`; `just lint`;
+`just docs-check`; `./pickle board audit` (0 errors; the 2 warnings present are pre-existing on
+`main`, not introduced by this branch — verified via a disposable worktree). Re-confirmed a
+second time after the two inline fixes below (F2, F3), still all green.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | design | noted | Illegal/missing `cost` degrades to Go's zero value (rank 0), which under the ascending cost comparison sorts *first* (cheapest of all) — the opposite of `impactRank`'s existing "degrade to worst" convention (illegal impact sorts last, rank 0 loses under `ri > rj`). Unreachable through the normal flow (`ticket new` always writes a legal cost; `board audit` flags an illegal one) — the same mitigation `impactRank` already relies on — but the asymmetry itself is real. | `internal/board/board.go` `costRank`/`impactRank`; verified directly: `costRank["bogus"]=0 < costRank["S"]=1` vs `impactRank["bogus"]=0 < impactRank["low"]=1` under opposite comparison directions | Documented in `costRank`'s doc comment (done inline, see commit `ae46708`) rather than special-cased — no behaviour change needed since the flow can't reach it. |
+| F2 | non-blocking | other | fixed inline | This branch's docs edit to `skill/resources/tickets-README.md` merged two lines without rewrapping, leaving one line at 121 chars vs the paragraph's ~91–95 char wrap — a line-wrap regression this branch authored, no behaviour change. | `skill/resources/tickets-README.md:454` (before fix, via `awk` line-length check) | Rewrapped; commit `ae46708`. |
+| F3 | non-blocking | stale-xref | fixed inline | Two comments this branch made incomplete: `internal/board/board_test.go`'s `TestRenderOrdering` doc comment and `TestSortIsTheOrderRenderUses`'s `t.Errorf` message both said "ties by id asc", now only true because those specific fixtures happen to also tie on cost — the general claim needed updating to name cost first. | `internal/board/board_test.go:398` (doc comment), `:671` (errorf string), pre-fix | Reworded both to "ties by cost then id asc" plus a one-clause note that the fixture also ties on cost; commit `ae46708`. |
+| F4 | non-blocking | design | noted | The Description/decision-3 language ("preserved by construction", "can never separate a member from its umbrella") slightly overstates the T-059 contiguity guarantee: it holds only on an audit-clean tree. Nested families are excluded by `internal/audit/audit.go:150` ("families do not nest"), not by `famRank`/`famCostRank` themselves — a caveat `famRank` already carried before this ticket, not a new gap it introduced. | `internal/audit/audit.go:150`; `internal/board/board.go` `famRank`/`famCostRank` | None — pre-existing caveat, not this branch's defect to fix. |
+| F5 | non-blocking | docs-gap | noted | No `CHANGELOG.md` entry for this user-facing ordering change. The project's own `pickle changelog check` design (`internal/changelog/changelog.go`, T-093 decision 5) deliberately treats "does this ticket need an entry" as a reader judgement call with no exemption mechanism, reconciled at release-cut rather than mandated per-ticket — judged non-blocking on that basis. | `git diff main --stat` on the feature branch shows no `CHANGELOG.md` hunk; `internal/changelog/changelog.go` header comment | A human may add an entry at release-cut if `pickle changelog check` flags T-103 as unmentioned. |
+
+Disposition summary: 2 fixed inline (F2, F3), 3 noted (F1, F4, F5). No blocking findings, no new
+tickets, no folds.
+
+```
+cost: estimated S-M, actual S-M
+```
 
 ## History
 
@@ -287,3 +321,7 @@ repo-only path, and no ticket id, so it is already foreign-workspace-safe by ins
 - 2026-08-23 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent): no
   findings, plan holds exactly as written.
 - 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-23 — reviewed (independent audit delegated, hand-verified): 5 findings, all
+  non-blocking (2 fixed inline — a comment/wrap regression this branch introduced; 3 noted).
+  cost estimated S-M, actual S-M. No blocking findings, no spawned tickets.
+- 2026-08-23 — IN REVIEW → DONE: reviewed: no blocking findings
