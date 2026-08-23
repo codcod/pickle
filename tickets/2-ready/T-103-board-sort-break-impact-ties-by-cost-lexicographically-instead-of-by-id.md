@@ -18,19 +18,23 @@ instead of oldest-first, so the TO DO group's largest tie stops being an arbitra
 
 ## Description
 
-`board.Sort` (`internal/board/board.go:240`) orders TO DO/READY by impact descending and breaks
+`board.Sort` (`internal/board/board.go:241`) orders TO DO/READY by impact descending and breaks
 ties by **id** — i.e. by filing order, which carries no priority information at all. Impact is a
-four-value ordinal over a backlog that is now 21 tickets deep in TO DO, so ties are the common
-case, not the exception: **7 tickets share `medium` and 7 share `low-medium`** as of
-2026-08-14. Within each of those groups the board's order is the order they happened to be
-filed in.
+four-value ordinal, so ties are the common case, not the exception. Exact depths move constantly
+and are not worth pinning: the group stood at 21 TO DO with 7 sharing `medium` and 7 sharing
+`low-medium` when this was filed (2026-08-14), and at 8 TO DO with 4 and 2 by 2026-08-23. The
+*shape* is what persists — within any such group the board's order is the order the tickets
+happened to be filed in.
 
-The change is to compare `cost` **lexicographically beneath impact** — a `costRank` map
-(`S<M<L<XL`, with the adjacent-pair ranges the rules allow slotting between) and roughly four
-lines in the existing comparator, ascending so cheap wins a tie. Nothing else changes: no config
-surface, no new frontmatter, no second source of truth, and decision **D1** at `board.go:231`
-("deterministic, no hand-curated order") stays intact — this is still a pure function of the
-ticket files. T-059's `family:` contiguity rule sits above the tiebreak and is unaffected.
+The change is to compare `cost` **beneath impact** — a `costRank` map (`S<M<L<XL`, with the
+adjacent-pair ranges the rules allow slotting between) applied ascending, so cheap wins a tie.
+It takes two insertion points in the existing comparator plus one new helper, `famCostRank`
+(see the Implementation Plan; an early scoping of "~4 lines at a single insertion point" was
+wrong and is corrected there). Nothing else changes: no config surface, no new frontmatter, no
+second source of truth, and decision **D1** in `Sort`'s doc comment (`board.go:233`,
+"deterministic, no hand-curated order") stays intact — this is still a pure function of the
+ticket files. T-059's `family:` contiguity rule sits above the tiebreak and is preserved (proved
+by construction and by test at refinement — see Implementation Plan decision 3).
 
 ### Provenance, and the honest case against it
 
@@ -41,66 +45,62 @@ a ratio does, and is invariant under any monotone renumbering of the ordinals �
 killed the ratio (renumbering `cost` on an equally defensible scale moved 11 of 18 rows).
 
 T-056 work area 5 recorded the idea with a trigger: file it only **if an `impact` recalibration
-pass leaves the `medium` group ≥5 deep**. Two recalibration passes have been run (`NOTES.md`,
-2026-08-01 and 2026-08-03) and the group is 7 deep, so the trigger has fired and this is that
-ticket.
+pass leaves the `medium` group ≥5 deep**. Two recalibration passes had been run (`NOTES.md`,
+2026-08-01 and 2026-08-03) and the group stood 7 deep on 2026-08-14, so the trigger fired and
+this is that ticket. The group has since fallen below that threshold; the trigger governed
+*whether to file*, not whether to build what was filed, so it is spent either way — the case for
+building now rests on the measured two-row effect above, not on the trigger.
 
 **T-063's fatal finding still applies and is why this is graded `low`.** The queue anyone picks
 from is READY, not TO DO — and across all **294 revisions** of `tickets/BOARD.md`, READY has
 held 0 rows in 205 of them, 1 row in 65, 2 rows in 22 and 3 rows in 2. It has never held more
-than three. Re-ordering a 21-row TO DO list improves a *reading* surface, not a *pickup* queue.
-That is a real but narrow win, which is exactly what `low` means. If refinement finds the change
-costs more than the ~4 lines claimed here, dropping it is the right answer.
+than three. Re-ordering the TO DO list improves a *reading* surface, not a *pickup* queue.
+That is a real but narrow win, which is exactly what `low` means. Measured directly at the
+2026-08-23 refinement by rendering the live tree with a throwaway prototype: the change moves
+**exactly two rows** (T-103 and T-102 each swap with one neighbour). That is the honest size of
+the win — it confirms `low` rather than undermining it, and anyone who expects more from this
+ticket should drop it instead.
 
-### Re-refinement note (2026-08-23): Decision 1 is wrong, needs a different fix shape
+### Why the fix needs two insertion points, not one
 
-Picked up 2026-08-23. The applicability-gate audit (fresh sub-agent) found the code-level
-assumptions still held (impactRank/costRank shape, `ticket.LegalCost`'s 7 values, `Sort`'s two
-branches, the three existing test fixtures, WIP 0/1) and only non-blocking notes: T-042 has
-since moved to `6-done/` so the "don't run concurrently" coupling is moot; a handful of line
-citations in this ticket drifted a few lines from unrelated intervening commits, though every
-quoted anchor *text* still matched verbatim; and the Description's 2026-08-14 backlog snapshot
-(21 TO DO / 7 medium / 7 low-medium) is stale — current board is 8 TO DO / 4 medium / 2
-low-medium, below T-056's original trigger — dispositioned non-blocking/note-and-close since the
-change's value doesn't depend on current tie depth.
+A first attempt at this ticket (2026-08-23) scoped the tiebreak to `Sort`'s final `a.Num < b.Num`
+fallback alone and was abandoned mid-implementation when a test proved that fallback is
+unreachable for ordinary tickets. The reasoning is load-bearing for the plan below, so it is
+recorded here rather than left as a lesson someone has to re-learn.
 
-Implementation itself then surfaced a **blocking** problem the audit didn't catch, because it's
-about behavior, not assumptions: **the confirmed Decision 1 is built on a false premise.**
-Decision 1 says the cost tiebreak belongs only in the final `a.Num < b.Num` fallback (`Sort`'s
-branch "b": two members of the *same* family tied on their own impact), and that the `fa != fb`
-branch (different families/loose tickets tied at the same family rank) is untouched. But trace
-`familyKey`: a loose ticket's `familyKey` is **its own id**. Two distinct loose tickets therefore
-*always* have `fa != fb` — they can never reach branch "b" at all, because that branch only
-fires once `fa == fb`, true only for two members sharing one real `family:` umbrella. So a
-loose-vs-loose impact tie — the common case, and the exact shape of the 7-deep `medium` /
-2-deep `low-medium` groups this ticket exists to fix — is decided earlier, at `if fa != fb {
-return fa < fb }`, a **string** comparison of ids, never reaching the fallback Decision 1 scoped
-the change to. Confirmed empirically: adding the cost check only to branch "b" left a
-loose-vs-loose test (three same-impact loose tickets, highest id cheapest) still sorting by id.
+`Sort` has two places that resolve to id order: **(a)** different families/loose tickets tied at
+the same family-level rank, ordered by `familyKey` ascending; **(b)** members of the *same*
+family tied on their own impact, falling through to `a.Num < b.Num`. Branch (b) looks like "the
+tiebreak", but `familyKey` returns a **loose ticket's own id**, so two distinct loose tickets
+always have `fa != fb` and are decided at (a) — a string comparison of ids — without ever
+reaching (b). Branch (b) fires only between two members sharing one real `family:` umbrella.
+Since the overwhelming majority of tickets are loose, **(a) is the common case**: a cost check
+installed only at (b) is dead code for exactly the tickets this ticket exists to reorder.
+Verified twice — once by the failing attempt, once at refinement by prototype (below).
 
-**Proposed remedy for the next refinement pass:** add a `famCostRank` mirroring the existing
-`famRank` (family's cost when it has one via its umbrella, else its own), and insert a cost
-comparison right after `ra != rb` but before `fa != fb` — so two different families/loose
-tickets tied at the same family rank break by (representative) cost before falling back to
-`familyKey`/id, in addition to keeping branch "b"'s own-impact-tie cost check for members within
-one family. T-059 contiguity is unaffected either way (this only reorders *among* families/loose
-tickets at a tied rank, never splits one apart), and the three existing family tests stay green
-regardless (their fixtures hardcode uniform `cost: M`). This is materially more than "~4 lines in
-the existing comparator" — it touches the branch Decision 1 said to leave alone and adds one new
-helper — so re-refinement should replace Decision 1 and Task 1 with this shape rather than patch
-around it.
+**Family contiguity is preserved by construction**, which is why (a) can safely be touched at
+all. The value compared at (a) is `famCostRank`, which resolves through the umbrella; every
+member of a family therefore yields the *same* rank as its umbrella, so the new comparison can
+reorder whole families relative to each other but can never separate a member from its umbrella.
+T-059's guarantee survives as an invariant of the helper's definition, not as an accident.
 
-The Implementation Plan below has been rewritten accordingly (decisions 1/3/4/5, Tasks 1–3), and
-`cost` re-graded `S` → `S-M`: two insertion points and one new helper function is more than the
-original "~4 lines" scope, though still a small, mechanical, pattern-following change — impact
-and complexity are unchanged.
+**Prototype verification (2026-08-23 refinement).** The plan below was implemented end-to-end as
+a throwaway prototype, exercised, and then reverted — nothing was committed. Results: all four
+cases pass (loose-vs-loose reorders by cost; same-family members reorder by cost under their
+umbrella; impact+cost both tied still falls back to id ascending; a cheap loose ticket racing an
+expensive family leaves that family contiguous). The **entire existing suite passed unedited**
+(`go test ./...`, all packages green), confirming the standing claim that no existing test needs
+changing. Rendering the live tree with the prototype changed exactly two board rows. This plan is
+therefore known-executable, not merely plausible — the failure mode that sent the first attempt
+back has been closed by testing the design rather than asserting it.
 
 ### Soft couplings
 
 - **T-056** (dropped 2026-08-14) — its work area 5 carried this idea and its trigger.
 - **T-063** (dropped) — the hearing that produced the measurements above; read its DROPPED
   banner before refining, including the errors it marks in its own text.
-- **T-042** — also touches `internal/board`; sequence, do not run concurrently.
+- **T-042** (done 2026-08-23) — also touched `internal/board`; the "sequence, do not run
+  concurrently" caution is spent, its code is unmerged but its dev work is finished.
 - **T-059** (done) — `family:` grouping in the same comparator.
 - **T-045** (dropped) — the `user-visible:` axis, the other proposed answer to wide impact ties.
 
@@ -125,30 +125,26 @@ concurrently" no longer applies; no prerequisite blocks picking this up.
 ### Confirmed design decisions (do not deviate without asking)
 
 1. **Scope is both places `Sort` currently resolves to id order — not just the final
-   fallback.** `Sort` (`internal/board/board.go:241-269`, re-verified at the 2026-08-23
-   re-refinement) has two such places: (a) different families/loose tickets tied at the same
-   family-level rank (`ra == rb`), ordered by `familyKey` ascending (`fa < fb`); (b) members of
-   the *same* family tied on their own impact, falling through to `a.Num < b.Num`. **Both need
-   the cost tiebreak, not only (b).** A loose ticket's `familyKey` is its own id
-   (`familyKey`, `:298-305`), so two distinct loose tickets always have `fa != fb` and can
-   *never* reach branch (b) — confirmed empirically at re-refinement: adding the cost check only
-   to (b) left three same-impact loose tickets (highest id cheapest) still sorting by id. Since
-   the vast majority of tickets carry no `family:` (including the 7-deep `medium` / 2-deep
-   `low-medium` groups this ticket exists to fix), (a) is the common case, not (b) — both must
-   change or the fix is a no-op for ordinary tickets. T-059's contiguity guarantee is still
-   unaffected: this only reorders *among* families/loose tickets already tied at one rank, never
-   splits a family apart.
+   fallback.** `Sort` (`internal/board/board.go:241-269`) has two such places: (a) different
+   families/loose tickets tied at the same family-level rank (`ra == rb`), ordered by `familyKey`
+   ascending (`fa < fb`); (b) members of the *same* family tied on their own impact, falling
+   through to `a.Num < b.Num`. **Both need the cost tiebreak, not only (b)** — the Description's
+   *"Why the fix needs two insertion points"* section carries the full argument and the evidence;
+   do not re-scope this to (b) alone without reading it first.
 2. **`costRank` mirrors `impactRank`'s existing shape exactly** (`internal/board/board.go:22-26`):
    a package-level `map[string]int` covering all seven legal `cost` values
    (`ticket.LegalCost`, verified at refinement: `S, S-M, M, M-L, L, L-XL, XL`), ranked `1..7`
    ascending. The comparison direction is the mirror image of `impactRank`'s: `impactRank` compares
    `ri > rj` (higher impact wins); `costRank` compares `ci < cj` (cheaper wins) — call this out
    in the doc comment so the inverted direction reads as deliberate, not a copy-paste mistake.
-3. **A new `famCostRank` mirrors the existing `famRank` exactly** (`internal/board/board.go:308-316`):
-   a family's cost is its umbrella's cost when it has one (`byID[t.Family].Front["cost"]`), else
-   its own — the same umbrella-resolution shape `famRank` already uses for impact, including the
-   same graceful fallback to the ticket's own value when the umbrella can't be resolved
-   (audit-dirty tree, or `byID` nil).
+3. **A new `famCostRank` mirrors the existing `famRank` exactly** (`famRank` is at
+   `internal/board/board.go:291-301`; put `famCostRank` directly after it): a family's cost is
+   its umbrella's cost when it has one (`byID[t.Family].Front["cost"]`), else its own — the same
+   umbrella-resolution shape `famRank` already uses for impact, including the same graceful
+   fallback to the ticket's own value when the umbrella can't be resolved (audit-dirty tree, or
+   `byID` nil). **This resolution is what preserves T-059 contiguity**: because every member
+   resolves to its umbrella's cost, the branch-(a) comparison can reorder whole families but can
+   never split one — keep that property if the helper is rewritten.
 4. **An illegal/absent `cost` degrades the same way an illegal/absent `impact` already does**:
    a Go zero-value map lookup (rank `0`), no panic, no special-cased fallback — consistent with
    `impactRank`/`famRank`'s existing graceful-degradation convention, not a new failure mode to
@@ -162,7 +158,7 @@ concurrently" no longer applies; no prerequisite blocks picking this up.
 
 #### Task 1 — add `costRank`, `famCostRank`, and both tiebreaks
 In `internal/board/board.go`, add `costRank` near `impactRank` (`:22-26`) per decision 2, and
-add `famCostRank` near `famRank` (`:308-316`) per decision 3. In `Sort` (`:241-269`):
+add `famCostRank` immediately after `famRank` (`:291-301`) per decision 3. In `Sort` (`:241-269`):
 - insert a `famCostRank` comparison immediately after `if ra != rb { return ra > rb }` and
   before `if fa != fb { ... }`, per decisions 1 and 4: `if ca, cb :=
   famCostRank(a, byID), famCostRank(b, byID); ca != cb { return ca < cb }`;
@@ -187,7 +183,16 @@ the final fallback needed it — T-059's family-contiguity guarantee itself is s
     costs, asserting the cheaper member sorts first within the family;
   - a case where impact *and* cost both tie, asserting the fallback to id ascending still holds
     (mirrors `ticketBody`'s existing uniform-`cost: M` tickets — already exercised by
-    `TestSortIsTheOrderRenderUses`; confirm it still passes unedited).
+    `TestSortIsTheOrderRenderUses`; confirm it still passes unedited);
+  - **a family-contiguity case** (decision 3's invariant): a cheap loose ticket and an
+    expensive family (umbrella + member) at the same family rank, asserting the family's rows
+    stay adjacent whichever side of the loose ticket they land on. This is the regression guard
+    for the one way the branch-(a) change could break T-059, so it is not optional.
+- All four cases above were run green against a throwaway prototype at refinement (see the
+  Description); they are specified here to be re-written, not assumed already covered.
+- `ticketBody`/`familyBody` hardcode `cost: M` and take no cost argument, so this task needs a
+  small fixture helper that accepts one (the prototype used a `protoBody(id, title, impact, cost,
+  family)` shape; match the file's existing conventions when naming it).
 - Re-run `TestRenderFamilyGrouping`/`TestRenderFamilySinksToUmbrellaImpact` unedited — verified at
   refinement neither has an impact tie whose members/umbrellas share cost in a way this change
   could disturb (`TestRenderFamilySinksToUmbrellaImpact`'s three tickets have three distinct
@@ -215,17 +220,20 @@ Re-refinement note, so the acceptance test deliberately makes no numeric claim o
 
 This changes documented, cross-project behaviour (every installed project's board renders with
 this ordering, not just this repo's own), so all five places that currently say "ties by id" are
-in scope, verified at refinement by grepping "ties by id"/"impact descending":
-- `docs/user-manual/cli-reference.adoc:928` ("deterministic ordering — TO DO/READY by descending
+in scope. Line numbers below re-verified 2026-08-23 by grepping "ties by id"/"impact descending"
+(they drift with unrelated edits — trust the quoted text over the number):
+- `docs/user-manual/cli-reference.adoc:944` ("deterministic ordering — TO DO/READY by descending
   impact (ties by id), everything else by id")
-- `docs/user-manual/cli-reference.adoc:1311` (`pickle serve`'s ordering guarantee: "impact
+- `docs/user-manual/cli-reference.adoc:1331` (`pickle serve`'s ordering guarantee: "impact
   descending, ties by id")
-- `skill/resources/tickets-README.md:287` (§6: "renders TO DO/READY by descending impact within
+- `skill/resources/tickets-README.md:288` (§6: "renders TO DO/READY by descending impact within
   each child's group, ties by id")
-- `skill/resources/tickets-README.md:451` (§6 board section: "ordered deterministically (impact
+- `skill/resources/tickets-README.md:452` (§6 board section: "ordered deterministically (impact
   descending, ties by id)")
 - `skill/SKILL.md:110` ("the board orders each child's TO DO/READY group deterministically from
   it (impact descending, ties by id)")
+
+The grep confirmed these five are the complete set — no sixth site states the rule.
 
 Each becomes "impact descending, ties by cost ascending, then by id" (or equivalent phrasing
 fitted to its sentence). The two `skill/` files are payload — read `just test`'s
@@ -238,7 +246,9 @@ repo-only path, and no ticket id, so it is already foreign-workspace-safe by ins
 1. Acceptance test green.
 2. Docs updated if a stated tiebreak rule was found (see above).
 3. Write a summary confirming `TestSortIsTheOrderRenderUses` and the two family-render tests
-   needed zero edits, per decision-time verification.
+   needed zero edits — verified at refinement against a full-suite prototype run (`go test
+   ./...` all green), so an edit to any of them means the implementation diverged from the plan
+   and should be re-examined rather than the test adjusted.
 4. Suggested commit message:
    ```
    feat(board): break impact ties by cost before falling back to id (T-103)
@@ -271,3 +281,6 @@ repo-only path, and no ticket id, so it is already foreign-workspace-safe by ins
   only non-blocking items — see Description for the full note.
 - 2026-08-23 — IN DEVELOPMENT → READY: re-refine — Decision 1 invalidated during coding, plan
   rewritten, cost re-graded S → S-M; see Description for the finding and remedy.
+- 2026-08-23 — refined: plan verified by throwaway prototype (all 4 cases green, full suite green
+  unedited, 2 board rows move); Description de-staled, docs line refs corrected, contiguity
+  regression test added to Task 3. Grade unchanged.
