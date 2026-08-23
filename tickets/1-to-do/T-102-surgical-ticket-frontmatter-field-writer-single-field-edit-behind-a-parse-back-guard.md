@@ -111,3 +111,10 @@ reviewed.
   is still the first work that creates the hazard. (The `NOTES.md:428` line-number citation above
   is stale as written — cite that file by heading, per AGENTS.md; the parking rationale is in
   T-065's own Description under "Envelope and versioning".) Nothing re-graded
+- 2026-08-23 — patched by **T-038's review impact sweep**: T-038 is `6-done/` (branch unmerged),
+  so its coupling note above resolves. The validation a `--title` edit must reuse is now concrete:
+  `validateTitle` rejects an empty/whitespace-only title, any of the five Unicode line terminators
+  (`LF`, `CR`, `U+0085`, `U+2028`, `U+2029`), a padded `"---"`, and any title past
+  `maxTitleRuneLen` (120, a new exported-within-package const to reuse rather than re-derive).
+  The cited line `internal/cli/ticket.go:183` is stale — the function moved and grew; find it by
+  name. "Let T-038 land first" is satisfied.

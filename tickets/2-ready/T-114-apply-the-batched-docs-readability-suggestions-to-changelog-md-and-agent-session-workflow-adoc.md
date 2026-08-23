@@ -283,3 +283,13 @@ follow-up ticket for another round; that loop is what §5's promotion test exist
   `installation.adoc`, and **not** `CHANGELOG.md` or `concepts/agent-session-workflow.adoc`. This
   ticket's ten target anchors are therefore untouched by it; the re-verify caveat now applies to
   T-113 alone. Scope and grade unchanged.
+- 2026-08-23 — patched by **T-038's review impact sweep**, and it touches this ticket twice, one of
+  which is not T-038's doing. (1) **T-038 adds a `### Fixed` block to `[Unreleased]`, shifting all
+  three of Task 1's CHANGELOG anchors down by exactly 17 lines** once its branch merges (`:13`/`:22`/
+  `:38` → the T-112, `scaffold docs` and `cli-reference` entries, measured on the branch). Anchor on
+  the quoted opening phrases, not the numbers. (2) **Pre-existing, and larger: the 0.11.0 release
+  already invalidated Task 1's premise.** Task 1 is headed "`[Unreleased]` section" but all three of
+  its entries now sit under `## [0.11.0] - 2026-08-22` — a *released* section, which decision 2
+  assigns to Task 2 and marks droppable. So the Task 1/Task 2 scope split no longer partitions what
+  it was written to partition. Not fixed here (this sweep did not cause it, and re-deciding scope is
+  refinement's call): re-refine the split before pickup. Grade unchanged.
