@@ -1,0 +1,86 @@
+[#releasing]
+= Cutting a Release
+
+"Cut a release" is not a phrase {product} understands out of the box. It becomes a
+procedure an agent can follow only when *your* project provides two optional files.
+`pickle install` writes neither one. Absent them, an agent asked to cut a release
+must never infer a procedure from repo conventions alone — a `CHANGELOG.md`-shaped
+file, a `v*` tag pattern, a release workflow it can see — and run it. The
+convention takes effect only once your project states it explicitly.
+
+== The two inputs
+
+`CHANGELOG.md`::
+  Read *mechanically* by <<cmd-changelog-check>>. The command reconciles every
+  ticket that shipped in a commit range against the section naming that release
+  and prints what the section does not mention. It is advisory and read-only:
+  it never blocks anything, and it answers one question only (shipped but
+  unmentioned), not its reverse.
+
+`RELEASING.md`::
+  Prose an agent *follows*, read by no command at all. It is where the parts
+  `pickle` cannot infer live: which files carry the version number, what a tag
+  looks like, and which steps are safe to run unprompted versus which always
+  hand back to a human.
+
+Having only one of the two is a normal, valid state — see the fallback ladder
+below.
+
+== What makes a `RELEASING.md` useful to an agent
+
+At minimum, a `RELEASING.md` that an agent can actually follow states:
+
+* **The version scheme** — semver, calendar versioning, or something else.
+* **Where the version number lives** — a file, a tag, a generated constant — so
+  bumping it is a concrete edit, not a guess.
+* **The tag convention** — whether tags use the `v` prefix. This determines
+  what to pass to <<cmd-changelog-check>>'s `--section` when re-auditing an
+  already-tagged release. As that command's advisory `note:` line explains,
+  standing on a tag with no `--section` audits the *previous* release, not the
+  one just cut.
+* **The ordered steps** — in the sequence they must run.
+* **Per step, whether the agent may run it unprompted or must hand back.** A
+  release is mutating and irreversible — the opposite of the idempotent,
+  safe-to-re-run build/test/lint/docs commands a project registers elsewhere
+  (<<configuration>>). So any step that publishes (pushing a tag, creating a
+  GitHub release, uploading an artifact) always hands back to a human. This is
+  the same publish gate that governs every other push or merge request
+  (<<your-first-project>>): the agent's role stops at reporting and drafting,
+  never at pressing publish.
+
+== The fallback ladder
+
+Absence degrades toward *reporting*, never toward guessing:
+
+* **`RELEASING.md` missing.** Run the one preflight legitimately available
+  without it — <<cmd-changelog-check>> — and report what it finds. Then offer
+  to *draft* a `RELEASING.md` from observable evidence already in the repo
+  (build manifests, CI release workflows, existing tag names) for a human to
+  correct. Nothing in that draft is executed; drafting and running are kept
+  strictly separate.
+* **`CHANGELOG.md` missing.** Say plainly that shipped-ticket traceability
+  cannot be checked. <<cmd-changelog-check>> exits non-zero against a changelog
+  it cannot read, whether it is absent or malformed. Then offer a skeleton in
+  the https://keepachangelog.com/[Keep a Changelog] style instead of silently
+  skipping the question.
+* **Both missing.** "Cut a release" produces a setup step, not a release: name
+  what is missing and stop there.
+
+== What this is not
+
+This page documents a pattern, not a rule any command enforces — the same
+register as <<agent-session-workflow>>. Three heavier designs were considered
+and rejected:
+
+* **A `release` command key in project configuration.** A release is
+  mutating and irreversible, unlike the verification commands (build, test,
+  lint, docs) a project registers there — a single shell string also cannot
+  express a multi-step procedure with human checkpoints, which is why the
+  input is a *document*, not configuration.
+* **A dedicated verb that cuts a release.** Correct compare-links need a
+  remote URL, forge flavour, and tag-prefix convention. That would pull in I/O
+  and forge inference outside <<cmd-changelog-check>>'s plain text-in/text-out
+  contract, for a job existing tools already do well.
+* **A trigger whose final step executes the release.** It would collide with
+  the publish gate above — any such trigger must terminate in a report and a
+  handoff, never in a push.

@@ -26,8 +26,10 @@ Go 1.26+, any platform:
 go install github.com/codcod/pickle@latest
 ----
 
-NOTE: `brew install` / `go install` work once the GitHub repo + tap exist and a
-release tag is cut — see `RELEASING.md` in the repository.
+NOTE: `brew install` / `go install` work once the GitHub repo and tap exist, and
+once a release tag is cut — see pickle's own `RELEASING.md` in the repository.
+(For the `RELEASING.md` convention as it applies to *your* project, see
+<<releasing>>.)
 
 == From source
 
@@ -47,8 +49,9 @@ just dist-snapshot # local cross-compiled build into ./dist (no publish)
 ./pickle version
 ----
 
-Cutting an actual release is tag-driven and documented in the repository's
-`RELEASING.md`.
+Cutting an actual release is tag-driven and documented in the repository's own
+`RELEASING.md` — pickle's, not yours. <<releasing>> covers the convention for
+your project.
 
 == Then, inside any project
 
