@@ -662,6 +662,15 @@ that wants the guard already has it.
   `PATH` harmless: it exits `2` on the unknown `hooks` verb, and each shim
   treats anything other than `1` as "no violation" instead of blocking every
   commit or push in the repository.
+* **A foreign hook that chains the guard carries the same PATH-skew exposure, but is not
+  probed.** Keeping your own `pre-commit`/`pre-push` and chaining in `pickle hooks run
+  pre-commit || exit 1` (see the "chain it" examples above) resolves `pickle` from `PATH` exactly
+  like the shim does, so an incapable `pickle` first on `PATH` degrades it the same way. `doctor`
+  and `hooks status` only probe PATH capability for a hook they installed themselves
+  (`KindOwned`); a foreign hook's line reports that it exists and is left alone, not whether
+  whatever it chains can actually run, because presence alone does not say whether a foreign hook
+  chains the guard at all. Verify PATH capability yourself (`pickle hooks run pre-commit` from the
+  same shell a commit would use) if you chain the guard into your own hook.
 
 [#cmd-ticket-new]
 == `pickle ticket new`

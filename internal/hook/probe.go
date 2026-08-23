@@ -3,6 +3,7 @@ package hook
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -104,9 +105,23 @@ func sameExecutable(path string) (bool, error) {
 }
 
 // probeCapable runs `<path> hooks run pre-commit` in a throwaway empty
-// directory and reports whether it exited 0. Output is discarded: an old
-// binary's unknown-verb usage dump (~40 lines) must never reach the user —
-// only Problem()'s one sentence should.
+// directory and reports whether it exited 0 or 1. Output is discarded: an
+// old binary's unknown-verb usage dump (~40 lines) must never reach the
+// user — only Problem()'s one sentence should.
+//
+// Exit 0 and exit 1 both count as capable, not just 0: the manual's own
+// documented contract (docs/user-manual/cli-reference.adoc's "Both fail
+// open, always" bullet) states `pickle hooks run <hook>` exits 1 only for a
+// real violation, 0 otherwise, and 2 for a bad invocation (an old,
+// pre-hooks binary). Both 0 and 1 prove the same thing — the verb dispatched
+// and ran the real check — so treating exit 1 as "can't run" misreads a
+// working guard as inert. That misread is not hypothetical: probeCapable
+// runs inside os.MkdirTemp("", ...), which honours TMPDIR, so a caller with
+// TMPDIR pointed inside a pickle project (e.g. a git repo on a feat/ branch
+// with tickets/ staged) makes the probed binary correctly report a
+// violation, exit 1, and — before this fix — be declared incapable for it.
+// Only 2-and-above (and any error the probe couldn't even run) still means
+// incapable.
 func probeCapable(path string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
 	defer cancel()
@@ -124,7 +139,16 @@ func probeCapable(path string) bool {
 	// the probed binary at a real repository — the probe dir is meant to hold
 	// no pickle.toml and no git state at all.
 	cmd.Env = withoutRepoEnv(os.Environ())
-	return cmd.Run() == nil
+
+	err = cmd.Run()
+	if err == nil {
+		return true // exit 0: clean, no violation found
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode() == 1 // exit 1: ran, found a violation — still capable
+	}
+	return false // timeout, exec failure, or any other non-exit error
 }
 
 // probeVersion best-effort reads `<path> version`'s first line, for the
