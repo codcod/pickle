@@ -10,11 +10,14 @@ import (
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
+	"github.com/codcod/pickle/internal/testutil"
 )
 
 // payloadRoot returns the dir whose os.DirFS exposes "skill/SKILL.md" etc. at the
-// same paths the binary's embedded payloadFS uses (the repo root, ../..).
-func payloadRoot() string { return filepath.Join("..", "..") }
+// same paths the binary's embedded payloadFS uses (the repo root). A thin
+// wrapper over testutil.RepoRoot() (T-042 item 3), kept because this file has
+// too many call sites to update individually in one reviewable sitting.
+func payloadRoot() string { return testutil.RepoRoot() }
 
 func mustExist(t *testing.T, path string) {
 	t.Helper()

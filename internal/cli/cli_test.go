@@ -16,6 +16,7 @@ import (
 
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
+	"github.com/codcod/pickle/internal/testutil"
 )
 
 // repoRoot is the module root, resolved before TestMain moves the process CWD.
@@ -41,25 +42,12 @@ var testSandbox os.FileInfo
 // TestMain per package: a second consumer of this harness (T-012, T-057) must
 // extend this function, never add a second one.
 func TestMain(m *testing.M) {
-	wd, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "TestMain: getwd: %v\n", err)
-		os.Exit(1)
-	}
-	root, err := filepath.Abs(filepath.Join(wd, "..", ".."))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "TestMain: resolve repo root: %v\n", err)
-		os.Exit(1)
-	}
-	// wd/../.. is a guess, taken on faith until now: confirm it against what
-	// install.Run actually reads (the payload marker), so a wrong value fails
-	// right here with a clear reason instead of surfacing far away as an opaque
-	// "install: ..." error in every test that calls newProject (T-043, T-031 N4).
-	if _, err := os.Stat(filepath.Join(root, "skill", "SKILL.md")); err != nil {
-		fmt.Fprintf(os.Stderr, "TestMain: resolved repo root %s does not look like the pickle repo (skill/SKILL.md missing): %v\n", root, err)
-		os.Exit(1)
-	}
-	repoRoot = root
+	// testutil.RepoRoot() is computed from its own source file's compile-time
+	// path, not a guess against the process CWD (T-042 item 3), so it cannot
+	// resolve a wrong root the way the old wd/../.. computation could — the
+	// defensive os.Stat(skill/SKILL.md) validation that used to guard that
+	// guess is therefore dead weight, deleted with it rather than ported.
+	repoRoot = testutil.RepoRoot()
 
 	sandbox, err := os.MkdirTemp("", "pickle-cli-sandbox")
 	if err != nil {

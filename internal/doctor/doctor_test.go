@@ -9,11 +9,15 @@ import (
 
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
+	"github.com/codcod/pickle/internal/testutil"
 )
 
 // payloadRoot mirrors install_test.go: the dir whose os.DirFS exposes
-// "skill/SKILL.md" at the same paths the embedded payload uses (the repo root).
-func payloadRoot() string { return filepath.Join("..", "..") }
+// "skill/SKILL.md" at the same paths the embedded payload uses (the repo
+// root). A thin wrapper over testutil.RepoRoot() (T-042 item 3), kept because
+// this file has too many call sites to update individually in one reviewable
+// sitting.
+func payloadRoot() string { return testutil.RepoRoot() }
 
 // installFixture lays a real, healthy pickle install into a temp dir and gives
 // the sole child ("."): a .git dir so it reads as a git repository.

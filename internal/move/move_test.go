@@ -11,6 +11,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/install"
+	"github.com/codcod/pickle/internal/testutil"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -18,7 +19,7 @@ import (
 func newProject(t *testing.T) (string, *config.Config) {
 	t.Helper()
 	root := t.TempDir()
-	payload := os.DirFS(filepath.Join("..", ".."))
+	payload := os.DirFS(testutil.RepoRoot())
 	if _, err := install.Run(payload, root, "test", install.Options{
 		ProjectName: "demo", ProjectPath: ".", Agents: install.Agents{},
 	}); err != nil {
