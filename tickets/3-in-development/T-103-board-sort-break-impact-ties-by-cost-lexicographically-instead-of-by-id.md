@@ -204,3 +204,16 @@ repo-only path, and no ticket id, so it is already foreign-workspace-safe by ins
   five now in the Docs update task, since this changes behaviour every installed project sees,
   not only this repo's own board. Grade unchanged. TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-23 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent):
+  code-level assumptions (impactRank/costRank shape, ticket.LegalCost's 7 values, Sort's two
+  branches, the three existing test fixtures, WIP 0/1) all re-verified true; T-042 has since
+  moved to 6-done/ so the "sequence, don't run concurrently" coupling is moot; several line
+  citations in the plan drifted a few lines from unrelated intervening commits but every quoted
+  anchor text still matches verbatim, so tasks remain executable as written (re-anchor line
+  numbers during implementation). One finding — the Description's 2026-08-14 backlog snapshot
+  (21 TO DO / 7 medium / 7 low-medium) is stale; current board shows 8 TO DO / 4 medium / 2
+  low-medium, below T-056's original ≥5 trigger — dispositioned non-blocking/note-and-close: the
+  change is a pure readability/determinism improvement independent of current tie depth, and the
+  ticket is already graded low reflecting exactly that modest value. Proceeding with the plan
+  unmodified.
+- 2026-08-23 — READY → IN DEVELOPMENT: picked up
