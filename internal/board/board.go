@@ -25,6 +25,14 @@ var impactRank = map[string]int{
 	"high": 5, "high-critical": 6, "critical": 7,
 }
 
+// costRank breaks impact ties by cost (T-103): cheapest first, the inverse
+// direction of impactRank (which ranks highest impact first). Covers every
+// legal `cost` value (ticket.LegalCost).
+var costRank = map[string]int{
+	"S": 1, "S-M": 2, "M": 3, "M-L": 4,
+	"L": 5, "L-XL": 6, "XL": 7,
+}
+
 // Row is one ticket listed on the board.
 type Row struct {
 	Status string // status display name, e.g. "TO DO"
@@ -228,11 +236,15 @@ func WIPCounts(def *flow.Definition, tickets []*ticket.Ticket) map[string]map[st
 	return counts
 }
 
-// Sort orders a sub-group: TO DO/READY by descending impact (tie id asc), with
-// families kept contiguous (T-059); every other section by id ascending (D1 —
-// deterministic, no hand-curated order). Exported so the dashboard sorts with the
-// board's ordering rather than a copy of it (there is deliberately no second
-// implementation of impactRank).
+// Sort orders a sub-group: TO DO/READY by descending impact, then ascending
+// cost (T-103), then ascending id, with families kept contiguous (T-059);
+// every other section by id ascending (D1 — deterministic, no hand-curated
+// order). The cost tiebreak applies wherever impact ties — both between
+// different families/loose tickets tied at the same family rank, and between
+// members of the same family tied on their own impact — but T-059's
+// family-contiguity guarantee is unaffected either way. Exported so the
+// dashboard sorts with the board's ordering rather than a copy of it (there is
+// deliberately no second implementation of impactRank).
 //
 // byID is the whole-tree id→ticket map, needed only by the TO DO/READY branch to
 // resolve a member's umbrella (which may live in another status section, so it is
@@ -252,6 +264,12 @@ func Sort(group []*ticket.Ticket, st flow.State, byID map[string]*ticket.Ticket)
 			if ra != rb {
 				return ra > rb
 			}
+			// Families/loose tickets tied at the same impact rank: break by cost
+			// (T-103) before falling back to familyKey. famCostRank resolves
+			// through the umbrella, so this can never split a family apart.
+			if ca, cb := famCostRank(a, byID), famCostRank(b, byID); ca != cb {
+				return ca < cb
+			}
 			if fa != fb {
 				return fa < fb // group families/loose deterministically by umbrella id
 			}
@@ -262,6 +280,11 @@ func Sort(group []*ticket.Ticket, st flow.State, byID map[string]*ticket.Ticket)
 			}
 			if ri, rj := impactRank[a.Front["impact"]], impactRank[b.Front["impact"]]; ri != rj {
 				return ri > rj
+			}
+			// Same family, tied on own impact: break by own cost (T-103) before
+			// falling back to id.
+			if ci, cj := costRank[a.Front["cost"]], costRank[b.Front["cost"]]; ci != cj {
+				return ci < cj
 			}
 		}
 		return a.Num < b.Num
@@ -298,6 +321,21 @@ func famRank(t *ticket.Ticket, byID map[string]*ticket.Ticket) int {
 		}
 	}
 	return impactRank[t.Front["impact"]]
+}
+
+// famCostRank mirrors famRank for cost (T-103): a family's cost is its
+// umbrella's cost when it has one, else its own. Because every member of a
+// family resolves to the same rank as its umbrella, comparing famCostRank can
+// reorder whole families relative to each other but can never separate a
+// member from its umbrella — T-059's contiguity guarantee is an invariant of
+// this resolution, not an accident of comparison order.
+func famCostRank(t *ticket.Ticket, byID map[string]*ticket.Ticket) int {
+	if t.Family != "" {
+		if u, ok := byID[t.Family]; ok {
+			return costRank[u.Front["cost"]]
+		}
+	}
+	return costRank[t.Front["cost"]]
 }
 
 // Render produces the entire BOARD.md text from the ticket files and config —
