@@ -286,3 +286,4 @@ repo-only path, and no ticket id, so it is already foreign-workspace-safe by ins
   regression test added to Task 3. Grade unchanged.
 - 2026-08-23 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent): no
   findings, plan holds exactly as written.
+- 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
