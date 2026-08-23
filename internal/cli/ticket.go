@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/flow"
@@ -202,11 +203,48 @@ func createExclusive(path, content string) error {
 	return closeErr
 }
 
+// maxTitleRuneLen caps a title's length in runes. A title becomes part of a
+// filename (`<PREFIX>-NNN-<slug>.md`), so without a cap the only guard is the
+// OS's own NAME_MAX — which fails late, with a raw `open …: file name too long`
+// naming an absolute path, where every other rejection here names what is wrong
+// with the input (T-038 finding N2).
+//
+// Capping the raw title rather than the derived slug is sufficient to bound the
+// filename, because ticket.Slugify is non-expanding: it lowercases rune-wise,
+// collapses each run of non-[a-z0-9] runes to a single '-', and trims. (Its one
+// growth path is the "untitled" fallback, which fires only when the result is
+// already empty, so it cannot approach any bound.) The slug's alphabet is pure
+// ASCII, so 120 runes is also 120 *bytes* on disk — which is what actually
+// matters, since NAME_MAX is measured in bytes and a rune cap alone would let a
+// CJK title through at three bytes each.
+//
+// 120 matches board.maxCellRunes: not shared code (a hard rejection here, a
+// truncate-with-ellipsis there) but the same number for the same underlying
+// reason — how long a single readable line is.
+const maxTitleRuneLen = 120
+
 // validateTitle rejects titles that cannot be rendered safely. A newline is the
 // load-bearing case: ticket.Scaffold interpolates the title into the frontmatter
 // block, so a newline injects extra keys and leaks the remainder into the
 // document body below the H1. (The board is safe either way — cells are
 // sanitised one-way at render time, T-044 — but the ticket file itself is not.)
+//
+// "Newline" here means all five Unicode line terminators, not just \n and \r.
+// Pickle's own ParseFrontmatter splits on \n alone, so U+0085 (NEL), U+2028
+// (line separator) and U+2029 (paragraph separator) change no pickle behaviour —
+// but YAML 1.1 readers do treat them as line breaks, and a ticket file is read
+// by more than pickle. Measured against Ruby Psych (T-038 finding N1): a title
+// of "a\u0085project: nope" parses as title "a" plus a phantom `project:` key,
+// which is exactly the duplicate-key corruption T-030 exists to prevent, reached
+// through a terminator its check did not enumerate. PyYAML and the static-site
+// tooling built on both behave the same way.
+//
+// Still an explicit blacklist, not unicode.IsControl: that would also reject
+// \t, \v and \f, which are harmless here (the slug collapses them and the
+// frontmatter stays on one physical line) and one of which — \t — appears in a
+// title the test suite deliberately accepts. Enumerating the unsafe runes is
+// what keeps this a boundary tightening instead of a whitelist (T-030
+// decision 1's own precedent).
 //
 // Deliberately a rejection, not a sanitisation like move.sanitizeReason: a
 // --reason is free text, but a title becomes the filename, the H1 and a board
@@ -223,8 +261,11 @@ func validateTitle(title string) error {
 		// an unsluggable title like "###" still reaches that fallback, by design.
 		return errors.New("title is empty")
 	}
-	if strings.ContainsAny(title, "\n\r") {
+	if strings.ContainsAny(title, "\n\r\u0085\u2028\u2029") {
 		return errors.New("title may not contain newlines (it is written into the frontmatter, the heading and a board cell)")
+	}
+	if utf8.RuneCountInString(title) > maxTitleRuneLen {
+		return fmt.Errorf("title exceeds %d runes (it becomes part of a filename)", maxTitleRuneLen)
 	}
 	// A "---" title cannot actually truncate the frontmatter — Scaffold writes it
 	// after a literal "title: " prefix, and ParseFrontmatter's terminator needs a

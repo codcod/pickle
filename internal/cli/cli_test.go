@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
@@ -760,6 +761,16 @@ func TestTicketNewRejectsInjectionInTitle(t *testing.T) {
 		{"padded frontmatter terminator", "  ---  "},
 		{"whitespace only", "   "},
 		{"empty", ""},
+		// The three Unicode line terminators (T-038 finding N1). None of them
+		// changes pickle's own behaviour — ParseFrontmatter splits on \n alone —
+		// but YAML 1.1 readers (Ruby Psych, PyYAML) treat all three as line
+		// breaks, so each one injects the same phantom key \n does. The titles
+		// below are the measured repros from the ticket.
+		{"NEL line terminator", "a\u0085project: nope"},
+		{"line separator", "a\u2028project: nope"},
+		{"paragraph separator", "a\u2029project: nope"},
+		// One rune past maxTitleRuneLen (T-038 finding N2).
+		{"over-length title", strings.Repeat("a", 121)},
 	} {
 		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
 			root := newProject(t)
@@ -781,6 +792,80 @@ func TestTicketNewRejectsInjectionInTitle(t *testing.T) {
 				t.Errorf("BOARD.md changed on a rejected title %q", tc.title)
 			}
 		})
+	}
+}
+
+// TestTicketNewAcceptsTitleAtTheCap pins the two halves of T-038 decision 2 that
+// the rejection table cannot reach, because a table of *rejected* titles can only
+// ever prove the cap fires — never that it fires in the right place. Both cases
+// below were confirmed to fail under a deliberate mutation of validateTitle, so
+// neither is decorative:
+//
+//   - Exactly maxTitleRuneLen runes must be ACCEPTED. Catches an off-by-one:
+//     flipping `>` to `>=` rejects this title while every other test stays green.
+//   - maxTitleRuneLen *multi-byte* runes must be ACCEPTED. Catches the rune/byte
+//     confusion: 120 two-byte runes are 240 bytes, so a len()-based cap rejects
+//     this title — again with every other test still green. This is the case that
+//     makes utf8.RuneCountInString load-bearing rather than stylistic.
+//
+// The slug for the multi-byte case collapses to "untitled" (every rune is
+// non-[a-z0-9]), which is correct and is why the assertion reads the frontmatter
+// rather than the filename.
+func TestTicketNewAcceptsTitleAtTheCap(t *testing.T) {
+	for _, tc := range []struct {
+		name, title string
+	}{
+		{"exactly at the cap", strings.Repeat("a", maxTitleRuneLen)},
+		{"at the cap in multi-byte runes", strings.Repeat("é", maxTitleRuneLen)},
+	} {
+		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
+			if n := utf8.RuneCountInString(tc.title); n != maxTitleRuneLen {
+				t.Fatalf("test fixture is %d runes, want exactly %d", n, maxTitleRuneLen)
+			}
+			root := newProject(t)
+			if got := Run(nil, "test", []string{"ticket", "new", tc.title, "--project", "demo"}); got != exitOK {
+				t.Fatalf("Run(ticket new <%s>) = %d, want %d — a title at the cap must be accepted", tc.name, got, exitOK)
+			}
+			if body := readTicket(t, root, "T-001"); !strings.Contains(body, "title: "+tc.title) {
+				t.Errorf("scaffold missing the title verbatim:\n%s", body)
+			}
+		})
+	}
+}
+
+// TestTicketNewOverlongTitleErrorNamesTheContract is the regression proof for
+// T-038 finding N2. Before the cap, an over-long title was stopped only by the
+// OS: os.WriteFile failed with `open /abs/path/…: file name too long`, which
+// leaked an absolute path and blamed the filesystem for what is really a
+// contract violation of the input. The tree stayed consistent either way — the
+// write precedes board.AddTODORow — so this was always a message-quality bug,
+// which is exactly why only an assertion on the *wording* can catch a
+// regression. Asserting the exit code alone would still pass if the raw syscall
+// error came back.
+func TestTicketNewOverlongTitleErrorNamesTheContract(t *testing.T) {
+	root := newProject(t) // chdirs; also gives us a path that must not appear
+	title := strings.Repeat("a", maxTitleRuneLen+1)
+
+	var code int
+	stderr := captureStderr(t, func() {
+		code = Run(nil, "test", []string{"ticket", "new", title, "--project", "demo"})
+	})
+
+	if code != exitError {
+		t.Errorf("Run(ticket new <121 runes>) = %d, want %d", code, exitError)
+	}
+	for _, want := range []string{"exceeds", "120"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr = %q, want it to contain %q (the contract, per T-038 decision 3)", stderr, want)
+		}
+	}
+	// The two halves of the leak: the syscall's own phrasing, and the absolute
+	// path it embedded. Both must be gone, not merely reworded around.
+	if strings.Contains(stderr, "file name too long") {
+		t.Errorf("stderr = %q, want the contract error, not the raw syscall error", stderr)
+	}
+	if strings.Contains(stderr, root) {
+		t.Errorf("stderr = %q, want no absolute path (leaked project root %q)", stderr, root)
 	}
 }
 

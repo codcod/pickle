@@ -8,6 +8,23 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pickle ticket new` now rejects a title containing any of the five Unicode line terminators,
+  not just `LF` and `CR`.** `U+0085` (NEL), `U+2028` and `U+2029` change nothing for pickle
+  itself, which splits frontmatter on `LF` alone — but YAML 1.1 readers (Ruby Psych, PyYAML, and
+  the static-site tooling built on them) treat all three as line breaks, so a title like
+  `a<U+0085>project: nope` reached those readers as a truncated title plus a phantom `project:`
+  key. That reaches the same duplicate-key corruption the original newline check already guards
+  against, through a terminator it did not enumerate (T-038).
+
+- **An over-long title is rejected against a stated contract instead of failing late against the
+  filesystem.** Titles are now capped at 120 runes, with `title exceeds 120 runes (it becomes
+  part of a filename)`. Previously the only guard was the OS's own `NAME_MAX`, which surfaced as
+  a raw `open /…/T-004-aaa….md: file name too long` — platform-dependent, and leaking an
+  absolute path where every other rejection names what is wrong with the input. No file or board
+  row was ever written in either case; this changes the message, not the outcome (T-038).
+
 ## [0.11.0] - 2026-08-22
 
 ### Added

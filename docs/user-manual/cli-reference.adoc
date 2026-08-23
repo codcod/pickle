@@ -689,10 +689,17 @@ placeholder is the one thing `board audit` warns about until you fill it in,
 `BOARD.md` (the row lands under the child's `### <child>` sub-group in the
 TO DO section, in impact order). `--project` must name a registered child;
 grades default to `medium`/`medium`/`M` and must be legal. The `<title>` may
-not be empty or contain newlines — it is written into the frontmatter and the
-heading, so a newline would corrupt both; a rejected invocation writes nothing
-at all. (A `|` in a title is fine: board cells are sanitised one-way at render
-time.) `--spawned-by` records *lineage* — the ticket(s) this one was born from
+not be empty, contain a line terminator, or exceed 120 runes — it is written
+into the frontmatter and the heading, so a line break would corrupt both, and it
+becomes part of a filename, so an unbounded one would fail late against the OS's
+own limit instead of against a stated contract; a rejected invocation writes
+nothing at all. "Line terminator" means all five: `LF`, `CR`, and the three
+Unicode ones — `U+0085` (NEL), `U+2028` and `U+2029`. The last three change
+nothing for pickle itself, which splits frontmatter on `LF` alone, but YAML 1.1
+readers (Ruby Psych, PyYAML, and the static-site tooling built on them) treat
+them as line breaks and would see a truncated title plus a phantom key. (A `|`
+in a title is fine: board cells are sanitised one-way at render time.)
+`--spawned-by` records *lineage* — the ticket(s) this one was born from
 (a review finding, an audit, a split) — comma-separated, brackets optional,
 defaulting to `[]`. It is provenance, not a dependency: it never gates pickup.
 Each id is checked for *shape* (`T-NNN`) at creation, while whether it
