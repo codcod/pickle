@@ -1287,6 +1287,10 @@ the reverse (mentioned but not shipped in this range) — an entry may
 legitimately reference an older, already-released ticket for context, and
 flagging that would be noise.
 
+This command is the mechanical half of a broader convention — see
+<<releasing>> for the other half (`RELEASING.md`, the prose an agent follows)
+and the fallback when either file is missing.
+
 [#cmd-serve]
 == `pickle serve`
 

@@ -104,6 +104,12 @@ ordinary stageable directory like any other. `pickle project add` and
 
 | `tickets/BOARD.md`
 | Generated — and committed anyway, see below.
+
+| `CHANGELOG.md`, `RELEASING.md`
+| Optional and project-authored — pickle never writes either, so if you keep
+  them, they are yours to track. Committing them is what lets
+  <<cmd-changelog-check>> and the <<releasing>> convention read the same
+  release procedure everyone else on the project sees.
 |===
 
 === The board: generated, and still committed
