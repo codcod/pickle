@@ -341,3 +341,4 @@ section does not quote the dry-run label text).
   TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
 - 2026-08-23 — READY → IN DEVELOPMENT: picked up
+- 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
