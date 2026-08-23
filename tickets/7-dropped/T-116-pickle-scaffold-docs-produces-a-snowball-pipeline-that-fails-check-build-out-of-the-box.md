@@ -259,3 +259,4 @@ doesn't touch that file.)
 
 - 2026-08-23 — created (TO DO). source: chat: user ran `pickle scaffold docs` in a foreign project and reported the scaffolded docs looked wrong; reproducing it in a scratch dir surfaced three independent defects (bad heading level, a phantom second book, and a dangling pdf-theme reference) that make a fresh scaffold fail `snowball check`/`build` out of the box
 - 2026-08-23 — TO DO → READY: plan complete
+- 2026-08-23 — READY → DROPPED: superseded by T-117 (removal); findings transplanted into unity/SNOW-003

@@ -39,7 +39,6 @@ Last updated: 2026-08-23
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | medium | medium | M | [T-004] |  |
-| T-116 | pickle scaffold docs produces a snowball pipeline that fails check/build out of the box | medium | low | S | [] |  |
 | T-071 | harden the PATH probe: exit-1 semantics, chained foreign hooks, and a warning-not-error assertion | low-medium | low | S | [] |  |
 | T-111 | document the 'cut a release' convention in the user manual: RELEASING.md + CHANGELOG.md as the agent's inputs | low-medium | low | S | [] |  |
 | T-113 | extend 'pickle scaffold' with a release verb: skeleton CHANGELOG.md + RELEASING.md (headings only, no prescribed toolin… | low-medium | low | S | [] |  |
@@ -59,6 +58,7 @@ Last updated: 2026-08-23
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-117 | remove pickle scaffold docs — docs/release scaffolding belongs to snowball, not pickle | medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 | T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | low-medium | low | S | [] |  |
 
@@ -175,3 +175,4 @@ Last updated: 2026-08-23
 | T-063 | order TO DO/READY by value per cost, not impact alone: use the cost axis, de-rank blocked tickets, behind a configurabl… | pickup queue is READY not TO DO (never >2 rows in 114 board revisions); blocked de-rank hits 0 tickets; recalibrate imp… |
 | T-064 | no merit gate between filing and pickup: the READY gate tests plan completeness and the applicability gate only tests t… | compliance failure, not a design gap: tickets-README.md:139-140 already mandates the assessment; the gate it would reus… |
 | T-107 | print the checked-out branch at pickle serve and CLI startup, to flag a stale worktree | superseded by T-108, which derives the same warning from a recorded layout instead of the main/master guess |
+| T-116 | pickle scaffold docs produces a snowball pipeline that fails check/build out of the box | superseded by T-117 (removal); findings transplanted into unity/SNOW-003 |
