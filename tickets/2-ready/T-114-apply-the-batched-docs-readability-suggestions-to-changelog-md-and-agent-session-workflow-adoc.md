@@ -276,3 +276,10 @@ follow-up ticket for another round; that loop is what §5's promotion test exist
   **Grade unchanged at low/low/S** — verification confirmed the edits are mechanical and
   fact-preserving. Kept as one ticket: ten edits, two files, one class of change.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-23 — patched by **T-111's review impact sweep**: T-111 is `6-done/` (branch unmerged),
+  so the "two soft couplings are unstarted" note is stale for that half. It changes nothing here:
+  T-111 touched neither file this ticket edits — its diff is `user-manual.adoc`,
+  `cli-reference.adoc`, `concepts/project-structure.adoc`, `concepts/releasing.adoc` and
+  `installation.adoc`, and **not** `CHANGELOG.md` or `concepts/agent-session-workflow.adoc`. This
+  ticket's ten target anchors are therefore untouched by it; the re-verify caveat now applies to
+  T-113 alone. Scope and grade unchanged.

@@ -411,3 +411,10 @@ not a flow rule, so the foreign-workspace test does not come into play.
 - 2026-08-22 — TO DO → READY: plan complete
 - 2026-08-22 — patched by **T-067's review impact sweep**: T-067 is now `6-done/` (branch `feat/T-067-docs-xref-check` not yet merged), so this ticket's "docs-check cannot catch a dangling xref" assumption holds only until that branch lands. Wording updated to say which state applies and how to tell.
 - 2026-08-22 — patched again by **T-067's impact sweep**, on merge: T-067 landed on `main` (PR #60, 2e29b50), so the "docs-check cannot catch a dangling xref" caveat is now simply false and has been removed rather than re-qualified. The gate is live for this ticket's cross-references.
+- 2026-08-23 — patched by **T-111's review impact sweep**: T-111 is now `6-done/` but its branch
+  is **not yet merged**, so **decision 7 still stands unchanged** — the `[#releasing]` anchor
+  exists only on `feat/T-111-releasing-convention-docs`, not on `main`, and an `<<releasing>>`
+  xref written before that merge would still dangle and fail `docs-check`. Re-read decision 7's
+  premise ("T-111 is still `2-ready/`") as "not yet merged"; the instruction it yields is
+  identical. Once T-111 merges, the xref becomes writable and the connecting sentence its
+  coupling note describes becomes an actionable follow-up. Scope and grade unchanged.
