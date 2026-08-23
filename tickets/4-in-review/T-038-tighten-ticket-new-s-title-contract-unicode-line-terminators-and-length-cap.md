@@ -202,9 +202,18 @@ binary in a throwaway project (per `AGENTS.md`'s self-modify policy) to confirm 
 non-zero with a title-contract message and write no file:
 ```
 D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" && ./pickle-test install --in-tree --project demo
-./pickle-test ticket new "$(printf 'a\u0085project: nope')" --project demo
+# U+0085 (NEL), U+2028 (LS), U+2029 (PS) as raw UTF-8 bytes — see the note below
+./pickle-test ticket new "$(printf 'a\302\205project: nope')" --project demo
+./pickle-test ticket new "$(printf 'a\342\200\250project: nope')" --project demo
+./pickle-test ticket new "$(printf 'a\342\200\251project: nope')" --project demo
 ./pickle-test ticket new "$(python3 -c "print('a'*250)")" --project demo
 ```
+
+**Use the octal byte escapes above, not `\u0085`.** `printf '\u0085'` is a bash 4.2+ feature; on
+bash 3.2 (still the default `/bin/bash` on macOS) it emits the six literal characters `\u0085`
+instead of the codepoint. That title contains no line terminator at all, so `ticket new` correctly
+**accepts** it — which reads exactly like the fix having failed. Verified during implementation:
+`printf 'a\u0085b' | xxd` → `61 5c 75 30 30 38 35 62`. The octal form is portable across both.
 
 ### Docs update (mandatory when user-facing)
 
@@ -260,3 +269,18 @@ test`, to confirm the new sentence passes the foreign-workspace mechanical check
   all anchor on text, so harmless. Also noted, and recorded because it strengthens decision 1:
   `unicode.IsControl` would have failed the existing green `"tabs\tand  spaces"` case, so
   enumerating the five terminators is load-bearing, not merely scope discipline.
+- 2026-08-23 — plan amended inline: the acceptance test's manual repro now uses octal byte
+  escapes (`\302\205`) instead of `\u0085`, and covers all three terminators rather than NEL
+  alone. `printf '\u0085'` needs bash 4.2+; on macOS's default bash 3.2 it emits the literal
+  characters `\u0085`, producing a title with no terminator in it, which `ticket new` then
+  rightly accepts — indistinguishable at a glance from the fix not working. Hit while running
+  the repro; the note added to the plan so a reviewer re-running it does not read a false
+  negative as a real one.
+- 2026-08-23 — implemented per plan, all four tasks; see the plan for detail. Both findings
+  closed: N1 by extending the blacklist to the five terminators, N2 by a 120-rune cap on the raw
+  title with a contract-naming error. `TestTicketNewAcceptsAwkwardButLegalTitle` needed no edits
+  (decision 4 confirmed). New assertions verified non-tautological: with the fix reverted, all
+  three terminator cases, the over-length case and the message test fail; with it, all pass.
+  Acceptance green (`just build/test/lint/docs-check`, targeted `-run`, and the manual repro in
+  a throwaway dir — all four hostile titles exit 1, write no file, leave the audit clean).
+- 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
