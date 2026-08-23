@@ -33,7 +33,9 @@ type Row struct {
 	Line   string // the raw, trimmed row line as it appears — opaque text, never parsed further
 }
 
-var rowRE = regexp.MustCompile(`^\|\s*([A-Z][A-Z0-9]*-\d+)\s*\|`)
+// rowRE is built from ticket.IDShapePattern (T-042 item 6, T-040 decision
+// D6) rather than spelling the id shape out a third time.
+var rowRE = regexp.MustCompile(`^\|\s*(` + ticket.IDShapePattern + `)\s*\|`)
 
 // Parse reads BOARD.md and returns every ticket row with its section + sub-group.
 // Rows are attributed to the current `## <status>` heading (longest status-name

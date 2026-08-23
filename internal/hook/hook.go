@@ -447,6 +447,23 @@ func RefreshAll(root string) ([]Result, error) {
 // maxListedPaths caps the offending paths quoted in a rejection message.
 const maxListedPaths = 10
 
+// ticketsOffenders splits a NUL-separated `git diff -z` output (from either
+// CheckPreCommit's staged diff or CheckPrePush's ref-range diff) and returns
+// every path lying under prefix (tickets/ itself, or nested inside it). The
+// two callers differ only in which git diff produced diffOutput (T-042 item 5).
+func ticketsOffenders(diffOutput, prefix string) []string {
+	var offenders []string
+	for _, p := range strings.Split(diffOutput, "\x00") {
+		if p == "" {
+			continue
+		}
+		if p == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(p, prefix) {
+			offenders = append(offenders, p)
+		}
+	}
+	return offenders
+}
+
 // CheckPreCommit is the rule: reject a commit that stages ticket bookkeeping
 // while HEAD is a feature branch of any registered child. It reports ok=false
 // only for a real violation; every other outcome — detached HEAD, a merge in
@@ -503,15 +520,7 @@ func CheckPreCommit(cfg *config.Config, w io.Writer) (bool, error) {
 	if err != nil {
 		return true, nil
 	}
-	var offenders []string
-	for _, p := range strings.Split(staged, "\x00") {
-		if p == "" {
-			continue
-		}
-		if p == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(p, prefix) {
-			offenders = append(offenders, p)
-		}
-	}
+	offenders := ticketsOffenders(staged, prefix)
 	if len(offenders) == 0 {
 		return true, nil
 	}

@@ -10,11 +10,14 @@ import (
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
+	"github.com/codcod/pickle/internal/testutil"
 )
 
 // payloadRoot returns the dir whose os.DirFS exposes "skill/SKILL.md" etc. at the
-// same paths the binary's embedded payloadFS uses (the repo root, ../..).
-func payloadRoot() string { return filepath.Join("..", "..") }
+// same paths the binary's embedded payloadFS uses (the repo root). A thin
+// wrapper over testutil.RepoRoot() (T-042 item 3), kept because this file has
+// too many call sites to update individually in one reviewable sitting.
+func payloadRoot() string { return testutil.RepoRoot() }
 
 func mustExist(t *testing.T, path string) {
 	t.Helper()
@@ -1135,6 +1138,72 @@ func TestUninstallDryRunAgreesOnReversedMarkers(t *testing.T) {
 		t.Errorf("dry-run and real uninstall must agree a reversed marker pair is no marker at all; dry-run: created=%v removed=%v skipped=%v; real: created=%v removed=%v skipped=%v",
 			dryRes.Created, dryRes.Removed, dryRes.Skipped, realRes.Created, realRes.Removed, realRes.Skipped)
 	}
+}
+
+// TestUninstallDryRunAgreesOnSkillDirKind is the T-042 item 1 regression:
+// the dry-run label must name the same kind (symlink vs directory) the real
+// run's label would, not just that something will be removed.
+func TestUninstallDryRunAgreesOnSkillDirKind(t *testing.T) {
+	// removedSkillDirLabel installs at root (a real skill dir via Run, or a
+	// self-host symlink built by hand), then returns the Removed entry naming
+	// the skill dir for the given DryRun setting.
+	removedSkillDirLabel := func(t *testing.T, symlink bool, dryRun bool) string {
+		t.Helper()
+		root := t.TempDir()
+		payload := os.DirFS(payloadRoot())
+		if symlink {
+			skillPath := filepath.Join(root, filepath.FromSlash(SkillDir))
+			if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			external := t.TempDir()
+			if err := os.WriteFile(filepath.Join(external, "SKILL.md"), []byte("external"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(external, skillPath); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			opts := Options{ProjectName: "demo", ProjectPath: ".", Agents: Agents{Claude: true}}
+			if _, err := Run(payload, root, "v1", opts); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		res, err := Uninstall(payload, root, UninstallOptions{DryRun: dryRun})
+		if err != nil {
+			t.Fatalf("Uninstall (dryRun=%v): %v", dryRun, err)
+		}
+		for _, r := range res.Removed {
+			if strings.HasPrefix(r, SkillDir) {
+				return r
+			}
+		}
+		t.Fatalf("no Removed entry for %s (dryRun=%v): %v", SkillDir, dryRun, res.Removed)
+		return ""
+	}
+
+	t.Run("symlink", func(t *testing.T) {
+		dry := removedSkillDirLabel(t, true, true)
+		real := removedSkillDirLabel(t, true, false)
+		if !strings.Contains(dry, "symlink") {
+			t.Errorf("dry-run label = %q, want it to name a symlink", dry)
+		}
+		if !strings.Contains(real, "symlink") {
+			t.Errorf("real label = %q, want it to name a symlink", real)
+		}
+	})
+
+	t.Run("directory", func(t *testing.T) {
+		dry := removedSkillDirLabel(t, false, true)
+		real := removedSkillDirLabel(t, false, false)
+		if strings.Contains(dry, "symlink") {
+			t.Errorf("dry-run label = %q, wrongly names a symlink for a real directory", dry)
+		}
+		if strings.Contains(real, "symlink") {
+			t.Errorf("real label = %q, wrongly names a symlink for a real directory", real)
+		}
+	})
 }
 
 func TestRefreshMarkers(t *testing.T) {
