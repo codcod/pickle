@@ -283,4 +283,12 @@ changes), and item 3 is test-only.
   line does not currently lie, it simply cannot see into a foreign hook's content. Grade
   unchanged. TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
-- 2026-08-23 — READY → IN DEVELOPMENT: picked up
+- 2026-08-23 — READY → IN DEVELOPMENT: picked up. Applicability gate (fresh sub-agent): all
+  cited lines/names/strings still matched the tree; T-068/T-046/T-082/T-100 confirmed `6-done/`.
+  One non-blocking finding, noted: Task 4's `:653-664` anchor is off by ~1 rune-line, harmless
+  since the plan anchors on text, not the number. No blocking findings; proceeded as written.
+- 2026-08-23 — implemented per plan, all four tasks (see Description for detail). Acceptance
+  green: `just build`, targeted `-run 'TestProbe|TestCheckHooks'`, `just test`, `just lint`,
+  `just docs-check` all clean. `docs_readability` run on the changed adoc; suggestions were all
+  pre-existing, none on the new bullet. One atomic commit (`eb57fb9`), nothing to tidy.
+- 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
