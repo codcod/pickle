@@ -20,11 +20,10 @@ Last updated: 2026-08-23
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | [] |
 
 ## REWORK
 
@@ -86,6 +85,7 @@ Last updated: 2026-08-23
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | yes — merged to main (e5d2a11) |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | yes — merged to main (PR #11, 8a61d3e), user-approved as an exception **ahead of the review protocol** (out of the usua… |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | yes — merged to main (PR #10, 25d2152), user-approved as an exception; squashed to one commit; branch deleted |
+| T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | no — publish-gated |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | yes — merged to main (PR #15, 17e2341), user-approved; squashed to 5291aeb; branch deleted |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | yes — merged to `main` (`b5af6ab`, PR #38): 4 commits kept, not squashed; CI green. Post-merge verification on `main`: … |

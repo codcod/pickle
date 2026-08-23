@@ -286,7 +286,38 @@ section does not quote the dry-run label text).
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): the orchestrating reviewer authored this branch in
+  this same session, so the audits (steps 2-4a) were **delegated** to a freshly spawned,
+  independent sub-agent briefed adversarially (no memory of writing the code, instructed to find
+  defects rather than confirm the work). Its findings were re-verified by hand before recording,
+  per the protocol's "verify before recording" rule. Classification, disposition and the move
+  below stayed with the orchestrating reviewer.
+- [x] Implementation audit (step 2): all five items plus Tasks 1-5 verified against the actual
+  tree, not the prose. Acceptance test re-run **in full** and green: `just build`; the targeted
+  `go test -run 'TestUninstallDryRunAgreesOnSkillDirKind|TestCheckSelfHostLink|TestPreCommit|TestCheckPrePush|TestParsePushRefs'`;
+  `just test` (full suite, cache cleared first); `just lint`; `just docs-check`; `./pickle board
+  audit` → `117 tickets, 0 error(s), 0 warning(s)`. Every Confirmed design decision (1-7) honoured
+  as written, including the byte-for-byte equivalence claims for decisions 3 and 6 (checked
+  character-by-character against the compiled regexes and the `SkillLinked`/`copyPayload` guards).
+- [x] Quality audit (step 3): idiomatic; new tests are not tautological (e.g.
+  `TestUninstallDryRunAgreesOnSkillDirKind` builds a real external-target symlink and a real
+  install, not a stub). No error-handling or edge-case regressions found.
+- [x] Consistency audit (step 4): whole-tree search, not just the diff. No stale line-number
+  comments were introduced by this branch (two pre-existing stale refs elsewhere predate it and
+  point at code this diff never touched — out of scope). One duplication drift found outside the
+  diff — see F1.
+- [x] Documentation audit (step 4a): **N/A** — `git diff main...feat/T-042-collapse-duplicated-predicates
+  --stat` touches only `.go` files; no `.md`/`.adoc` changed.
+- [x] Docs-readability pass (step 4b): **N/A**, same reason — no changed `.adoc`/`.md` files to run it over.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | design | noted | A sixth CWD-relative `payloadRoot()` duplicate — the exact defect shape item 3 collapsed everywhere else — exists in `internal/scaffold/scaffold_test.go` and was not swept in. It was introduced by T-110 (`cb64264`, 2026-08-22), after this ticket's plan was frozen (refined 2026-08-20, naming only 5 sites) but before pickup (2026-08-23); this branch did not author or falsify it, so it is not `fixed inline` under the causation rule. | `internal/scaffold/scaffold_test.go:14`: `func payloadRoot() string { return filepath.Join("..", "..") }` | Route it through `testutil.RepoRoot()` the next time a ticket touches `internal/scaffold`'s tests, or batch it into a future test-payload-root sweep if more variants turn up by then. |
+
+Disposition summary: 1 finding, non-blocking — F1 noted (recorded above, no follow-up ticket: a
+single-site drift does not pass the batching bar on its own). 0 blocking findings.
+
+cost: estimated S, actual S
 
 ## History
 
@@ -342,3 +373,4 @@ section does not quote the dry-run label text).
 - 2026-08-22 — TO DO → READY: plan complete
 - 2026-08-23 — READY → IN DEVELOPMENT: picked up
 - 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-23 — IN REVIEW → DONE: reviewed and done, 1 non-blocking finding noted
