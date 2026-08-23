@@ -17,7 +17,8 @@ The single artifact everything flows through. Authored from the skill's
   never deleted — `6-done/` and `7-dropped/` are permanent archives; pruning them
   would lose the record *and* break the `max()+1` rule.
 * *Filename* — `<PREFIX>-NNN-<slug>.md`; the slug derives from the title, so a title
-  is a single line of text (enforced by `pickle ticket new`).
+  is a single line of text and reasonably short; `pickle ticket new` enforces both
+  limits — see <<cmd-ticket-new>>.
 
 == Frontmatter
 

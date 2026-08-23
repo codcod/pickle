@@ -160,8 +160,8 @@ When asked to turn an idea, finding, or request into a ticket:
    ticket is born from another one, add `--spawned-by "T-NNN[,T-MMM]"`. The title must be a
    single line and the ids must be `T-NNN`, or the command rejects the invocation and writes
    nothing — put multi-line context in the Description, not the title. If the command rejects,
-   fix the offending argument (collapse the title to a single line; correct any malformed id)
-   and retry before proceeding. Then fill in the `## Outcome` (1–3 sentences, in
+   fix the offending argument (collapse the title to a single line; shorten an over-long one;
+   correct any malformed id) and retry before proceeding. Then fill in the `## Outcome` (1–3 sentences, in
    user-observable terms: what changes when this ships) and the Description prose.
 4. **Grade it** (impact / complexity / cost) **against the existing backlog** — re-grade
    neighbours if the comparison shifts them.

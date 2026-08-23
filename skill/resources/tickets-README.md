@@ -269,9 +269,10 @@ All other transitions are forward-only, as diagrammed.
   the old id. **Tickets are never deleted:** `6-done/` and `7-dropped/` are permanent archives —
   pruning them would both lose the record and break the `max()+1` rule.
 - **Filename.** `<PREFIX>-NNN-<slug>.md`. The slug is derived from the title, so a **title is a single
-  line of text**: `pickle ticket new` rejects an empty or multi-line title outright rather than
-  rewriting it, because the title becomes the filename, the `# T-NNN — …` heading and a `BOARD.md`
-  cell at once.
+  line of text, and reasonably short**. `pickle ticket new` rejects an empty or multi-line title
+  outright rather than rewriting it, and rejects one past ~120 runes, because the title becomes the
+  filename, the `# T-NNN — …` heading, and a `BOARD.md` cell at once. Put long context in the
+  Description, where there is no limit.
 - **Target child-project.** `project:` frontmatter — a registered child name (§0). Required on
   every ticket; validated by `pickle board audit`.
 - **Priority.** `impact` / `complexity` / `cost` frontmatter:
