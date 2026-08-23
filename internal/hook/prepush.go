@@ -161,15 +161,7 @@ func CheckPrePush(cfg *config.Config, remote string, refs []PushRef, w io.Writer
 		if err != nil {
 			continue // undecidable — fail open (decision 2)
 		}
-		var offenders []string
-		for _, p := range strings.Split(out, "\x00") {
-			if p == "" {
-				continue
-			}
-			if p == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(p, prefix) {
-				offenders = append(offenders, p)
-			}
-		}
+		offenders := ticketsOffenders(out, prefix)
 		if len(offenders) == 0 {
 			continue
 		}
