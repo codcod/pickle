@@ -451,8 +451,9 @@ single source of truth, and the board is rendered from them wholesale by `pickle
 `pickle ticket move` and `pickle board sync`. It shows every ticket grouped by status; within
 each status section tickets are **sub-grouped by child-project** under a `### <child>` heading,
 with TO DO/READY ordered deterministically (impact descending, ties by cost ascending, then by
-id) inside each child's group. WIP counts, the DONE `merged` cell and the DROPPED/REWORK reason cells are all derived —
-from the config, the merge History line, and the last transition's `--reason` respectively.
+id) inside each child's group. WIP counts, the DONE `merged` cell and the DROPPED/REWORK reason
+cells are all derived — from the config, the merge History line, and the last transition's
+`--reason` respectively.
 
 > **Board rule: never edit `BOARD.md` by hand.** Edit the tickets — the board follows. If the
 > board looks wrong or stale, run `pickle board sync`; `pickle board audit` checks it in two

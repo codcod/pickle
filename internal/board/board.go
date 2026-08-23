@@ -27,7 +27,13 @@ var impactRank = map[string]int{
 
 // costRank breaks impact ties by cost (T-103): cheapest first, the inverse
 // direction of impactRank (which ranks highest impact first). Covers every
-// legal `cost` value (ticket.LegalCost).
+// legal `cost` value (ticket.LegalCost). An illegal/missing cost degrades to
+// the Go zero value (rank 0) like impactRank's own degrade, but because the
+// comparison direction is inverted this sorts an illegal cost *first*
+// (cheapest of all) rather than last as impactRank's degrade does — unreachable
+// through the normal flow (`ticket new` always writes a legal cost; `board
+// audit` flags an illegal one), so left as a zero-value fallback rather than a
+// special case.
 var costRank = map[string]int{
 	"S": 1, "S-M": 2, "M": 3, "M-L": 4,
 	"L": 5, "L-XL": 6, "XL": 7,

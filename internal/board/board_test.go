@@ -395,7 +395,8 @@ func TestRenderDerivedTerminalCells(t *testing.T) {
 	}
 }
 
-// TestRenderOrdering: TO DO/READY by impact desc, ties by id asc (D1).
+// TestRenderOrdering: TO DO/READY by impact desc, ties by cost then id asc
+// (D1) — this fixture's tickets share a cost, so the tie still resolves to id.
 func TestRenderOrdering(t *testing.T) {
 	root := t.TempDir()
 	mkTicket(t, root, "1-to-do", "T-003", "c", ticketBody("T-003", "C", "high", created))
@@ -668,7 +669,7 @@ func TestSortIsTheOrderRenderUses(t *testing.T) {
 	// Sanity-check the ordering rule itself, so a bug that broke *both* paths
 	// identically still fails this test.
 	if want := []string{"T-009", "T-001", "T-002", "T-005", "T-004"}; strings.Join(sorted, ",") != strings.Join(want, ",") {
-		t.Errorf("Sort = %v, want %v (impact desc, ties by id asc)", sorted, want)
+		t.Errorf("Sort = %v, want %v (impact desc, ties by cost then id asc; this fixture ties on cost too)", sorted, want)
 	}
 }
 
