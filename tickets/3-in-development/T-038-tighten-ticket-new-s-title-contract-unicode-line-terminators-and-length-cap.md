@@ -176,10 +176,17 @@ In `internal/cli/cli_test.go`:
   Unicode code points here; "a title is a single line of text" already covers that abstractly
   and correctly, and adding `\u0085`-style detail would be exactly the kind of implementation
   trivia the payload doesn't need.
-- `skill/SKILL.md` (`:156-164`, verified at refinement): **no change** — its "title must be a
-  single line" wording is already accurate and appropriately abstract; confirmed at refinement,
-  recorded here so a reviewer does not wonder why this file is untouched while its sibling
-  changed.
+- `skill/SKILL.md` (step 3's authoring paragraph, title contract at `:160-163`): **one
+  three-word addition to the remediation list only.** Its "title must be a single line" wording
+  stays untouched — already accurate and appropriately abstract for the Unicode terminators, and
+  enumerating code points there would be payload trivia. But the sentence pairs an exhaustive
+  list of rejection causes ("must be a single line **and** the ids must be `T-NNN`") with a
+  matching remediation list ("collapse the title to a single line; correct any malformed id"),
+  and this ticket adds a third cause with no entry in either. Add `shorten an over-long one;`
+  to the remediation list so an agent that trips the cap gets a recovery hint. No number, no
+  code points — foreign-workspace-safe, and `payload_lint_test.go` covers it via `just test`.
+  (Amended at pickup — see History. Refinement's original "no change" reasoning addressed the
+  terminators only and was silent on the cap.)
 
 ### Acceptance test
 
@@ -208,8 +215,9 @@ test`, to confirm the new sentence passes the foreign-workspace mechanical check
 ### Finish (mandatory)
 
 1. Acceptance test green, including the two manual repro commands.
-2. Docs updated (Task 4); `skill/SKILL.md` deliberately left untouched (decision noted in the
-   summary so it reads as a decision, not an oversight).
+2. Docs updated (Task 4); `skill/SKILL.md`'s abstract "single line" framing deliberately left
+   untouched, with only its remediation list extended (noted in the summary so both halves read
+   as decisions, not oversights).
 3. Write a summary naming both fixed findings (N1, N2) and confirming
    `TestTicketNewAcceptsAwkwardButLegalTitle` needed no changes.
 4. Suggested commit message:
@@ -237,3 +245,18 @@ test`, to confirm the new sentence passes the foreign-workspace mechanical check
   edit (already abstract/foreign-workspace-safe) while `tickets-README.md` §3 gets one
   foreign-workspace-safe clause. TO DO → READY: implementation plan complete.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-23 — plan amended inline: Task 4's `skill/SKILL.md` bullet changed from "no change" to
+  one three-word addition to its remediation list ("shorten an over-long one"). The pickup gate
+  found refinement's "no change" reasoning addressed the Unicode terminators only and was silent
+  on the length cap — the passage pairs an exhaustive list of rejection causes with a matching
+  remediation list, and this ticket adds a third cause to neither. User-approved at pickup. The
+  abstract "title must be a single line" framing decision 4 protects is untouched.
+- 2026-08-23 — READY → IN DEVELOPMENT: picked up
+- 2026-08-23 — applicability gate (fresh sub-agent): no blocking findings. All plan premises
+  intact — `validateTitle` still `strings.ContainsAny(title, "\n\r")` with no cap and no `utf8`
+  import; `TestTicketNewAcceptsAwkwardButLegalTitle`'s zero-edit claim verified case by case;
+  `payload_lint_test.go`'s four rules checked against the proposed new payload sentence, all
+  pass. Noted: several line citations drifted (notably the manual's contract, moved by T-111);
+  all anchor on text, so harmless. Also noted, and recorded because it strengthens decision 1:
+  `unicode.IsControl` would have failed the existing green `"tabs\tand  spaces"` case, so
+  enumerating the five terminators is load-bearing, not merely scope discipline.
