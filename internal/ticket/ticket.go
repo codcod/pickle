@@ -48,19 +48,29 @@ func (t *Ticket) Base() string { return strings.TrimSuffix(filepath.Base(t.Path)
 // Project is the project: frontmatter value.
 func (t *Ticket) Project() string { return t.Front["project"] }
 
+// IDShapePattern is the bare id-shape regex fragment shared by every site
+// that spells out a ticket id's shape: an uppercase-led prefix of uppercase
+// letters/digits, a hyphen, then digits. The prefix is a per-child
+// ticket_prefix (T-058); "T-" is just the default prefix, not baked into the
+// shape.
+//
+// A bare fragment, not a compiled *regexp.Regexp: filenameRE and board.rowRE
+// each embed it inside a larger anchored pattern (a capture group plus a
+// filename suffix, or a table-row prefix), so a fragment composes into those
+// while a compiled regex would not. idRE below anchors it directly.
+// Byte-identical compiled patterns before and after this constant was
+// introduced — a pure de-duplication, not a behaviour change (T-042 item 6,
+// T-040 decision D6).
+const IDShapePattern = `[A-Z][A-Z0-9]*-\d+`
+
 var (
-	filenameRE = regexp.MustCompile(`^([A-Z][A-Z0-9]*-\d+)-[A-Za-z0-9._-]+\.md$`)
-	// idRE is the canonical ticket-id shape. The prefix is a per-child
-	// ticket_prefix (T-058), so the shape is <PREFIX>-NNN where PREFIX is an
-	// uppercase letter followed by uppercase letters/digits; "T-" is just the
-	// default prefix, not baked into the shape. Exported through ValidID so
-	// creation time (internal/cli) and the audit share one definition rather than
-	// growing a second. The shape is still spelled out separately in filenameRE
-	// above and in board.rowRE; unifying those is T-042's call (T-040 D6 deferred
-	// it there; T-027, which used to own it, was absorbed into T-040 and dropped). ValidID stays a
-	// pure *shape* check — that a ticket's prefix matches its project's configured
-	// prefix is a config-aware invariant, checked in internal/audit, not here.
-	idRE       = regexp.MustCompile(`^[A-Z][A-Z0-9]*-\d+$`)
+	filenameRE = regexp.MustCompile(`^(` + IDShapePattern + `)-[A-Za-z0-9._-]+\.md$`)
+	// idRE is the canonical ticket-id shape, anchored. Exported through ValidID
+	// so creation time (internal/cli) and the audit share one definition rather
+	// than growing a second. ValidID stays a pure *shape* check — that a
+	// ticket's prefix matches its project's configured prefix is a
+	// config-aware invariant, checked in internal/audit, not here.
+	idRE       = regexp.MustCompile(`^` + IDShapePattern + `$`)
 	fmKeyRE    = regexp.MustCompile(`^([A-Za-z-]+):\s*(.*)$`)
 	inlineHash = regexp.MustCompile(`\s+#.*$`)
 	// historyRE matches one dated History bullet, capturing only the body as m[1].
