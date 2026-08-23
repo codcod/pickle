@@ -324,4 +324,6 @@ cost: estimated S-M, actual S-M
 - 2026-08-23 — reviewed (independent audit delegated, hand-verified): 5 findings, all
   non-blocking (2 fixed inline — a comment/wrap regression this branch introduced; 3 noted).
   cost estimated S-M, actual S-M. No blocking findings, no spawned tickets.
+- 2026-08-23 — published: `main` pushed (5be888f..e48a352), branch `feat/T-103-sort-cost-tiebreak`
+  pushed, PR #67 opened against `main`. Merging is the human's.
 - 2026-08-23 — IN REVIEW → DONE: reviewed: no blocking findings
