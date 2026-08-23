@@ -317,4 +317,6 @@ cost: estimated S, actual S
 - 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-23 — IN REVIEW → DONE: reviewed: 7 non-blocking, all fixed inline
 - 2026-08-23 — pushed `feat/T-111-releasing-convention-docs` (7b494d3) and opened
-  https://github.com/codcod/pickle/pull/63 against `main`, user-approved. Awaiting human merge.
+  https://github.com/codcod/pickle/pull/63 against `main`, user-approved.
+- 2026-08-23 — MERGED: feat/T-111-releasing-convention-docs → main (4614178, merge commit,
+  history kept per root-path default), user-approved via PR #63; branches deleted.

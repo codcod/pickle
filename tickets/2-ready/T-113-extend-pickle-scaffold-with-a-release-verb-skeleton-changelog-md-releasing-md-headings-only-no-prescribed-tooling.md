@@ -418,3 +418,9 @@ not a flow rule, so the foreign-workspace test does not come into play.
   premise ("T-111 is still `2-ready/`") as "not yet merged"; the instruction it yields is
   identical. Once T-111 merges, the xref becomes writable and the connecting sentence its
   coupling note describes becomes an actionable follow-up. Scope and grade unchanged.
+- 2026-08-23 — patched again by **T-111's impact sweep**, on merge: T-111 landed on `main`
+  (PR #63, 4614178), so the `[#releasing]` anchor now exists on the base branch and **decision 7's
+  premise is discharged** — an `<<releasing>>` xref would resolve, not dangle. The decision's
+  instruction is therefore no longer forced by the build: whether to add the connecting sentence
+  is now an open choice for this ticket's pickup gate rather than a prohibition. Nothing else in
+  the plan changes; the two files this ticket scaffolds are unaffected. Scope and grade unchanged.
