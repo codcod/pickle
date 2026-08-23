@@ -941,9 +941,9 @@ Everything on the board is derived:
 
 * section per status directory, one `### <child>` sub-group per registered
   child, `(n/limit)` WIP counts computed at render time;
-* deterministic ordering — TO DO/READY by descending impact (ties by id),
-  everything else by id; every DONE/DROPPED ticket is always listed (nothing
-  "ages off");
+* deterministic ordering — TO DO/READY by descending impact (ties by cost
+  ascending, then by id), everything else by id; every DONE/DROPPED ticket is
+  always listed (nothing "ages off");
 * DONE `merged` from the ticket's merge History line (`yes — merged to …` /
   `no — publish-gated`), DROPPED `reason` and REWORK `open findings` from the
   last transition's `--reason`;
@@ -1328,8 +1328,9 @@ What it serves:
   render as side-by-side columns, one row of columns per registered
   child-project; TO DO, DONE and DROPPED keep the stacked, full-width layout
   below them. Every group, column or stacked alike, is still ordered in
-  exactly the order `BOARD.md` uses (impact descending, ties by id) — every
-  view calls the same ordering code, so none of them can disagree. A filter
+  exactly the order `BOARD.md` uses (impact descending, ties by cost ascending,
+  then by id) — every view calls the same ordering code, so none of them can
+  disagree. A filter
   bar narrows the board to a single child-project (or `All`), and a search box
   narrows it further to tickets whose id or title matches what you type; both
   selections survive the five-second refresh.

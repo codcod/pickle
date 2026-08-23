@@ -285,7 +285,8 @@ All other transitions are forward-only, as diagrammed.
   While a ticket is unrefined, a grade may be an **adjacent-pair range** (`low-medium`,
   `medium-high`, `S-M`, `M-L`, `L-XL`) to encode honest uncertainty; refinement should
   collapse it to a single value. Priority order is **not** encoded in filenames — the board
-  (§6) renders TO DO/READY by descending impact within each child's group, ties by id.
+  (§6) renders TO DO/READY by descending impact within each child's group, ties by cost
+  ascending, then by id.
   **Assess every new ticket against the existing backlog** before filing it, and re-grade the
   board. When a grade changes on re-assessment, write the one-line reason into the ticket's own
   `## Outcome` or Description — not only into a `NOTES.md` triage table, which a later reader
@@ -449,9 +450,10 @@ promotion test, and the same default.
 single source of truth, and the board is rendered from them wholesale by `pickle ticket new`,
 `pickle ticket move` and `pickle board sync`. It shows every ticket grouped by status; within
 each status section tickets are **sub-grouped by child-project** under a `### <child>` heading,
-with TO DO/READY ordered deterministically (impact descending, ties by id) inside each child's
-group. WIP counts, the DONE `merged` cell and the DROPPED/REWORK reason cells are all derived —
-from the config, the merge History line, and the last transition's `--reason` respectively.
+with TO DO/READY ordered deterministically (impact descending, ties by cost ascending, then by
+id) inside each child's group. WIP counts, the DONE `merged` cell and the DROPPED/REWORK reason
+cells are all derived — from the config, the merge History line, and the last transition's
+`--reason` respectively.
 
 > **Board rule: never edit `BOARD.md` by hand.** Edit the tickets — the board follows. If the
 > board looks wrong or stale, run `pickle board sync`; `pickle board audit` checks it in two

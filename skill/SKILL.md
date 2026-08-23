@@ -107,7 +107,8 @@ WIP limits, and an optional per-child review addendum. Defaults:
   prefix unset share the one legacy global `T` counter; numbers are unique only within a prefix,
   so an id is always qualified across children. Filename `<PREFIX>-NNN-<slug>.md`.
 - **Priority.** `impact` / `complexity` / `cost` frontmatter; the board orders each child's
-  TO DO/READY group deterministically from it (impact descending, ties by id).
+  TO DO/READY group deterministically from it (impact descending, ties by cost ascending, then
+  by id).
 - **Dependencies (may cross children).** `depends-on:` frontmatter. A ticket may not enter
   `3-in-development/` while any dependency is not in `6-done/` **and its feature branch merged
   to the base of the dependency's target child-project's repo** (done ≠ merged; the human

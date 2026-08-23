@@ -46,6 +46,49 @@ cost: M
 `, id, title, impact, id, title, hist)
 }
 
+// sortFixture renders a ticket file with an explicit `cost:` and optional
+// `family:`, for the T-103 cost-tiebreak tests (ticketBody/familyBody both
+// hardcode `cost: M` and take no cost argument).
+func sortFixture(id, title, impact, cost, family string) string {
+	fam := ""
+	if family != "" {
+		fam = "family: " + family + "\n"
+	}
+	return fmt.Sprintf(`---
+id: %s
+title: %s
+project: demo
+depends-on: []
+spawned-by: []
+%simpact: %s
+complexity: medium
+cost: %s
+---
+
+# %s — %s
+
+## History
+
+- 2026-08-23 — created (TO DO). source: test
+`, id, title, fam, impact, cost, id, title)
+}
+
+// sortedIDs runs Sort on every ticket under root and returns the resulting id
+// order, for the T-103 cost-tiebreak tests.
+func sortedIDs(t *testing.T, root string) []string {
+	t.Helper()
+	tickets := loadTree(t, root)
+	group := make([]*ticket.Ticket, len(tickets))
+	copy(group, tickets)
+	toDo, _ := testDef.ByName("TO DO")
+	Sort(group, toDo, ticketsByID(tickets))
+	var ids []string
+	for _, tk := range group {
+		ids = append(ids, tk.ID)
+	}
+	return ids
+}
+
 // mkTicket writes a ticket file into root/tickets/<dir>/.
 func mkTicket(t *testing.T, root, dir, id, slug, body string) {
 	t.Helper()
@@ -352,7 +395,8 @@ func TestRenderDerivedTerminalCells(t *testing.T) {
 	}
 }
 
-// TestRenderOrdering: TO DO/READY by impact desc, ties by id asc (D1).
+// TestRenderOrdering: TO DO/READY by impact desc, ties by cost then id asc
+// (D1) — this fixture's tickets share a cost, so the tie still resolves to id.
 func TestRenderOrdering(t *testing.T) {
 	root := t.TempDir()
 	mkTicket(t, root, "1-to-do", "T-003", "c", ticketBody("T-003", "C", "high", created))
@@ -625,8 +669,68 @@ func TestSortIsTheOrderRenderUses(t *testing.T) {
 	// Sanity-check the ordering rule itself, so a bug that broke *both* paths
 	// identically still fails this test.
 	if want := []string{"T-009", "T-001", "T-002", "T-005", "T-004"}; strings.Join(sorted, ",") != strings.Join(want, ",") {
-		t.Errorf("Sort = %v, want %v (impact desc, ties by id asc)", sorted, want)
+		t.Errorf("Sort = %v, want %v (impact desc, ties by cost then id asc; this fixture ties on cost too)", sorted, want)
 	}
+}
+
+// TestSortBreaksImpactTiesByCost (T-103): within an impact tie, the cheaper
+// ticket sorts first — filing order (id) no longer decides it, at either of
+// the two places Sort used to fall back to id.
+func TestSortBreaksImpactTiesByCost(t *testing.T) {
+	t.Run("loose vs loose: cost breaks the tie, cheapest first regardless of id", func(t *testing.T) {
+		root := t.TempDir()
+		// Filed so id order would mislead: the highest-id ticket is the cheapest
+		// and must still sort first. All loose (no family) — this is the branch
+		// the original scoping missed (see the ticket's Description).
+		for _, tc := range []struct{ id, cost string }{
+			{"T-003", "XL"},
+			{"T-005", "M"},
+			{"T-010", "S"},
+		} {
+			mkTicket(t, root, "1-to-do", tc.id, "x", sortFixture(tc.id, "t "+tc.id, "medium", tc.cost, ""))
+		}
+		if got, want := sortedIDs(t, root), []string{"T-010", "T-005", "T-003"}; strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("Sort = %v, want %v (cost ascending breaks the impact tie)", got, want)
+		}
+	})
+
+	t.Run("same family: cheaper member sorts first under its umbrella", func(t *testing.T) {
+		root := t.TempDir()
+		mkTicket(t, root, "1-to-do", "T-001", "umb", sortFixture("T-001", "umbrella", "high", "M", ""))
+		mkTicket(t, root, "1-to-do", "T-002", "m1", sortFixture("T-002", "member one", "medium", "XL", "T-001"))
+		mkTicket(t, root, "1-to-do", "T-003", "m2", sortFixture("T-003", "member two", "medium", "S", "T-001"))
+		if got, want := sortedIDs(t, root), []string{"T-001", "T-003", "T-002"}; strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("Sort = %v, want %v (cheaper member first within the family)", got, want)
+		}
+	})
+
+	t.Run("impact and cost both tying still falls back to id ascending", func(t *testing.T) {
+		root := t.TempDir()
+		// ticketBody hardcodes cost: M for both, so this is a same-impact,
+		// same-cost tie — exactly what TestSortIsTheOrderRenderUses's T-002/T-005
+		// pair already exercises; pinned here explicitly for this ticket's change.
+		hist := "- 2026-07-23 — created (TO DO). source: test"
+		mkTicket(t, root, "1-to-do", "T-005", "b", ticketBody("T-005", "b", "medium", hist))
+		mkTicket(t, root, "1-to-do", "T-002", "a", ticketBody("T-002", "a", "medium", hist))
+		if got, want := sortedIDs(t, root), []string{"T-002", "T-005"}; strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("Sort = %v, want %v (both impact and cost tie, fall back to id asc)", got, want)
+		}
+	})
+
+	t.Run("family stays contiguous against a cheaper loose ticket at the same rank", func(t *testing.T) {
+		// Regression guard for T-059: famCostRank must never split a family
+		// apart, even when a loose ticket at the same family rank is cheaper
+		// than the whole family.
+		root := t.TempDir()
+		mkTicket(t, root, "1-to-do", "T-001", "umb", sortFixture("T-001", "umbrella", "medium", "XL", ""))
+		mkTicket(t, root, "1-to-do", "T-002", "m1", sortFixture("T-002", "member one", "medium", "S", "T-001"))
+		mkTicket(t, root, "1-to-do", "T-004", "loose", sortFixture("T-004", "loose cheap", "medium", "S", ""))
+		got := sortedIDs(t, root)
+		joined := strings.Join(got, ",")
+		if joined != "T-004,T-001,T-002" && joined != "T-001,T-002,T-004" {
+			t.Errorf("family split apart! Sort = %v", got)
+		}
+	})
 }
 
 // renderedIDs extracts the ticket ids of the table rows under a `## <section>`
