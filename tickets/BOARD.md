@@ -83,7 +83,7 @@ Last updated: 2026-08-23
 | T-029 | regression-test the non-gating guarantee at the move.go pickup gate | yes — MERGED: feat/T-029-regression-test-non-gating-pickup-gate → main (0b7cd91, squashed) |
 | T-030 | ticket new writes unsanitised input into frontmatter (newline injection) | yes — MERGED: feat/T-030-validate-ticket-new-input → main (a29fde1, squashed) |
 | T-036 | ratify the four review-finding dispositions already in use; make note-and-close the default | yes — MERGED: feat/T-036-review-disposition-valves → main (5367843, squashed) |
-| T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | no — publish-gated |
+| T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | yes — merged to main (e5d2a11) |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | yes — merged to main (PR #11, 8a61d3e), user-approved as an exception **ahead of the review protocol** (out of the usua… |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | yes — merged to main (PR #10, 25d2152), user-approved as an exception; squashed to one commit; branch deleted |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | yes — merged to main (PR #15, 17e2341), user-approved; squashed to 5291aeb; branch deleted |
