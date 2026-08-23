@@ -374,3 +374,4 @@ cost: estimated S, actual S
 - 2026-08-23 — READY → IN DEVELOPMENT: picked up
 - 2026-08-23 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-23 — IN REVIEW → DONE: reviewed and done, 1 non-blocking finding noted
+- 2026-08-23 — merged to main (659faeb, PR #65)

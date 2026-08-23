@@ -84,7 +84,7 @@ Last updated: 2026-08-23
 | T-038 | tighten ticket new's title contract: Unicode line terminators and length cap | yes — merged to main (e5d2a11) |
 | T-040 | board audit: validate ticket frontmatter (duplicate keys, self-referencing depends-on, TEMPLATE drift) | yes — merged to main (PR #11, 8a61d3e), user-approved as an exception **ahead of the review protocol** (out of the usua… |
 | T-041 | keep the AGENTS.md marker block fresh and detect drift | yes — merged to main (PR #10, 25d2152), user-approved as an exception; squashed to one commit; branch deleted |
-| T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | no — publish-gated |
+| T-042 | collapse duplicated internal predicates into single helpers (skill-dir dry-run labels, test payload root) | yes — merged to main (659faeb, PR #65) |
 | T-043 | harden the cli test harness and close the config, project and ticket-new coverage gaps | yes — merged to main (PR #15, 17e2341), user-approved; squashed to 5291aeb; branch deleted |
 | T-044 | demote BOARD.md to a generated artifact; ticket files become the single source of truth | yes — MERGED: feat/T-044-generated-board squashed → main (32b272a), user-approved; branch deleted |
 | T-046 | make doctor and upgrade self-host-aware (skill symlink detection, payload-version noise) | yes — merged to `main` (`b5af6ab`, PR #38): 4 commits kept, not squashed; CI green. Post-merge verification on `main`: … |
@@ -132,7 +132,7 @@ Last updated: 2026-08-23
 | T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | yes — merged to `main` via PR #47 (`3640db6`) |
 | T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | yes — merged to main (PR #46, 1c55323, https://github.com/codcod/pickle/commit/1c55323); merge commit, 4 commits kept |
 | T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | yes — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than squashed (root-path child defaul… |
-| T-103 | board.Sort: break impact ties by cost lexicographically instead of by id | no — publish-gated |
+| T-103 | board.Sort: break impact ties by cost lexicographically instead of by id | yes — merged to main (60a715b, PR #67) |
 | T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | yes — merged to main (3104977, PR #48) |
 | T-105 | pickle board decisions: query a child's confirmed design decisions | yes — MERGED: feat/T-105-board-decisions → main (9343299, PR #51), user-approved; history kept (4 commits); branch not … |
 | T-106 | specify the confirmed-decision statement shape and document the <ID> decision <N> citation convention | yes — MERGED: feat/T-106-decision-shape-and-citation → main (632981b, PR #52), user-approved; history kept (4 commits);… |
