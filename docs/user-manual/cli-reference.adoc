@@ -318,6 +318,14 @@ instead of failing. A post-upgrade `board audit` self-check must find *no
 errors* — a warning (e.g. the board's generated layout being stale, see
 <<cmd-board-audit>>) is printed but does not fail the upgrade.
 
+The `payload_version` stamp is always the last thing `upgrade` touches, after
+the skill payload, marker block(s), pi scaffolds and hook shim have already
+been refreshed. If the stamp step itself refuses (see above), everything
+before it has still landed and is safe to leave as-is — re-running
+`pickle upgrade` retries only the stamp; it does not redo the rest, since each
+of those earlier steps is itself idempotent and simply no-ops when already
+current.
+
 Upgrade will not cost you hand-written content in `pickle.toml`: stamping a
 new version rewrites *only* the `payload_version` line, and back-filling
 `layout` inserts *only* that one new line — both leave every other line

@@ -56,6 +56,24 @@ func loadConfig() (*config.Config, int) {
 	return cfg, exitOK
 }
 
+// projectRoot resolves the install root from the cwd upward (os.Getwd ->
+// config.Find -> filepath.Dir(cfgPath)) without loading pickle.toml itself.
+// The setup commands (runUpgrade, runDoctor, runUninstall) each need only the
+// root directory, not a parsed config, and had triplicated this exact
+// preamble (T-013 item 6) while the project-registry family already funnelled
+// through loadConfig above.
+func projectRoot() (string, int) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", errf("%v", err)
+	}
+	cfgPath, err := config.Find(wd)
+	if err != nil {
+		return "", errf("%v", err)
+	}
+	return filepath.Dir(cfgPath), exitOK
+}
+
 func runProjectAdd(args []string) int {
 	// name and path are the two leading positionals; flags follow them (the stdlib
 	// flag package stops at the first positional, so we split explicitly).

@@ -31,6 +31,34 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Fixed
 
+- **`pickle install` and `pickle upgrade` now say what they actually did to the skill payload.**
+  Both previously reported `+ .agents/skills/brine/` on every run, so a re-install or a
+  byte-identical upgrade looked exactly like a fresh one. The summary now distinguishes a fresh
+  copy (`+ …/`) from a genuine refresh (`+ … (refreshed)`) from a payload that already matched
+  (`= … (current)`), decided by comparing the payload against what is already on disk; the
+  `tickets/` scaffold reports `already scaffolded` on a re-run for the same reason. Note that
+  `(current)` describes the *contents*, not the work: both `install` and `upgrade` still write
+  the pickle-owned skill directory every time — `upgrade` still replaces it wholesale — so the
+  comparison decides the wording and never whether the work happens, and `upgrade` continues to
+  repair a tampered tree (T-013).
+
+- **`pickle uninstall <anything>` is now a usage error instead of a full uninstall.** The
+  handler parsed flags but never checked for stray positional arguments, so a typo'd
+  `pickle uninstall foo` silently performed a real uninstall — removing the skill directory and
+  stripping the `AGENTS.md`/`CLAUDE.md` marker blocks. `upgrade` already had this guard; the
+  sibling handler now has the same one (T-013).
+
+- **`pickle help` no longer claims agent autodetection that does not exist.** The `install` line
+  said the skill is installed "for detected agents"; nothing is detected — the set is exactly
+  what `--agent` names, defaulting to `claude`. The `upgrade` line now also mentions that it
+  stamps `payload_version` in `pickle.toml`, which is the file most users care about (T-013).
+
+- **`AGENTS.md`/`CLAUDE.md` keep their permissions across install, upgrade and uninstall.**
+  Marker injection and stripping hard-coded `0644` on files the user owns, silently resetting a
+  non-default mode. Both now write through the mode-preserving atomic writer already used for
+  `pickle.toml`. Appending a marker block to a file that did not end in a newline also no longer
+  produces a stray extra blank line (T-013).
+
 - **`pickle ticket new` now rejects a title containing any of the five Unicode line terminators,
   not just `LF` and `CR`.** `U+0085` (NEL), `U+2028` and `U+2029` change nothing for pickle
   itself, which splits frontmatter on `LF` alone — but YAML 1.1 readers (Ruby Psych, PyYAML, and

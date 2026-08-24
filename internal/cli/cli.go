@@ -93,16 +93,17 @@ Usage:
   pickle <command> [arguments]
 
 Setup commands:
-  install                 Scaffold tickets/, install the skill for detected agents,
-                          inject AGENTS.md/CLAUDE.md markers, write pickle.toml, and
-                          register the first child-project.
+  install                 Scaffold tickets/, install the skill for the agents named by
+                          --agent (default claude), inject AGENTS.md/CLAUDE.md markers,
+                          write pickle.toml, and register the first child-project.
   project add <name> <path>   Register another connected child-project.
   project list                List registered child-projects.
   project remove <name>       Unregister a child-project (refused if it has live tickets).
   flow show                   Print the configured flow name.
   flow list                   List available flow names (exactly one, today).
   upgrade                 Refresh the installed skill payload + marker block to this
-                          binary's version (never touches tickets).
+                          binary's version (stamps payload_version in pickle.toml;
+                          never touches tickets).
   doctor                  Verify install integrity (skill, symlinks, markers, child paths).
   uninstall [--dry-run]   Remove skill/symlinks/markers; leave tickets/ and pickle.toml
                           intact. --dry-run (-n) lists what would go, changing nothing.

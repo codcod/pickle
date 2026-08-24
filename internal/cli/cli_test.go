@@ -91,12 +91,22 @@ func TestRunExitCodes(t *testing.T) {
 		{"help", []string{"help"}, exitOK},
 		{"version", []string{"version"}, exitOK},
 		{"unknown command", []string{"frobnicate"}, exitUsage},
+		// runInstall's own four bespoke validation branches (internal/cli/install.go:38-51),
+		// none of which were exercised by TestRunExitCodes before T-013 even though every
+		// other command's usage errors already were.
+		{"install --in-tree and --path conflict", []string{"install", "--in-tree", "--path", "foo"}, exitUsage},
+		{"install --path \".\" without --in-tree", []string{"install", "--path", "."}, exitUsage},
+		{"install child flags without --path/--in-tree", []string{"install", "--project", "foo"}, exitUsage},
+		{"install bad flag", []string{"install", "--bogus"}, exitUsage},
 		// upgrade takes no flags, but must reject rather than ignore argv: a
 		// silently-ignored -h/-n would perform a real, mutating upgrade.
 		{"upgrade bad flag", []string{"upgrade", "--bogus"}, exitUsage},
 		{"upgrade help flag", []string{"upgrade", "-h"}, exitUsage},
 		{"upgrade stray arg", []string{"upgrade", "extra"}, exitUsage},
 		{"uninstall bad flag", []string{"uninstall", "--bogus"}, exitUsage},
+		// runUninstall ignores stray positionals today (T-013 item 9): a typo'd
+		// `pickle uninstall foo` performs a real uninstall instead of exitUsage.
+		{"uninstall stray arg", []string{"uninstall", "extra"}, exitUsage},
 		{"board sync bad flag", []string{"board", "sync", "--bogus"}, exitUsage},
 		{"board decisions bad flag", []string{"board", "decisions", "--bogus"}, exitUsage},
 		{"board no subcommand", []string{"board"}, exitUsage},
@@ -500,6 +510,70 @@ func TestUpgradeWarnsOnLayoutOnlyBoardDrift(t *testing.T) {
 	}
 	if !strings.Contains(upgradeErr, "WARNING: BOARD.md is out of date in its generated layout only") {
 		t.Errorf("upgrade did not print the layout-drift warning, got:\n%s", upgradeErr)
+	}
+}
+
+// TestCLIUninstallDryRunLeavesTreeUnchanged is the T-013 item 9 CLI-level
+// regression: install.Uninstall's own dry-run behaviour is already covered by
+// TestUninstallDryRun in internal/install, but runUninstall's CLI wiring
+// (flag parsing, cwd-based project resolution) had no coverage at all before
+// this. It runs against newProject's temp root, never pickle's own
+// (mandatory per this package's cwd hazard, see TestMain/newProject), and
+// asserts --dry-run reports what it would remove without touching anything.
+func TestCLIUninstallDryRunLeavesTreeUnchanged(t *testing.T) {
+	root := newProject(t)
+
+	skillDir := filepath.Join(root, filepath.FromSlash(install.SkillDir))
+	if _, err := os.Stat(skillDir); err != nil {
+		t.Fatalf("skill dir missing before dry-run: %v", err)
+	}
+	before, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if got := Run(os.DirFS(repoRoot), "test", []string{"uninstall", "--dry-run"}); got != exitOK {
+			t.Fatalf("uninstall --dry-run = %d, want %d", got, exitOK)
+		}
+	})
+	if !strings.Contains(out, install.SkillDir) {
+		t.Errorf("dry-run output does not name the skill dir it would remove, got:\n%s", out)
+	}
+
+	after, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Error("uninstall --dry-run changed AGENTS.md")
+	}
+	if _, err := os.Stat(skillDir); err != nil {
+		t.Errorf("uninstall --dry-run removed the skill dir: %v", err)
+	}
+}
+
+// TestCLIUninstallHappyPath is the T-013 item 9 CLI-level happy-path
+// regression, on the same temp root as the dry-run test above: a real
+// `pickle uninstall` exits exitOK and actually removes the skill dir and the
+// AGENTS.md marker block.
+func TestCLIUninstallHappyPath(t *testing.T) {
+	root := newProject(t)
+	skillDir := filepath.Join(root, filepath.FromSlash(install.SkillDir))
+
+	if got := Run(os.DirFS(repoRoot), "test", []string{"uninstall"}); got != exitOK {
+		t.Fatalf("uninstall = %d, want %d", got, exitOK)
+	}
+
+	if _, err := os.Lstat(skillDir); !os.IsNotExist(err) {
+		t.Errorf("skill dir still present after uninstall: err=%v", err)
+	}
+	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(agents), install.MarkerBegin) {
+		t.Error("AGENTS.md still has a marker block after uninstall")
 	}
 }
 
