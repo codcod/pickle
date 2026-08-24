@@ -52,7 +52,7 @@ var releaseTemplateFiles = []templateFile{
 	{"scaffold/release-template/RELEASING.md", "RELEASING.md"},
 }
 
-// Options configures a single `scaffold docs` run.
+// Options configures a single scaffold run (`docs` or `release`).
 type Options struct {
 	// ProjectName substitutes projectNameToken in every template file.
 	// Defaults to filepath.Base(root) when empty (Run fills this in).
