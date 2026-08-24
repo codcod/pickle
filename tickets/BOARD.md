@@ -71,7 +71,7 @@ Last updated: 2026-08-24
 | T-008 | board sync | yes — MERGED: feat/T-008-board-sync squashed → main (9b87a61), user-approved; branch deleted |
 | T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | yes — MERGED: feat/T-009-agent-enablement → main (22d2871, squash), user-approved; branch deleted |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
-| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | no — publish-gated |
+| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | yes — MERGED: feat/T-013-install-polish → main (PR #72, merge commit fbd948a), user-approved; 6 commits kept, not squas… |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
 | T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | yes — merged to main (ce306c2), user-approved; PR #12; branch deleted |
 | T-022 | payload states commit policy, branch/ticket prefixes and WIP limits unconditionally; §8 pickup gate reads as freshness,… | yes — merged to main (PR #13, 218a90a) |

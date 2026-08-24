@@ -659,4 +659,5 @@ Cumulative for the ticket: **17 findings, 4 blocking, all resolved**.
 - 2026-08-24 — IN REVIEW → REWORK: scoped re-review: B1/B2/B3 resolved; new blocking B4 (advisory payload diff can abort the whole upgrade)
 - 2026-08-24 — REWORK → IN REVIEW: rework round 2: B4 fixed (advisory diff degrades instead of aborting), regression test added and mutation-verified
 - 2026-08-24 — IN REVIEW → DONE: scoped re-review round 2: B4 resolved, no third variant found; N13 -> T-120 (batched with N4, N5)
-- 2026-08-24 — MR #72 published (feat/T-013-install-polish → main), 6 commits kept unsquashed per the root-path default; pending human merge
+- 2026-08-24 — MR #72 published (feat/T-013-install-polish → main), 6 commits kept unsquashed per the root-path default
+- 2026-08-24 — MERGED: feat/T-013-install-polish → main (PR #72, merge commit fbd948a), user-approved; 6 commits kept, not squashed
