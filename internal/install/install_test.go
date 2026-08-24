@@ -862,6 +862,55 @@ func TestUpgradeAlwaysReplacesSkillDirWholesale(t *testing.T) {
 	}
 }
 
+// TestUpgradeSurvivesAnUnreadableSkillEntry is the T-013 review's B4
+// regression: skillPayloadDiffers is advisory — it picks a label and nothing
+// else — but it runs before the wipe, so an error escaping it aborted the
+// entire upgrade. An unreadable directory in the skill tree made
+// `pickle upgrade` exit 1 without refreshing markers, scaffolds, hooks or the
+// payload_version stamp, where before it was simply deleted by the re-copy.
+func TestUpgradeSurvivesAnUnreadableSkillEntry(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: mode bits do not deny access, so this case cannot be provoked")
+	}
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: ".", InTree: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	locked := filepath.Join(root, filepath.FromSlash(SkillDir), "locked")
+	if err := os.MkdirAll(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	// Restore the mode even if an assertion fails, so t.TempDir's own cleanup
+	// can still remove the tree.
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	res, err := Upgrade(payload, root, "v2")
+	if err != nil {
+		t.Fatalf("an unreadable directory must not fail the upgrade, got: %v", err)
+	}
+	if _, statErr := os.Lstat(locked); !os.IsNotExist(statErr) {
+		t.Error("the unreadable directory survived the upgrade; the wipe should have removed it")
+	}
+	// The upgrade must have gone on to do the rest of its job, not just avoid
+	// erroring: the stamp is the last thing it touches, so it proves the whole
+	// sequence ran.
+	cfg, err := config.Load(filepath.Join(root, config.FileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PayloadVersion != "v2" {
+		t.Errorf("payload_version = %q, want v2 — the upgrade aborted before stamping", cfg.PayloadVersion)
+	}
+	if !hasEntry(res.Created, SkillDir+"/ (refreshed)") {
+		t.Errorf("want the skill dir reported as refreshed, got created=%v skipped=%v", res.Created, res.Skipped)
+	}
+}
+
 // TestUpgradeReportsStampVerificationFailure is the T-013 item 8 (R9 finding
 // 1) regression: verifyStampedVersion was 100% unit-covered but 0% bound —
 // deleting its call site inside Upgrade failed no test. This substitutes a

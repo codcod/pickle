@@ -797,7 +797,12 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 	case os.IsNotExist(statErr):
 		return false, true, nil
 	default:
-		return false, false, statErr
+		// Same rule as the walk below (B4): an advisory probe must not decide
+		// the command's fate. Treat an unreadable dst as present-and-differing
+		// so the caller wipes and re-copies as usual — if the tree really is
+		// unusable, the failure then surfaces from RemoveAll, which reports it
+		// against the operation the user asked for.
+		return true, true, nil
 	}
 
 	sub, err := fs.Sub(payload, "skill")
@@ -838,23 +843,37 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 
 	// A file present on disk but absent from the new payload is also a
 	// change: it's stale, dropped from the upstream skill tree.
-	err = filepath.WalkDir(dst, func(p string, d fs.DirEntry, err error) error {
+	//
+	// Every failure below degrades to changed = true rather than propagating.
+	// This comparison is **advisory** — it chooses a label and nothing else —
+	// and it runs before the wipe, so an error escaping here aborts the whole
+	// upgrade: markers, scaffolds, hooks and the payload_version stamp would
+	// all be skipped because a directory could not be read. An unreadable
+	// entry is exactly what the wipe-and-recopy that follows is for, and it
+	// removed such a directory fine before this comparison existed. The first
+	// walk above already degrades an unreadable *file* the same way; this is
+	// the sibling case it was inconsistent with (T-013 review, B4).
+	if walkErr := filepath.WalkDir(dst, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			changed = true
+			return fs.SkipAll
 		}
 		if d.IsDir() {
 			return nil
 		}
 		rel, relErr := filepath.Rel(dst, p)
 		if relErr != nil {
-			return relErr
+			changed = true
+			return fs.SkipAll
 		}
 		if !seen[filepath.ToSlash(rel)] {
 			changed = true
 		}
 		return nil
-	})
-	return true, changed, err
+	}); walkErr != nil {
+		changed = true
+	}
+	return true, changed, nil
 }
 
 // writeSkillPayload copies the embedded skill tree into dst, creating
