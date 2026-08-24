@@ -20,11 +20,10 @@ Last updated: 2026-08-24
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | [] |
 
 ## REWORK
 
@@ -141,6 +140,7 @@ Last updated: 2026-08-24
 | T-111 | document the 'cut a release' convention in the user manual: RELEASING.md + CHANGELOG.md as the agent's inputs | yes — MERGED: feat/T-111-releasing-convention-docs → main (4614178, merge commit, history kept per root-path default), … |
 | T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | yes — merged to main (PR #59, merge commit `0a7aad3`); history kept rather than squashed, the root-path default. Step 0… |
 | T-113 | extend 'pickle scaffold' with a release verb: skeleton CHANGELOG.md + RELEASING.md (headings only, no prescribed toolin… | yes — merged to main (PR #68, a97d11d); history kept, not squashed (2 commits: feature + the F1 inline fix); user-appro… |
+| T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | no — publish-gated |
 
 ## DROPPED
 
