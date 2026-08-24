@@ -445,6 +445,48 @@ All four commands re-run clean: `just build` ✓ · `just test` ✓ · `just lin
 rework touched, by hand in addition to the full suite). `git status --short` clean; F1, F3, F5b,
 F6 are untouched (T-118's scope, not this rework's).
 
+### Round 2 — 2026-08-24 — scoped re-review — verdict: PASS
+
+- [x] Reviewer independence settled (step 0): **delegated** — the reviewing agent performed the
+      rework in this same session, so the audit went to a fresh sub-agent briefed adversarially
+      with the ticket's Round 1 findings and the Rework write-up, instructed not to take the
+      write-up at face value. Its one new finding (F9, below) was re-verified by hand before
+      entering this table.
+- [x] Scoped implementation audit (step 2, scoped): **only F2 and F4 re-verified**, per this
+      being a re-review of a prior `5-rework/` round — not a full re-audit
+- [x] Findings recorded with severity, class and disposition (step 5)
+- [x] Ticket moved to `6-done/`; `## History` appended (step 6)
+- [x] Other references updated — T-118 amended with the new item (step 7)
+- [x] Remaining-tickets impact sweep done (step 8) — no ticket lists T-115 in `depends-on:`;
+      T-067's reference is provenance only
+- [ ] Summary + commit message & MR attributes presented for approval — pending, see Finish below
+
+**F2 — RESOLVED.** `docsInterDocLinkRe` now excludes `:` from its target class. Verified beyond
+the rework's own fixture: adversarial probing of a port number, query string, fragment,
+uppercase `.ADOC`, a Windows-style path, a `:` appearing later in the string, and another scheme
+(`s3://`) all correctly rejected; both real `link:file.adoc[...]` forms still match; a real
+external-URL plant in a manual page now passes where it previously failed, reverted cleanly.
+
+**F4 — RESOLVED.** Both new fixture rows are real and load-bearing, not relabeled duplicates:
+mutating `docsEscapedXrefBackslashRe` to drop the backslash requirement turned its new fixture
+row red; mutating `docsEscapedXrefPassthroughRe` to drop the trailing `+` turned its new fixture
+row red. Both mutations reverted, tree confirmed clean after each.
+
+**Scope discipline held.** The rework commit (`92a8456`) touches only `docsInterDocLinkRe` and
+the fixture table. `docsInterDocAngleRe`, `docsInterDocXrefBareRe`, `docsMaskEscapedXrefs` and
+`docsAnchorLineRe` — the code F1/F3/F5b/F6 are about — do not appear in its diff.
+
+**New finding from adversarial probing of the F2 fix:**
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F9 | non-blocking | correctness | folded (T-118) | The F2 fix closes the **scheme-based** false positive (`link:https://host/x.adoc[...]`) but not a **scheme-relative** one: `link://host/x.adoc[...]` has no `:` before the target's first char sequence that would trip the new exclusion | probed directly: `link=true` for `link://host/x/README.adoc[x]` | Exclude a leading `//` too, or require the target start with neither `:` nor `//`; folded into T-118 item 5 (same defect class as its item 1: a residual gap in a fix this line already narrowed once) |
+
+**Disposition summary (round 2):** 1 finding, 0 blocking, 1 non-blocking → **folded** (F9 →
+T-118 item 5). F2 and F4 both confirmed resolved; no blocking findings remain.
+
+cost: no change (fix already accounted for in round 1's actual)
+
 ## History
 
 - 2026-08-22 — created (TO DO). source: review: batched from T-067's three review rounds — round 1 findings F3–F6 (pattern coverage, code-span exemptions, fixture structure), round 3 findings N5–N6, and round 4 findings R1–R4 (helper fixtures, AsciiDoc escapes, and the unterminated-block hole that is invisible to CI). Batched by theme per rules §5 rather than filed one per finding; none is a live defect, all require modifying the checker or naming a construct the manual does not yet contain
@@ -455,3 +497,4 @@ F6 are untouched (T-118's scope, not this rework's).
 - 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-24 — IN REVIEW → REWORK: review round 1: 2 blocking (F2 link: false-positives on external .adoc URLs; F4 decision 9 unmet for the two escape patterns)
 - 2026-08-24 — REWORK → IN REVIEW: rework: F2 and F4 fixed
+- 2026-08-24 — IN REVIEW → DONE: review round 2 (scoped): F2 and F4 resolved; F9 non-blocking, folded into T-118

@@ -69,6 +69,16 @@ it drew has four gaps on the far side of it.*
    rejection direction is the one with teeth: it is a narrower survival of the very risk
    T-115 item 3 set out to remove — a legitimate anchor the pattern misses turns every
    reference to it into a false "unresolved". Neither form appears in the manual today.
+5. **`link:` still false-positives on a scheme-relative URL.** T-115's own rework closed
+   the false positive on a *scheme-based* external URL ending in `.adoc`
+   (`link:https://host/x/README.adoc[...]`, finding F2) by excluding `:` from
+   `docsInterDocLinkRe`'s target class. A **scheme-relative** URL — `link://host/x/README.adoc[...]`,
+   no scheme before the `//`, hence no `:` to trip the exclusion — still matches, verified:
+   `link=true`. Same defect class as item 1 (a residual gap in a fix this ticket's own line
+   already narrowed once), and the same decision-6 rationale ("an external URL should never
+   fail the build") is still only half-achieved. Neither form appears in the manual today.
+   Fix: exclude `//` immediately after `link:` too, or require the target to contain
+   neither `:` nor start with `//`.
 
 ### Soft couplings
 
@@ -100,3 +110,7 @@ it drew has four gaps on the far side of it.*
   filed one per finding; none is a live defect, each verified by planting it against the
   post-T-115 checker. T-115's own blocking findings (F2, F4) are excluded — they are that
   ticket's rework scope, not this one's
+- 2026-08-24 — item 5 folded in: T-115's scoped re-review (round 2) found the F2 rework
+  closed the scheme-based `link:` false positive but not a scheme-relative one
+  (`link://host/x.adoc[...]`, finding F9) — same defect class as item 1, folded here per
+  rules §5 rather than opened as a new ticket
