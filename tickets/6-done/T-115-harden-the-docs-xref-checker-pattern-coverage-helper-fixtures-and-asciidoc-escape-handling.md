@@ -499,3 +499,4 @@ cost: no change (fix already accounted for in round 1's actual)
 - 2026-08-24 — REWORK → IN REVIEW: rework: F2 and F4 fixed
 - 2026-08-24 — IN REVIEW → DONE: review round 2 (scoped): F2 and F4 resolved; F9 non-blocking, folded into T-118
 - 2026-08-24 — MR #71 published (feat/T-115-harden-docs-xref-checker → main), pending human merge
+- 2026-08-24 — MERGED: feat/T-115-harden-docs-xref-checker → main (PR #71, merge commit 0cbda08); 5 commits kept, not squashed
