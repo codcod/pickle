@@ -393,3 +393,5 @@ sentences was correct.
 - 2026-08-24 — IN REVIEW → DONE: review clean; 8 non-blocking, all dispositioned (3 fixed inline, 5 noted); audits delegated to two independent reviewers
 - 2026-08-24 — published: branch pushed, MR #70 opened against main
   (https://github.com/codcod/pickle/pull/70). Awaiting the human merge.
+- 2026-08-24 — merged to main (MR !70, 22ae947,
+  https://github.com/codcod/pickle/commit/22ae947795e526fdb14a79b2190df7737b834a2b)
