@@ -14,16 +14,50 @@ package main
 // CI job is needed) and is additionally wired into `just docs-check` so that recipe's
 // own claim to catch a dead cross-reference is true for a human/agent who runs only it.
 //
-// Anchor matching is explicit-[#id]-only: the checker does not compute asciidoctor's
-// auto-generated section-id algorithm. Every <<...>> target in this manual resolves to
-// an explicit anchor today (TestDocsXrefsResolve passing IS that assertion, continuously,
-// on every run) — if a future xref is ever written to rely on an auto-generated id, add
-// an explicit [#id] to that heading rather than teaching this checker asciidoctor's
+// Anchor matching is explicit-[#id]-only (optionally carrying a role, [#id.role], or
+// reftext, [#id,reftext]): the checker does not compute asciidoctor's auto-generated
+// section-id algorithm. Every <<...>> target in this manual resolves to an explicit
+// anchor today (TestDocsXrefsResolve passing IS that assertion, continuously, on every
+// run) — if a future xref is ever written to rely on an auto-generated id, add an
+// explicit [#id] to that heading rather than teaching this checker asciidoctor's
 // slugger. (Two lines in the live tree, docs/user-manual/configuration.adoc and
 // docs/user-manual/concepts/multi-project.adoc, contain the literal text `[[project]]`
 // describing TOML array-of-tables syntax in backtick-quoted prose — not an AsciiDoc
 // [[id]] anchor definition. A naive `grep '\[\['` over the tree will surface them; they
 // are not anchors and this checker's [#id]-only pattern does not match them.)
+//
+// T-115 hardened the inter-document side and closed two edges that would otherwise
+// have made the gate quietly narrower than it looked:
+//
+//   - Every inter-document spelling the manual can legally contain now routes to the
+//     same "the book is one document" failure: xref:file.adoc[...] (with or without an
+//     anchor), the extensionless "natural xref" xref:name#anchor[...], link:file.adoc[...]
+//     (link: requires the .adoc extension — it is also how the manual writes external
+//     URLs, so an extensionless rule would flag every one of those instead), and the
+//     <<file.adoc#anchor>> shorthand — which looks intra-document but is not. Each
+//     occurrence's failure message quotes the construct as it was actually written
+//     (docsXrefOccurrence.spelling), so a link: or <<>> site is never misreported as an
+//     "xref:..." one.
+//   - AsciiDoc's two documented ways to *show* a cross-reference without making one —
+//     \<<x>> and +<<x>>+ — are masked (docsMaskEscapedXrefs) before either detector or
+//     the coverage invariant sees the line, so neither false-positives on a literal
+//     example. The mask replaces only the escaped span with an equal-length run of
+//     filler, so it never widens a match, never shifts a later column on the same
+//     line, and a real <<x>> earlier or later on that line is still found.
+//   - An unterminated literal block (an opened "----"/"...."/"++++" with no matching
+//     close) is a hard error naming the opening line, not a silent truncation: before
+//     T-115, everything after it simply stopped being scanned, and a dead reference on
+//     one of those dropped lines was invisible to `go test` — exactly what CI runs.
+//
+// Do not add a code-span / backtick-counting exemption to docsRefShapedSiteRe (the
+// permissive coverage pattern) to quiet a code-example false positive. T-067 shipped
+// exactly that and reverted it: counting backticks per line misfired on ordinary
+// wrapped prose in cli-reference.adoc, where a continuation line happens to open with
+// a closing backtick, making the count odd and silently exempting a real
+// <<cmd-doctor>> from coverage — a guard that quietly stops covering things is the
+// defect class this file exists to prevent. To show a <<...>> example in prose
+// instead, put it in a literal block (----): both the scanner and the coverage
+// invariant already skip those.
 import (
 	"fmt"
 	"io/fs"
@@ -646,6 +680,28 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestDocsScannerDoesNotTreatLegacyBracketProseAsAnchor is item 6's negative fixture:
+// the pin above is on docsAnchorLineRe alone, which does not protect scanBook itself.
+// A legacy [[id]] match added *inside scanBook* — independent of the regex — would
+// swallow configuration.adoc's real backticked `\[[project]]` TOML-array prose as an
+// anchor named "project", and a planted dead <<project>> would then resolve against
+// it and pass every existing test (T-115).
+func TestDocsScannerDoesNotTreatLegacyBracketProseAsAnchor(t *testing.T) {
+	dir := t.TempDir()
+	page := filepath.Join(dir, "page.adoc")
+	docsMustWriteFixture(t, page,
+		"*Per child — the `\\[[project]]` array* (one entry per connected child):\n")
+
+	anchors, _, _, err := scanBook([]string{page})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if anchors["project"] {
+		t.Error("expected scanBook to not treat the `\\[[project]]` TOML prose as an " +
+			`anchor named "project" — only [#id] lines are anchors`)
 	}
 }
 
