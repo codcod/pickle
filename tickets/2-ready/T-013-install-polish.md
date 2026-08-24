@@ -59,9 +59,11 @@ which change the golden path:
    (`internal/cli/cli.go` usage string) — but there is **no autodetection** (a T-009 locked
    decision): the set is exactly what `--agent` names, default `claude`. Reword the help line
    (e.g. "for the agents named by --agent, default claude").
-5. *(moved to T-014)* board-cell escaping — the child-name substitution into `BOARD.md` shares
-   the unescaped-`|`/newline gap now tracked, generally, as **T-014 item 2** (cell escaping at
-   the `board.renderRow` choke point). Fix it there rather than here.
+5. *(moved to T-014, which was dropped and absorbed into T-039, which was itself dropped and
+   superseded by T-044, done)* board-cell escaping — the child-name substitution into
+   `BOARD.md` shared the unescaped-`|`/newline gap; `T-044` settled the board's escape-vs-replace
+   question by construction (BOARD.md is now a pure generated artifact, manual parse-back render
+   paths removed). Nothing left here.
 
 Added by the **T-006 review** (same `internal/cli` setup-command surface, so fixed here rather
 than in a new ticket):
@@ -239,7 +241,8 @@ clean (`pickle board audit` clean before starting).
 ### Tasks
 
 #### Task 1 — fix `injectMarker`'s append-spacing bug + trailing-newline test (item 1)
-In `internal/install/install.go`'s no-marker-found append branch (currently `:957-966`), replace
+In `internal/install/install.go`'s no-marker-found append branch (currently `:967-976`, re-anchored
+at pickup — drifted from `:957-966` after T-042), replace
 the whole `sep`-computation `if`/`else if` and the `out :=` line with a single trim-then-join:
 ```go
 out := strings.TrimRight(text, "\n") + "\n\n" + wrapped + "\n"
@@ -259,13 +262,15 @@ to name `--agent` explicitly, e.g. `"...install the skill for the agents named b
 #### Task 3 — created/refreshed/current labels for the skill payload + tickets scaffold, and
 mention the version stamp in `upgrade`'s help (items 2 + 8 + N11)
 In `internal/install/install.go`:
-- `copyPayload` (`:709-734`): before the `fs.WalkDir`, check whether `dst` already existed
+- `copyPayload` (`:716-748`, re-anchored at pickup — drifted from `:709-734` after T-042): before
+  the `fs.WalkDir`, check whether `dst` already existed
   (`os.Lstat`). During the walk, compare each file's new bytes against what is currently on disk
   (if any) and track whether *anything* changed. After the walk, per decision 1: `dst` did not
   exist → `res.created(SkillDir + "/")` (unchanged behaviour, fresh install); `dst` existed and
   something changed → `res.created(SkillDir + "/ (refreshed)")`; `dst` existed and nothing
   changed → `res.skipped(SkillDir + "/ (current)")`.
-- `scaffoldTickets` (`:744-757`): track whether any status dir's `.gitkeep` was actually created
+- `scaffoldTickets` (`:754-771`, re-anchored at pickup — drifted from `:744-757` after T-042):
+  track whether any status dir's `.gitkeep` was actually created
   this run (the existing per-dir `continue` already skips ones that exist); if none were, call
   `res.skipped(...)` with an "(already scaffolded)" style message instead of `res.created(...)`.
 - `internal/cli/cli.go:104-105`: extend the one-line `upgrade` help to mention it stamps
@@ -273,7 +278,8 @@ In `internal/install/install.go`:
   in `pickle.toml`; never touches `tickets/`)."
 
 #### Task 4 — `writeConfig` uses the exported commit-policy defaults (item 8, R8)
-In `internal/install/install.go`'s `writeConfig` (`:817-851`), replace the literal
+In `internal/install/install.go`'s `writeConfig` (`:830-868`, re-anchored at pickup — drifted from
+`:817-851` after T-042), replace the literal
 `OverarchingAuto: true, ChildPublishGated: true` with
 `config.DefaultOverarchingAuto, config.DefaultChildPublishGated` (`internal/config/config.go:57-58`),
 so the two can no longer silently diverge from `applyDefaults`'s own defaults.
@@ -289,13 +295,14 @@ from the T-018 rework record.
 
 #### Task 6 — document the partial-upgrade retry contract (item 8, R9 finding 3)
 In `docs/user-manual/cli-reference.adoc`'s `pickle upgrade` section (after the existing
-"Idempotent: ..." paragraph, `:311-314`), add a sentence stating that if the `payload_version`
+"Idempotent: ..." paragraph, `:315-318`, re-anchored at pickup — drifted from `:311-314`), add a sentence stating that if the `payload_version`
 stamp step itself refuses, everything else (payload, markers, pi scaffolds, hooks) has already
 been refreshed and is safe to leave as-is; re-running `pickle upgrade` retries only the stamp.
 
 #### Task 7 — CLI usage-error coverage for `install`'s own validation branches (item 3)
-In `internal/cli/cli_test.go`'s `TestRunExitCodes` table (`:95-131`), add cases exercising
-`runInstall`'s four bespoke branches in `internal/cli/install.go:39-51`: `install --in-tree
+In `internal/cli/cli_test.go`'s `TestRunExitCodes` table (`:84-127`, re-anchored at pickup —
+drifted from `:95-131`), add cases exercising
+`runInstall`'s four bespoke branches in `internal/cli/install.go:38-51`: `install --in-tree
 --path foo` (conflict), `install --path .` (must pass `--in-tree` instead), `install --project
 foo` with no `--path`/`--in-tree` (child flags without a path), and a plain `install --bogus` —
 all `exitUsage`.
@@ -317,14 +324,17 @@ triplicated `os.Getwd()`/`config.Find`/`filepath.Dir` preamble in `runUpgrade` (
 `runDoctor` (`:263-271`), and `runUninstall` (`:300-308`) with a call to it.
 
 #### Task 10 — `install.Upgrade` reports `PrevVersion`; `runUpgrade` drops the redundant load (item 7)
-Add `PrevVersion string` to `install.Result` (`:166-173`); set it in `Upgrade` (`:393-...`) right
-after its own `config.Load`. In `runUpgrade` (`internal/cli/install.go:184-249`), delete the
+Add `PrevVersion string` to `install.Result` (`:166-174`, re-anchored at pickup — drifted from
+`:166-173`); set it in `Upgrade` (`:393-...`) right
+after its own `config.Load`. In `runUpgrade` (`internal/cli/install.go:184-253`, re-anchored at
+pickup — drifted from `:184-249`), delete the
 `before, err := config.Load(cfgPath)` / `prevVersion := before.PayloadVersion` pair and use
 `res.PrevVersion` after the call to `install.Upgrade` instead.
 
 #### Task 11 — mode-preserving writes in `injectMarker`/`stripMarker` (item 10)
 In `internal/install/install.go`, replace the four `os.WriteFile(path, []byte(...), 0o644)` calls
-at `injectMarker`'s `:933`, `:950`, `:964` and `stripMarker`'s `:1010` with
+at `injectMarker`'s `:943`, `:960`, `:974` and `stripMarker`'s `:1020` (re-anchored at pickup —
+drifted from `:933`, `:950`, `:964` and `:1010` after T-042) with
 `atomicfile.WriteFile(path, []byte(...))`, adding the `"github.com/codcod/pickle/internal/atomicfile"`
 import.
 
@@ -416,3 +426,8 @@ D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D"
   eleven concrete tasks. Kept as one ticket (user confirmed) rather than split, consistent with
   every prior review's own choice.
 - 2026-08-22 — TO DO → READY: plan complete
+- 2026-08-24 — plan amended inline: pickup applicability gate (independent sub-agent audit) found
+  no blocking issues; re-anchored Tasks 1/3/4/6/7/10/11's line citations after drift from T-042
+  (no code-shape changes, offsets only), and corrected item 5's dangling "moved to T-014" pointer
+  to note T-014 was dropped/absorbed into T-039, itself dropped/superseded by T-044 (done), which
+  settled the board escape-vs-replace question by construction
