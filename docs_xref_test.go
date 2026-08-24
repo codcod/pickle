@@ -140,12 +140,18 @@ var (
 )
 
 // docsMaskEscapedXrefs replaces each of AsciiDoc's two literal-reference escapes with
-// an equal-length run of "_" — a character that cannot itself look like a reference —
-// so file:line:col offsets used to correlate scanner output with source sites are
-// unaffected (decision 3) while nothing downstream reads the escaped span as a
-// cross-reference. It only ever shortens what a pattern can match, never widens it:
-// a real <<x>> elsewhere on the same line is untouched, because only the matched
-// escape span itself is replaced.
+// an equal-length run of "_", so file:line:col offsets used to correlate scanner
+// output with source sites are unaffected (decision 3) while nothing downstream reads
+// the escaped span as a cross-reference. Only the matched span itself is replaced, so
+// a real <<x>> elsewhere on the same line is untouched.
+//
+// The filler is not inert, and the mask is not purely subtractive: "_" is inside
+// docsXrefTargetRe's target class, so an escape nested inside a live reference —
+// "<<\<<x>>>>" — masks to "<<______>>" and is then read as a reference to a phantom
+// anchor "______". Such input is adversarial rather than plausible, and it still fails
+// loudly (reported unresolved, on the right line) rather than silently, so it is
+// recorded here rather than worked around; the fix, if it ever matters, is a filler
+// character outside that class rather than a special case (T-115 review, finding F5b).
 func docsMaskEscapedXrefs(line string) string {
 	for _, re := range []*regexp.Regexp{docsEscapedXrefBackslashRe, docsEscapedXrefPassthroughRe} {
 		for _, loc := range re.FindAllStringIndex(line, -1) {
@@ -325,6 +331,11 @@ func docsLiteralBlockDelim(trimmed string) (byte, bool) {
 
 // docsLine is one line of scannable prose, carrying its 1-based number so findings
 // keep pointing at the right place in the file after literal blocks are dropped.
+//
+// text is not necessarily verbatim source: docsProseLines masks AsciiDoc's literal-
+// reference escapes in it (docsMaskEscapedXrefs), preserving byte offsets but not
+// content, so a failure message that echoes a slice of it may show filler where the
+// source had "\<<x>>" or "+<<x>>+".
 type docsLine struct {
 	no   int
 	text string
@@ -506,7 +517,7 @@ func TestDocsNoInterDocumentXrefForm(t *testing.T) {
 			x.file, x.line, x.spelling, base, base))
 	}
 	sort.Strings(bad)
-	t.Fatalf("%d inter-document xref: form(s):\n\n%s", len(bad), strings.Join(bad, "\n\n"))
+	t.Fatalf("%d inter-document reference(s):\n\n%s", len(bad), strings.Join(bad, "\n\n"))
 }
 
 // TestDocsUserManualHasNoOrphanPages walks every *.adoc under docs/user-manual/ and
