@@ -471,3 +471,5 @@ cost: estimated S, actual S
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
 - 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-24 — IN REVIEW → DONE: review: no blocking findings; F1 fixed inline, F2 noted
+- 2026-08-24 — merged to main (PR #68, a97d11d); history kept, not squashed (2 commits: feature +
+  the F1 inline fix); user-approved; branch deleted
