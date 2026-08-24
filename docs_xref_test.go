@@ -120,8 +120,12 @@ var (
 	// docsInterDocLinkRe catches link:file.adoc[...] / link:file.adoc#id[...]. Unlike
 	// xref:, link: is also how the manual writes external URLs (link:https://...[]),
 	// so the .adoc suffix is required rather than optional — an extensionless link:
-	// rule would flag every external link (T-115 decision 6).
-	docsInterDocLinkRe = regexp.MustCompile(`link:([^\[\s]+\.adoc)[#\[]`)
+	// rule would flag every external link (T-115 decision 6). The target excludes ":"
+	// so an external URL that happens to end in ".adoc" (e.g. a GitHub blob URL,
+	// link:https://host/x/README.adoc[]) is not mistaken for a local file — decision
+	// 6's own rationale, which the first version of this pattern only half-achieved
+	// (review finding F2).
+	docsInterDocLinkRe = regexp.MustCompile(`link:([^\[\s:]+\.adoc)[#\[]`)
 
 	// docsInterDocAngleRe catches the <<file.adoc#anchor>> / <<file.adoc#anchor,text>>
 	// shorthand. docsXrefTargetRe (the intra-document pattern) already fails to match
@@ -656,6 +660,7 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 			noMatch: []string{
 				"link:https://example.com/x[text]",                           // external URL, no .adoc
 				"Keep the short SHA even when you add the link: the board's", // decision 7: real prose
+				"link:https://example.com/x/y/README.adoc[the source]",       // external URL that ends in .adoc (F2)
 			},
 		},
 		{
@@ -671,6 +676,38 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 			noMatch: []string{
 				"<<cmd-hooks>>",          // no .adoc: the ordinary intra-document form
 				"<<cli-reference.adoc>>", // no anchor at all
+			},
+		},
+		{
+			// The backslash escape — one of AsciiDoc's two documented ways to show a
+			// cross-reference without making one (item 4, decision 9: every new
+			// pattern gets both a positive and a negative fixture row — review finding
+			// F4, the two escape patterns had neither).
+			name: "escaped cross-reference (backslash)",
+			re:   docsEscapedXrefBackslashRe,
+			match: []string{
+				`\<<no-such-anchor-xyz>>`,
+				`\<<a-b_c9>>`,
+			},
+			noMatch: []string{
+				"<<real>>",   // no backslash: an ordinary, live reference
+				`\<real>>`,   // single "<": not reference-shaped at all
+				`+<<also>>+`, // the passthrough spelling, not this one
+			},
+		},
+		{
+			// The passthrough escape — AsciiDoc's other documented way (item 4,
+			// decision 9).
+			name: "escaped cross-reference (passthrough)",
+			re:   docsEscapedXrefPassthroughRe,
+			match: []string{
+				"+<<no-such-anchor-xyz>>+",
+				"+<<a-b_c9>>+",
+			},
+			noMatch: []string{
+				"<<real>>",              // no passthrough markers: an ordinary, live reference
+				"+<<no-trailing-plus>>", // missing the closing "+"
+				`\<<also>>`,             // the backslash spelling, not this one
 			},
 		},
 	}
