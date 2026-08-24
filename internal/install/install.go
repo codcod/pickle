@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codcod/pickle/internal/atomicfile"
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
@@ -171,6 +172,11 @@ type Result struct {
 	// merge by hand when opencode.jsonc already exists) for the CLI to print
 	// after the created/skipped lists.
 	Notes []string
+	// PrevVersion is the payload_version Upgrade read from pickle.toml before
+	// making any change, so callers (runUpgrade) don't need their own separate
+	// config.Load just to report the before/after version line (T-013 item 7).
+	// Zero value (empty Result, or a Run result, which never sets it).
+	PrevVersion string
 }
 
 func (r *Result) created(f string) { r.Created = append(r.Created, f) }
@@ -390,13 +396,31 @@ func sweepLegacySkill(root string, dryRun bool, res *Result) (legacySweep, error
 // is corrected) and reports the version as unchanged rather than erroring.
 // It also sweeps away any pre-brine install left by an older pickle
 // (sweepLegacySkill, T-074) before refreshing the current-name payload.
-func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
+// UpgradeOptions configures a single Upgrade run. The zero value (and the
+// variadic form Upgrade accepts, called with no argument) writes
+// payload_version with the real config.SetPayloadVersionInPlace everywhere;
+// StampPayloadVersion exists only so a test can substitute a write that
+// reports success without actually changing the file, exercising the
+// verifyStampedVersion re-read Upgrade performs immediately after (T-013
+// item 8, R9 finding 1: that re-read was 100% unit-tested but 0% bound —
+// deleting its call site inside Upgrade failed no test before this seam
+// existed). Production code never sets this field.
+type UpgradeOptions struct {
+	StampPayloadVersion func(path, want string) error
+}
+
+func Upgrade(payload fs.FS, root, payloadVersion string, opts ...UpgradeOptions) (Result, error) {
 	var res Result
+	stampWrite := config.SetPayloadVersionInPlace
+	if len(opts) > 0 && opts[0].StampPayloadVersion != nil {
+		stampWrite = opts[0].StampPayloadVersion
+	}
 
 	cfg, err := config.Load(filepath.Join(root, config.FileName))
 	if err != nil {
 		return res, err
 	}
+	res.PrevVersion = cfg.PayloadVersion
 
 	// Sweep the legacy install first, so the refresh below writes into a tree
 	// with no stale duplicate under the old name.
@@ -416,13 +440,37 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 		if err := ensureSymlink(dst, swept.LinkTarget, &res); err != nil {
 			return res, err
 		}
-	case !SkillLinked(root):
+		if err := copyPayload(payload, root, &res); err != nil { // now a symlink: reports "(existing symlink)"
+			return res, err
+		}
+	case SkillLinked(root):
+		if err := copyPayload(payload, root, &res); err != nil { // reports "(existing symlink)"
+			return res, err
+		}
+	default:
+		// Compare *before* wiping (T-013 item 8's mechanism constraint): once
+		// dst is removed, a presence check can no longer tell a byte-identical
+		// no-op upgrade from a fresh install, so the diff has to be captured
+		// here, not inside copyPayload after the fact.
+		existed, changed, derr := skillPayloadDiffers(payload, dst)
+		if derr != nil {
+			return res, derr
+		}
+		if existed && !changed {
+			res.skipped(SkillDir + "/ (current)")
+			break
+		}
 		if err := os.RemoveAll(dst); err != nil {
 			return res, fmt.Errorf("refresh skill payload: %w", err)
 		}
-	}
-	if err := copyPayload(payload, root, &res); err != nil {
-		return res, err
+		if err := writeSkillPayload(payload, dst); err != nil {
+			return res, fmt.Errorf("copy payload: %w", err)
+		}
+		if existed {
+			res.created(SkillDir + "/ (refreshed)")
+		} else {
+			res.created(SkillDir + "/")
+		}
 	}
 
 	refreshed, err := RefreshMarkers(root, cfg)
@@ -504,12 +552,12 @@ func Upgrade(payload fs.FS, root, payloadVersion string) (Result, error) {
 	}
 	// Edit the one line rather than re-rendering: pickle.toml is the user's
 	// file, and upgrade has no business touching their comments.
-	if err = config.SetPayloadVersionInPlace(cfg.Path(), payloadVersion); err != nil {
+	if err := stampWrite(cfg.Path(), payloadVersion); err != nil {
 		return res, err
 	}
-	// Report the stamp only once it is on disk. A successful write is not the
-	// same as an achieved effect, and a version this command claims to have set
-	// but did not would stay wrong on every later run.
+	// Report the stamp only once it is confirmed on disk. A successful write is
+	// not the same as an achieved effect, and a version this command claims to
+	// have set but did not would stay wrong on every later run.
 	if err := verifyStampedVersion(cfg.Path(), payloadVersion); err != nil {
 		return res, err
 	}
@@ -710,23 +758,94 @@ func uninstallMarkerFile(path string, opts UninstallOptions, res *Result) error 
 	return stripMarker(path, res)
 }
 
-// copyPayload writes the embedded skill tree into root/.agents/skills/brine
-// as real files. If that path already exists as a symlink (a dev/self-host link),
-// it is left untouched.
-func copyPayload(payload fs.FS, root string, res *Result) error {
-	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
-	// SkillLinked(root) is an in-package call to the exact same predicate
-	// (same dst, same Lstat-then-mode test); copyPayload needs only the mode
-	// answer, never Lstat's FileInfo for anything else (T-042 item 4).
-	if SkillLinked(root) {
-		res.skipped(SkillDir + " (existing symlink)")
-		return nil
+// skillPayloadDiffers reports whether dst already exists and, if so, whether
+// writing the embedded skill payload into it would change any bytes already
+// on disk there. It performs no writes, which is what lets Upgrade call it
+// before its wipe-then-copy sweep (T-013 item 8's mechanism constraint): a
+// presence check made *after* that sweep would always see an absent dst and
+// report every upgrade as a fresh create, masking a byte-identical no-op
+// upgrade as if it had changed the tree.
+func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err error) {
+	info, statErr := os.Lstat(dst)
+	switch {
+	case statErr == nil:
+		if !info.IsDir() {
+			// A non-dir at dst (broken entry, foreign file) isn't comparable;
+			// treat it like something that will change once overwritten.
+			return true, true, nil
+		}
+	case os.IsNotExist(statErr):
+		return false, true, nil
+	default:
+		return false, false, statErr
 	}
+
+	sub, err := fs.Sub(payload, "skill")
+	if err != nil {
+		return true, false, fmt.Errorf("locate embedded skill: %w", err)
+	}
+
+	seen := map[string]bool{}
+	err = fs.WalkDir(sub, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		seen[p] = true
+		if changed {
+			return nil // already known to differ; keep walking only to finish populating seen
+		}
+		data, err := fs.ReadFile(sub, p)
+		if err != nil {
+			return err
+		}
+		cur, readErr := os.ReadFile(filepath.Join(dst, filepath.FromSlash(p)))
+		if readErr != nil || !bytes.Equal(cur, data) {
+			changed = true
+		}
+		return nil
+	})
+	if err != nil {
+		return true, false, err
+	}
+	if changed {
+		return true, true, nil
+	}
+
+	// A file present on disk but absent from the new payload is also a
+	// change: it's stale, dropped from the upstream skill tree.
+	err = filepath.WalkDir(dst, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, relErr := filepath.Rel(dst, p)
+		if relErr != nil {
+			return relErr
+		}
+		if !seen[filepath.ToSlash(rel)] {
+			changed = true
+		}
+		return nil
+	})
+	return true, changed, err
+}
+
+// writeSkillPayload copies the embedded skill tree into dst, creating
+// directories as needed. It performs no comparison against what (if
+// anything) is already there — callers determine the created/refreshed/
+// current label via skillPayloadDiffers themselves, calling it before any
+// mutation of dst.
+func writeSkillPayload(payload fs.FS, dst string) error {
 	sub, err := fs.Sub(payload, "skill")
 	if err != nil {
 		return fmt.Errorf("locate embedded skill: %w", err)
 	}
-	err = fs.WalkDir(sub, ".", func(p string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(sub, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -740,10 +859,37 @@ func copyPayload(payload fs.FS, root string, res *Result) error {
 		}
 		return os.WriteFile(target, data, 0o644)
 	})
+}
+
+// copyPayload writes the embedded skill tree into root/.agents/skills/brine
+// as real files, comparing against whatever is already there (if anything)
+// before writing so the summary can honestly say created, refreshed, or
+// current (T-013 item 2). If that path already exists as a symlink (a
+// dev/self-host link), it is left untouched.
+func copyPayload(payload fs.FS, root string, res *Result) error {
+	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
+	// SkillLinked(root) is an in-package call to the exact same predicate
+	// (same dst, same Lstat-then-mode test); copyPayload needs only the mode
+	// answer, never Lstat's FileInfo for anything else (T-042 item 4).
+	if SkillLinked(root) {
+		res.skipped(SkillDir + " (existing symlink)")
+		return nil
+	}
+	existed, changed, err := skillPayloadDiffers(payload, dst)
 	if err != nil {
+		return err
+	}
+	if err := writeSkillPayload(payload, dst); err != nil {
 		return fmt.Errorf("copy payload: %w", err)
 	}
-	res.created(SkillDir + "/")
+	switch {
+	case !existed:
+		res.created(SkillDir + "/")
+	case changed:
+		res.created(SkillDir + "/ (refreshed)")
+	default:
+		res.skipped(SkillDir + "/ (current)")
+	}
 	return nil
 }
 
@@ -753,6 +899,7 @@ func copyPayload(payload fs.FS, root string, res *Result) error {
 // been written at this point in Run, so there is no configured flow to resolve.
 func scaffoldTickets(root string, res *Result) error {
 	def := flow.Default()
+	anyCreated := false
 	for _, s := range def.States() {
 		dir := filepath.Join(root, "tickets", s.Dir)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -765,8 +912,13 @@ func scaffoldTickets(root string, res *Result) error {
 		if err := os.WriteFile(keep, nil, 0o644); err != nil {
 			return err
 		}
+		anyCreated = true
 	}
-	res.created(fmt.Sprintf("tickets/ (%d status dirs)", len(def.States())))
+	if anyCreated {
+		res.created(fmt.Sprintf("tickets/ (%d status dirs)", len(def.States())))
+	} else {
+		res.skipped(fmt.Sprintf("tickets/ (%d status dirs, already scaffolded)", len(def.States())))
+	}
 	return nil
 }
 
@@ -841,8 +993,8 @@ func writeConfig(root, payloadVersion string, opts Options, res *Result) (*confi
 		PayloadVersion: payloadVersion,
 		Layout:         layout,
 		Commit: config.CommitPolicy{
-			OverarchingAuto:   true,
-			ChildPublishGated: true,
+			OverarchingAuto:   config.DefaultOverarchingAuto,
+			ChildPublishGated: config.DefaultChildPublishGated,
 		},
 	}
 	// ProjectPath == "" (T-108 decision 2): the umbrella layout's fresh-install
@@ -940,7 +1092,7 @@ func injectMarker(path, title, block string, res *Result) error {
 	existing, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		content := "# " + title + "\n\n" + wrapped + "\n"
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		if err := atomicfile.WriteFile(path, []byte(content)); err != nil {
 			return err
 		}
 		res.created(rel + " (marker)")
@@ -957,21 +1109,15 @@ func injectMarker(path, title, block string, res *Result) error {
 			res.skipped(rel + " (marker current)")
 			return nil
 		}
-		if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
+		if err := atomicfile.WriteFile(path, []byte(out)); err != nil {
 			return err
 		}
 		res.created(rel + " (marker updated)")
 		return nil
 	}
 
-	sep := "\n"
-	if !strings.HasSuffix(text, "\n") {
-		sep = "\n\n"
-	} else if !strings.HasSuffix(text, "\n\n") {
-		sep = "\n"
-	}
-	out := text + sep + wrapped + "\n"
-	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
+	out := strings.TrimRight(text, "\n") + "\n\n" + wrapped + "\n"
+	if err := atomicfile.WriteFile(path, []byte(out)); err != nil {
 		return err
 	}
 	res.created(rel + " (marker appended)")
@@ -1017,7 +1163,7 @@ func stripMarker(path string, res *Result) error {
 		out = before + "\n\n" + after
 	}
 
-	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
+	if err := atomicfile.WriteFile(path, []byte(out)); err != nil {
 		return err
 	}
 	res.removed(rel + " (marker stripped)")

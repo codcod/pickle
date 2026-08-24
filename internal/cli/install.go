@@ -193,21 +193,11 @@ func runUpgrade(args []string) int {
 		return exitUsage
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return errf("%v", err)
+	root, code := projectRoot()
+	if code != exitOK {
+		return code
 	}
-	cfgPath, err := config.Find(wd)
-	if err != nil {
-		return errf("%v", err)
-	}
-	root := filepath.Dir(cfgPath)
-
-	before, err := config.Load(cfgPath)
-	if err != nil {
-		return errf("%v", err)
-	}
-	prevVersion := before.PayloadVersion
+	cfgPath := filepath.Join(root, config.FileName)
 
 	res, err := install.Upgrade(Payload, root, Version)
 	// Removed first: a pre-brine legacy path swept away (T-074) is the one
@@ -244,10 +234,10 @@ func runUpgrade(args []string) int {
 		return errf("post-upgrade audit found %d error(s)", len(a.Errors))
 	}
 
-	if prevVersion == cfg.PayloadVersion {
+	if res.PrevVersion == cfg.PayloadVersion {
 		fmt.Printf("\npickle upgrade: already at %s (refreshed payload + markers)\n", cfg.PayloadVersion)
 	} else {
-		fmt.Printf("\npickle upgrade: %s -> %s\n", prevVersion, cfg.PayloadVersion)
+		fmt.Printf("\npickle upgrade: %s -> %s\n", res.PrevVersion, cfg.PayloadVersion)
 	}
 	return exitOK
 }
@@ -260,15 +250,10 @@ func runDoctor(args []string) int {
 		return exitUsage
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return errf("%v", err)
+	root, code := projectRoot()
+	if code != exitOK {
+		return code
 	}
-	cfgPath, err := config.Find(wd)
-	if err != nil {
-		return errf("%v", err)
-	}
-	root := filepath.Dir(cfgPath)
 
 	res := doctor.Check(root, Version, Payload)
 	if *verbose {
@@ -296,16 +281,15 @@ func runUninstall(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
+	if fs.NArg() > 0 {
+		fmt.Fprintf(os.Stderr, "pickle uninstall: unexpected argument %q\n", fs.Arg(0))
+		return exitUsage
+	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return errf("%v", err)
+	root, code := projectRoot()
+	if code != exitOK {
+		return code
 	}
-	cfgPath, err := config.Find(wd)
-	if err != nil {
-		return errf("%v", err)
-	}
-	root := filepath.Dir(cfgPath)
 
 	res, err := install.Uninstall(Payload, root, install.UninstallOptions{DryRun: *dryRun})
 	for _, r := range res.Removed {

@@ -686,6 +686,35 @@ path = "."
 	}
 }
 
+// TestUpgradeReportsStampVerificationFailure is the T-013 item 8 (R9 finding
+// 1) regression: verifyStampedVersion was 100% unit-covered but 0% bound —
+// deleting its call site inside Upgrade failed no test. This substitutes a
+// lying stamp func (reports success but leaves pickle.toml unstamped) via the
+// UpgradeOptions seam and asserts Upgrade surfaces that as an error instead of
+// reporting success.
+func TestUpgradeReportsStampVerificationFailure(t *testing.T) {
+	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: "."}); err != nil {
+		t.Fatal(err)
+	}
+
+	lying := func(path, want string) error { return nil } // claims success, writes nothing
+
+	_, err := Upgrade(payload, root, "v2", UpgradeOptions{StampPayloadVersion: lying})
+	if err == nil {
+		t.Fatal("expected Upgrade to error when the stamp step lies about success, got nil")
+	}
+
+	cfg, loadErr := config.Load(filepath.Join(root, config.FileName))
+	if loadErr != nil {
+		t.Fatalf("load config: %v", loadErr)
+	}
+	if cfg.PayloadVersion != "v1" {
+		t.Errorf("payload_version = %q, want it left at v1 since the lying stamp never wrote anything", cfg.PayloadVersion)
+	}
+}
+
 func TestMarkerBlockRendersChildrenFromConfig(t *testing.T) {
 	cfg := &config.Config{
 		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
@@ -1102,6 +1131,43 @@ func TestMarkerSpan(t *testing.T) {
 			_, _, ok := markerSpan(tc.text)
 			if ok != tc.ok {
 				t.Errorf("markerSpan(%q) ok = %v, want %v", tc.text, ok, tc.ok)
+			}
+		})
+	}
+}
+
+// TestInjectMarkerAppendSpacing is the T-013 item 1 regression: injectMarker's
+// no-marker-found append branch must leave exactly one blank line before the
+// appended block regardless of how many trailing newlines the file already
+// had (zero, one, or several) — the old sep-computation had a dead else-if
+// branch and let a file ending in exactly "\n\n" pick up an extra blank line.
+func TestInjectMarkerAppendSpacing(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+	}{
+		{"no trailing newline", "# Title\n\nsome body"},
+		{"one trailing newline", "# Title\n\nsome body\n"},
+		{"two trailing newlines", "# Title\n\nsome body\n\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "AGENTS.md")
+			if err := os.WriteFile(path, []byte(tc.text), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var res Result
+			if err := injectMarker(path, "Title", "body", &res); err != nil {
+				t.Fatalf("injectMarker: %v", err)
+			}
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := strings.TrimRight(tc.text, "\n") + "\n\n" + MarkerBegin + "\nbody\n" + MarkerEnd + "\n"
+			if string(got) != want {
+				t.Errorf("injectMarker output = %q, want %q", string(got), want)
 			}
 		})
 	}
