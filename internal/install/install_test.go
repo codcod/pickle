@@ -686,6 +686,180 @@ path = "."
 	}
 }
 
+// hasEntry reports whether any entry in list starts with prefix — the labels
+// carry suffixes like " (refreshed)", so the tests below match on the whole
+// rendered string rather than the bare path.
+func hasEntry(list []string, want string) bool {
+	for _, e := range list {
+		if e == want {
+			return true
+		}
+	}
+	return false
+}
+
+// TestSkillDirLabelsOnInstall binds the created/refreshed/current vocabulary
+// on the install path (T-013 items 2/8, and its review finding B2: before
+// these tests, reverting all three labels to the old unconditional
+// res.created(SkillDir+"/") failed no test at all).
+func TestSkillDirLabelsOnInstall(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Agents: Agents{}}
+	root := t.TempDir()
+
+	fresh, err := Run(payload, root, "v1", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasEntry(fresh.Created, SkillDir+"/") {
+		t.Errorf("fresh install: want %q in Created, got created=%v skipped=%v", SkillDir+"/", fresh.Created, fresh.Skipped)
+	}
+
+	// Re-run with nothing touched: the payload on disk is byte-identical, so
+	// it must report current rather than claiming it created anything.
+	again, err := Run(payload, root, "v1", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasEntry(again.Skipped, SkillDir+"/ (current)") {
+		t.Errorf("unchanged re-run: want %q in Skipped, got created=%v skipped=%v", SkillDir+"/ (current)", again.Created, again.Skipped)
+	}
+	if hasEntry(again.Created, SkillDir+"/") {
+		t.Error("unchanged re-run still reports the skill dir as created")
+	}
+
+	// Now make the on-disk copy differ, and it must say so.
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(SkillDir), "SKILL.md"), []byte("tampered"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	drifted, err := Run(payload, root, "v1", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasEntry(drifted.Created, SkillDir+"/ (refreshed)") {
+		t.Errorf("drifted re-run: want %q in Created, got created=%v skipped=%v", SkillDir+"/ (refreshed)", drifted.Created, drifted.Skipped)
+	}
+}
+
+// TestSkillDirLabelsOnUpgrade is the same contract on the upgrade path, which
+// reaches it through a different branch (Upgrade captures the diff itself,
+// before its wipe, rather than letting copyPayload do it).
+func TestSkillDirLabelsOnUpgrade(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: ".", InTree: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	unchanged, err := Upgrade(payload, root, "v2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasEntry(unchanged.Skipped, SkillDir+"/ (current)") {
+		t.Errorf("byte-identical upgrade: want %q in Skipped, got created=%v skipped=%v", SkillDir+"/ (current)", unchanged.Created, unchanged.Skipped)
+	}
+
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(SkillDir), "SKILL.md"), []byte("tampered"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	drifted, err := Upgrade(payload, root, "v3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasEntry(drifted.Created, SkillDir+"/ (refreshed)") {
+		t.Errorf("drifted upgrade: want %q in Created, got created=%v skipped=%v", SkillDir+"/ (refreshed)", drifted.Created, drifted.Skipped)
+	}
+}
+
+// TestScaffoldTicketsLabelsSecondRun binds the third label this ticket added.
+func TestScaffoldTicketsLabelsSecondRun(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true}
+	root := t.TempDir()
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+	again, err := Run(payload, root, "v1", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, s := range again.Skipped {
+		if strings.Contains(s, "already scaffolded") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("re-run must report tickets/ as already scaffolded, got skipped=%v created=%v", again.Skipped, again.Created)
+	}
+}
+
+// TestUpgradeAlwaysReplacesSkillDirWholesale is the T-013 review's B1
+// regression test, and the reason the created/refreshed/current labels are
+// allowed to exist at all.
+//
+// The skill directory is pickle-owned and documented as "replaced wholesale";
+// upgrade's wipe-and-recopy is what makes that true. An earlier revision of
+// this ticket gated that wipe on skillPayloadDiffers — which compares file
+// *contents* — and so silently stopped repairing three kinds of tampering it
+// cannot see. Each assertion below failed on that revision and passes on
+// stock main.
+func TestUpgradeAlwaysReplacesSkillDirWholesale(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: ".", InTree: true}); err != nil {
+		t.Fatal(err)
+	}
+	skill := filepath.Join(root, filepath.FromSlash(SkillDir))
+
+	// (a) a directory the payload does not contain
+	staleDir := filepath.Join(skill, "leftoverdir", "nested")
+	if err := os.MkdirAll(staleDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// (b) a payload file left at a non-default mode
+	skillMD := filepath.Join(skill, "SKILL.md")
+	if err := os.Chmod(skillMD, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// (c) a payload file replaced by a symlink pointing outside the tree, whose
+	// target has identical content — invisible to a content comparison, since
+	// reading through the link returns exactly the expected bytes.
+	tmpl := filepath.Join(skill, "resources", "TEMPLATE.md")
+	original, err := os.ReadFile(tmpl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(outside, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(tmpl); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, tmpl); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Upgrade(payload, root, "v2"); err != nil {
+		t.Fatalf("Upgrade: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(skill, "leftoverdir")); !os.IsNotExist(err) {
+		t.Error("(a) a stale directory absent from the payload survived upgrade: the skill dir was not replaced wholesale")
+	}
+	if fi, err := os.Stat(skillMD); err != nil {
+		t.Fatal(err)
+	} else if fi.Mode().Perm() != 0o644 {
+		t.Errorf("(b) SKILL.md mode = %v, want 0644 restored by the re-copy", fi.Mode().Perm())
+	}
+	if fi, err := os.Lstat(tmpl); err != nil {
+		t.Fatal(err)
+	} else if fi.Mode()&os.ModeSymlink != 0 {
+		t.Error("(c) a payload file swapped for a symlink outside the tree survived upgrade")
+	}
+}
+
 // TestUpgradeReportsStampVerificationFailure is the T-013 item 8 (R9 finding
 // 1) regression: verifyStampedVersion was 100% unit-covered but 0% bound —
 // deleting its call site inside Upgrade failed no test. This substitutes a

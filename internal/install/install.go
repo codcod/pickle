@@ -179,6 +179,24 @@ type Result struct {
 	PrevVersion string
 }
 
+// labelSkillDir records the skill-payload outcome in the one vocabulary both
+// install and upgrade report it with, from a (existed, changed) pair captured
+// *before* the tree was touched. Both callers write the payload
+// unconditionally; this only names what the write amounted to, so "(current)"
+// means the bytes on disk already matched, not that nothing was written.
+// Shared so the two paths cannot drift into describing the same outcome
+// differently (T-013 review, N6).
+func (r *Result) labelSkillDir(existed, changed bool) {
+	switch {
+	case !existed:
+		r.created(SkillDir + "/")
+	case changed:
+		r.created(SkillDir + "/ (refreshed)")
+	default:
+		r.skipped(SkillDir + "/ (current)")
+	}
+}
+
 func (r *Result) created(f string) { r.Created = append(r.Created, f) }
 func (r *Result) skipped(f string) { r.Skipped = append(r.Skipped, f) }
 func (r *Result) removed(f string) { r.Removed = append(r.Removed, f) }
@@ -456,21 +474,23 @@ func Upgrade(payload fs.FS, root, payloadVersion string, opts ...UpgradeOptions)
 		if derr != nil {
 			return res, derr
 		}
-		if existed && !changed {
-			res.skipped(SkillDir + "/ (current)")
-			break
-		}
+		// Then replace wholesale, unconditionally. The wipe is not an
+		// optimisation to skip when the bytes happen to match: it is what
+		// removes files the new payload dropped and what repairs a tampered
+		// tree — a stale empty directory, a payload file left at a
+		// non-default mode, a payload file swapped for a symlink pointing
+		// outside the tree. skillPayloadDiffers compares file *contents* and
+		// sees none of those, so gating the wipe on it silently downgraded
+		// upgrade from "pickle-owned, replaced wholesale" to "patched if it
+		// looks stale" (T-013 review, B1). The captured (existed, changed)
+		// is used for the label only, never to skip the work.
 		if err := os.RemoveAll(dst); err != nil {
 			return res, fmt.Errorf("refresh skill payload: %w", err)
 		}
 		if err := writeSkillPayload(payload, dst); err != nil {
 			return res, fmt.Errorf("copy payload: %w", err)
 		}
-		if existed {
-			res.created(SkillDir + "/ (refreshed)")
-		} else {
-			res.created(SkillDir + "/")
-		}
+		res.labelSkillDir(existed, changed)
 	}
 
 	refreshed, err := RefreshMarkers(root, cfg)
@@ -884,14 +904,7 @@ func copyPayload(payload fs.FS, root string, res *Result) error {
 	if err := writeSkillPayload(payload, dst); err != nil {
 		return fmt.Errorf("copy payload: %w", err)
 	}
-	switch {
-	case !existed:
-		res.created(SkillDir + "/")
-	case changed:
-		res.created(SkillDir + "/ (refreshed)")
-	default:
-		res.skipped(SkillDir + "/ (current)")
-	}
+	res.labelSkillDir(existed, changed)
 	return nil
 }
 
