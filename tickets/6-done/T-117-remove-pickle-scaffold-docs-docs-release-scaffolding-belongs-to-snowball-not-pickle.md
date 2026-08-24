@@ -391,3 +391,5 @@ sentences was correct.
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
 - 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-24 — IN REVIEW → DONE: review clean; 8 non-blocking, all dispositioned (3 fixed inline, 5 noted); audits delegated to two independent reviewers
+- 2026-08-24 — published: branch pushed, MR #70 opened against main
+  (https://github.com/codcod/pickle/pull/70). Awaiting the human merge.
