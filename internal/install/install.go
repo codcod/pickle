@@ -386,16 +386,6 @@ func sweepLegacySkill(root string, dryRun bool, res *Result) (legacySweep, error
 	return sw, nil
 }
 
-// Upgrade refreshes the installed skill payload and the AGENTS.md/CLAUDE.md
-// marker block(s) to payloadVersion, and stamps payloadVersion into pickle.toml
-// by rewriting that single line, leaving the rest of the file (comments
-// included) untouched. The skill directory, by contrast, is pickle-owned and
-// replaced wholesale.
-// It never reads or writes anything under tickets/ or the board. Idempotent:
-// re-running at the current version still refreshes payload/markers (so drift
-// is corrected) and reports the version as unchanged rather than erroring.
-// It also sweeps away any pre-brine install left by an older pickle
-// (sweepLegacySkill, T-074) before refreshing the current-name payload.
 // UpgradeOptions configures a single Upgrade run. The zero value (and the
 // variadic form Upgrade accepts, called with no argument) writes
 // payload_version with the real config.SetPayloadVersionInPlace everywhere;
@@ -409,6 +399,16 @@ type UpgradeOptions struct {
 	StampPayloadVersion func(path, want string) error
 }
 
+// Upgrade refreshes the installed skill payload and the AGENTS.md/CLAUDE.md
+// marker block(s) to payloadVersion, and stamps payloadVersion into pickle.toml
+// by rewriting that single line, leaving the rest of the file (comments
+// included) untouched. The skill directory, by contrast, is pickle-owned and
+// replaced wholesale.
+// It never reads or writes anything under tickets/ or the board. Idempotent:
+// re-running at the current version still refreshes payload/markers (so drift
+// is corrected) and reports the version as unchanged rather than erroring.
+// It also sweeps away any pre-brine install left by an older pickle
+// (sweepLegacySkill, T-074) before refreshing the current-name payload.
 func Upgrade(payload fs.FS, root, payloadVersion string, opts ...UpgradeOptions) (Result, error) {
 	var res Result
 	stampWrite := config.SetPayloadVersionInPlace
@@ -795,7 +795,9 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 		}
 		seen[p] = true
 		if changed {
-			return nil // already known to differ; keep walking only to finish populating seen
+			// A difference is already established and the caller returns on it
+			// before seen is ever consulted, so there is nothing left to learn.
+			return fs.SkipAll
 		}
 		data, err := fs.ReadFile(sub, p)
 		if err != nil {
