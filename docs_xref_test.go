@@ -143,7 +143,11 @@ func scanBook(files []string) (anchors map[string]bool, xrefs, interDoc []docsXr
 		if rerr != nil {
 			return nil, nil, nil, fmt.Errorf("reading %s: %w", f, rerr)
 		}
-		for _, pl := range docsProseLines(string(data)) {
+		lines, perr := docsProseLines(string(data))
+		if perr != nil {
+			return nil, nil, nil, fmt.Errorf("reading %s: %w", f, perr)
+		}
+		for _, pl := range lines {
 			lineNo, line := pl.no, pl.text
 			if m := docsAnchorLineRe.FindStringSubmatch(line); m != nil {
 				anchors[m[1]] = true
@@ -211,14 +215,22 @@ type docsLine struct {
 // docsProseLines returns the lines of content outside any literal block — the single
 // definition of "text a reader sees as prose", shared by scanBook and the coverage
 // invariant so the two cannot drift into disagreeing about what is exempt.
-func docsProseLines(content string) []docsLine {
+//
+// It errors if a literal block is still open at EOF, naming the line where it was
+// opened: without this, an unterminated "----" silently drops every line after it
+// from both readers at once, and a dead reference on one of those lines is invisible
+// to `go test` — exactly what CI runs (item 9, T-115). `just docs-check` does catch
+// it (snowball fails an unterminated listing block), but CI does not run snowball.
+func docsProseLines(content string) ([]docsLine, error) {
 	var out []docsLine
 	var openDelim byte
+	var openedAt int
 	for i, line := range strings.Split(content, "\n") {
 		if c, ok := docsLiteralBlockDelim(strings.TrimSpace(line)); ok {
 			switch {
 			case openDelim == 0:
 				openDelim = c
+				openedAt = i + 1
 			case openDelim == c:
 				openDelim = 0
 			}
@@ -229,7 +241,10 @@ func docsProseLines(content string) []docsLine {
 		}
 		out = append(out, docsLine{no: i + 1, text: line})
 	}
-	return out
+	if openDelim != 0 {
+		return nil, fmt.Errorf("unterminated literal block opened at line %d", openedAt)
+	}
+	return out, nil
 }
 
 // assertEveryXrefSiteScanned is the invariant that replaced the count floors: every
@@ -257,7 +272,11 @@ func assertEveryXrefSiteScanned(t *testing.T, files []string, xrefs []docsXrefOc
 		if err != nil {
 			t.Fatalf("reading %s: %v", f, err)
 		}
-		for _, pl := range docsProseLines(string(data)) {
+		lines, perr := docsProseLines(string(data))
+		if perr != nil {
+			t.Fatalf("reading %s: %v", f, perr)
+		}
+		for _, pl := range lines {
 			for _, loc := range docsRefShapedSiteRe.FindAllStringIndex(pl.text, -1) {
 				if !scanned[fmt.Sprintf("%s:%d:%d", f, pl.no, loc[0])] {
 					missed = append(missed, fmt.Sprintf("%s:%d: %s", f, pl.no, pl.text[loc[0]:loc[1]]))
@@ -506,7 +525,10 @@ func TestDocsProseLineSelection(t *testing.T) {
 	t.Run("a block closes only on its own delimiter", func(t *testing.T) {
 		// The "----" inside the "...." block must not close it. A kind-blind toggle
 		// would reopen here and silently drop every later line in the file (N4).
-		got := docsProseLines("before\n....\n----\n....\nafter\n")
+		got, err := docsProseLines("before\n....\n----\n....\nafter\n")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		var texts []string
 		for _, l := range got {
 			texts = append(texts, l.text)
@@ -517,9 +539,42 @@ func TestDocsProseLineSelection(t *testing.T) {
 	})
 
 	t.Run("line numbers survive dropped blocks", func(t *testing.T) {
-		got := docsProseLines("one\n----\nhidden\n----\nfive\n")
+		got, err := docsProseLines("one\n----\nhidden\n----\nfive\n")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if len(got) < 2 || got[len(got)-2].no != 5 || got[len(got)-2].text != "five" {
 			t.Errorf(`expected "five" to keep line number 5, got %+v`, got)
+		}
+	})
+
+	t.Run("unterminated block errors naming the opening line", func(t *testing.T) {
+		got, err := docsProseLines("one\n----\nhidden\nmore\n")
+		if err == nil {
+			t.Fatalf("expected an error for an unterminated block, got lines %+v", got)
+		}
+		if !strings.Contains(err.Error(), "line 2") {
+			t.Errorf("expected the error to name the opening line (2), got %q", err.Error())
+		}
+	})
+
+	t.Run("delimiter-free document yields every line unchanged", func(t *testing.T) {
+		// Pins "which lines count as prose" itself, not just the delimiter matcher:
+		// TestDocsProseLineSelection otherwise only ever exercised documents that
+		// contain a literal block, so "skip indented lines" or any other silent
+		// over-exemption would pass every existing fixture here (item 7).
+		in := "one\n  two indented\nthree\n\nfive\n"
+		got, err := docsProseLines(in)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		var texts []string
+		for _, l := range got {
+			texts = append(texts, l.text)
+		}
+		wantLines := strings.Split(in, "\n")
+		if strings.Join(texts, "\x00") != strings.Join(wantLines, "\x00") {
+			t.Errorf("expected every line unchanged and in order, got %q want %q", texts, wantLines)
 		}
 	})
 }
