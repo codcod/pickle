@@ -329,3 +329,4 @@ follow-up ticket for another round; that loop is what §5's promotion test exist
   recast the list-heavy sentence) is unchanged in kind. Task 3's four `.adoc` anchors were
   re-verified untouched (line 101 → 102 only). All ten target sentences confirmed present
   verbatim-or-current-wording; none dropped a fact. Grade unchanged (low/low/S).
+- 2026-08-24 — READY → IN DEVELOPMENT: picked up

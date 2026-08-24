@@ -13,10 +13,11 @@ Last updated: 2026-08-24
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-24
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | medium | medium | M | [T-004] |  |
-| T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -49,12 +49,12 @@ Last updated: 2026-08-24
 |---|---|---|---|---|---|---|
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-076 | consume rick status --json as an artifact-state source | high | medium | M | [] | T-075 |
-| T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
+| T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-117 | remove pickle scaffold docs — docs/release scaffolding belongs to snowball, not pickle | medium | low | S | [] |  |
-| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 | T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | low-medium | low | S | [] |  |
+| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 
 ## DONE
 
