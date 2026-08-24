@@ -13,10 +13,11 @@ Last updated: 2026-08-24
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-24
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | medium | medium | M | [T-004] |  |
-| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | low | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 

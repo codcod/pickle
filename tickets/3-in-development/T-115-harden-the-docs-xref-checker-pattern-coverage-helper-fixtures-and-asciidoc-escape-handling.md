@@ -368,3 +368,4 @@ adding a page unprompted.
 - 2026-08-24 — TO DO → READY: plan complete
 - 2026-08-24 — plan amended inline: T-117's status corrected from `2-ready/` to `6-done/` in the
   soft-couplings note and the prerequisite gate, by T-117's review impact sweep (rules §8)
+- 2026-08-24 — READY → IN DEVELOPMENT: picked up
