@@ -499,6 +499,45 @@ now reports `no candidates — every shipped ticket is mentioned`.
 - N4, N5, N7, N8 remain `noted`, untouched, with their evidence in the table above. N9 remains
   T-119.
 
+### Scoped re-review round 1 (2026-08-24) — verdict: REWORK
+
+Scope: B1, B2, B3 only, plus "did the rework introduce a new defect". N1–N9 were not
+re-litigated. Reviewer independence: **delegated** again (the reviewing agent authored the
+rework in this session); every finding re-verified by hand before recording.
+
+**B1 — RESOLVED.** Reproduced all three tampering cases against the branch binary in a throwaway
+install: stale dir removed, `0600` restored to `0644`, outside-symlink replaced. Independently
+confirmed the three-arm `switch` is the same partition as `main`'s two-arm one, so the
+legacy-sweep and self-host symlink paths are unchanged.
+
+**B2 — RESOLVED.** All four tests re-run under independent mutation testing, including two
+mutations the rework record did not make: mutating each *call site* separately fails only its own
+test, proving the install and upgrade paths are independently bound rather than both riding on
+the shared helper. Case (c) confirmed to be genuinely content-identical, so it binds the wipe
+rather than the write.
+
+**B3 — RESOLVED.** `pickle changelog check` reports `no candidates`. Entries are in the correct
+Keep a Changelog section and consistent in voice with their neighbours.
+
+**But a new blocking finding, B4, was found in the code B1 touched** — see the table below. The
+ticket therefore returns to `5-rework/` for a second, single-finding round.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| B4 | blocking | correctness | — | `skillPayloadDiffers` is **advisory** — it only chooses a label — but its second walk propagates `filepath.WalkDir` errors, and it runs *before* the wipe. An unreadable directory anywhere in the skill tree therefore aborts the entire upgrade: markers, pi scaffolds, hooks and the `payload_version` stamp are all skipped | Differential test. `mkdir .agents/skills/brine/locked && chmod 000 …`, then `upgrade`. **Branch:** `permission denied`, `exit=1`, the dir survives, nothing else refreshed. **`main`:** `+ .agents/skills/brine/`, `exit=0`, dir removed. Same input class as B1(a) — "a stale directory the payload does not contain" — turned from silently-unrepaired into hard failure. Introduced by `cf13850`; B1's fix did not reach it | The same function **already** degrades gracefully for unreadable *files* (`readErr != nil → changed = true`), so the directory walk is simply inconsistent with it. Degrade the walk error to `changed = true` instead of returning it: an advisory comparison must never be able to fail the command it only labels |
+| N10 | non-blocking | stale-xref | fixed inline | `hasEntry`'s doc comment claimed a prefix match; the body is exact equality | `install_test.go`; prose this branch authored | Fixed in `86d1bb6`; comment now also says why exact matching is the point |
+| N11 | non-blocking | docs-gap | noted | The new user-visible label vocabulary (`(refreshed)`, `(current)`, `already scaffolded`) appears nowhere in `docs/`; the subtle part — `(current)` means the bytes matched, not that nothing was written — lives only in a Go doc comment | `grep -rn` over `docs/` → 0 hits | Consistent with the first review's D3, which found the `+`/`=`/`-` summary vocabulary has no documented home at all. Recorded rather than promoted, so a later reviewer can promote it by citing this row |
+| N12 | non-blocking | docs-gap | fixed inline | The B3 CHANGELOG entry glossed `= … (current)` as "nothing to do", which is untrue of `install` (whose `copyPayload` also writes unconditionally) and only clarified for `upgrade` | `CHANGELOG.md`; prose this branch authored | Fixed in `86d1bb6`: the entry now states that `(current)` describes contents, not work, for both commands |
+
+**Disposition summary:** 4 findings — 1 blocking (B4 correctness), 3 non-blocking: 2 `fixed
+inline` (N10, N12 — both in `86d1bb6`), 1 `noted` (N11). Cumulative for the ticket: 16 findings,
+4 blocking.
+
+```
+cost: estimated M, actual L — two rework rounds; the skip-the-wipe optimisation that caused B1
+and B4 was never asked for by the plan
+```
+
 ## History
 
 - 2026-07-23 — created (TO DO). source: T-004 review (non-blocking findings); via pickle ticket new
@@ -540,3 +579,4 @@ now reports `no candidates — every shipped ticket is mentioned`.
 - 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-24 — IN REVIEW → REWORK: review: 3 blocking (B1 upgrade no longer replaces skill dir wholesale; B2 no test binds the new labels; B3 no CHANGELOG entry); 9 non-blocking dispositioned (2 fixed inline, 6 noted, 1 -> T-119)
 - 2026-08-24 — REWORK → IN REVIEW: rework: B1 wholesale replacement restored, B2 label+repair tests added (mutation-verified), B3 CHANGELOG entries added
+- 2026-08-24 — IN REVIEW → REWORK: scoped re-review: B1/B2/B3 resolved; new blocking B4 (advisory payload diff can abort the whole upgrade)
