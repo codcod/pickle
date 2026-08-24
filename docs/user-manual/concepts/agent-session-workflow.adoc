@@ -1,7 +1,7 @@
 [#agent-session-workflow]
 = Agent Session Workflow
 
-{product} deliberately ships no model or agent-tier configuration — the split
+{product} deliberately ships no model or agent-tier configuration. The split
 between *judgment* (what a ticket says, how it's graded, refined, reviewed)
 and *mechanics* (CLI commands) means the tool never inspects which model or
 session produced a ticket, a review, or a commit (see <<the-flow>>). Which
@@ -15,10 +15,10 @@ checks or enforces.
 
 == Session boundaries are also cost boundaries
 
-A session's cost is driven by the *whole accumulated transcript*, reprocessed
-by whichever model handles the next turn — switching models mid-session
-doesn't erase the cost of the turns already in context. The flow's own
-procedures already define natural, self-contained handoff points:
+A session's cost is driven by the *whole accumulated transcript*, which is
+reprocessed by whichever model handles the next turn. Switching models
+mid-session doesn't erase the cost of the turns already in context. The
+flow's own procedures already define natural, self-contained handoff points:
 
 * A ticket's `## Description` and `## Implementation Plan` are meant to be
   the spec — refinement exists precisely so the plan is a complete,
@@ -53,12 +53,11 @@ cheap.
 | Continue only while context is still small; otherwise start fresh from the
   ticket file
 | Heavier
-| The READY gate's *completeness* is now mechanically checked: a required
-  `### ` heading missing from the plan refuses the move. Writing what goes
-  *under* each heading is still a judgement call: open decisions, scope
-  splits, concrete tasks. If exploration ran long, a fresh session reading
-  just the ticket costs less than dragging a large transcript through the
-  heavier tier.
+| If a required `### ` heading is missing from the plan, the READY gate's
+  *completeness* check now refuses the move. Writing what goes *under* each
+  heading is still a judgement call: open decisions, scope splits, concrete
+  tasks. If exploration ran long, a fresh session that reads just the ticket
+  costs less than dragging a large transcript through the heavier tier.
 
 | *Implement a ticket*
 | New session
@@ -99,8 +98,8 @@ cheap.
 * The pickup applicability gate (<<lifecycle>>) already asks for a *fresh
   sub-agent* to audit the plan's assumptions, free of the implementer's
   sunk-cost bias. That sub-agent is a good place to pin a lighter tier
-  explicitly — it runs a scoped, bounded re-check against the ticket and the
-  board, not open-ended reasoning.
+  explicitly: it runs a scoped, bounded re-check against the ticket and the
+  board, rather than open-ended reasoning.
 * If your provider caches repeated prompt prefixes, the cache is normally
   keyed per model. Switching tiers within a session still nets a saving over
   staying on the heavier tier throughout — it just won't reuse a cache warmed
