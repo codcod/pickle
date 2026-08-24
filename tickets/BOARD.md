@@ -20,10 +20,11 @@ Last updated: 2026-08-24
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | [T-004] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-24
 
 | id | title | open findings |
 |---|---|---|
-| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | review: 3 blocking (B1 upgrade no longer replaces skill dir wholesale; B2 no test binds the new labels; B3 no CHANGELOG… |
 
 ## READY (impact order, per child)
 

@@ -456,6 +456,49 @@ dispositioned, they are fixed in rework), 9 non-blocking: 2 `fixed inline` (N1, 
 cost: estimated M, actual M
 ```
 
+### Rework round 1 — what was fixed (2026-08-24)
+
+Scope was the three blocking findings and nothing else. Branch:
+`feat/T-013-install-polish`, commits `9ec99de` (B1+B2) and `9bb335a` (B3).
+
+**B1 — fixed.** The `if existed && !changed { … break }` early-out is gone from `Upgrade`'s
+`default:` branch: `os.RemoveAll` + `writeSkillPayload` now run unconditionally, exactly as they
+did before this ticket, and the pre-captured `(existed, changed)` pair is used **only** to choose
+the label. Re-ran the differential scenario that exposed it — stale empty dir, `0600` payload
+file, payload file swapped for an outside symlink — and all three are repaired again, matching
+`main`'s binary. The `(current)` label now means "the bytes on disk already matched", which the
+new `Result.labelSkillDir` doc comment states explicitly.
+
+**B2 — fixed.** Four new tests in `internal/install/install_test.go`:
+`TestSkillDirLabelsOnInstall`, `TestSkillDirLabelsOnUpgrade`,
+`TestScaffoldTicketsLabelsSecondRun`, and `TestUpgradeAlwaysReplacesSkillDirWholesale` (the B1
+guard, asserting each of the three repairs separately). All four were **mutation-verified to
+bind**, which is the whole point of the finding:
+
+| mutation | result |
+|---|---|
+| reintroduce B1's early-out | `TestUpgradeAlwaysReplacesSkillDirWholesale` fails on all three assertions |
+| `labelSkillDir` → unconditional `created(SkillDir+"/")` | both label tests fail |
+| `scaffoldTickets` → always `created` | `TestScaffoldTicketsLabelsSecondRun` fails |
+
+**B3 — fixed.** Four entries added under `CHANGELOG.md`'s `## [Unreleased]` → `### Fixed`, tagged
+`(T-013)`, covering the summary labels, the `uninstall` stray-arg rejection, the two `pickle help`
+lines, and the marker-file mode preservation. `./pickle changelog check --since main --until HEAD`
+now reports `no candidates — every shipped ticket is mentioned`.
+
+**Acceptance test re-run:** `just build`, `just test` (20 packages ok), `just lint`,
+`just docs-check` — all clean.
+
+**Non-blocking findings, re-checked but deliberately not worked** (rework scope is blocking only):
+
+- **N3 self-resolved, as the review predicted.** With the unconditional re-copy restored, the
+  payload genuinely *is* refreshed on every upgrade, so `runUpgrade`'s
+  `(refreshed payload + markers)` trailer is true again. Verified by smoke test.
+- **N6 resolved as a side effect of B1's fix.** Both label sites now route through the shared
+  `Result.labelSkillDir`, so the duplicated triple the finding warned would drift is gone.
+- N4, N5, N7, N8 remain `noted`, untouched, with their evidence in the table above. N9 remains
+  T-119.
+
 ## History
 
 - 2026-07-23 — created (TO DO). source: T-004 review (non-blocking findings); via pickle ticket new
@@ -496,3 +539,4 @@ cost: estimated M, actual M
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
 - 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-24 — IN REVIEW → REWORK: review: 3 blocking (B1 upgrade no longer replaces skill dir wholesale; B2 no test binds the new labels; B3 no CHANGELOG entry); 9 non-blocking dispositioned (2 fixed inline, 6 noted, 1 -> T-119)
+- 2026-08-24 — REWORK → IN REVIEW: rework: B1 wholesale replacement restored, B2 label+repair tests added (mutation-verified), B3 CHANGELOG entries added
