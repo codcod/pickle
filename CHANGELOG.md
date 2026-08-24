@@ -11,10 +11,23 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 ### Added
 
 - **`pickle scaffold release` writes a Keep a Changelog `CHANGELOG.md` and a headings-only
-  `RELEASING.md`** — entirely optional and separate from the ticket flow, mirroring `pickle
-  scaffold docs`: no workflow, no justfile recipes, no language detection, and no command named
-  in either file. The two skeletons are exactly what `docs/user-manual/concepts/releasing.adoc`
-  already describes an agent offering when either file is missing, made real (T-113).
+  `RELEASING.md`** — entirely optional and separate from the ticket flow: no workflow, no
+  justfile recipes, no language detection, and no command named in either file. The two
+  skeletons are exactly what `docs/user-manual/concepts/releasing.adoc` already describes an
+  agent offering when either file is missing, made real (T-113).
+
+### Breaking
+
+- **`pickle scaffold docs` is removed** — the subcommand, its embedded AsciiDoc docs-skeleton
+  payload, and the `internal/scaffold` code that served it. Scaffolding a docs skeleton meant
+  tracking `snowball`'s internal defaults and conventions from outside pickle. Its `init` output
+  modeled a two-book layout pickle's scaffold never created. `asciidoctor-pdf`'s PDF theme
+  loader requires a theme file's name to end literally in `-theme.yml`. The scaffolded chapter's
+  heading level also had to match `snowball`'s `leveloffset` convention. Those are three
+  foreign-tool facts pickle had no authority over and kept getting subtly wrong. `snowball` owns
+  both sides of that contract, so the capability moves there rather than staying as a
+  pickle-maintained copy that drifts (T-117). `pickle scaffold release` is unaffected and is now
+  the `scaffold` verb group's only subcommand.
 
 ### Fixed
 

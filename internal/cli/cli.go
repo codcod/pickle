@@ -142,11 +142,6 @@ Flow commands:
                           --show-excluded. Read-only and advisory — always exits 0.
 
 Other scaffolding (unrelated to brine):
-  scaffold docs [--project-name <name>] [--force] [--dry-run]
-                          Write a minimal AsciiDoc docs skeleton, best-effort snowball init,
-                          additive justfile docs-check/docs-build recipes (only if a justfile
-                          already exists), and a standalone GitHub Action that attaches the
-                          built manual to a release. Entirely separate from pickle install.
   scaffold release [--project-name <name>] [--force] [--dry-run]
                           Write a Keep a Changelog CHANGELOG.md and a headings-only
                           RELEASING.md. Prescribes no release tooling — no workflow, no
