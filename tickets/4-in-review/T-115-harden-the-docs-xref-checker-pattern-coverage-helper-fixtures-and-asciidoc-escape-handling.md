@@ -430,6 +430,21 @@ non-blocking → 3 **fixed inline** (F5a, F7, F8, in `27bfc4a`), 4 **new ticket*
 
 cost: estimated M, actual M
 
+### Rework — 2026-08-24 — fixed F2 and F4
+
+Scope was exactly the two blocking findings, nothing else, on the same
+`feat/T-115-harden-docs-xref-checker` branch (commit `92a8456`).
+
+| id | fix | verification |
+|---|---|---|
+| F2 | `docsInterDocLinkRe`'s target class now excludes `:` too (`link:([^\[\s:]+\.adoc)[#\[]`), so an external URL ending in `.adoc` no longer matches; added a `noMatch` fixture row (`link:https://example.com/x/y/README.adoc[the source]`) | Re-ran the exact F2 probe by hand: `link:https://x/y/README.adoc[src]` now scores `link=false`; both real forms (`link:cli-reference.adoc[x]`, `link:cli-reference.adoc#id[x]`) still score `link=true`. Re-planted `link:cli-reference.adoc#cmd-hooks[hooks]` in a real manual page — still fails with the inter-document message, confirming no regression |
+| F4 | Added two new cases to `TestDocsScannerPatternsMatchWhatTheyClaim`: "escaped cross-reference (backslash)" and "escaped cross-reference (passthrough)", each with 2 match rows and 3 noMatch rows (including cross-checks that each pattern rejects the other's spelling) | `go test . -run '^TestDocsScannerPatternsMatchWhatTheyClaim'` — both new subtests pass |
+
+All four commands re-run clean: `just build` ✓ · `just test` ✓ · `just lint` ✓ · `just docs-check`
+✓. All 9 original acceptance-test probes still pass (spot-checked probes 2 and 4, the two this
+rework touched, by hand in addition to the full suite). `git status --short` clean; F1, F3, F5b,
+F6 are untouched (T-118's scope, not this rework's).
+
 ## History
 
 - 2026-08-22 — created (TO DO). source: review: batched from T-067's three review rounds — round 1 findings F3–F6 (pattern coverage, code-span exemptions, fixture structure), round 3 findings N5–N6, and round 4 findings R1–R4 (helper fixtures, AsciiDoc escapes, and the unterminated-block hole that is invisible to CI). Batched by theme per rules §5 rather than filed one per finding; none is a live defect, all require modifying the checker or naming a construct the manual does not yet contain
@@ -439,3 +454,4 @@ cost: estimated M, actual M
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
 - 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-24 — IN REVIEW → REWORK: review round 1: 2 blocking (F2 link: false-positives on external .adoc URLs; F4 decision 9 unmet for the two escape patterns)
+- 2026-08-24 — REWORK → IN REVIEW: rework: F2 and F4 fixed

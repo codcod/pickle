@@ -20,10 +20,11 @@ Last updated: 2026-08-24
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-24
 
 | id | title | open findings |
 |---|---|---|
-| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | review round 1: 2 blocking (F2 link: false-positives on external .adoc URLs; F4 decision 9 unmet for the two escape pat… |
 
 ## READY (impact order, per child)
 
