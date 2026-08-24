@@ -103,10 +103,12 @@ default to keeping that history rather than squashing.
 
 ### Prerequisite gate (hard)
 
-None. No `depends-on:`. All ten target anchors were re-verified present at refinement (see
-*Confirmed design decisions* 1). The two soft couplings (T-111, T-113) are unstarted; if either
-merges first, re-verify the `CHANGELOG.md` anchors before editing, since both touch that file's
-role in the release convention.
+None. No `depends-on:`. All ten target anchors were re-verified present at pickup (2026-08-24,
+see History) — not merely at refinement, since the tree moved twice more since then. T-111 landed
+but touches neither file. **T-113 landed** (`pickle scaffold release`, merged to `main`
+2026-08-24) and added a fourth `[Unreleased]/Added` bullet to `CHANGELOG.md`; it does not alter
+any of this ticket's six target sentences or the section boundaries they sit in, so it changes
+line numbers only, confirmed below — no further re-verification is needed before editing.
 
 ### Confirmed design decisions (do not deviate without asking)
 
@@ -120,6 +122,12 @@ role in the release convention.
    altering it, and the file is read top-to-bottom by anyone catching up. The task boundary exists
    so the decision stays reversible: if the preference is to leave released sections untouched,
    **drop Task 2 entirely** — no other task depends on it and the ticket needs no re-refinement.
+   **Superseded in part at pickup (2026-08-24, see History):** the 0.11.0 release folded Task 1's
+   three anchors into a released section too, so "Task 1 = unreleased/mandatory vs. Task 2 =
+   released/droppable" no longer partitions the file. Resolved with user sign-off: **Task 1 stays
+   unconditionally in scope regardless of which heading it now sits under** — the edits are the
+   same low-risk mechanical sentence splits decision 3 already governs, and only their section
+   changed, not their riskiness. Task 2 remains independently droppable on its own terms.
 3. **No fact may change — only sentence boundaries.** No ticket id, version, date, flag name,
    command, link or claim may be added, removed or altered. This is mechanically enforced by the
    invariance check in *Acceptance test*, not left to eyeballing.
@@ -142,23 +150,34 @@ role in the release convention.
 
 ### Tasks
 
-#### Task 1 — `CHANGELOG.md`, `[Unreleased]` section (3 edits)
-- **:13** `Added` / reviewer independence (the T-112 entry) — split the three-clause sentence
-  beginning "When the agent about to review a ticket authored its branch…" into three sentences,
-  one per action: delegate; hand-verify and record; what stays with the reviewer.
-- **:22** `Added` / `pickle scaffold docs` — promote the trailing "— entirely optional and
-  unrelated to the ticket flow: …" clause into its own sentence ("This is entirely optional…").
-- **:38** `Fixed` / `cli-reference.adoc` — recast the list-heavy sentence as two, led by "The
-  manual mentioned neither …", with the `pickle flow show|list` omission as a second sentence.
+#### Task 1 — `CHANGELOG.md`, reviewer-independence / scaffold-docs / cli-reference entries (3 edits)
+**Re-anchored at pickup (2026-08-24):** the 0.11.0 release moved all three into `## [0.11.0]`
+(no longer `[Unreleased]`; see decision 2's superseding note) at lines ~40, ~49, ~65, and the
+"chore: cut v0.11.0" commit (`09fcd69`) independently reworded two of the three while cutting the
+release. Anchor on the *current* wording below, not the paraphrase quoted at refinement.
+- **~:40-47** `Added` / reviewer independence (the T-112 entry) — the release-cut commit already
+  split the original one-sentence version into two ("...independently spawned reviewer." / "It
+  must then hand-verify..."). One split remains: break the second sentence's semicolon into a
+  full stop, so "hand-verify and record" and "what stays with the reviewer" land as separate
+  sentences — completing the three-way split the suggestion asked for.
+- **~:49-53** `Added` / `pickle scaffold docs` — current text still carries the trailing
+  "— entirely optional and separate from the ticket flow: …" clause undisturbed by the release-cut
+  commit; promote it into its own sentence ("This is entirely optional…"), per the original
+  suggestion.
+- **~:65-72** `Fixed` / `cli-reference.adoc` — the release-cut commit already split the sentence
+  about the `renumber` command; the list-heavy flag sentence right before it is untouched and is
+  the actual target: recast "`pickle ticket new --family`, and `pickle project add`'s
+  `--build`/…/`--wip-review`, existed but were never mentioned in the manual; `pickle flow
+  show|list` had no section at all" as two sentences led by "The manual mentioned neither …".
 
-#### Task 2 — `CHANGELOG.md`, released sections (3 edits) — *droppable per decision 2*
-- **:60** `[0.10.0]` / `pickle board decisions` — split "The same answer previously needed a
+#### Task 2 — `CHANGELOG.md`, released sections (3 edits) — executed, not dropped (see History)
+- **~:99-109** `[0.10.0]` / `pickle board decisions` — split "The same answer previously needed a
   hand-written `awk` that re-solved two parsing traps… and got the child filter wrong…" into the
   statement plus its two flaws.
-- **:121** `[0.9.0]` / atomic writes — split the temp-file-and-rename sentence, opening the second
-  with "As a result,".
-- **:223** `[0.7.0]` / installed skill audience — split the three-part "The examples are now…, the
-  skeleton's warrant…, and the two classes are defined as…" into parallel sentences.
+- **~:159-170** `[0.9.0]` / atomic writes — split the temp-file-and-rename sentence, opening the
+  second with "As a result,".
+- **~:254-266** `[0.7.0]` / installed skill audience — split the three-part "The examples are
+  now…, the skeleton's warrant…, and the two classes are defined as…" into parallel sentences.
 
 #### Task 3 — `docs/user-manual/concepts/agent-session-workflow.adoc` (4 edits)
 - **:4** opening paragraph — break after "…no model or agent-tier configuration." so the core
@@ -169,7 +188,7 @@ role in the release convention.
 - **:56** § *A pattern mapped to the procedures*, *Refine a ticket* row — recast the READY-gate
   sentence as an explicit if/then, and "a fresh session reading just the ticket" → "a fresh session
   that reads just the ticket". **Table cell — observe decision 6.**
-- **:101** § *Notes*, first bullet — replace the dash before "it runs a scoped, bounded re-check"
+- **:102** § *Notes*, first bullet — replace the dash before "it runs a scoped, bounded re-check"
   with a colon; "not open-ended reasoning" → "rather than open-ended reasoning".
 
 ### Acceptance test
@@ -293,3 +312,20 @@ follow-up ticket for another round; that loop is what §5's promotion test exist
   assigns to Task 2 and marks droppable. So the Task 1/Task 2 scope split no longer partitions what
   it was written to partition. Not fixed here (this sweep did not cause it, and re-deciding scope is
   refinement's call): re-refine the split before pickup. Grade unchanged.
+- 2026-08-24 — re-refined at pickup (applicability gate, per a fresh sub-agent audit; ticket stayed
+  in `2-ready/`, no move). Two blocking findings, both resolved with user sign-off before
+  implementation: **(1)** the T-038 sweep's premise was confirmed and closed — decision 2 amended
+  with a superseding note: Task 1 stays **unconditionally in scope** even though all three of its
+  anchors now sit under `## [0.11.0]`, because the edits are the same low-risk mechanical splits
+  decision 3 already governs and only their heading changed, not their riskiness; Task 2 remains
+  independently droppable, and both tasks are executed (see Task 2 heading and Finish). **(2)** T-113
+  merged 2026-08-24, adding a fourth `[Unreleased]/Added` bullet; confirmed it does not touch any
+  of the six CHANGELOG target sentences or move a section boundary, so only line numbers shifted
+  (Prerequisite gate updated). A third, non-blocking fact found during re-verification: the
+  "chore: cut v0.11.0" commit (`09fcd69`, 2026-08-22) **independently reworded** the reviewer-
+  independence and cli-reference entries while cutting the release, before this ticket could touch
+  them — the refinement-time quotes for those two are now paraphrases, not verbatim anchors. Task 1
+  re-anchored on current wording accordingly; the underlying edit (complete the sentence split /
+  recast the list-heavy sentence) is unchanged in kind. Task 3's four `.adoc` anchors were
+  re-verified untouched (line 101 → 102 only). All ten target sentences confirmed present
+  verbatim-or-current-wording; none dropped a fact. Grade unchanged (low/low/S).
