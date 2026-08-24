@@ -432,3 +432,4 @@ D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D"
   to note T-014 was dropped/absorbed into T-039, itself dropped/superseded by T-044 (done), which
   settled the board escape-vs-replace question by construction
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
+- 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
