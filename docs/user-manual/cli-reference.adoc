@@ -80,6 +80,11 @@ the same tree. Wait for it to finish, then try again.
   justfile recipes and a standalone release-attach GitHub Action. Entirely
   separate from `pickle install` — unrelated to {flow}.
 
+| `pickle scaffold release [--project-name …] [--force] [--dry-run]`
+| Write a Keep a Changelog `CHANGELOG.md` and a headings-only `RELEASING.md`.
+  Prescribes no release tooling. Entirely separate from `pickle install` —
+  unrelated to {flow}.
+
 | `pickle version` · `pickle help`
 | Print the version / the usage summary.
 |===
@@ -1437,6 +1442,52 @@ Two more things happen, best-effort:
   missing or failing `snowball` is reported as a note, never a failure —
   either way, the command prints a reminder to point `snowball.yaml`'s `src`/
   `out` at the scaffolded manual.
+
+[#cmd-scaffold-release]
+== `pickle scaffold release`
+
+----
+pickle scaffold release [--project-name <name>] [--force] [--dry-run]
+----
+
+Another entirely optional, standalone scaffold, unrelated to {flow} in exactly
+the same sense as `pickle scaffold docs` above: it touches none of `pickle
+install`'s output, reads and writes no `pickle.toml`, and is never checked by
+`pickle doctor` or `pickle board audit`.
+
+It writes, into the current directory:
+
+[cols="2,3"]
+|===
+| Path | What
+
+| `CHANGELOG.md`
+| A https://keepachangelog.com/en/1.1.0/[Keep a Changelog]-shaped skeleton
+  with a single empty `## [Unreleased]` section.
+
+| `RELEASING.md`
+| Section headings only — Versioning, Build, Publish, Verify — each body a
+  single `TODO` placeholder comment, plus a header explaining the
+  `[agent]`/`[human]` step-marking convention an agent must honour when it
+  later fills the file in.
+|===
+
+`--project-name` (default: the current directory's name) is substituted into
+`RELEASING.md`'s title only; `CHANGELOG.md` carries no such token, since Keep
+a Changelog's own `# Changelog` heading is conventionally bare. `--force`
+overwrites files that already exist (without it, an existing file is left
+untouched and reported as skipped). `--dry-run` prints what would be created
+or changed without writing anything.
+
+This command deliberately writes only those two files, and nothing else: no
+GitHub Actions workflow, no justfile recipes, no tool configuration, no
+language detection or `--lang` flag, and no shell-out to any release tool.
+Both skeletons name no commands either — not even `pickle changelog check`,
+which the scaffolded `CHANGELOG.md` exists to support — because `scaffold` is
+documented to work in a repo with no `pickle.toml` at all, where that command
+would simply fail. This omission is the design, not an unfinished feature:
+filling in the actual release procedure, and naming whatever tools that
+procedure needs, is left entirely to the project.
 
 [#cmd-version]
 == `pickle version` and `pickle help`

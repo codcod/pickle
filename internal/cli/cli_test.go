@@ -116,6 +116,7 @@ func TestRunExitCodes(t *testing.T) {
 		{"scaffold no subcommand", []string{"scaffold"}, exitUsage},
 		{"scaffold unknown subcommand", []string{"scaffold", "xyz"}, exitUsage},
 		{"scaffold docs bad flag", []string{"scaffold", "docs", "--bogus"}, exitUsage},
+		{"scaffold release bad flag", []string{"scaffold", "release", "--bogus"}, exitUsage},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1054,6 +1055,29 @@ func TestScaffoldDocsIsUnrelatedToBrine(t *testing.T) {
 	for _, f := range []string{"pickle.toml", "tickets", "AGENTS.md", ".agents"} {
 		if _, err := os.Stat(filepath.Join(root, f)); !os.IsNotExist(err) {
 			t.Errorf("%s exists (err=%v) — scaffold docs must never touch brine", f, err)
+		}
+	}
+}
+
+// TestScaffoldReleaseIsUnrelatedToBrine (T-113): pickle scaffold release
+// writes its files into a plain directory with no pickle.toml / brine
+// install at all, mirroring TestScaffoldDocsIsUnrelatedToBrine above.
+func TestScaffoldReleaseIsUnrelatedToBrine(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+
+	if got := Run(os.DirFS(repoRoot), "test", []string{"scaffold", "release", "--project-name", "demo"}); got != exitOK {
+		t.Fatalf("scaffold release = %d, want exitOK", got)
+	}
+	for _, f := range []string{"CHANGELOG.md", "RELEASING.md"} {
+		if _, err := os.Stat(filepath.Join(root, f)); err != nil {
+			t.Errorf("expected %s to exist: %v", f, err)
+		}
+	}
+	// Nothing brine-owned was written.
+	for _, f := range []string{"pickle.toml", "tickets", "AGENTS.md", ".agents"} {
+		if _, err := os.Stat(filepath.Join(root, f)); !os.IsNotExist(err) {
+			t.Errorf("%s exists (err=%v) — scaffold release must never touch brine", f, err)
 		}
 	}
 }
