@@ -13,18 +13,18 @@ Last updated: 2026-08-24
 
 ## IN DEVELOPMENT
 
+### pickle (0/1)
+
+| id | title | depends-on |
+|---|---|---|
+
+## IN REVIEW
+
 ### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
 | T-117 | remove pickle scaffold docs — docs/release scaffolding belongs to snowball, not pickle | [] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | depends-on |
-|---|---|---|
 
 ## REWORK
 

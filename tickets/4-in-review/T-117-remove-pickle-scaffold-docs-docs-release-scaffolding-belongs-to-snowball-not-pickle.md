@@ -338,3 +338,4 @@ Nothing under `skill/` changes: `scaffold docs` was never part of the brine payl
   not pickle's, and asked for pickle's copy to be removed and the capability moved to snowball
 - 2026-08-24 — TO DO → READY: plan complete
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
+- 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
