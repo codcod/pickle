@@ -105,9 +105,9 @@ reachable only by modifying the checker, and both cheap to pin:
   command and the justfile recipes it appended, so the inaccurate claim ships nowhere and there
   is nothing left to fix. Nothing for this ticket to absorb — recorded so the exclusion is not
   re-litigated as still-open.
-- **T-117** (`2-ready/`, removes `pickle scaffold docs`) — no file overlap. It touches
-  `docs/user-manual/cli-reference.adoc`, which this ticket only *reads* as checker input; both
-  land green under `just docs-check` independently, in either order.
+- **T-117** (`6-done/`, removed `pickle scaffold docs`) — no file overlap. It touched
+  `docs/user-manual/cli-reference.adoc`, which this ticket only *reads* as checker input, and
+  left `just docs-check` green. Status updated by T-117's review impact sweep.
 
 ## Implementation Plan
 
@@ -128,9 +128,9 @@ nothing.
 
 ### Prerequisite gate (hard)
 
-None. `depends-on:` is empty. T-117 is in `2-ready/` and touches
-`docs/user-manual/cli-reference.adoc`, which this ticket only reads as checker input — the two
-are order-independent, so do **not** wait for it. Start from a clean tree on an up-to-date
+None. `depends-on:` is empty. T-117, which touched
+`docs/user-manual/cli-reference.adoc`, is now in `6-done/` — the two were always
+order-independent and nothing here waits on it. Start from a clean tree on an up-to-date
 `main`, with `just test` and `just docs-check` green before the first edit (this ticket asserts
 no *current* manual content is in violation — verified at refinement — so a pre-existing red is
 someone else's).
@@ -366,3 +366,5 @@ adding a page unprompted.
 
 - 2026-08-22 — created (TO DO). source: review: batched from T-067's three review rounds — round 1 findings F3–F6 (pattern coverage, code-span exemptions, fixture structure), round 3 findings N5–N6, and round 4 findings R1–R4 (helper fixtures, AsciiDoc escapes, and the unterminated-block hole that is invisible to CI). Batched by theme per rules §5 rather than filed one per finding; none is a live defect, all require modifying the checker or naming a construct the manual does not yet contain
 - 2026-08-24 — TO DO → READY: plan complete
+- 2026-08-24 — plan amended inline: T-117's status corrected from `2-ready/` to `6-done/` in the
+  soft-couplings note and the prerequisite gate, by T-117's review impact sweep (rules §8)
