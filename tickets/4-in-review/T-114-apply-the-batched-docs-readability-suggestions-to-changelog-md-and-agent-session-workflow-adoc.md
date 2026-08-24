@@ -330,3 +330,4 @@ follow-up ticket for another round; that loop is what §5's promotion test exist
   re-verified untouched (line 101 → 102 only). All ten target sentences confirmed present
   verbatim-or-current-wording; none dropped a fact. Grade unchanged (low/low/S).
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
+- 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
