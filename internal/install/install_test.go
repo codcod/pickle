@@ -686,9 +686,11 @@ path = "."
 	}
 }
 
-// hasEntry reports whether any entry in list starts with prefix — the labels
-// carry suffixes like " (refreshed)", so the tests below match on the whole
-// rendered string rather than the bare path.
+// hasEntry reports whether list contains want exactly. The labels carry
+// suffixes like " (refreshed)", and the point of the tests below is *which*
+// label was emitted, so this matches the whole rendered string rather than
+// prefixing on the bare path — a prefix match would let "…/" satisfy an
+// assertion meant for "…/ (refreshed)".
 func hasEntry(list []string, want string) bool {
 	for _, e := range list {
 		if e == want {
