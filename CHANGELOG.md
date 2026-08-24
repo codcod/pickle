@@ -41,16 +41,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   the audits.** When the reviewing agent also authored the branch in the same session, it must
   delegate the implementation/quality/consistency/docs audits to an independently spawned reviewer.
   It must then hand-verify every delegated finding and record in the checklist what happened
-  (independent, delegated, or a conscious skip); classification, dispositions, and the ticket move
+  (independent, delegated, or a conscious skip). Classification, dispositions, and the ticket move
   still stay with the reviewer. Shipped in `resources/review-protocol.md`, `SKILL.md`'s
   validate-a-ticket summary, and a cross-reference from the rules' pickup-gate clause, so the flow
   names implementer bias in both the places it can occur (T-112).
 
 - **`pickle scaffold docs` writes a minimal AsciiDoc docs skeleton, a best-effort `snowball
   init`, additive `justfile` `docs-check`/`docs-build` recipes, and a standalone GitHub Action
-  that attaches the built manual to a release** — entirely optional and separate from the ticket
-  flow: `pickle install` still scaffolds brine only, and `pickle doctor` and `pickle board audit`
-  do not read anything this command writes (T-110).
+  that attaches the built manual to a release.** This is entirely optional and separate from the
+  ticket flow: `pickle install` still scaffolds brine only, and `pickle doctor` and
+  `pickle board audit` do not read anything this command writes (T-110).
 
 ### Fixed
 
@@ -63,9 +63,9 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   repo's own `.pi/extensions/workspace-guardrails.ts` (T-050).
 
 - **`docs/user-manual/cli-reference.adoc` documents every flag the CLI actually accepts.**
-  `pickle ticket new --family`, and `pickle project add`'s `--build`/`--test`/`--lint`/`--docs`/
-  `--branch-prefix`/`--wip-dev`/`--wip-review`, existed but were never mentioned in the manual;
-  `pickle flow show|list` had no section at all. The shipped rules also pointed to a
+  The manual mentioned neither `pickle ticket new --family` nor `pickle project add`'s
+  `--build`/`--test`/`--lint`/`--docs`/`--branch-prefix`/`--wip-dev`/`--wip-review`, though both
+  existed. `pickle flow show|list` had no section at all. The shipped rules also pointed to a
   `pickle ticket renumber` command that was never built. Re-homing a ticket to a
   differently-prefixed child is now documented as what it always was: a manual, one-time
   migration. A markup bug that opened an unconstrained bold span at a glob (`` `.pi/extensions/*.ts` ``)
@@ -100,8 +100,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   citable `<ID> decision <N>` form** — filterable by registered child-project (`--project`),
   status directory (`--status`) and a topic regex over each decision's full text, statement and
   rationale alike (`--grep`), with `--json` for a machine-readable form. The same answer
-  previously needed a hand-written `awk` that re-solved two parsing traps every time (frontmatter
-  scoping, subsection bounding) and got the child filter wrong on any workspace whose ticket
+  previously needed a hand-written `awk`. It re-solved two parsing traps every time (frontmatter
+  scoping, subsection bounding), and got the child filter wrong on any workspace whose ticket
   prefix was not `T-`. A decision with no leading bold statement is reported as unstructured,
   carrying its raw first line rather than an inferred one; an unregistered child, an unknown
   status directory, or an uncompilable `--grep` pattern are each an error, while a registered
@@ -157,9 +157,9 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   column and section is still sorted by the same code `BOARD.md` uses (T-104).
 
 - **Every write to the ticket tree is now atomic, and concurrent `pickle` commands (including
-  `pickle serve`) no longer race each other.** `BOARD.md` is written via a temp-file-and-rename
-  so a concurrent reader — notably `serve`, which re-reads the tree on every request and on its
-  5-second poll — can never observe a truncated or half-written board. `ticket new`, `ticket
+  `pickle serve`) no longer race each other.** `BOARD.md` is written via a temp-file-and-rename.
+  As a result, a concurrent reader — notably `serve`, which re-reads the tree on every request and
+  on its 5-second poll — can never observe a truncated or half-written board. `ticket new`, `ticket
   move` and `board sync` each take an exclusive lock on the tree spanning their full
   load-check-write, and `project add`/`project remove` take it while they re-render the board,
   so two of them running at once always serialise instead of racing; `ticket new` additionally
@@ -259,8 +259,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   corpus the reader cannot see; the `field-use`/`self-host` provenance classes were defined as
   "another project" versus "this repo's own flow", which is unassignable in any project that does
   not host this flow itself — leaving the two busiest classes to be filled inconsistently. The
-  examples are now self-contained and say *why* each maps to its class, the skeleton's warrant
-  states the mechanism rather than a number, and the two classes are defined as using the flow to
+  examples are now self-contained and say *why* each maps to its class. The skeleton's warrant
+  states the mechanism rather than a number. The two classes are defined as using the flow to
   ship something else versus working on the flow itself. Prose only: the five provenance tokens
   and the eight `class` values are byte-identical, and the legitimate uses of a ticket id (syntax
   filler, provenance tags) are deliberately kept (T-098).
