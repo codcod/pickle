@@ -538,6 +538,40 @@ cost: estimated M, actual L — two rework rounds; the skip-the-wipe optimisatio
 and B4 was never asked for by the plan
 ```
 
+### Rework round 2 — what was fixed (2026-08-24)
+
+Scope was B4 alone. Branch commit `2bff9ff`.
+
+**B4 — fixed.** Every failure path in `skillPayloadDiffers`' stale-entry walk now degrades to
+`changed = true` instead of propagating, which is exactly what the first walk already did for an
+unreadable *file*; the inconsistency between the two was the bug. The `dst` `Lstat` probe
+degrades the same way, so a genuinely unusable tree now reports its failure from `RemoveAll` —
+against the operation the user actually asked for — rather than from an advisory probe that only
+chooses a label.
+
+Added `TestUpgradeSurvivesAnUnreadableSkillEntry`, asserting the upgrade **succeeds**, removes the
+directory, still reaches the `payload_version` stamp, and reports `(refreshed)`. It skips itself
+under `root`, where mode bits deny nothing and the case cannot be provoked.
+
+End-to-end check with the B4 and B1 tampering combined — an unreadable directory *and* a stale
+directory *and* a `0600` payload file: `exit=0`, both directories removed, mode restored to
+`0644`, version stamped, labelled `+ … (refreshed)`. Matches `main`'s behaviour, which was the
+standard B4 was measured against.
+
+**A note on the mutation testing, since it nearly produced a false negative.** The first mutation
+of this fix appeared to *pass*, which would have meant the new test did not bind. It was a bad
+mutation, not a weak test: it changed the walk callback back to `return err` but left the
+`walkErr != nil → changed = true` guard in place, which caught the error and degraded it anyway,
+so the "mutant" was not defective at all. Removing both halves makes the test fail with
+`permission denied`, as it should. Recorded because a mutation that fails to mutate is
+indistinguishable from a passing test unless you check what the mutant actually does.
+
+**Acceptance test re-run:** `just build`, `just test` (20 packages ok), `just lint`,
+`just docs-check` — all clean. `pickle changelog check` still reports `no candidates`.
+
+N11 remains `noted`; N10 and N12 stay fixed inline from the re-review (`86d1bb6`). No other
+finding was touched.
+
 ## History
 
 - 2026-07-23 — created (TO DO). source: T-004 review (non-blocking findings); via pickle ticket new
@@ -580,3 +614,4 @@ and B4 was never asked for by the plan
 - 2026-08-24 — IN REVIEW → REWORK: review: 3 blocking (B1 upgrade no longer replaces skill dir wholesale; B2 no test binds the new labels; B3 no CHANGELOG entry); 9 non-blocking dispositioned (2 fixed inline, 6 noted, 1 -> T-119)
 - 2026-08-24 — REWORK → IN REVIEW: rework: B1 wholesale replacement restored, B2 label+repair tests added (mutation-verified), B3 CHANGELOG entries added
 - 2026-08-24 — IN REVIEW → REWORK: scoped re-review: B1/B2/B3 resolved; new blocking B4 (advisory payload diff can abort the whole upgrade)
+- 2026-08-24 — REWORK → IN REVIEW: rework round 2: B4 fixed (advisory diff degrades instead of aborting), regression test added and mutation-verified
