@@ -66,11 +66,60 @@ const (
 // number that a normal docs commit can invalidate.
 
 var (
-	docsIncludeLineRe  = regexp.MustCompile(`^include::([^\[\]]+)\[`)
-	docsAnchorLineRe   = regexp.MustCompile(`^\[#([A-Za-z0-9_-]+)\]\s*$`)
+	docsIncludeLineRe = regexp.MustCompile(`^include::([^\[\]]+)\[`)
+	// docsAnchorLineRe matches an explicit anchor line, allowing the legal attribute
+	// suffixes AsciiDoc permits alongside an id — a role (".role") and/or reftext
+	// (",reftext") — while still requiring the line be nothing else (item 3, T-115).
+	// It does not accept the legacy [[id]] spelling, a mid-line anchor, or trailing
+	// prose after the closing bracket.
+	docsAnchorLineRe   = regexp.MustCompile(`^\[#([A-Za-z0-9_-]+)(?:\.[A-Za-z0-9_-]+)?(?:,[^\]]+)?\]\s*$`)
 	docsXrefTargetRe   = regexp.MustCompile(`<<([A-Za-z0-9_-]+)(?:,[^>]*)?>>`)
 	docsInterDocXrefRe = regexp.MustCompile(`xref:([^\[\s]+\.adoc)[#\[]`)
+
+	// docsInterDocXrefBareRe catches the extensionless "natural xref" spelling —
+	// xref:document-id#anchor[text], with no .adoc suffix — which asciidoctor
+	// resolves by document id rather than filename. It requires a non-empty name
+	// before "#" (excluding the legal intra-document xref:#local-anchor[text], whose
+	// target is empty) and a non-empty anchor after it (item 1, T-115).
+	docsInterDocXrefBareRe = regexp.MustCompile(`xref:([A-Za-z0-9][A-Za-z0-9_-]*)#([^\[\s]+)\[`)
+
+	// docsInterDocLinkRe catches link:file.adoc[...] / link:file.adoc#id[...]. Unlike
+	// xref:, link: is also how the manual writes external URLs (link:https://...[]),
+	// so the .adoc suffix is required rather than optional — an extensionless link:
+	// rule would flag every external link (T-115 decision 6).
+	docsInterDocLinkRe = regexp.MustCompile(`link:([^\[\s]+\.adoc)[#\[]`)
+
+	// docsInterDocAngleRe catches the <<file.adoc#anchor>> / <<file.adoc#anchor,text>>
+	// shorthand. docsXrefTargetRe (the intra-document pattern) already fails to match
+	// it — "." and "#" are outside its target character class — but
+	// docsRefShapedSiteRe (the permissive coverage pattern) does, so left unrouted it
+	// used to fail the coverage invariant with a message blaming the scanner instead
+	// of naming the real defect: this is an inter-document reference in <<>> clothing
+	// (item 2, T-115 decision 5).
+	docsInterDocAngleRe = regexp.MustCompile(`<<([^>,\s]+\.adoc)#([^>,\s]+)(?:,[^>]*)?>>`)
+
+	// docsEscapedXrefBackslashRe and docsEscapedXrefPassthroughRe match AsciiDoc's two
+	// documented ways to show a literal cross-reference without making one: a leading
+	// backslash, or wrapping in a passthrough "+...+" pair (item 4, T-115).
+	docsEscapedXrefBackslashRe   = regexp.MustCompile(`\\<<[^>]*>>`)
+	docsEscapedXrefPassthroughRe = regexp.MustCompile(`\+<<[^>]*>>\+`)
 )
+
+// docsMaskEscapedXrefs replaces each of AsciiDoc's two literal-reference escapes with
+// an equal-length run of "_" — a character that cannot itself look like a reference —
+// so file:line:col offsets used to correlate scanner output with source sites are
+// unaffected (decision 3) while nothing downstream reads the escaped span as a
+// cross-reference. It only ever shortens what a pattern can match, never widens it:
+// a real <<x>> elsewhere on the same line is untouched, because only the matched
+// escape span itself is replaced.
+func docsMaskEscapedXrefs(line string) string {
+	for _, re := range []*regexp.Regexp{docsEscapedXrefBackslashRe, docsEscapedXrefPassthroughRe} {
+		for _, loc := range re.FindAllStringIndex(line, -1) {
+			line = line[:loc[0]] + strings.Repeat("_", loc[1]-loc[0]) + line[loc[1]:]
+		}
+	}
+	return line
+}
 
 // bookFiles recursively follows include:: directives starting at master, resolving
 // each target relative to the including file's own directory (standard AsciiDoc
@@ -116,14 +165,24 @@ func bookFiles(master string) ([]string, error) {
 	return order, nil
 }
 
-// docsXrefOccurrence is one <<target>> or xref:file.adoc... match, with enough
+// docsXrefOccurrence is one <<target>>, xref:..., or link:... match, with enough
 // location to produce a teaching-style failure message (mirrors payloadLintFinding's
 // file:line + reason shape in payload_lint_test.go).
+//
+// spelling carries the construct as it was actually written (e.g. "xref:file.adoc",
+// "link:file.adoc#id", "<<file.adoc#id,text>>"). For an inter-document occurrence,
+// the failure message must quote this rather than assuming every occurrence was
+// written as "xref:..." — a link: or <<>> occurrence routed to the same message
+// would otherwise be misreported as a spelling the contributor never used (T-115
+// decision 5). target keeps its original meaning: the anchor id for an
+// intra-document <<id>> match, or the referenced document (as named in the source)
+// for an inter-document one.
 type docsXrefOccurrence struct {
-	file   string
-	line   int
-	col    int // byte offset of the match within the line
-	target string
+	file     string
+	line     int
+	col      int // byte offset of the match within the line
+	target   string
+	spelling string
 }
 
 // scanBook reads every file in files and returns: the set of explicit anchor ids
@@ -153,13 +212,38 @@ func scanBook(files []string) (anchors map[string]bool, xrefs, interDoc []docsXr
 				anchors[m[1]] = true
 			}
 			for _, m := range docsXrefTargetRe.FindAllStringSubmatchIndex(line, -1) {
+				target := line[m[2]:m[3]]
 				xrefs = append(xrefs, docsXrefOccurrence{
-					file: f, line: lineNo, col: m[0], target: line[m[2]:m[3]],
+					file: f, line: lineNo, col: m[0], target: target,
+					spelling: fmt.Sprintf("<<%s>>", target),
 				})
 			}
 			for _, m := range docsInterDocXrefRe.FindAllStringSubmatchIndex(line, -1) {
+				target := line[m[2]:m[3]]
 				interDoc = append(interDoc, docsXrefOccurrence{
-					file: f, line: lineNo, col: m[0], target: line[m[2]:m[3]],
+					file: f, line: lineNo, col: m[0], target: target,
+					spelling: fmt.Sprintf("xref:%s", target),
+				})
+			}
+			for _, m := range docsInterDocXrefBareRe.FindAllStringSubmatchIndex(line, -1) {
+				name, anchor := line[m[2]:m[3]], line[m[4]:m[5]]
+				interDoc = append(interDoc, docsXrefOccurrence{
+					file: f, line: lineNo, col: m[0], target: name,
+					spelling: fmt.Sprintf("xref:%s#%s", name, anchor),
+				})
+			}
+			for _, m := range docsInterDocLinkRe.FindAllStringSubmatchIndex(line, -1) {
+				target := line[m[2]:m[3]]
+				interDoc = append(interDoc, docsXrefOccurrence{
+					file: f, line: lineNo, col: m[0], target: target,
+					spelling: fmt.Sprintf("link:%s", target),
+				})
+			}
+			for _, m := range docsInterDocAngleRe.FindAllStringSubmatchIndex(line, -1) {
+				refDoc := line[m[2]:m[3]]
+				interDoc = append(interDoc, docsXrefOccurrence{
+					file: f, line: lineNo, col: m[0], target: refDoc,
+					spelling: line[m[0]:m[1]], // the full "<<file.adoc#anchor,text>>" as written
 				})
 			}
 		}
@@ -212,9 +296,12 @@ type docsLine struct {
 	text string
 }
 
-// docsProseLines returns the lines of content outside any literal block — the single
-// definition of "text a reader sees as prose", shared by scanBook and the coverage
-// invariant so the two cannot drift into disagreeing about what is exempt.
+// docsProseLines returns the lines of content outside any literal block, with
+// AsciiDoc's literal-reference escapes masked out — the single definition of "text a
+// reader sees as a live cross-reference", shared by scanBook and the coverage
+// invariant so the two cannot drift into disagreeing about what is exempt. The escape
+// mask lives here rather than in each caller for the same reason the literal-block
+// logic does: one definition, read by both (decision 4, T-115).
 //
 // It errors if a literal block is still open at EOF, naming the line where it was
 // opened: without this, an unterminated "----" silently drops every line after it
@@ -239,7 +326,7 @@ func docsProseLines(content string) ([]docsLine, error) {
 		if openDelim != 0 {
 			continue
 		}
-		out = append(out, docsLine{no: i + 1, text: line})
+		out = append(out, docsLine{no: i + 1, text: docsMaskEscapedXrefs(line)})
 	}
 	if openDelim != 0 {
 		return nil, fmt.Errorf("unterminated literal block opened at line %d", openedAt)
@@ -258,11 +345,17 @@ func docsProseLines(content string) ([]docsLine, error) {
 // every test while a second, dead reference on a live line went unreported (review
 // finding N1). Checking the output means any way of losing an occurrence is caught,
 // pattern or scanner alike.
-func assertEveryXrefSiteScanned(t *testing.T, files []string, xrefs []docsXrefOccurrence) {
+func assertEveryXrefSiteScanned(t *testing.T, files []string, xrefs, interDoc []docsXrefOccurrence) {
 	t.Helper()
 
+	// A site counts as covered if it appears in either result: <<file.adoc#id>> is
+	// routed to interDoc, not xrefs (T-115 decision 5), and counting only xrefs would
+	// report every such site as a phantom coverage gap on top of its real report.
 	scanned := map[string]bool{}
 	for _, x := range xrefs {
+		scanned[fmt.Sprintf("%s:%d:%d", x.file, x.line, x.col)] = true
+	}
+	for _, x := range interDoc {
 		scanned[fmt.Sprintf("%s:%d:%d", x.file, x.line, x.col)] = true
 	}
 
@@ -299,6 +392,15 @@ func assertEveryXrefSiteScanned(t *testing.T, files []string, xrefs []docsXrefOc
 		len(missed), strings.Join(missed, "\n"))
 }
 
+// docsUnresolvedXref reports whether x — an intra-document <<target>> occurrence —
+// fails to resolve to any known anchor. It is shared by TestDocsXrefsResolve and
+// TestDocsXrefCheckerCatchesTheFieldFindings so inverting the real comparison turns
+// both fixtures red instead of leaving the one that re-implemented it green (item 8,
+// T-115).
+func docsUnresolvedXref(anchors map[string]bool, x docsXrefOccurrence) bool {
+	return !anchors[x.target]
+}
+
 // TestDocsXrefsResolve walks the real docs/user-manual.adoc book and fails listing
 // every <<target>> that does not resolve to any [#target] anchor in the assembled
 // book — the core check this ticket exists to add (T-067).
@@ -312,20 +414,22 @@ func TestDocsXrefsResolve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("walking book includes from %s: %v", docsBookMaster, err)
 	}
-	anchors, xrefs, _, err := scanBook(files)
+	anchors, xrefs, interDoc, err := scanBook(files)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assertEveryXrefSiteScanned(t, files, xrefs)
+	assertEveryXrefSiteScanned(t, files, xrefs, interDoc)
 
 	var bad []string
 	for _, x := range xrefs {
-		if !anchors[x.target] {
+		if docsUnresolvedXref(anchors, x) {
 			bad = append(bad, fmt.Sprintf(
 				"%s:%d: <<%s>> does not resolve to any [#%s] anchor in the assembled book\n"+
-					"    add [#%s] above the intended heading, or fix the xref target",
-				x.file, x.line, x.target, x.target, x.target))
+					"    add [#%s] above the intended heading, fix the xref target, or if this "+
+					"is meant to show a literal cross-reference rather than make one, escape it "+
+					"(\\<<%s>> or +<<%s>>+)",
+				x.file, x.line, x.target, x.target, x.target, x.target, x.target))
 		}
 	}
 	if len(bad) > 0 {
@@ -358,14 +462,14 @@ func TestDocsNoInterDocumentXrefForm(t *testing.T) {
 
 	var bad []string
 	for _, x := range interDoc {
+		base := strings.TrimSuffix(x.target, ".adoc")
 		bad = append(bad, fmt.Sprintf(
-			"%s:%d: xref:%s... targets another .adoc file — asciidoctor "+
+			"%s:%d: %s... targets another document — asciidoctor "+
 				"resolves it happily as HTML, but the PDF/EPUB build splits each included file "+
 				"into its own chapter with no standalone %s.pdf/%s.epub artifact, so the link "+
 				"is dead in both real output formats (T-057 finding N3)\n"+
 				"    use <<anchor>> instead — the book is one document, not many",
-			x.file, x.line, x.target,
-			strings.TrimSuffix(x.target, ".adoc"), strings.TrimSuffix(x.target, ".adoc")))
+			x.file, x.line, x.spelling, base, base))
 	}
 	sort.Strings(bad)
 	t.Fatalf("%d inter-document xref: form(s):\n\n%s", len(bad), strings.Join(bad, "\n\n"))
@@ -442,15 +546,20 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 		noMatch []string
 	}{
 		{
-			name:  "anchor definitions",
-			re:    docsAnchorLineRe,
-			match: []string{"[#the-flow]", "[#cmd-hooks]", "[#a_b-c9]", "[#id]   "},
+			name: "anchor definitions",
+			re:   docsAnchorLineRe,
+			match: []string{
+				"[#the-flow]", "[#cmd-hooks]", "[#a_b-c9]", "[#id]   ",
+				"[#id,reftext]", // reftext attribute form (item 3)
+				"[#id.role]",    // role attribute form (item 3)
+			},
 			noMatch: []string{
 				"  *Per child — the `\\[[project]]` array*", // TOML prose, not an anchor (F15)
 				"Each `\\[[project]]` entry in `pickle.toml`",
 				"[[legacy]]",           // legacy spelling: unused here, deliberately not accepted
 				"prose [#id] mid-line", // an anchor is a line of its own
 				"[#id] trailing prose",
+				"[#id,]", // degenerate: comma with no reftext
 			},
 		},
 		{
@@ -475,6 +584,48 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 			noMatch: []string{
 				"<<cmd-hooks>>",
 				"xref:#local-anchor[text]", // no .adoc: an intra-document xref, legal
+			},
+		},
+		{
+			// The extensionless "natural xref" spelling — item 1, the group's only
+			// genuine silent hole at filing.
+			name: "inter-document xref: forms (extensionless)",
+			re:   docsInterDocXrefBareRe,
+			match: []string{
+				"xref:cli-reference#cmd-hooks[hooks]",
+			},
+			noMatch: []string{
+				"xref:#local-anchor[text]",                 // empty target: legal intra-document (decision 6)
+				"xref:cli-reference.adoc#cmd-hooks[hooks]", // already covered by the .adoc-suffixed pattern
+			},
+		},
+		{
+			// link: requires the .adoc extension — link: is also how the manual writes
+			// external URLs, so an extensionless rule would flag every one (decision 6).
+			name: "inter-document link: forms",
+			re:   docsInterDocLinkRe,
+			match: []string{
+				"link:cli-reference.adoc#id[x]",
+				"link:cli-reference.adoc[x]",
+			},
+			noMatch: []string{
+				"link:https://example.com/x[text]",                           // external URL, no .adoc
+				"Keep the short SHA even when you add the link: the board's", // decision 7: real prose
+			},
+		},
+		{
+			// The <<file.adoc#anchor>> shorthand is inter-document clothing, not the
+			// intra-document form: routed here for the right failure message instead
+			// of the misleading "scanner did not report this site" (item 2, decision 5).
+			name: "inter-document <<file.adoc#anchor>> shorthand",
+			re:   docsInterDocAngleRe,
+			match: []string{
+				"<<cli-reference.adoc#cmd-hooks>>",
+				"<<cli-reference.adoc#cmd-hooks,hooks>>",
+			},
+			noMatch: []string{
+				"<<cmd-hooks>>",          // no .adoc: the ordinary intra-document form
+				"<<cli-reference.adoc>>", // no anchor at all
 			},
 		},
 	}
@@ -558,6 +709,32 @@ func TestDocsProseLineSelection(t *testing.T) {
 		}
 	})
 
+	t.Run("escaped cross-references are masked, surgically", func(t *testing.T) {
+		// Both documented escapes on one line, alongside a real reference: the mask
+		// must remove exactly the escaped spans and nothing else (item 4, T-115).
+		content := `See \<<no-such-anchor-xyz>> and +<<also-fake>>+ but <<real>> resolves.`
+		got, err := docsProseLines(content + "\n")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got) == 0 {
+			t.Fatalf("expected at least one prose line, got none")
+		}
+		line := got[0].text
+		if len(line) != len(content) {
+			t.Errorf("masking must preserve line length (decision 3): got %d bytes, want %d (%q)",
+				len(line), len(content), line)
+		}
+		if matches := docsXrefTargetRe.FindAllString(line, -1); len(matches) != 1 || matches[0] != "<<real>>" {
+			t.Errorf("expected only <<real>> to survive masking, got %v (line %q)", matches, line)
+		}
+		unmasked := strings.Replace(line, "<<real>>", "", 1)
+		if docsRefShapedSiteRe.MatchString(unmasked) {
+			t.Errorf("expected both escaped spellings fully masked, but a reference-shaped "+
+				"site remains: %q", unmasked)
+		}
+	})
+
 	t.Run("delimiter-free document yields every line unchanged", func(t *testing.T) {
 		// Pins "which lines count as prose" itself, not just the delimiter matcher:
 		// TestDocsProseLineSelection otherwise only ever exercised documents that
@@ -594,15 +771,23 @@ func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 	pageA := filepath.Join(dir, "page-a.adoc")
 	pageB := filepath.Join(dir, "page-b.adoc")
 	pageC := filepath.Join(dir, "page-c.adoc")
+	pageD := filepath.Join(dir, "page-d.adoc")
 
 	docsMustWriteFixture(t, master,
-		"include::page-a.adoc[]\n\ninclude::page-b.adoc[]\n\ninclude::page-c.adoc[]\n")
+		"include::page-a.adoc[]\n\ninclude::page-b.adoc[]\n\ninclude::page-c.adoc[]\n\n"+
+			"include::page-d.adoc[]\n")
 	docsMustWriteFixture(t, pageA,
 		"[#real-anchor]\n== Page A\n\nSee <<no-such-anchor-xyz>> for details.\n")
 	docsMustWriteFixture(t, pageB,
 		"== Page B\n\nSee xref:page-a.adoc#real-anchor[Page A] for details.\n")
 	docsMustWriteFixture(t, pageC,
 		"== Page C\n\nSee xref:page-a.adoc[Page A] for details.\n")
+	// Page D pins item 2 / decision 5: the <<file.adoc#anchor>> shorthand must be
+	// routed to interDoc, not xrefs, and must not be reported as an uncovered
+	// reference-shaped site — both were the proven-live defects (a narrowed pattern
+	// re-admits the T-057 hole; a missed route re-admits the coverage-invariant hole).
+	docsMustWriteFixture(t, pageD,
+		"== Page D\n\nSee <<page-a.adoc#real-anchor,Page A>> for details.\n")
 
 	files, err := bookFiles(master)
 	if err != nil {
@@ -615,7 +800,7 @@ func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 
 	foundUnresolved := false
 	for _, x := range xrefs {
-		if x.target == "no-such-anchor-xyz" && !anchors[x.target] {
+		if x.target == "no-such-anchor-xyz" && docsUnresolvedXref(anchors, x) {
 			foundUnresolved = true
 		}
 	}
@@ -636,6 +821,18 @@ func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 		t.Errorf("expected the bare xref:page-a.adoc[...] spelling in %s to be flagged "+
 			"(F14: narrowing the pattern to the # form alone must not pass)", pageC)
 	}
+	if !flaggedIn[pageD] {
+		t.Errorf("expected <<page-a.adoc#real-anchor,Page A>> in %s to be flagged as "+
+			"inter-document (item 2, decision 5)", pageD)
+	}
+	for _, x := range xrefs {
+		if x.file == pageD {
+			t.Errorf("expected <<page-a.adoc#real-anchor,Page A>> in %s to be routed to "+
+				"interDoc, not xrefs — it landed in xrefs as %q", pageD, x.target)
+		}
+	}
+
+	assertEveryXrefSiteScanned(t, files, xrefs, interDoc)
 }
 
 func docsMustWriteFixture(t *testing.T, path, content string) {
