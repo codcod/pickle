@@ -20,11 +20,10 @@ Last updated: 2026-08-24
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-24
 
 | id | title | open findings |
 |---|---|---|
+| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | review round 1: 2 blocking (F2 link: false-positives on external .adoc URLs; F4 decision 9 unmet for the two escape pat… |
 
 ## READY (impact order, per child)
 
@@ -53,6 +53,7 @@ Last updated: 2026-08-24
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
+| T-118 | close the docs checker's remaining unrouted xref spellings and mask-filler edge | low | low | S | [] |  |
 
 ## DONE
 
