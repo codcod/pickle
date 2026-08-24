@@ -41,16 +41,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   the audits.** When the reviewing agent also authored the branch in the same session, it must
   delegate the implementation/quality/consistency/docs audits to an independently spawned reviewer.
   It must then hand-verify every delegated finding and record in the checklist what happened
-  (independent, delegated, or a conscious skip); classification, dispositions, and the ticket move
+  (independent, delegated, or a conscious skip). Classification, dispositions, and the ticket move
   still stay with the reviewer. Shipped in `resources/review-protocol.md`, `SKILL.md`'s
   validate-a-ticket summary, and a cross-reference from the rules' pickup-gate clause, so the flow
   names implementer bias in both the places it can occur (T-112).
 
 - **`pickle scaffold docs` writes a minimal AsciiDoc docs skeleton, a best-effort `snowball
   init`, additive `justfile` `docs-check`/`docs-build` recipes, and a standalone GitHub Action
-  that attaches the built manual to a release** — entirely optional and separate from the ticket
-  flow: `pickle install` still scaffolds brine only, and `pickle doctor` and `pickle board audit`
-  do not read anything this command writes (T-110).
+  that attaches the built manual to a release.** This is entirely optional and separate from the
+  ticket flow: `pickle install` still scaffolds brine only, and `pickle doctor` and
+  `pickle board audit` do not read anything this command writes (T-110).
 
 ### Fixed
 
@@ -63,9 +63,9 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   repo's own `.pi/extensions/workspace-guardrails.ts` (T-050).
 
 - **`docs/user-manual/cli-reference.adoc` documents every flag the CLI actually accepts.**
-  `pickle ticket new --family`, and `pickle project add`'s `--build`/`--test`/`--lint`/`--docs`/
-  `--branch-prefix`/`--wip-dev`/`--wip-review`, existed but were never mentioned in the manual;
-  `pickle flow show|list` had no section at all. The shipped rules also pointed to a
+  The manual mentioned neither `pickle ticket new --family` nor `pickle project add`'s
+  `--build`/`--test`/`--lint`/`--docs`/`--branch-prefix`/`--wip-dev`/`--wip-review`, though both
+  existed. `pickle flow show|list` had no section at all. The shipped rules also pointed to a
   `pickle ticket renumber` command that was never built. Re-homing a ticket to a
   differently-prefixed child is now documented as what it always was: a manual, one-time
   migration. A markup bug that opened an unconstrained bold span at a glob (`` `.pi/extensions/*.ts` ``)
