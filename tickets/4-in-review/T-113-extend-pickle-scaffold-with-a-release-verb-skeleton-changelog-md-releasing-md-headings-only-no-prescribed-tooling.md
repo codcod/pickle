@@ -425,3 +425,4 @@ not a flow rule, so the foreign-workspace test does not come into play.
   is now an open choice for this ticket's pickup gate rather than a prohibition. Nothing else in
   the plan changes; the two files this ticket scaffolds are unaffected. Scope and grade unchanged.
 - 2026-08-24 — READY → IN DEVELOPMENT: picked up
+- 2026-08-24 — IN DEVELOPMENT → IN REVIEW: acceptance green
