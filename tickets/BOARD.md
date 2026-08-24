@@ -20,11 +20,10 @@ Last updated: 2026-08-24
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | [T-004] |
 
 ## REWORK
 
@@ -52,6 +51,7 @@ Last updated: 2026-08-24
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-119 | skill payload still claims agent autodetection in its Install & register section | low-medium | low | S | [] |  |
+| T-120 | skill-payload summary labels describe contents, not work | low-medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 | T-118 | close the docs checker's remaining unrouted xref spellings and mask-filler edge | low | low | S | [] |  |
 
@@ -71,6 +71,7 @@ Last updated: 2026-08-24
 | T-008 | board sync | yes — MERGED: feat/T-008-board-sync squashed → main (9b87a61), user-approved; branch deleted |
 | T-009 | agent enablement — --agent contract, opencode + pi wiring, shipped docs-readability reviewer | yes — MERGED: feat/T-009-agent-enablement → main (22d2871, squash), user-approved; branch deleted |
 | T-011 | distribution (goreleaser + Homebrew tap + releases + docs) | yes — MERGED: feat/T-011-distribution squashed → main (e4aaed7), user-approved; branch deleted |
+| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | no — publish-gated |
 | T-018 | upgrade must not silently discard user content (pickle.toml comments, AGENTS.md marker body) | yes — merged to main (1485242) |
 | T-019 | correct PLAN.md's stale claims and rename it to DESIGN.md | yes — merged to main (ce306c2), user-approved; PR #12; branch deleted |
 | T-022 | payload states commit policy, branch/ticket prefixes and WIP limits unconditionally; §8 pickup gate reads as freshness,… | yes — merged to main (PR #13, 218a90a) |

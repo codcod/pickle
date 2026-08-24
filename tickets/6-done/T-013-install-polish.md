@@ -572,6 +572,49 @@ indistinguishable from a passing test unless you check what the mutant actually 
 N11 remains `noted`; N10 and N12 stay fixed inline from the re-review (`86d1bb6`). No other
 finding was touched.
 
+### Scoped re-review round 2 (2026-08-24) — verdict: DONE
+
+Scope: B4 only, plus one targeted question — *B1 and B4 shared a root cause (an advisory
+computation given power over control flow); is a third variant still lurking?* B1–B3 and N1–N12
+were not re-litigated. Reviewer independence: **delegated**; every finding re-verified by hand.
+
+**B4 — RESOLVED.** Verified by a three-way differential the reviewer built itself, including a
+build of `2bff9ff~1` to prove the scenario really does exercise the defect:
+
+| binary | exit | unreadable dir | stale dir | mode | stamp |
+|---|---|---|---|---|---|
+| `main` | 0 | removed | removed | 644 | stamped |
+| pre-fix (`2bff9ff~1`) | **1** | **survived** | — | — | **not stamped** |
+| branch (`2bff9ff`) | 0 | removed | removed | 644 | stamped |
+
+Behaviour now matches `main`; the only difference is the honest `(refreshed)` suffix.
+
+**Mutation — the test binds.** The reviewer used a mutant restoring *both* halves of the defect
+(callback returns the error **and** the outer guard propagates it), avoiding the near-false-negative
+recorded in round 2 above, and `TestUpgradeSurvivesAnUnreadableSkillEntry` failed with
+`permission denied`. The `root` skip-guard was judged appropriate: under `root` the mutant passes,
+so skipping is more honest than asserting something the environment cannot provoke.
+
+**Targeted question — no third control-flow variant.** Each candidate ruled out with evidence:
+the first walk's `return err` reads the *embedded* payload (`embed.FS` reads cannot fail, and
+`writeSkillPayload` re-does the identical walk three lines later, so the command fails either way
+— a different class from B4, which read the user's tree); `fs.SkipAll` is returned only after
+`changed = true` is set, and `WalkDir` converts it to `nil`, so `changed` is correct on every
+branch; and the `Lstat` probe's new degrade was exercised on both reachable non-`NotExist` errors
+(parent at mode `000`, and `.agents/skills` replaced by a regular file) — both produce
+**byte-identical messages to `main`'s**, from `RemoveAll`, with `payload_version` untouched and the
+misleading label never printed.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| N13 | non-blocking | correctness | new ticket | The stale-entry walk skips directories, so an unseen *directory* leaves `changed = false` and the label misreports — in opposite directions for the two commands | Reproduced both ways on the branch. `upgrade` + readable stale dir → `= … (current)` **and the dir is removed** (label understates a run that changed the tree). `install` re-run + same dir → `= … (current)` **and it survives** (label overstates a stale tree). Sharpest: an **unreadable** stale dir reports `(refreshed)` via B4's degrade path, a **readable** one reports `(current)` — same tampering, opposite labels, decided by a permission bit | Pre-existing since `cf13850`, not introduced by either rework, and the functional contract is intact (`upgrade` still repairs wholesale; `install`'s non-pruning is N5's known gap). Promoted with N4 and N5 into **T-120**, since three findings on one theme is exactly what §5 says to batch |
+
+**Disposition summary:** 1 finding — 0 blocking, 1 non-blocking: `new ticket` (N13 → T-120, which
+also absorbs N4 and N5 by promoting their round-1 rows, as §5 permits a later reviewer to do).
+Cumulative for the ticket: **17 findings, 4 blocking, all resolved**.
+
+**Verdict: no blocking findings remain — T-013 proceeds to `6-done/`.**
+
 ## History
 
 - 2026-07-23 — created (TO DO). source: T-004 review (non-blocking findings); via pickle ticket new
@@ -615,3 +658,4 @@ finding was touched.
 - 2026-08-24 — REWORK → IN REVIEW: rework: B1 wholesale replacement restored, B2 label+repair tests added (mutation-verified), B3 CHANGELOG entries added
 - 2026-08-24 — IN REVIEW → REWORK: scoped re-review: B1/B2/B3 resolved; new blocking B4 (advisory payload diff can abort the whole upgrade)
 - 2026-08-24 — REWORK → IN REVIEW: rework round 2: B4 fixed (advisory diff degrades instead of aborting), regression test added and mutation-verified
+- 2026-08-24 — IN REVIEW → DONE: scoped re-review round 2: B4 resolved, no third variant found; N13 -> T-120 (batched with N4, N5)
