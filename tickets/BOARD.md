@@ -20,11 +20,10 @@ Last updated: 2026-08-24
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | [T-004] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-24
 
 | id | title | open findings |
 |---|---|---|
+| T-013 | install polish (marker spacing, summary labels, cli tests, --agent) | review: 3 blocking (B1 upgrade no longer replaces skill dir wholesale; B2 no test binds the new labels; B3 no CHANGELOG… |
 
 ## READY (impact order, per child)
 
@@ -51,6 +51,7 @@ Last updated: 2026-08-24
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-119 | skill payload still claims agent autodetection in its Install & register section | low-medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 | T-118 | close the docs checker's remaining unrouted xref spellings and mask-filler edge | low | low | S | [] |  |
 
@@ -140,7 +141,7 @@ Last updated: 2026-08-24
 | T-112 | review protocol has no bias-mitigation step for a same-session implementer reviewing their own ticket | yes — merged to main (PR #59, merge commit `0a7aad3`); history kept rather than squashed, the root-path default. Step 0… |
 | T-113 | extend 'pickle scaffold' with a release verb: skeleton CHANGELOG.md + RELEASING.md (headings only, no prescribed toolin… | yes — merged to main (PR #68, a97d11d); history kept, not squashed (2 commits: feature + the F1 inline fix); user-appro… |
 | T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | yes — merged to main (PR #69, 1a59501) |
-| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | no — publish-gated |
+| T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | yes — MERGED: feat/T-115-harden-docs-xref-checker → main (PR #71, merge commit 0cbda08); 5 commits kept, not squashed |
 | T-117 | remove pickle scaffold docs — docs/release scaffolding belongs to snowball, not pickle | yes — merged to main (MR !70, 22ae947, https://github.com/codcod/pickle/commit/22ae947795e526fdb14a79b2190df7737b834a2b) |
 
 ## DROPPED
