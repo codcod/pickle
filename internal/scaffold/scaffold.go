@@ -1,12 +1,17 @@
-// Package scaffold implements `pickle scaffold docs`: an entirely optional,
-// standalone command that lays down a minimal AsciiDoc docs skeleton, a
-// best-effort `snowball init` shell-out, additive justfile recipes, and a
-// standalone GitHub Action that attaches the built manual to a release.
+// Package scaffold implements the `pickle scaffold` verb group: `docs` lays
+// down a minimal AsciiDoc docs skeleton, a best-effort `snowball init`
+// shell-out, additive justfile recipes, and a standalone GitHub Action that
+// attaches the built manual to a release; `release` writes exactly two
+// skeleton files — a Keep a Changelog CHANGELOG.md and a headings-only
+// RELEASING.md — prescribing no release tooling of any kind: no workflow, no
+// justfile recipes, no language detection, no shell-out, no command named in
+// either file.
 //
-// This is deliberately unrelated to brine (T-110): `pickle install` continues
-// to scaffold the ticket flow only, and nothing this package writes is ever
-// read back by `pickle doctor`/`pickle board audit` or any other pickle
-// command — it is a one-shot scaffold, not an ongoing invariant pickle owns.
+// Both are deliberately unrelated to brine (T-110, T-113): `pickle install`
+// continues to scaffold the ticket flow only, and nothing this package writes
+// is ever read back by `pickle doctor`/`pickle board audit` or any other
+// pickle command — each is a one-shot scaffold, not an ongoing invariant
+// pickle owns.
 package scaffold
 
 import (
@@ -40,7 +45,14 @@ var templateFiles = []templateFile{
 	{"scaffold/docs-template/workflows/docs-release.yml", ".github/workflows/docs-release.yml"},
 }
 
-// Options configures a single `scaffold docs` run.
+// releaseTemplateFiles is the fixed set of files `pickle scaffold release`
+// writes — exactly two, no language branch (decision 8, T-113).
+var releaseTemplateFiles = []templateFile{
+	{"scaffold/release-template/CHANGELOG.md", "CHANGELOG.md"},
+	{"scaffold/release-template/RELEASING.md", "RELEASING.md"},
+}
+
+// Options configures a single scaffold run (`docs` or `release`).
 type Options struct {
 	// ProjectName substitutes projectNameToken in every template file.
 	// Defaults to filepath.Base(root) when empty (Run fills this in).
@@ -71,17 +83,51 @@ func (r *Result) note(n string)    { r.Notes = append(r.Notes, n) }
 func Docs(payload fs.FS, root string, opts Options) (Result, error) {
 	var res Result
 
-	name := opts.ProjectName
+	if err := writeTemplates(payload, root, templateFiles, opts.ProjectName, opts, &res); err != nil {
+		return res, err
+	}
+
+	if err := scaffoldJustfile(root, &res, opts.DryRun); err != nil {
+		return res, err
+	}
+
+	scaffoldSnowballConfig(root, &res, opts.DryRun)
+
+	return res, nil
+}
+
+// Release performs a scaffold release run into root using the embedded
+// payload FS (the binary's "scaffold/release-template" tree). It writes
+// exactly two files — a Keep a Changelog CHANGELOG.md and a headings-only
+// RELEASING.md — and nothing else: no justfile recipes, no GitHub Actions
+// workflow, no shell-out to any release tool, no pickle.toml read, no
+// doctor/board-audit integration (decision 8, T-113).
+func Release(payload fs.FS, root string, opts Options) (Result, error) {
+	var res Result
+
+	if err := writeTemplates(payload, root, releaseTemplateFiles, opts.ProjectName, opts, &res); err != nil {
+		return res, err
+	}
+
+	return res, nil
+}
+
+// writeTemplates writes each of files into root, substituting name for
+// projectNameToken in every template's content. Shared by Docs and Release
+// (decision 6, T-113) — an existing destination file is left untouched
+// unless opts.Force is set, and opts.DryRun reports what would happen without
+// writing anything.
+func writeTemplates(payload fs.FS, root string, files []templateFile, name string, opts Options, res *Result) error {
 	if name == "" {
 		name = filepath.Base(root)
 	}
 	token := []byte(projectNameToken)
 	replacement := []byte(name)
 
-	for _, tf := range templateFiles {
+	for _, tf := range files {
 		data, err := fs.ReadFile(payload, tf.Asset)
 		if err != nil {
-			return res, fmt.Errorf("read embedded %s: %w", tf.Asset, err)
+			return fmt.Errorf("read embedded %s: %w", tf.Asset, err)
 		}
 		data = bytes.ReplaceAll(data, token, replacement)
 
@@ -101,21 +147,15 @@ func Docs(payload fs.FS, root string, opts Options) (Result, error) {
 		}
 
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return res, err
+			return err
 		}
 		if err := os.WriteFile(dst, data, 0o644); err != nil {
-			return res, err
+			return err
 		}
 		res.created(tf.Installed)
 	}
 
-	if err := scaffoldJustfile(root, &res, opts.DryRun); err != nil {
-		return res, err
-	}
-
-	scaffoldSnowballConfig(root, &res, opts.DryRun)
-
-	return res, nil
+	return nil
 }
 
 // justfileRecipe is one docs recipe scaffoldJustfile may append. Each body

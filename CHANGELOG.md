@@ -8,6 +8,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle scaffold release` writes a Keep a Changelog `CHANGELOG.md` and a headings-only
+  `RELEASING.md`** — entirely optional and separate from the ticket flow, mirroring `pickle
+  scaffold docs`: no workflow, no justfile recipes, no language detection, and no command named
+  in either file. The two skeletons are exactly what `docs/user-manual/concepts/releasing.adoc`
+  already describes an agent offering when either file is missing, made real (T-113).
+
 ### Fixed
 
 - **`pickle ticket new` now rejects a title containing any of the five Unicode line terminators,
