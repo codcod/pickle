@@ -189,8 +189,10 @@ In `skill/resources/review-protocol.md`, at `## 7. Update other references` (`:2
 - state the boundary against 4a in one clause: 4a audits the docs the project *ships*; these are
   the documents the *next ticket is written from*, which is why they need naming separately
   (decision 2);
-- state the severity rule (decision 3) and the class (decision 4) in one sentence each, citing §5
-  for the disposition vocabulary rather than restating it.
+- state the class (decision 4) in one sentence, citing the rules §5 for the disposition
+  vocabulary rather than restating it. *(Corrected at round-4 review, F5: this bullet
+  originally also said "state the severity rule (decision 3)". Twice-amended decision 3 forbids
+  step 7 stating any severity of its own, so the instruction contradicted its own decision.)*
 
 #### Task 2 — extend the step-7 checklist line
 In the same file's `### Checklist (paste into the ticket's `## Review` section)` block, extend the
@@ -565,6 +567,49 @@ rather than relocated. `fixed inline`/`folded` still absent from the payload.
 
 ---
 
+## Scoped re-review (round 4)
+
+Reviewer independence: **delegated** (round-3 author = orchestrating reviewer). Scope: verify
+R1–R8 and audit `git diff 6d3aaee b33b6ad` as fresh prose. Round 3 net-**removed** text, so the
+brief targeted what removal orphans rather than what addition contradicts. Every finding
+re-verified by hand.
+
+**Commands:** four green at `b33b6ad`. **Five acceptance checks:** all met. **Foreign-workspace
+test:** passes. `fixed inline`/`folded` absent. §5 blocking bullet still byte-identical to `main`.
+**Step 4b:** 14 suggestions, 14 quotes verified verbatim, 0 discarded; 3 target reworked text and
+one of them (A8) is a real defect independently matching F4's area — folded below.
+
+**Prior findings:** R1 resolved · **R2 partial — the illegal disposition is gone and an illegal
+transition is back (F1)** · R3 resolved (but F2) · R4 resolved · R5, R6 moot as claimed · R7 fixed
+but the replacement wording is wrong (F4) · R8 unchanged by design.
+
+### Round-4 findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | `spec-unclear` | — | **Step 7 asserts a route the state machine forbids, and the round-3 fix record's explicit denial of exactly this is false.** The text says a document-right/branch-wrong finding "takes the **ordinary route**". The ordinary route for a blocking finding is step 6a → `5-rework/`, reachable only from `4-in-review/`. Step 7 runs *after* step 6, so on the 6b path the ticket is in `6-done/` — terminal, with no outbound transition declared. Round 3 also deleted both previously-defined routes for this case and replaced them with a phrase pointing at a forbidden move. My round-3 fix record claims "This round's text does **not** assert a route for it … it defers to §5 and says nothing more" — contradicted by the words "takes the ordinary route", and its case-table row verifies a transition from a status the ticket is not in at step 7. **Fourth iteration of one pattern:** round 2 shipped a legal transition with an illegal severity label; round 3 shipped a legal severity label with an illegal transition. | `review-protocol.md:329-331` vs `:264-266`; `internal/flow/brine.go:129-150` (no `From: "6-done"`), comment `:38`; round-3 fix record | Say nothing about routing. The branch-wrong case is §5's business, found in steps 2–3; step 7 mentioning it has now failed twice. State what *kind* of defect it is and stop. |
+| F2 | non-blocking | `spec-unclear` | folded | **A fourth ground escapes the exhaustive grounds list.** "A reconciliation too large to make here becomes a follow-up ticket" is offered at `:325`, while `:333-335` says "The legitimate grounds **are**" and names three, and a review leaving the document otherwise "has not finished". Size is also grammatically buried inside the *out-of-reach* sentence, so it is unclear whether it applies in reach — the case it exists for. | `review-protocol.md:325` vs `:333-335` | Move size into the grounds list, or drop the clause. |
+| F3 | non-blocking | `spec-unclear` | folded | **Bare "§5" is ambiguous and the two §5s differ.** Four bare uses, all introduced by this branch; every pre-existing use says "**the rules** §5". The protocol's own §5 blocking list has four items (including 4a.1); the rules' has three. Step 7's whole warrant is now "§5's existing categories already settle the case" — which list is load-bearing is unstated. Neither list is declared closed (only the *dispositions* are exhaustive), so "settle" leans on a complement reading the text never authorises. | `review-protocol.md:317-318`, `:325`, `:330` vs `:24`, `:234`, `:268`, `:323`, `:347`; `:260-261` vs `tickets-README.md:398` | Qualify to "the rules §5" throughout, and replace the sweeping "settle the case" with the checkable claim: a stale governing document matches none of its blocking categories. |
+| F4 | non-blocking | `docs-gap` | folded | **R7's replacement contradicts the same page seven lines up.** Manual and CHANGELOG now say the finding "takes a severity **and a disposition** like any other finding" — but a blocking finding takes none, as `lifecycle.adoc:111-112` itself says. True only on the non-blocking branch, which the same sentence declines to guarantee. Compounded by a clipped subject introduced the same round: "**One** the branch made false is classed …" (independently flagged by the step-4b reviewer as A8, quote verified). | `lifecycle.adoc:128-130`, `CHANGELOG.md:24` vs `lifecycle.adoc:111-112`, `tickets-README.md:401` | "handled like any other finding"; restore the subject to "A governing document the branch made false". |
+| F5 | non-blocking | `stale-xref` | fixed inline | **The plan's own Task 1 is falsified by its twice-amended decision 3.** Task 1's last bullet still directs the implementer to "state the severity rule (decision 3) … in one sentence each", which the amended decision now forbids. Bookkeeping only; no ticket. | plan Task 1, line 192 of the ticket, vs amended decision 3 | Corrected in this review; noted in the fix record. |
+
+**Disposition summary:** 1 blocking (F1) · 3 folded into the round-4 pass (F2, F3, F4) · 1 fixed
+inline (F5) · 0 new tickets. The 11 readability suggestions against untouched prose are **noted**.
+
+cost: estimated S, actual XL (unchanged from round 3 — already at the top of the scale).
+
+**Root cause — fourth occurrence, and it has narrowed to one sentence.** Rounds 1–3 each had the
+blocking finding inside the *blocking carve-out*; round 3 deleted the carve-out and the blocking
+finding moved into the single surviving sentence that still mentions the blocking case at all.
+The invariant across four rounds: **every blocking finding has been in whatever sentence tries to
+tell the reviewer what to do when the branch and the document disagree.** The non-blocking
+default has never once been at fault. The remedy the evidence points at is not a better sentence
+— three have failed — but no sentence: step 7 states the reconciliation duty and stops, and the
+branch-wrong case is left entirely to §5, where steps 2–3 already find it and where it needs no
+mention here to work.
+
+---
+
 **Root cause — third occurrence of one pattern.** Every round's blocking finding has been in the
 **blocking carve-out**, never in the non-blocking default:
 
@@ -611,3 +656,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-25 — IN REVIEW → REWORK: 2 blocking (R1, R2): blocking carve-out has no §5 warrant and routes to a forbidden disposition
 - 2026-08-26 — plan amended inline (second time): decision 3's blocking carve-out removed with user sign-off. Step 7 now states a duty and its mechanics and defines no severity; §5's existing categories settle every case (a stale governing document is non-blocking under them; a branch that is actually wrong is blocking under "ships wrong behaviour"). Reason: all three review rounds put their blocking findings inside the carve-out and none in the non-blocking default, and R1 showed the carve-out's §5 warrant did not exist — rules §7 scopes "locked decision" to a numbered item in a ticket's Implementation Plan, which no governing document has. Removing it makes R1, R2, R5 and R6 moot rather than patched.
 - 2026-08-25 — REWORK → IN REVIEW: R1/R2 fixed by removing the blocking carve-out
+- 2026-08-25 — IN REVIEW → REWORK: 1 blocking (F1): step 7 asserts a route the state machine forbids
