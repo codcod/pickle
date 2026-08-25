@@ -117,15 +117,30 @@ ordering — if it lands first, rebase before starting.
    decisions log as examples, and points at the documents step 1 already told the reviewer to read
    (via the project's `AGENTS.md`). Adding a `governing_docs` key would turn a prose rule into a
    schema, install/upgrade, `doctor` and manual change, and the rule has no usage behind it yet.
-3. **Severity is conditional on reach, and the condition is written into the rule.** A governing
-   document this branch made false is a **blocking** finding when it is within the review's reach —
-   the same repository, or one this review can commit to — because a false governing document
-   propagates into every ticket cut from it, which is the same reasoning that makes missing docs
-   coverage blocking in 4a.1. When the document is out of reach (another repository, another commit
-   policy, another team), the finding is **non-blocking** and takes a disposition per the rules §5,
-   with the reason for the reach limit recorded. Unconditional blocking would make the protocol
-   unfollowable in an umbrella layout across repository boundaries, and an unfollowable rule is
-   ignored wholesale.
+3. **Reconciling is the default and it is non-blocking; blocking is reserved for genuine
+   disagreement.** *(Amended 2026-08-26 with user sign-off — see History. The original text made
+   an in-reach falsified document **blocking**; two review rounds showed that split could not be
+   stated without contradicting either the disposition vocabulary (N1) or its own "why not"
+   grounds (N2). What follows replaces it.)*
+   - **Within the review's reach** — the repository holding the branch under review, or any
+     repository this review is already authorised to commit to under the project's commit policy
+     — the reviewer **reconciles the document during the review** and records it as a
+     **non-blocking** finding. This is precisely what the rules §5 disposition for "prose this
+     branch authored, or made false — and no behaviour change" is defined for, so the flow needs
+     no new machinery to carry it, and the common case (a design doc lagging the code) costs one
+     recorded edit instead of a rework round-trip.
+   - **Out of reach** (another repository, another commit policy, another team) — **non-blocking**,
+     with the reach limit recorded as the reason, dispositioned per the rules §5. Blocking here
+     would strand the ticket on an edit the reviewer cannot make.
+   - **Blocking** — only when the branch and the governing document *genuinely disagree about what
+     is correct*, so someone must decide which one is right. That is a design conflict rather than
+     a documentation lag, and §5's existing "contradicts a locked decision" already carries it —
+     so **no new blocking category is added to §5**, which also closes the severity-list drift the
+     re-review recorded as N5.
+
+   The original decision's worry — that a false governing document propagates into every ticket
+   cut from it — is preserved: the document still cannot survive the review asserting something
+   false. What changes is that the fix happens *in* the review instead of via a rework round-trip.
 4. **The finding is classed `stale-xref`; no new class value is added.** The existing definition
    ("a reference this branch made false … or plan prose describing behaviour that changed") already
    covers it. `docs-gap` is explicitly the *user-facing* docs class and must not absorb this. The
@@ -416,3 +431,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-25 — IN REVIEW → REWORK: 5 blocking findings (F1-F5): step-7 rule under-specified
 - 2026-08-25 — REWORK → IN REVIEW: findings fixed
 - 2026-08-25 — IN REVIEW → REWORK: 2 blocking findings (N1, N2): step-7 disposition clause contradicts its own severity rule
+- 2026-08-26 — plan amended inline: decision 3 replaced with user sign-off. In-reach reconciliation is now non-blocking and done during the review (the rules §5 disposition for prose this branch made false); blocking is reserved for a genuine branch-vs-document disagreement, which §5's existing "contradicts a locked decision" already carries. Reason: two review rounds (F1, then N1/N2) showed the original in-reach → blocking split could not be stated without contradicting either the disposition vocabulary or its own "why not" grounds. Closes N5's severity-list drift as a side effect.
