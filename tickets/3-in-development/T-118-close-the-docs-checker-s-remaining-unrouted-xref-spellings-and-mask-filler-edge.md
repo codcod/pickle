@@ -406,3 +406,4 @@ updated by Tasks 1–5 — which is where this checker has always documented its
   (`link://host/x.adoc[...]`, finding F9) — same defect class as item 1, folded here per
   rules §5 rather than opened as a new ticket
 - 2026-08-25 — TO DO → READY: plan complete
+- 2026-08-25 — READY → IN DEVELOPMENT: picked up
