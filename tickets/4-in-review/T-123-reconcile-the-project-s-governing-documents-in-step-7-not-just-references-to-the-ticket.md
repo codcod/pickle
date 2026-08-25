@@ -311,6 +311,50 @@ cost: estimated S, actual M — the three-file edit was S as graded; the shipped
 
 **Note on the shape of this review.** Every blocking finding is in the same six lines of payload prose, and none is a coding error — the deliverable *is* the rule, so an under-specified rule is a defective deliverable rather than a cosmetic one. The four commands were green throughout and the five mechanical checks all passed; what the delegated audit caught is that a rule can satisfy every structural check and still be unfollowable by the reader it ships to. That is the argument for step 0's delegation, made against this very branch.
 
+### Rework fix record (commit `6f0f135`)
+
+- **F1 — fixed.** The governing-document check now triggers during the consistency audit
+  (step 4, `review-protocol.md:158-161`) and classifies at step 5 like any other finding
+  (`:260-261`, a cross-reference mirroring the existing 4a.1 pattern) — both **before** step 6's
+  move. Step 7 no longer discovers severity; it states the rule and, for a non-blocking
+  in-review disposition, is where the mechanical edit lands. A blocking one is fixed during the
+  rework pass it already routed to, consistent with step 5's "do not fix it inline". No step
+  renumbered.
+- **F2 — fixed.** "the same repository" replaced with an explicit antecedent: "the repository
+  holding the branch under review, or any repository this review is already authorised to
+  commit to under the project's commit policy" (`review-protocol.md:321-322`).
+- **F3 — fixed.** Step 7's bullet now names the two legitimate grounds decision 6 always
+  intended (document is right, prose was loose; reconciliation belongs to a ticket that owns
+  the document) plus the reach limit, instead of a bare, unbounded alternative
+  (`review-protocol.md:313-317`).
+- **F4 — fixed.** The identification back-reference now points at what `AGENTS.md` itself
+  names, not at step 1, in both step 4 and step 7 (`review-protocol.md:160`, `:314`).
+- **F5 — fixed.** "locked decisions" (governing-document sense) renamed to "the
+  locked-decisions guide" in both the payload and the manual, adopting the CHANGELOG's already-
+  correct noun phrase; "contradicts a locked decision" (a ticket's own confirmed decision, §5's
+  sense) is now the only remaining use of the bare phrase (`review-protocol.md:314`, `:260`;
+  `lifecycle.adoc:127`).
+- **F6 — fixed** (was folded; done inline as part of the rework rather than deferred).
+  `lifecycle.adoc`'s paragraph now reads "A governing document the branch made false is blocking
+  within the review's reach and non-blocking otherwise."
+- **F7 — fixed** (was folded; done inline as part of the rework rather than deferred). The
+  paragraph moved to the end of the section, after the `cost:` line, restoring the findings-
+  table narrative's continuity.
+- **F8** — already recorded in this ticket's own `## Review` above (check 5); unaffected by
+  this rework pass.
+
+**Verified after the fix:** all four commands (`just build`, `just test`, `just lint`,
+`just docs-check`) green, including `payload_lint_test.go` and `TestPayloadDispositionVocabulary`
+(the rework's own prose was tightened to avoid literally restating the `fixed inline`/`folded`
+disposition tokens outside `tickets-README.md`, per that test). All five of the ticket's original
+specific acceptance checks re-verified and still hold: no step renumbered (only step 7's title
+text, by design); the class-vocabulary table still byte-identical to `main`; the checklist line
+count still 11=11; the installed throwaway payload (`pickle-test`) still greps `governing` ≥ 3
+(now 8); `DESIGN.md`/`AGENTS.md` still assert nothing this branch made false.
+
+cost: estimated S, actual M (unchanged by the rework — recorded once, at the review that found
+the cost gap).
+
 ## History
 
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace found three governing documents asserting behaviour their own reviews had already retracted, and now carries the reconciliation rule in its own overarching addendum
@@ -321,3 +365,4 @@ cost: estimated S, actual M — the three-file edit was S as graded; the shipped
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
 - 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-25 — IN REVIEW → REWORK: 5 blocking findings (F1-F5): step-7 rule under-specified
+- 2026-08-25 — REWORK → IN REVIEW: findings fixed
