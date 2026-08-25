@@ -241,3 +241,4 @@ is Task 4. No other doc mentions the claim.
   (disposition: new ticket). The payload half of the autodetection claim T-013 removed from
   `pickle help`; pre-existing, so ineligible for `fixed inline` under rules §5
 - 2026-08-24 — TO DO → READY: plan complete
+- 2026-08-25 — READY → IN DEVELOPMENT: picked up
