@@ -242,3 +242,4 @@ is Task 4. No other doc mentions the claim.
   `pickle help`; pre-existing, so ineligible for `fixed inline` under rules §5
 - 2026-08-24 — TO DO → READY: plan complete
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
+- 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
