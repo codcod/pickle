@@ -355,6 +355,55 @@ count still 11=11; the installed throwaway payload (`pickle-test`) still greps `
 cost: estimated S, actual M (unchanged by the rework — recorded once, at the review that found
 the cost gap).
 
+---
+
+## Scoped re-review (round 2)
+
+Reviewer independence: **delegated** again — the orchestrating reviewer wrote the rework in the
+same session. Scope per protocol step 1: verify F1–F7 only, plus any defect the rework itself
+introduced. Every finding below was re-verified by hand against the tree before recording.
+
+**Commands:** `just build` · `just test` · `just lint` · `just docs-check` — all four green at
+`6f0f135`, including `payload_lint_test.go` and `TestPayloadDispositionVocabulary`.
+
+**Five original acceptance checks:** all still hold (numbering identical to `main`; class table
+byte-identical; checklist 11=11; installed `pickle-test` payload greps `governing` = 8; ≥ 3;
+`DESIGN.md`/`AGENTS.md` still assert nothing this branch made false).
+
+**Prior findings:** F2, F3, F4, F5, F6, F7 — **resolved**. F1 — **partial**: the ordering half is
+genuinely fixed (the check now triggers at step 4 and classifies at step 5, before step 6's move),
+but step 7's paragraph still contradicts itself on the disposition half. Step 4b's readability
+reviewer independently returned **no** suggestion against the reworked manual paragraph, which is
+corroborating evidence for F6/F7.
+
+### Round-2 findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| N1 | blocking | `spec-unclear` | — | **Step 7 recommends a disposition its own severity rule makes unreachable.** The rule is: blocking when in reach, non-blocking *otherwise* — so the only non-blocking case is **out of reach**. The next sentence then tells the reviewer that the non-blocking one is "most often the one for prose this branch made false and no behaviour change" — i.e. reconcile it now. You cannot edit a document you are, by the same sentence's definition, not authorised to commit to. The rework grafted the *disposition* half of F1's suggested fix (in-reach → non-blocking + inline edit) onto decision 3's *opposite* severity split (in-reach → blocking). Reads plausibly; cannot be executed. | `review-protocol.md:319-327` vs `tickets-README.md:414` | Delete the disposition-recommendation clause entirely. Step 5 already assigns dispositions before step 7 is ever reached, so step 7 restating which one to pick is redundant — and here, wrong. |
+| N2 | blocking | `spec-unclear` | — | **F3's second ground contradicts the blocking rule.** The bullet permits discharging step 7 with a note when "the reconciliation belongs to a ticket that owns the document", offered unconditionally; but §5 and step 7 both make that same document **blocking** when the branch made it false and it is in reach. A reviewer facing an in-reach, branch-falsified, other-ticket-owned governing document has two rules returning opposite verdicts (rework vs. proceed to done). | `review-protocol.md:315-317` vs `:261-262` and `:319-322` | Scope the "why not" grounds to the non-blocking case explicitly — they are reasons a *non-blocking* finding is not reconciled, not an escape from a blocking one. |
+| N3 | non-blocking | `stale-xref` | folded | `"get reconciled (**mechanics below**)"` — nothing below is mechanics. What follows is classification, severity, class and the 4a boundary. Decision 7 explicitly forbids stating mechanics, so this pointer can never be satisfied. Introduced by the rework's own smoothing edit. | `review-protocol.md:315` vs `:319-330` | Read "severity below", or drop the parenthetical. |
+| N4 | non-blocking | `spec-unclear` | folded | Residual F1: the rework *asserts* the discovery order rather than routing it. Step 4 says "classify … per step 7's rule **now**"; step 7 says it "**was** classified during the consistency audit (step 4)". Mutual pointers, and the past tense presupposes step 4 ran. A falsehood first noticed *at* step 7 — plausible, since step 7 is when you open documents referencing the ticket — still has no route back to §5/6a. Mitigated, not eliminated. | `review-protocol.md:158-161` vs `:319-320` | One clause: if it surfaces here, take it back to §5. |
+| N5 | non-blocking | `spec-unclear` | noted | §5 declares severity "defined in **the rules §5**, which is their single source of truth", and the rework adds a third blocking category absent from the rules' own list. Precedented by the pre-existing 4a.1 item, but the drift is now two items wide. | `review-protocol.md:247`, `:261-262` vs `tickets-README.md:398-402` | Out of this ticket's scope — the rules file is not its to edit. Recorded so the drift is visible. |
+| N6 | non-blocking | `docs-gap` | folded | `CHANGELOG.md` still says "Shipped in `resources/review-protocol.md` (**step 7**)", but after the rework the load-bearing trigger is step 4 and the severity clause is step 5. The rework touched neither the CHANGELOG nor the plan's Tasks 1–3, which also still scope the change to step 7 alone. | `CHANGELOG.md:26`; plan Tasks 1–3 | Widen the CHANGELOG phrasing to name steps 4, 5 and 7. |
+| N7 | non-blocking | `stale-xref` | folded | The Rework fix record cites `:260-261` for F1's step-5 cross-reference; the added clause is at `:261-262` (`:260` is the pre-existing bullet opener). Trivial — and precisely the defect class this ticket ships a rule about. | fix record vs `review-protocol.md:260-262` | Correct to `:261-262`. |
+| N8 | non-blocking | `design` | noted | F7's move is correct, but the new duty now lands *after* "A review closes with two one-line summaries" — a terminal sentence — so the paragraph describes work occurring after the review closed. | `lifecycle.adoc:119-124` then `:126-131` | Either accept (the section is a concept overview, not a strict sequence) or move it above the closing sentence. Recorded; the placement is defensible as-is. |
+
+**Disposition summary:** 2 blocking (N1, N2 — they define the round-2 rework scope) · 4 folded into that pass (N3, N4, N6, N7) · 2 noted (N5, N8) · 0 new tickets. Step 4b: 11 suggestions, 11 quotes verified verbatim, 0 discarded; 1 targets reworked text (splitting step 7's long sentence) and is folded into the N1/N2 rewrite, which replaces that sentence anyway; the other 10 target untouched prose and are **noted**.
+
+cost: estimated S, actual L — revised up from M. Two rework cycles on the same six lines of prose,
+with the second introducing a fresh contradiction while fixing five, is an L in substance whatever
+the diff size says.
+
+**Root cause, for the rework pass to weigh.** N1 is not a slip of the pen. F1's suggested fix and
+the plan's **decision 3** point in opposite directions: F1 proposed *in-reach → non-blocking, fix
+it right there*; decision 3 (user-confirmed at refinement) says *in-reach → blocking*. The rework
+took the severity from one and the disposition from the other, and the seam is N1. The two coherent
+resolutions are (a) keep decision 3 and delete step 7's disposition sentence, or (b) revisit
+decision 3 so an in-reach reconciliation is a recorded inline fix and blocking is reserved for what
+cannot be reconciled. (a) is a prose fix inside the existing decisions; (b) is a design change that
+needs user sign-off. The choice belongs to the human, not to the rework pass.
+
 ## History
 
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace found three governing documents asserting behaviour their own reviews had already retracted, and now carries the reconciliation rule in its own overarching addendum
@@ -366,3 +415,4 @@ the cost gap).
 - 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-25 — IN REVIEW → REWORK: 5 blocking findings (F1-F5): step-7 rule under-specified
 - 2026-08-25 — REWORK → IN REVIEW: findings fixed
+- 2026-08-25 — IN REVIEW → REWORK: 2 blocking findings (N1, N2): step-7 disposition clause contradicts its own severity rule
