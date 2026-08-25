@@ -316,3 +316,4 @@ re-verifies that and records the verdict. `CHANGELOG.md` gains one `Fixed` bulle
   replaces it wholesale"); T-120 made `install` prune the skill directory too and corrected that
   sentence to name both commands. Task 1's actual edit target is unaffected — only the
   surrounding wording to preserve changed. No scope or grade change
+- 2026-08-25 — READY → IN DEVELOPMENT: picked up
