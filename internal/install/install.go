@@ -2,8 +2,9 @@
 // project — the embedded skill payload, the tickets/ board scaffold, the
 // AGENTS.md/CLAUDE.md marker blocks, the Claude view symlink, and a pickle.toml
 // registering the first child-project. It is per-project (never writes to ~/ or
-// outside root), idempotent, and safe to re-run: the payload and markers are
-// refreshed in place while instance data (BOARD.md, tickets, pickle.toml) is
+// outside root), idempotent, and safe to re-run: the marker blocks are
+// refreshed in place, the skill payload is replaced wholesale (T-120 — see
+// copyPayload), and instance data (BOARD.md, tickets, pickle.toml) is
 // preserved once present.
 package install
 
@@ -77,7 +78,10 @@ const (
 // SkillLinked reports whether the installed skill directory is a symlink: the
 // dev/self-host arrangement in which .agents/skills/brine points at the
 // payload source (this repo's skill/) instead of holding a copy of it. install
-// and upgrade never overwrite through such a link, and uninstall removes the
+// and upgrade never write *or delete* through such a link — copyPayload
+// short-circuits on this predicate before the os.RemoveAll that replaces the
+// directory wholesale (T-120), so a linked tree is never followed and wiped —
+// and uninstall removes the
 // link itself rather than RemoveAll-ing the tree it points at; doctor uses it
 // to skip the payload_version comparison, which would otherwise compare against
 // an installed copy that does not exist.
@@ -181,11 +185,11 @@ type Result struct {
 
 // labelSkillDir records the skill-payload outcome in the one vocabulary both
 // install and upgrade report it with, from a (existed, changed) pair captured
-// *before* the tree was touched. Both callers write the payload
-// unconditionally; this only names what the write amounted to, so "(current)"
-// means the bytes on disk already matched, not that nothing was written.
-// Shared so the two paths cannot drift into describing the same outcome
-// differently (T-013 review, N6).
+// *before* the tree was touched. Both callers replace the directory wholesale
+// unconditionally (T-120 decision 1); this only names what that replacement
+// amounted to, so "(current)" means replacing it would have changed nothing
+// observable on disk — not that nothing was written. Shared so the two paths
+// cannot drift into describing the same outcome differently (T-013 review, N6).
 func (r *Result) labelSkillDir(existed, changed bool) {
 	switch {
 	case !existed:
@@ -451,7 +455,11 @@ func Upgrade(payload fs.FS, root, payloadVersion string, opts ...UpgradeOptions)
 	// removed from the new payload don't linger; a self-host symlink is left
 	// alone (copyPayload already skips it via the Lstat/ModeSymlink guard). A
 	// legacy self-host symlink is re-created at the new name instead — the
-	// same protection, one name later.
+	// same protection, one name later. The real-directory case is not handled
+	// inline here: copyPayload does the same compare-wipe-write sequence Run
+	// does, so the two commands cannot drift in either wording or behaviour
+	// (decision 4, T-013 review N6) — see its doc comment for why the compare
+	// happens before the wipe, and why the wipe is never gated on it.
 	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
 	switch {
 	case swept.LinkTarget != "":
@@ -466,31 +474,9 @@ func Upgrade(payload fs.FS, root, payloadVersion string, opts ...UpgradeOptions)
 			return res, err
 		}
 	default:
-		// Compare *before* wiping (T-013 item 8's mechanism constraint): once
-		// dst is removed, a presence check can no longer tell a byte-identical
-		// no-op upgrade from a fresh install, so the diff has to be captured
-		// here, not inside copyPayload after the fact.
-		existed, changed, derr := skillPayloadDiffers(payload, dst)
-		if derr != nil {
-			return res, derr
+		if err := copyPayload(payload, root, &res); err != nil {
+			return res, err
 		}
-		// Then replace wholesale, unconditionally. The wipe is not an
-		// optimisation to skip when the bytes happen to match: it is what
-		// removes files the new payload dropped and what repairs a tampered
-		// tree — a stale empty directory, a payload file left at a
-		// non-default mode, a payload file swapped for a symlink pointing
-		// outside the tree. skillPayloadDiffers compares file *contents* and
-		// sees none of those, so gating the wipe on it silently downgraded
-		// upgrade from "pickle-owned, replaced wholesale" to "patched if it
-		// looks stale" (T-013 review, B1). The captured (existed, changed)
-		// is used for the label only, never to skip the work.
-		if err := os.RemoveAll(dst); err != nil {
-			return res, fmt.Errorf("refresh skill payload: %w", err)
-		}
-		if err := writeSkillPayload(payload, dst); err != nil {
-			return res, fmt.Errorf("copy payload: %w", err)
-		}
-		res.labelSkillDir(existed, changed)
 	}
 
 	refreshed, err := RefreshMarkers(root, cfg)
@@ -779,12 +765,24 @@ func uninstallMarkerFile(path string, opts UninstallOptions, res *Result) error 
 }
 
 // skillPayloadDiffers reports whether dst already exists and, if so, whether
-// writing the embedded skill payload into it would change any bytes already
-// on disk there. It performs no writes, which is what lets Upgrade call it
-// before its wipe-then-copy sweep (T-013 item 8's mechanism constraint): a
-// presence check made *after* that sweep would always see an absent dst and
-// report every upgrade as a fresh create, masking a byte-identical no-op
-// upgrade as if it had changed the tree.
+// replacing it wholesale — the wipe-then-recopy every caller performs
+// unconditionally — would change anything observable on disk (T-120 decision
+// 1): file contents, but also entry *type* (a payload file swapped for a
+// symlink, or a file sitting where a payload directory belongs, or vice
+// versa) and directory presence, since a stale directory the payload does not
+// ship is exactly what the wipe removes. It performs no writes, which is what
+// lets Upgrade call it before its wipe-then-copy sweep (T-013 item 8's
+// mechanism constraint): a presence check made *after* that sweep would
+// always see an absent dst and report every upgrade as a fresh create,
+// masking a byte-identical no-op upgrade as if it had changed the tree.
+//
+// Two things are deliberately not compared. Permission bits: writeSkillPayload
+// creates every entry at 0o644/0o755 *before* umask, so there is no stable
+// mode to compare against — asserting one would report a difference forever
+// on a machine with a stricter umask. Mtimes: both callers wipe and rewrite
+// unconditionally regardless of what this reports, so a run labelled
+// "current" still changes them; that is the one documented exception to what
+// "current" means (see the user manual).
 func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err error) {
 	info, statErr := os.Lstat(dst)
 	switch {
@@ -797,7 +795,7 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 	case os.IsNotExist(statErr):
 		return false, true, nil
 	default:
-		// Same rule as the walk below (B4): an advisory probe must not decide
+		// Same rule as the walks below (B4): an advisory probe must not decide
 		// the command's fate. Treat an unreadable dst as present-and-differing
 		// so the caller wipes and re-copies as usual — if the tree really is
 		// unusable, the failure then surfaces from RemoveAll, which reports it
@@ -810,13 +808,15 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 		return true, false, fmt.Errorf("locate embedded skill: %w", err)
 	}
 
+	// seen is keyed by the slash-separated path relative to the payload root,
+	// exactly as fs.WalkDir names it — including "." itself, the root entry,
+	// so the disk walk below never reports dst as stale against its own
+	// payload counterpart. Every entry (files *and* directories) is recorded,
+	// which is what lets the disk walk see a stale directory (finding 3).
 	seen := map[string]bool{}
 	err = fs.WalkDir(sub, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
-		}
-		if d.IsDir() {
-			return nil
 		}
 		seen[p] = true
 		if changed {
@@ -824,11 +824,33 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 			// before seen is ever consulted, so there is nothing left to learn.
 			return fs.SkipAll
 		}
+		target := filepath.Join(dst, filepath.FromSlash(p))
+		if d.IsDir() {
+			if p == "." {
+				// dst itself — already confirmed to be a real directory above.
+				return nil
+			}
+			// Missing, or a file/symlink sitting where a payload directory
+			// belongs, is a change the wipe would repair (finding 3).
+			ti, statErr := os.Lstat(target)
+			if statErr != nil || !ti.IsDir() {
+				changed = true
+			}
+			return nil
+		}
+		// Entry type before contents (decision 5): anything other than a
+		// regular file — missing, a symlink, a directory — is a change,
+		// whatever bytes following the link might read back as.
+		ti, statErr := os.Lstat(target)
+		if statErr != nil || !ti.Mode().IsRegular() {
+			changed = true
+			return nil
+		}
 		data, err := fs.ReadFile(sub, p)
 		if err != nil {
 			return err
 		}
-		cur, readErr := os.ReadFile(filepath.Join(dst, filepath.FromSlash(p)))
+		cur, readErr := os.ReadFile(target)
 		if readErr != nil || !bytes.Equal(cur, data) {
 			changed = true
 		}
@@ -841,8 +863,11 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 		return true, true, nil
 	}
 
-	// A file present on disk but absent from the new payload is also a
-	// change: it's stale, dropped from the upstream skill tree.
+	// An entry present on disk but absent from the new payload is also a
+	// change: it's stale, dropped from (or never part of) the upstream skill
+	// tree — directories included, which is finding (3): a stale directory
+	// used to be invisible here because this walk skipped directories
+	// entirely, so it never recorded one as stale.
 	//
 	// Every failure below degrades to changed = true rather than propagating.
 	// This comparison is **advisory** — it chooses a label and nothing else —
@@ -857,9 +882,6 @@ func skillPayloadDiffers(payload fs.FS, dst string) (existed, changed bool, err 
 		if err != nil {
 			changed = true
 			return fs.SkipAll
-		}
-		if d.IsDir() {
-			return nil
 		}
 		rel, relErr := filepath.Rel(dst, p)
 		if relErr != nil {
@@ -902,11 +924,30 @@ func writeSkillPayload(payload fs.FS, dst string) error {
 	})
 }
 
-// copyPayload writes the embedded skill tree into root/.agents/skills/brine
-// as real files, comparing against whatever is already there (if anything)
-// before writing so the summary can honestly say created, refreshed, or
-// current (T-013 item 2). If that path already exists as a symlink (a
-// dev/self-host link), it is left untouched.
+// copyPayload replaces root/.agents/skills/brine wholesale with the embedded
+// skill tree — comparing first, then wiping, then writing — so the summary
+// can honestly say created, refreshed, or current (T-013 item 2) while the
+// tree itself always ends up an exact copy of the payload, whatever drifted
+// state it started in. If that path already exists as a symlink (a
+// dev/self-host link), it is left untouched entirely: this is what protects
+// a self-hosted skill/ tree from being deleted through the link.
+//
+// The comparison runs *before* the wipe, never after (T-013 item 8's
+// mechanism constraint): once dst is removed, a presence check can no longer
+// tell a byte-identical no-op run from a fresh install, so the diff has to be
+// captured here, not inferred from an already-emptied directory.
+//
+// The wipe itself is never gated on that comparison (T-013 review, B1): it is
+// not an optimisation to skip when the bytes happen to match, it is what
+// removes files the new payload dropped and repairs a tampered tree — a
+// stale directory, a payload entry swapped for a symlink, a file left where a
+// directory belongs. skillPayloadDiffers now sees all of that (T-120), but
+// the wipe would still run unconditionally even if it did not: the captured
+// (existed, changed) decides the label only, never whether the write
+// happens. Both Run and Upgrade call this one function for the real-directory
+// case, so the two commands cannot drift in either the wording or the
+// behaviour (decision 4, T-013 review N6) — Upgrade's symlink branches call
+// it too, for the label alone, since SkillLinked already made it a no-op.
 func copyPayload(payload fs.FS, root string, res *Result) error {
 	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
 	// SkillLinked(root) is an in-package call to the exact same predicate
@@ -919,6 +960,9 @@ func copyPayload(payload fs.FS, root string, res *Result) error {
 	existed, changed, err := skillPayloadDiffers(payload, dst)
 	if err != nil {
 		return err
+	}
+	if err := os.RemoveAll(dst); err != nil {
+		return fmt.Errorf("refresh skill payload: %w", err)
 	}
 	if err := writeSkillPayload(payload, dst); err != nil {
 		return fmt.Errorf("copy payload: %w", err)
@@ -1330,8 +1374,8 @@ func MarkerBlock(cfg *config.Config) string {
 		"  the rules (`resources/tickets-README.md`), the ticket template\n" +
 		"  (`resources/TEMPLATE.md`), and the review protocol\n" +
 		"  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/brine`.\n" +
-		"  The directory is pickle-owned — `pickle upgrade` replaces it wholesale, so keep\n" +
-		"  hand-written notes outside it.\n" +
+		"  The directory is pickle-owned — `pickle install` and `pickle upgrade` both replace\n" +
+		"  it wholesale, so keep hand-written notes outside it.\n" +
 		"- Triggers: \"make it a ticket\", \"refine ticket T-NNN\", \"implement ticket T-NNN\", \"rework ticket\n" +
 		"  T-NNN\", \"validate ticket T-NNN\" (or \"review ticket T-NNN\"), \"audit the board\".\n" +
 		"\n" +

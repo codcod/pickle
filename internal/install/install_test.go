@@ -744,8 +744,10 @@ func TestSkillDirLabelsOnInstall(t *testing.T) {
 }
 
 // TestSkillDirLabelsOnUpgrade is the same contract on the upgrade path, which
-// reaches it through a different branch (Upgrade captures the diff itself,
-// before its wipe, rather than letting copyPayload do it).
+// since T-120 reaches it through the very same copyPayload install calls
+// (decision 4) rather than capturing the diff itself before its own wipe — so
+// this test and TestSkillDirLabelsOnInstall now pin one shared code path from
+// two entry points, and TestSkillDirLabelParity asserts they agree.
 func TestSkillDirLabelsOnUpgrade(t *testing.T) {
 	payload := os.DirFS(payloadRoot())
 	root := t.TempDir()
@@ -862,12 +864,159 @@ func TestUpgradeAlwaysReplacesSkillDirWholesale(t *testing.T) {
 	}
 }
 
+// skillDirLabel returns the Created or Skipped entry naming the skill dir, so
+// tests can compare the label install and upgrade report for the same tree.
+func skillDirLabel(t *testing.T, res Result) string {
+	t.Helper()
+	for _, c := range res.Created {
+		if strings.HasPrefix(c, SkillDir) {
+			return c
+		}
+	}
+	for _, s := range res.Skipped {
+		if strings.HasPrefix(s, SkillDir) {
+			return s
+		}
+	}
+	t.Fatalf("no skill-dir entry found in created=%v skipped=%v", res.Created, res.Skipped)
+	return ""
+}
+
+// TestSkillDirLabelParity is the sharpest statement of findings (2) and (3)
+// (T-120), and the one that would have caught N13: install and upgrade must
+// report the *same* label for the *same* tree, and install must prune a
+// stale entry exactly as upgrade does. Before this ticket, a stale readable
+// directory survived install while it reported "(current)" (the readable
+// half of N13), and a stale file survived install claiming "(refreshed)"
+// (finding 2) because copyPayload never wiped.
+func TestSkillDirLabelParity(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true}
+
+	type tampering struct {
+		name   string
+		apply  func(t *testing.T, skill string)
+		verify func(t *testing.T, skill string) // asserts the tampering was repaired
+	}
+	tamperings := []tampering{
+		{
+			name:   "no tampering",
+			apply:  func(t *testing.T, skill string) {},
+			verify: func(t *testing.T, skill string) {},
+		},
+		{
+			name: "stale readable directory",
+			apply: func(t *testing.T, skill string) {
+				if err := os.MkdirAll(filepath.Join(skill, "stale-dir"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			},
+			verify: func(t *testing.T, skill string) {
+				if _, err := os.Stat(filepath.Join(skill, "stale-dir")); !os.IsNotExist(err) {
+					t.Error("stale directory survived")
+				}
+			},
+		},
+		{
+			name: "stale file",
+			apply: func(t *testing.T, skill string) {
+				if err := os.WriteFile(filepath.Join(skill, "stale-file.md"), []byte("stale"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			verify: func(t *testing.T, skill string) {
+				if _, err := os.Stat(filepath.Join(skill, "stale-file.md")); !os.IsNotExist(err) {
+					t.Error("stale file survived")
+				}
+			},
+		},
+		{
+			name: "payload file replaced by an identical-content symlink",
+			apply: func(t *testing.T, skill string) {
+				tmpl := filepath.Join(skill, "resources", "TEMPLATE.md")
+				original, err := os.ReadFile(tmpl)
+				if err != nil {
+					t.Fatal(err)
+				}
+				outside := filepath.Join(t.TempDir(), "outside.md")
+				if err := os.WriteFile(outside, original, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Remove(tmpl); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(outside, tmpl); err != nil {
+					t.Fatal(err)
+				}
+			},
+			verify: func(t *testing.T, skill string) {
+				fi, err := os.Lstat(filepath.Join(skill, "resources", "TEMPLATE.md"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if fi.Mode()&os.ModeSymlink != 0 {
+					t.Error("payload file is still a symlink; the wipe did not repair it")
+				}
+			},
+		},
+	}
+
+	for _, tc := range tamperings {
+		t.Run(tc.name, func(t *testing.T) {
+			installRoot := t.TempDir()
+			if _, err := Run(payload, installRoot, "v1", opts); err != nil {
+				t.Fatal(err)
+			}
+			upgradeRoot := t.TempDir()
+			if _, err := Run(payload, upgradeRoot, "v1", opts); err != nil {
+				t.Fatal(err)
+			}
+			installSkill := filepath.Join(installRoot, filepath.FromSlash(SkillDir))
+			upgradeSkill := filepath.Join(upgradeRoot, filepath.FromSlash(SkillDir))
+			tc.apply(t, installSkill)
+			tc.apply(t, upgradeSkill)
+
+			installRes, err := Run(payload, installRoot, "v1", opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			upgradeRes, err := Upgrade(payload, upgradeRoot, "v2")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			installLabel := skillDirLabel(t, installRes)
+			upgradeLabel := skillDirLabel(t, upgradeRes)
+			if installLabel != upgradeLabel {
+				t.Errorf("install reported %q, upgrade reported %q for the same tree", installLabel, upgradeLabel)
+			}
+
+			wantSuffix := "(current)"
+			if tc.name != "no tampering" {
+				wantSuffix = "(refreshed)"
+			}
+			if !strings.Contains(installLabel, wantSuffix) {
+				t.Errorf("label = %q, want it to contain %q", installLabel, wantSuffix)
+			}
+
+			tc.verify(t, installSkill)
+			tc.verify(t, upgradeSkill)
+		})
+	}
+}
+
 // TestUpgradeSurvivesAnUnreadableSkillEntry is the T-013 review's B4
 // regression: skillPayloadDiffers is advisory — it picks a label and nothing
 // else — but it runs before the wipe, so an error escaping it aborted the
 // entire upgrade. An unreadable directory in the skill tree made
 // `pickle upgrade` exit 1 without refreshing markers, scaffolds, hooks or the
 // payload_version stamp, where before it was simply deleted by the re-copy.
+//
+// The readable half of this same tampering — a stale directory that *can*
+// be read — now reports the identical "(refreshed)" label on both install
+// and upgrade (TestSkillDirLabelParity): the permission-bit-decided asymmetry
+// this test alone used to leave unclosed (N13) is closed by that test, not
+// this one.
 func TestUpgradeSurvivesAnUnreadableSkillEntry(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("running as root: mode bits do not deny access, so this case cannot be provoked")
