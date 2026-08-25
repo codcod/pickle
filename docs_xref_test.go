@@ -14,9 +14,10 @@ package main
 // CI job is needed) and is additionally wired into `just docs-check` so that recipe's
 // own claim to catch a dead cross-reference is true for a human/agent who runs only it.
 //
-// Anchor matching is explicit-[#id]-only (optionally carrying a role, [#id.role], or
-// reftext, [#id,reftext]): the checker does not compute asciidoctor's auto-generated
-// section-id algorithm. Every <<...>> target in this manual resolves to an explicit
+// Anchor matching is explicit-[#id]-only, optionally carrying AsciiDoc's attribute
+// shorthand — a chain of roles and/or options ([#id.role], [#id.role1.role2],
+// [#id%breakable]) and/or a non-empty reftext ([#id,reftext]): the checker does not
+// compute asciidoctor's auto-generated section-id algorithm. Every <<...>> target in this manual resolves to an explicit
 // anchor today (TestDocsXrefsResolve passing IS that assertion, continuously, on every
 // run) — if a future xref is ever written to rely on an auto-generated id, add an
 // explicit [#id] to that heading rather than teaching this checker asciidoctor's
@@ -26,18 +27,20 @@ package main
 // [[id]] anchor definition. A naive `grep '\[\['` over the tree will surface them; they
 // are not anchors and this checker's [#id]-only pattern does not match them.)
 //
-// T-115 hardened the inter-document side and closed two edges that would otherwise
-// have made the gate quietly narrower than it looked:
+// T-115 and T-118 hardened the inter-document side, closing the edges that would
+// otherwise have made the gate quietly narrower than it looked:
 //
 //   - Every inter-document spelling the manual can legally contain now routes to the
 //     same "the book is one document" failure: xref:file.adoc[...] (with or without an
-//     anchor), the extensionless "natural xref" xref:name#anchor[...], link:file.adoc[...]
-//     (link: requires the .adoc extension — it is also how the manual writes external
-//     URLs, so an extensionless rule would flag every one of those instead), and the
-//     <<file.adoc#anchor>> shorthand — which looks intra-document but is not. Each
-//     occurrence's failure message quotes the construct as it was actually written
-//     (docsXrefOccurrence.spelling), so a link: or <<>> site is never misreported as an
-//     "xref:..." one.
+//     anchor), the extensionless "natural xref" xref:name#anchor[...] (including a
+//     path-form or underscore-leading name, e.g. xref:concepts/lifecycle#stage[x] or
+//     xref:_foo#bar[x], T-118 item 1), link:file.adoc[...] (link: requires the .adoc
+//     extension — it is also how the manual writes external URLs, so an extensionless
+//     rule would flag every one of those instead), and the <<file.adoc#anchor>>
+//     shorthand together with its extensionless sibling <<name#anchor>> (T-118 item 2)
+//     — both look intra-document but are not. Each occurrence's failure message
+//     quotes the construct as it was actually written (docsXrefOccurrence.spelling),
+//     so a link: or <<>> site is never misreported as an "xref:..." one.
 //   - AsciiDoc's two documented ways to *show* a cross-reference without making one —
 //     \<<x>> and +<<x>>+ — are masked (docsMaskEscapedXrefs) before either detector or
 //     the coverage invariant sees the line, so neither false-positives on a literal
@@ -102,11 +105,19 @@ const (
 var (
 	docsIncludeLineRe = regexp.MustCompile(`^include::([^\[\]]+)\[`)
 	// docsAnchorLineRe matches an explicit anchor line, allowing the legal attribute
-	// suffixes AsciiDoc permits alongside an id — a role (".role") and/or reftext
-	// (",reftext") — while still requiring the line be nothing else (item 3, T-115).
-	// It does not accept the legacy [[id]] spelling, a mid-line anchor, or trailing
-	// prose after the closing bracket.
-	docsAnchorLineRe   = regexp.MustCompile(`^\[#([A-Za-z0-9_-]+)(?:\.[A-Za-z0-9_-]+)?(?:,[^\]]+)?\]\s*$`)
+	// shorthand AsciiDoc permits alongside an id: any number of roles/options in any
+	// mix (".role", "%option", chainable — [#id.role1.role2], [#id%breakable],
+	// [#id.role%breakable], T-118 item 4) and/or a reftext (",reftext") — while still
+	// requiring the line be nothing else (item 3, T-115). It does not accept the
+	// legacy [[id]] spelling, a mid-line anchor, or trailing prose after the closing
+	// bracket.
+	//
+	// The reftext group requires at least one non-space, non-comma character, which
+	// rejects the degenerate forms [#id,], [#id, ] and [#id,,] (T-118 item 4): an
+	// anchor with an empty reftext is a typo, not a legal attribute, and accepting it
+	// would teach this pattern a shape AsciiDoc itself does not render. The attribute
+	// group is non-capturing, so scanBook's m[1] (the id) is unaffected.
+	docsAnchorLineRe   = regexp.MustCompile(`^\[#([A-Za-z0-9_-]+)(?:[.%][A-Za-z0-9_-]+)*(?:,\s*[^,\s\]][^\]]*)?\]\s*$`)
 	docsXrefTargetRe   = regexp.MustCompile(`<<([A-Za-z0-9_-]+)(?:,[^>]*)?>>`)
 	docsInterDocXrefRe = regexp.MustCompile(`xref:([^\[\s]+\.adoc)[#\[]`)
 
@@ -115,7 +126,19 @@ var (
 	// resolves by document id rather than filename. It requires a non-empty name
 	// before "#" (excluding the legal intra-document xref:#local-anchor[text], whose
 	// target is empty) and a non-empty anchor after it (item 1, T-115).
-	docsInterDocXrefBareRe = regexp.MustCompile(`xref:([A-Za-z0-9][A-Za-z0-9_-]*)#([^\[\s]+)\[`)
+	//
+	// The class also admits "/" and a leading "_" (item 1, T-118): manual pages live
+	// under subdirectories like concepts/, so xref:concepts/lifecycle#stage[x] is the
+	// plausible extensionless spelling of a path, and an id starting with "_" is
+	// otherwise legal. It deliberately does NOT admit "." — that spelling belongs to
+	// docsInterDocXrefRe's domain (the ".adoc"-suffixed sibling below), and admitting
+	// it here would report the same xref:file.adoc#anchor[...] site twice, once from
+	// each pattern. Keep the two classes disjoint on "." rather than "finishing the
+	// job" of widening this one to match its sibling. The residual cost of that
+	// disjointness: a *dotted extensionless* name — xref:my.page#anchor[x] — matches
+	// neither pattern and so stays silent. No page id in this manual contains a dot,
+	// which is what makes the trade acceptable; revisit it if one ever does.
+	docsInterDocXrefBareRe = regexp.MustCompile(`xref:([A-Za-z0-9_][A-Za-z0-9_/-]*)#([^\[\s]+)\[`)
 
 	// docsInterDocLinkRe catches link:file.adoc[...] / link:file.adoc#id[...]. Unlike
 	// xref:, link: is also how the manual writes external URLs (link:https://...[]),
@@ -125,16 +148,27 @@ var (
 	// link:https://host/x/README.adoc[]) is not mistaken for a local file — decision
 	// 6's own rationale, which the first version of this pattern only half-achieved
 	// (review finding F2).
-	docsInterDocLinkRe = regexp.MustCompile(`link:([^\[\s:]+\.adoc)[#\[]`)
+	//
+	// A scheme-relative URL — link://host/x/README.adoc[] — carries no scheme before
+	// its "//", hence no ":" to trip that exclusion, and still matched (T-118 item 5,
+	// folded from T-115's scoped re-review, finding F9). The target class now also
+	// excludes a second leading "/" immediately after "link:", closing that gap
+	// without reopening the one decision 6 exists to prevent: a single leading "/" is
+	// deliberately still allowed, so a local absolute path (link:/abs/x.adoc[]) stays
+	// routed rather than being silently dropped alongside the scheme-relative case.
+	docsInterDocLinkRe = regexp.MustCompile(`link:(/?[^\[\s:/][^\[\s:]*\.adoc)[#\[]`)
 
 	// docsInterDocAngleRe catches the <<file.adoc#anchor>> / <<file.adoc#anchor,text>>
-	// shorthand. docsXrefTargetRe (the intra-document pattern) already fails to match
-	// it — "." and "#" are outside its target character class — but
+	// shorthand, and its extensionless sibling <<name#anchor>> / <<name#anchor,text>>
+	// (item 2, T-118 — the extensionless spelling is the one contributors actually
+	// reach for, T-115 decision 6). docsXrefTargetRe (the intra-document pattern)
+	// already fails to match either — "#" is outside its target character class — but
 	// docsRefShapedSiteRe (the permissive coverage pattern) does, so left unrouted it
 	// used to fail the coverage invariant with a message blaming the scanner instead
 	// of naming the real defect: this is an inter-document reference in <<>> clothing
-	// (item 2, T-115 decision 5).
-	docsInterDocAngleRe = regexp.MustCompile(`<<([^>,\s]+\.adoc)#([^>,\s]+)(?:,[^>]*)?>>`)
+	// (item 2, T-115 decision 5). Excluding "#" from the name half keeps this and
+	// docsXrefTargetRe disjoint, so no site is ever reported by both.
+	docsInterDocAngleRe = regexp.MustCompile(`<<([^>,\s#]+)#([^>,\s]+)(?:,[^>]*)?>>`)
 
 	// docsEscapedXrefBackslashRe and docsEscapedXrefPassthroughRe match AsciiDoc's two
 	// documented ways to show a literal cross-reference without making one: a leading
@@ -144,22 +178,25 @@ var (
 )
 
 // docsMaskEscapedXrefs replaces each of AsciiDoc's two literal-reference escapes with
-// an equal-length run of "_", so file:line:col offsets used to correlate scanner
-// output with source sites are unaffected (decision 3) while nothing downstream reads
-// the escaped span as a cross-reference. Only the matched span itself is replaced, so
-// a real <<x>> elsewhere on the same line is untouched.
+// an equal-length run of " " (space), so file:line:col offsets used to correlate
+// scanner output with source sites are unaffected (decision 3) while nothing
+// downstream reads the escaped span as a cross-reference. Only the matched span
+// itself is replaced, so a real <<x>> elsewhere on the same line is untouched.
 //
-// The filler is not inert, and the mask is not purely subtractive: "_" is inside
-// docsXrefTargetRe's target class, so an escape nested inside a live reference —
-// "<<\<<x>>>>" — masks to "<<______>>" and is then read as a reference to a phantom
-// anchor "______". Such input is adversarial rather than plausible, and it still fails
-// loudly (reported unresolved, on the right line) rather than silently, so it is
-// recorded here rather than worked around; the fix, if it ever matters, is a filler
-// character outside that class rather than a special case (T-115 review, finding F5b).
+// The filler must stay outside two classes at once, not just one: docsXrefTargetRe's
+// target class (so a mask nested inside a live reference cannot be read back as an
+// anchor id) and docsRefShapedSiteRe's leading class (so a masked span is never
+// itself mistaken for an unrouted reference-shaped site). A space satisfies both —
+// docsRefShapedSiteRe's first character class is [^>\s], which excludes whitespace
+// by construction. Word-filler characters ("_", any letter or digit) satisfy neither:
+// "_" previously let an escape nested inside a live reference — "<<\<<x>>>>" — mask
+// to "<<______>>" and then be read as a reference to a phantom anchor "______" (T-115
+// review finding F5b, fixed here). Do not revert to a word character; it would
+// silently reopen exactly that phantom-reference hole.
 func docsMaskEscapedXrefs(line string) string {
 	for _, re := range []*regexp.Regexp{docsEscapedXrefBackslashRe, docsEscapedXrefPassthroughRe} {
 		for _, loc := range re.FindAllStringIndex(line, -1) {
-			line = line[:loc[0]] + strings.Repeat("_", loc[1]-loc[0]) + line[loc[1]:]
+			line = line[:loc[0]] + strings.Repeat(" ", loc[1]-loc[0]) + line[loc[1]:]
 		}
 	}
 	return line
@@ -599,8 +636,11 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 			re:   docsAnchorLineRe,
 			match: []string{
 				"[#the-flow]", "[#cmd-hooks]", "[#a_b-c9]", "[#id]   ",
-				"[#id,reftext]", // reftext attribute form (item 3)
-				"[#id.role]",    // role attribute form (item 3)
+				"[#id,reftext]",        // reftext attribute form (item 3)
+				"[#id.role]",           // role attribute form (item 3)
+				"[#id.role1.role2]",    // multiple roles (item 4, T-118)
+				"[#id%breakable]",      // AsciiDoc option (item 4, T-118)
+				"[#id.role%breakable]", // role and option mixed (item 4, T-118)
 			},
 			noMatch: []string{
 				"  *Per child — the `\\[[project]]` array*", // TOML prose, not an anchor (F15)
@@ -608,7 +648,16 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 				"[[legacy]]",           // legacy spelling: unused here, deliberately not accepted
 				"prose [#id] mid-line", // an anchor is a line of its own
 				"[#id] trailing prose",
-				"[#id,]", // degenerate: comma with no reftext
+				"[#id,]",  // degenerate: comma with no reftext
+				"[#id, ]", // degenerate: comma with a blank reftext (item 4, T-118)
+				"[#id,,]", // degenerate: double comma, no reftext (item 4, T-118)
+				// These three bound the *widening* half of item 4, as decision 5 requires:
+				// the role/option chain takes one-or-more characters per link, so an empty
+				// or repeated separator is not an anchor. Without them a future "+"→"*"
+				// slip would make [#id.] a legal anchor and this whole table would still pass.
+				"[#id.]",
+				"[#id%]",
+				"[#id..role]",
 			},
 		},
 		{
@@ -642,6 +691,8 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 			re:   docsInterDocXrefBareRe,
 			match: []string{
 				"xref:cli-reference#cmd-hooks[hooks]",
+				"xref:concepts/lifecycle#stage[x]", // path form (item 1, T-118)
+				"xref:_foo#bar[x]",                 // leading underscore (item 1, T-118)
 			},
 			noMatch: []string{
 				"xref:#local-anchor[text]",                 // empty target: legal intra-document (decision 6)
@@ -656,26 +707,33 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 			match: []string{
 				"link:cli-reference.adoc#id[x]",
 				"link:cli-reference.adoc[x]",
+				"link:/abs/x.adoc[y]", // local absolute path stays routed (item 5, T-118)
 			},
 			noMatch: []string{
 				"link:https://example.com/x[text]",                           // external URL, no .adoc
 				"Keep the short SHA even when you add the link: the board's", // decision 7: real prose
 				"link:https://example.com/x/y/README.adoc[the source]",       // external URL that ends in .adoc (F2)
+				"link://host/x/README.adoc[the source]",                      // scheme-relative URL (item 5, T-118, F9)
 			},
 		},
 		{
-			// The <<file.adoc#anchor>> shorthand is inter-document clothing, not the
-			// intra-document form: routed here for the right failure message instead
-			// of the misleading "scanner did not report this site" (item 2, decision 5).
-			name: "inter-document <<file.adoc#anchor>> shorthand",
+			// The <<file.adoc#anchor>> shorthand, and its extensionless sibling
+			// <<name#anchor>>, are inter-document clothing, not the intra-document form:
+			// routed here for the right failure message instead of the misleading
+			// "scanner did not report this site" (item 2, decision 5; extensionless form
+			// added item 2, T-118).
+			name: "inter-document <<file#anchor>> shorthand",
 			re:   docsInterDocAngleRe,
 			match: []string{
 				"<<cli-reference.adoc#cmd-hooks>>",
 				"<<cli-reference.adoc#cmd-hooks,hooks>>",
+				"<<cli-reference#cmd-hooks,hooks>>", // extensionless (item 2, T-118)
+				"<<concepts/lifecycle#stage>>",      // extensionless path form (item 2, T-118)
 			},
 			noMatch: []string{
-				"<<cmd-hooks>>",          // no .adoc: the ordinary intra-document form
-				"<<cli-reference.adoc>>", // no anchor at all
+				"<<cmd-hooks>>",               // no "#": the ordinary intra-document form
+				"<<cli-reference.adoc>>",      // no anchor at all
+				"<<lifecycle,the lifecycle>>", // no "#": ordinary intra-document form with reftext (item 2, T-118)
 			},
 		},
 		{
@@ -860,6 +918,42 @@ func TestDocsProseLineSelection(t *testing.T) {
 	})
 }
 
+// TestDocsMaskEscapedXrefsFillerIsInert pins the space filler (item 3, T-118): an
+// escape nested inside a live reference must mask to something neither
+// docsXrefTargetRe nor docsRefShapedSiteRe can read as a reference, and a real
+// reference elsewhere on the same line must still be found. With the word-character
+// filler this replaced, the first half failed: "<<\<<x>>>>" masked to "<<______>>",
+// which docsXrefTargetRe then read as a reference to a phantom anchor "______"
+// (T-115 review finding F5b).
+func TestDocsMaskEscapedXrefsFillerIsInert(t *testing.T) {
+	// nested is the adversarial shape: an escape sitting inside a live reference.
+	// Slicing by its own length (rather than searching for a later substring) keeps
+	// the assertion pinned to exactly the span that was masked.
+	const nested = `<<\<<x>>>>`
+	const content = nested + ` and <<real>> resolves.`
+	got := docsMaskEscapedXrefs(content)
+
+	if len(got) != len(content) {
+		t.Fatalf("masking must preserve line length (decision 3): got %d bytes, want %d (%q)",
+			len(got), len(content), got)
+	}
+
+	masked := got[:len(nested)]
+	if docsXrefTargetRe.MatchString(masked) {
+		t.Errorf("masked span %q still matches docsXrefTargetRe — the phantom-anchor hole "+
+			"(T-115 F5b) has reopened", masked)
+	}
+	if docsRefShapedSiteRe.MatchString(masked) {
+		t.Errorf("masked span %q still matches docsRefShapedSiteRe — it would be misreported "+
+			"as an unrouted reference-shaped site", masked)
+	}
+
+	if matches := docsXrefTargetRe.FindAllString(got, -1); len(matches) != 1 || matches[0] != "<<real>>" {
+		t.Errorf("expected the real <<real>> reference later on the line to still be found, "+
+			"got %v (line %q) — the fix must not be a blanket widening of the mask", matches, got)
+	}
+}
+
 // TestDocsXrefCheckerCatchesTheFieldFindings is the regression proof: a synthetic
 // fixture under t.TempDir(), reproducing the proven-live bugs from the ticket's
 // Description — a dead <<anchor>>, and both spellings of the inter-document xref:
@@ -876,10 +970,12 @@ func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 	pageB := filepath.Join(dir, "page-b.adoc")
 	pageC := filepath.Join(dir, "page-c.adoc")
 	pageD := filepath.Join(dir, "page-d.adoc")
+	pageE := filepath.Join(dir, "page-e.adoc")
+	pageF := filepath.Join(dir, "page-f.adoc")
 
 	docsMustWriteFixture(t, master,
 		"include::page-a.adoc[]\n\ninclude::page-b.adoc[]\n\ninclude::page-c.adoc[]\n\n"+
-			"include::page-d.adoc[]\n")
+			"include::page-d.adoc[]\n\ninclude::page-e.adoc[]\n\ninclude::page-f.adoc[]\n")
 	docsMustWriteFixture(t, pageA,
 		"[#real-anchor]\n== Page A\n\nSee <<no-such-anchor-xyz>> for details.\n")
 	docsMustWriteFixture(t, pageB,
@@ -892,6 +988,17 @@ func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 	// re-admits the T-057 hole; a missed route re-admits the coverage-invariant hole).
 	docsMustWriteFixture(t, pageD,
 		"== Page D\n\nSee <<page-a.adoc#real-anchor,Page A>> for details.\n")
+	// Page E pins T-118 item 1: the path-form extensionless xref: spelling reached no
+	// detector at all before this ticket (inter=false bare=false link=false angle=false
+	// strict=false site=false — the silent failure mode this checker exists to prevent).
+	docsMustWriteFixture(t, pageE,
+		"== Page E\n\nSee xref:sub/page-a#real-anchor[Page A] for details.\n")
+	// Page F pins T-118 item 2: before this ticket, the extensionless <<name#anchor>>
+	// shorthand scored angle=false site=true — caught by the coverage invariant, but
+	// with the misleading "the scanner did not report this site" message rather than
+	// being routed as the inter-document reference it is.
+	docsMustWriteFixture(t, pageF,
+		"== Page F\n\nSee <<page-a#real-anchor,Page A>> for details.\n")
 
 	files, err := bookFiles(master)
 	if err != nil {
@@ -933,6 +1040,40 @@ func TestDocsXrefCheckerCatchesTheFieldFindings(t *testing.T) {
 		if x.file == pageD {
 			t.Errorf("expected <<page-a.adoc#real-anchor,Page A>> in %s to be routed to "+
 				"interDoc, not xrefs — it landed in xrefs as %q", pageD, x.target)
+		}
+	}
+
+	flaggedInE := false
+	for _, x := range interDoc {
+		if x.file == pageE && x.target == "sub/page-a" {
+			flaggedInE = true
+		}
+	}
+	if !flaggedInE {
+		t.Errorf("expected the path-form extensionless xref:sub/page-a#real-anchor[...] in "+
+			"%s to be flagged as inter-document (item 1, T-118)", pageE)
+	}
+	for _, x := range xrefs {
+		if x.file == pageE {
+			t.Errorf("expected xref:sub/page-a#real-anchor[...] in %s to be routed to "+
+				"interDoc, not xrefs — it landed in xrefs as %q", pageE, x.target)
+		}
+	}
+
+	flaggedInF := false
+	for _, x := range interDoc {
+		if x.file == pageF && x.target == "page-a" {
+			flaggedInF = true
+		}
+	}
+	if !flaggedInF {
+		t.Errorf("expected the extensionless <<page-a#real-anchor,Page A>> in %s to be "+
+			"flagged as inter-document (item 2, T-118)", pageF)
+	}
+	for _, x := range xrefs {
+		if x.file == pageF {
+			t.Errorf("expected <<page-a#real-anchor,Page A>> in %s to be routed to interDoc, "+
+				"not xrefs — it landed in xrefs as %q", pageF, x.target)
 		}
 	}
 
