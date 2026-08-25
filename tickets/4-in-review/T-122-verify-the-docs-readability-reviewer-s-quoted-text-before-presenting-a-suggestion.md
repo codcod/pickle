@@ -328,6 +328,44 @@ applying the rule to this very branch rather than by reading it — which is the
 closing note predicted would be the cheapest proof the step is executable. The scoped rework is two
 clauses in one paragraph, on both sides of the same rule.
 
+---
+
+### Rework (2026-08-25), scoped to F2 and F4 only
+
+On the same branch, commit `7deb400`.
+
+- **F2 — fixed.** Both sides of the rule now define "verbatim" as tolerant of line wrapping and
+  leading indentation: `review-protocol.md` ("Treat it as a **verbatim** match even when line
+  wrapping and leading indentation differ… once whitespace runs are collapsed") and
+  `docs-readability.prompt.md` ("the same words and punctuation, in the same order, regardless of
+  how the source happens to be line-wrapped or indented"), replacing the byte-for-byte framing
+  that produced the false discard.
+- **F4 — fixed.** "Discard the run and re-invoke" is now bounded: "re-invoke **once**; if the
+  re-invoked run fails the same way, fall through to this step's existing conscious skip rather
+  than retrying indefinitely."
+
+**Regression-tested, not just re-read.** Re-ran the docs-readability pass over both changed
+payload files: 13 suggestions returned. Checked each quoted "current text" by hand under the
+fixed rule (verbatim, whitespace-normalised) — **0 fabricated, 13/13 verified**, including the
+exact case that broke F2 (`review-protocol.md:206-207`, "Record how many suggestions were\ndiscarded as fabricated", a quote spanning the same kind of wrapped line that caused the original
+failure) and three quotes drawn from the intro's Markdown blockquote, which a naive whitespace-only
+comparison still misses on the `>` continuation marker — confirming "leading indentation" in the
+shipped rule is read as covering that case, not only plain paragraph wrapping. One genuine,
+verified suggestion from this run (rule-then-rationale reordering of the F2 sentence) was applied
+to the branch as further inline polish on text this branch owns.
+
+**Acceptance test re-ran green** after the fix: `just build/test/lint/docs-check` clean, and all
+five of the plan's numbered checks re-verified — no renumbering, `verbatim` present in both files
+with the protocol hits inside 4b (now 2, both from this fix), checklist count unchanged at 11, and
+a fresh throwaway `pickle-test` install confirming both halves ship.
+
+**Disposition unchanged** for F1 (rejected), F3/F6 (fixed inline, prior round), F5 (noted, prior
+round) — nothing about them was in scope for this pass and nothing about them changed.
+
+```
+cost: estimated S, actual S
+```
+
 ## History
 
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace running step 4b got a full run of suggestions quoting text that existed nowhere in its tree, and now carries the verification rule in its own overarching addendum
@@ -335,3 +373,4 @@ clauses in one paragraph, on both sides of the same rule.
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
 - 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-25 — IN REVIEW → REWORK: F2/F4 blocking: verbatim rule misfires on wrapped prose, re-invoke loop unbounded
+- 2026-08-25 — REWORK → IN REVIEW: F2/F4 fixed: verbatim comparison tolerant of wrapping, re-invoke loop bounded
