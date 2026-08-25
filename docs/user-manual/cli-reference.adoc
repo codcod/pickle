@@ -205,11 +205,52 @@ by shelling out:
 conscious skip.
 
 *Per-project* (never writes to `~/` or outside the root), *idempotent, and
-safe to re-run*: the payload and marker block are refreshed in place while
-instance data (`BOARD.md`, `NOTES.md`, tickets, `pickle.toml`) is preserved
-once present. After installing, a post-install `board audit` self-check must
+safe to re-run*: the marker block is refreshed in place, `{skill-dir}/` is
+replaced wholesale (see <<skill-dir-labels>> below), and instance data
+(`BOARD.md`, `NOTES.md`, tickets, `pickle.toml`) is preserved once present.
+After installing, a post-install `board audit` self-check must
 pass. An existing `{skill-dir}` *symlink* (a dev/self-host
 link) is left untouched.
+
+[#skill-dir-labels]
+=== Skill-directory summary labels
+
+The one-line summary `install` and `upgrade` print for `{skill-dir}/` states
+what the run actually did to that tree, not merely whether its file contents
+happened to match:
+
+[cols="1,3"]
+|===
+| Label | Meaning
+
+| `+ {skill-dir}/`
+| The directory did not exist; it was created fresh.
+
+| `+ {skill-dir}/ (refreshed)`
+| The directory existed, and replacing it wholesale changed something
+  observable on disk — file contents, an entry the payload no longer ships
+  (a stale file *or* a stale directory), or a payload entry swapped for
+  something of a different kind (a symlink or a directory where a file
+  belongs, say).
+
+| `= {skill-dir}/ (current)`
+| The directory existed, and replacing it wholesale would change nothing
+  observable on disk.
+
+| `= {skill-dir} (existing symlink)`
+| `{skill-dir}` is a symlink (a dev/self-host link), not a directory. Nothing
+  was compared, written or removed — see the note below the table.
+|===
+
+`install` replaces `{skill-dir}/` wholesale, exactly as `upgrade` does
+(<<cmd-upgrade>>): it wipes the directory and re-copies the embedded payload
+into it every run, so nothing the payload does not ship — a stale file, a
+stale directory, an old entry from a previous version — survives an install
+either. That wipe is unconditional, never gated on the label above: even a
+run reported `(current)` still writes the directory, so its entries'
+modification times still change. The one exception is an existing
+`{skill-dir}` *symlink* (a dev/self-host link), which both commands leave
+untouched rather than wiping or following.
 
 [#cmd-project]
 == `pickle project add | list | remove`
@@ -289,10 +330,11 @@ does not parse.
 pickle upgrade
 ----
 
-Refreshes an existing install to the running binary's payload. It re-copies
-the embedded skill payload into `{skill-dir}/` (removing files
-that the new payload dropped), re-injects the `AGENTS.md` marker block, and
-stamps `payload_version` in `pickle.toml`. It also back-fills `layout`
+Refreshes an existing install to the running binary's payload: it replaces
+`{skill-dir}/` wholesale (see <<skill-dir-labels>> for exactly what the
+printed label means and what that replacement does and does not touch),
+re-injects the `AGENTS.md` marker block, and stamps `payload_version` in
+`pickle.toml`. It also back-fills `layout`
 (<<install-layout>>) when the key is entirely absent — inferred the same way
 `install` would have chosen it (a child registered at `.` infers `in-tree`,
 otherwise `umbrella`) — so a project installed before the key existed gains it

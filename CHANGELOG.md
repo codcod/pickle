@@ -34,13 +34,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 - **`pickle install` and `pickle upgrade` now say what they actually did to the skill payload.**
   Both previously reported `+ .agents/skills/brine/` on every run, so a re-install or a
   byte-identical upgrade looked exactly like a fresh one. The summary now distinguishes a fresh
-  copy (`+ …/`) from a genuine refresh (`+ … (refreshed)`) from a payload that already matched
-  (`= … (current)`), decided by comparing the payload against what is already on disk; the
-  `tickets/` scaffold reports `already scaffolded` on a re-run for the same reason. Note that
-  `(current)` describes the *contents*, not the work: both `install` and `upgrade` still write
-  the pickle-owned skill directory every time — `upgrade` still replaces it wholesale — so the
-  comparison decides the wording and never whether the work happens, and `upgrade` continues to
-  repair a tampered tree (T-013).
+  copy (`+ …/`) from a genuine refresh (`+ … (refreshed)`) from a run that changed nothing
+  (`= … (current)`); the `tickets/` scaffold reports `already scaffolded` on a re-run for the
+  same reason. The label states the *work done*, not merely whether file contents matched: both
+  commands replace the pickle-owned skill directory wholesale on every run — wiping it and
+  re-copying the payload, which is what repairs a tampered tree (a stale file, a stale
+  directory, a payload entry swapped for a symlink) — and `(current)` means that replacement
+  would have changed nothing observable on disk. `install` now prunes exactly as `upgrade`
+  always has: a stale entry an older payload left behind no longer survives an install. The
+  wipe is still never gated on the comparison — it runs unconditionally, so even a run reported
+  `(current)` still changes the directory's modification times (T-013, T-120).
 
 - **`pickle uninstall <anything>` is now a usage error instead of a full uninstall.** The
   handler parsed flags but never checked for stray positional arguments, so a typo'd
