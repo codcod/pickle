@@ -481,3 +481,4 @@ reviewer to promote by citing this row.
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
 - 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-25 — IN REVIEW → DONE: review clean; 8 non-blocking, all dispositioned (6 fixed inline, 2 noted)
+- 2026-08-25 — merged to main (PR #74, history kept: b6b437b https://github.com/codcod/pickle/commit/b6b437b + 237a4ef https://github.com/codcod/pickle/commit/237a4ef; merge commit 799fc0b)
