@@ -317,3 +317,4 @@ re-verifies that and records the verdict. `CHANGELOG.md` gains one `Fixed` bulle
   sentence to name both commands. Task 1's actual edit target is unaffected — only the
   surrounding wording to preserve changed. No scope or grade change
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
+- 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
