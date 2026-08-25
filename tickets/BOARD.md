@@ -144,7 +144,7 @@ Last updated: 2026-08-25
 | T-114 | apply the batched docs-readability suggestions to CHANGELOG.md and agent-session-workflow.adoc | yes — merged to main (PR #69, 1a59501) |
 | T-115 | harden the docs xref checker: pattern coverage, helper fixtures and AsciiDoc escape handling | yes — MERGED: feat/T-115-harden-docs-xref-checker → main (PR #71, merge commit 0cbda08); 5 commits kept, not squashed |
 | T-117 | remove pickle scaffold docs — docs/release scaffolding belongs to snowball, not pickle | yes — merged to main (MR !70, 22ae947, https://github.com/codcod/pickle/commit/22ae947795e526fdb14a79b2190df7737b834a2b) |
-| T-119 | skill payload still claims agent autodetection in its Install & register section | no — publish-gated |
+| T-119 | skill payload still claims agent autodetection in its Install & register section | yes — merged to main (PR #73, 11a2567, https://github.com/codcod/pickle/commit/11a2567; merge commit 43c7e20) |
 
 ## DROPPED
 
