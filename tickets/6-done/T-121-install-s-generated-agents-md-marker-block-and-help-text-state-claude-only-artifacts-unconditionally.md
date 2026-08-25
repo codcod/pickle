@@ -387,3 +387,5 @@ dirs, and the branch touches no `skill/` path.
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
 - 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-25 — IN REVIEW → DONE: review passed: 5 non-blocking findings — 2 fixed inline (F1 test-gap, F4 sweep verdict), 3 noted (F2, F3, F5); no blocking, no follow-up tickets
+- 2026-08-25 — merged to main (PR #76, 7a354b0,
+  https://github.com/codcod/pickle/commit/7a354b0; merge commit 1ac74e2); 1 commit, history kept
