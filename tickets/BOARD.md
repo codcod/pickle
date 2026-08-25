@@ -20,11 +20,10 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-25
 
 | id | title | open findings |
 |---|---|---|
+| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | F2/F4 blocking: verbatim rule misfires on wrapped prose, re-invoke loop unbounded |
 
 ## READY (impact order, per child)
 

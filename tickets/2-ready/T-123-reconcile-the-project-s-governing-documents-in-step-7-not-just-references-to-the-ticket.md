@@ -145,6 +145,11 @@ ordering — if it lands first, rebase before starting.
 
 ### Tasks
 
+> **Line numbers below are as of `main` at refinement time. T-122 adds ~15 lines inside step 4b,
+> above every anchor this plan cites** — once it lands, `## 7.` sits near `:295` and the step-7
+> checklist line near `:359` (`:176` in 4a is unaffected, being above the insertion). Locate every
+> target by its heading or line text, not by the number. Recorded by T-122's review impact sweep.
+
 #### Task 1 — widen step 7 and add the reconciliation rule
 In `skill/resources/review-protocol.md`, at `## 7. Update other references` (`:280`):
 
@@ -266,3 +271,4 @@ drifted) during this ticket's own review is the cheapest available proof the ste
 
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace found three governing documents asserting behaviour their own reviews had already retracted, and now carries the reconciliation rule in its own overarching addendum
 - 2026-08-25 — TO DO → READY: plan complete
+- 2026-08-25 — plan annotated by T-122's review impact sweep: the cited line numbers shift by ~15 once T-122 lands; targets to be located by heading text instead
