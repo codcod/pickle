@@ -13,10 +13,11 @@ Last updated: 2026-08-25
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-25
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | medium | low | S | [] |  |
 | T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
