@@ -132,7 +132,17 @@ Start from a clean tree on an up-to-date `main`.
 
 Replace with decision 2's wording, re-wrapping the surrounding bullet to the block's existing
 ~95-column wrap. The bullet's remaining sentences (what the skill holds; the directory is
-pickle-owned and `pickle upgrade` replaces it wholesale) are correct and stay.
+pickle-owned and replaced wholesale) are correct and stay.
+
+> **Amended 2026-08-25 (T-120 impact sweep).** That last sentence no longer reads
+> "`pickle upgrade` replaces it wholesale" — T-120 made `install` prune the skill directory too,
+> and corrected the marker block to "`pickle install` and `pickle upgrade` both replace it
+> wholesale, so keep hand-written notes outside it", across all three synced copies
+> (`MarkerBlock`, this repo's `AGENTS.md`, `testdata/markerblock.golden`). It is still correct
+> and still stays; only the wording to preserve has changed. The line Task 1 actually replaces
+> (the `.claude/skills/brine` sentence quoted above) is untouched by T-120, so this task's edit
+> target is unchanged — but re-read the bullet on the branch before re-wrapping it, rather than
+> trusting the pre-T-120 shape quoted here.
 
 #### Task 2 — regenerate the golden and pin the contract
 
@@ -301,3 +311,8 @@ re-verifies that and records the verdict. `CHANGELOG.md` gains one `Fixed` bulle
   (disposition: new ticket, batched by theme). The two non-payload surfaces stating Claude-only
   artifacts unconditionally; T-119 decision 5 barred it from touching `internal/`
 - 2026-08-25 — TO DO → READY: plan complete
+- 2026-08-25 — plan amended inline: T-120's review impact sweep. Task 1's note that the bullet's
+  remaining sentences "are correct and stay" quoted the pre-T-120 wording ("`pickle upgrade`
+  replaces it wholesale"); T-120 made `install` prune the skill directory too and corrected that
+  sentence to name both commands. Task 1's actual edit target is unaffected — only the
+  surrounding wording to preserve changed. No scope or grade change
