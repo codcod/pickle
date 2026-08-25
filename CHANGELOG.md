@@ -8,6 +8,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-25
+
 ### Added
 
 - **`pickle scaffold release` writes a Keep a Changelog `CHANGELOG.md` and a headings-only
@@ -15,6 +17,21 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   justfile recipes, no language detection, and no command named in either file. The two
   skeletons are exactly what `docs/user-manual/concepts/releasing.adoc` already describes an
   agent offering when either file is missing, made real (T-113).
+
+- **The user manual documents the "cut a release" convention.** `CHANGELOG.md` and
+  `RELEASING.md` are the two files an agent reads to cut a release — the first mechanically (by
+  `pickle changelog check`), the second as prose it follows. The manual previously named
+  `RELEASING.md` only as *pickle's own* maintainer file, so a reader had no way to learn the
+  convention existed or applied to their project. It now also states what an agent does when
+  either file is absent: report what it can and offer to scaffold, never infer a release
+  procedure and run it (T-111).
+
+### Changed
+
+- **The board breaks impact ties by cost instead of by id.** Two tickets of equal impact now
+  sort cheapest-first, so the TO DO group's largest tie stops being an arbitrary
+  oldest-first list. Ordering remains fully deterministic: impact descending, then cost
+  ascending, then id (T-103).
 
 ### Breaking
 
@@ -30,6 +47,19 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   the `scaffold` verb group's only subcommand.
 
 ### Fixed
+
+- **`doctor` and `hooks status` no longer read a probe's exit code `1` as "the guard cannot
+  run".** Exit `1` is the guard *working* — it ran and found a violation — but the PATH-capability
+  probe treated any non-zero exit as evidence the hook was inert, so a correctly armed guard could
+  be reported as broken. Two adjacent edge cases close the same way: the warning-not-error
+  assertion, and the manual now states that a **foreign** hook chaining the guard carries the same
+  PATH-skew exposure but is deliberately not probed — presence alone cannot say whether a foreign
+  hook chains the guard at all, so verify it yourself with `pickle hooks run pre-commit` (T-071).
+
+- **`pickle uninstall --dry-run` now names what the real run would do to the skill directory.**
+  It reported the same `(dry-run)` label whether the directory was a real tree (removed wholesale)
+  or a self-host symlink (unlinked, leaving the tree it points at intact) — the one distinction a
+  dry run exists to preview. The preview now distinguishes them explicitly (T-042).
 
 - **`pickle install` and `pickle upgrade` now say what they actually did to the skill payload.**
   Both previously reported `+ .agents/skills/brine/` on every run, so a re-install or a
@@ -784,7 +814,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/codcod/pickle/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/codcod/pickle/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/codcod/pickle/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/codcod/pickle/compare/v0.8.0...v0.9.0
