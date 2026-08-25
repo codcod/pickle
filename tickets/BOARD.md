@@ -38,6 +38,7 @@ Last updated: 2026-08-25
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-120 | skill-payload summary labels describe contents, not work | medium | low | M | [] |  |
 | T-118 | close the docs checker's remaining unrouted xref spellings and mask-filler edge | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
@@ -52,7 +53,6 @@ Last updated: 2026-08-25
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-121 | install's generated AGENTS.md marker block and help text state Claude-only artifacts unconditionally | medium | low | S | [] |  |
-| T-120 | skill-payload summary labels describe contents, not work | low-medium | low | S | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 
 ## DONE
