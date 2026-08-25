@@ -1373,9 +1373,10 @@ func MarkerBlock(cfg *config.Config) string {
 		"- The flow engine is the **brine skill** at `.agents/skills/brine/`. It holds\n" +
 		"  the rules (`resources/tickets-README.md`), the ticket template\n" +
 		"  (`resources/TEMPLATE.md`), and the review protocol\n" +
-		"  (`resources/review-protocol.md`). Claude Code sees it via `.claude/skills/brine`.\n" +
-		"  The directory is pickle-owned — `pickle install` and `pickle upgrade` both replace\n" +
-		"  it wholesale, so keep hand-written notes outside it.\n" +
+		"  (`resources/review-protocol.md`). Agents that read `.agents/skills/` find it there\n" +
+		"  directly; `pickle install --agent claude` adds a `.claude/skills/brine` view for\n" +
+		"  Claude Code. The directory is pickle-owned — `pickle install` and `pickle upgrade`\n" +
+		"  both replace it wholesale, so keep hand-written notes outside it.\n" +
 		"- Triggers: \"make it a ticket\", \"refine ticket T-NNN\", \"implement ticket T-NNN\", \"rework ticket\n" +
 		"  T-NNN\", \"validate ticket T-NNN\" (or \"review ticket T-NNN\"), \"audit the board\".\n" +
 		"\n" +

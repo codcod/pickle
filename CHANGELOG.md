@@ -64,6 +64,17 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   `claude`), and the `.claude/skills/` symlink and `CLAUDE.md` marker block exist only when
   `claude` is in that set (T-119).
 
+- **Two surfaces outside the payload said the same thing.** The `AGENTS.md` marker block
+  generated into every project's own repo (and refreshed there by `pickle upgrade`) said
+  "Claude Code sees it via `.claude/skills/brine`" regardless of the installed agent set — a
+  throwaway `install --agent opencode` produced an `AGENTS.md` naming a directory that install
+  never created. `pickle help`'s `install` summary had the same defect, pairing
+  `AGENTS.md`/`CLAUDE.md` as though both were unconditional, when only `AGENTS.md` is — `CLAUDE.md`
+  follows `--agent` and, with `--claude-symlink`, is not a marker block at all. Both now name the
+  condition instead of asserting the view exists: the marker block reads "`pickle install
+  --agent claude` adds a `.claude/skills/brine` view for Claude Code", and `pickle help` reads
+  "inject the AGENTS.md marker block (and CLAUDE.md's when --agent includes claude)" (T-121).
+
 - **`AGENTS.md`/`CLAUDE.md` keep their permissions across install, upgrade and uninstall.**
   Marker injection and stripping hard-coded `0644` on files the user owns, silently resetting a
   non-default mode. Both now write through the mode-preserving atomic writer already used for
