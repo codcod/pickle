@@ -276,3 +276,4 @@ drifted) during this ticket's own review is the cheapest available proof the ste
 - 2026-08-25 — annotation corrected against T-122's finished branch: the shift is 21 lines, not ~15 (`## 7.` at :301, step-7 checklist line at :365)
 - 2026-08-26 — T-122 merged; the predicted anchors verified exact on main, annotation switched from predicted to actual
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
+- 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
