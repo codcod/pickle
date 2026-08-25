@@ -598,6 +598,40 @@ inline (F5) · 0 new tickets. The 11 readability suggestions against untouched p
 
 cost: estimated S, actual XL (unchanged from round 3 — already at the top of the scale).
 
+### Rework fix record — round 4 (commit `42b67b4`)
+
+Line references to `skill/resources/review-protocol.md` at `42b67b4`.
+
+- **F1 — fixed by deletion, not rephrasing.** The document-right/branch-wrong sentence is gone.
+  Step 7 (`:316-337`) now states only the reconciliation duty for a document lagging the branch;
+  it asserts no route for any other case. The branch-being-wrong case is ordinary rules §5
+  territory found (if at all) during steps 2–3, before step 6 runs, so step 7 saying nothing
+  about it is accurate rather than silent-on-a-gap. **One boundary knowingly left open**, same as
+  round 3 recorded: a *blocking* finding of any kind, first surfacing after step 6b, has no
+  defined route in the generic protocol. That is pre-existing and out of this ticket's scope;
+  this round changes nothing about it, and, unlike round 3, does not claim otherwise.
+- **F2 — fixed.** "too large" is now a fourth item in the grounds list (`:330-333`) rather than
+  buried in the out-of-reach sentence, and applies regardless of reach.
+- **F3 — fixed.** Every bare `§5` in the section now reads "the rules §5" (`:317`, `:319`,
+  `:325`, `:327`, `:333`). "Already settle the case" replaced with the checkable claim at
+  `:318-320`: a document merely lagging the branch matches none of the rules §5's three blocking
+  categories (`tickets-README.md:398`) — golden path, wrong behaviour, or a *ticket's* locked
+  decision.
+- **F4 — fixed.** `lifecycle.adoc` and `CHANGELOG.md` now say the finding is "handled like any
+  other finding" rather than claiming it always "takes a severity and a disposition" (a
+  blocking finding takes none). Clipped subject restored to "A governing document the branch
+  made false".
+- **F5 — already fixed** in this ticket's own plan during round-4 review recording.
+
+**Verified after the fix:** four commands green; five acceptance checks re-verified (no
+renumbering; class table byte-identical; checklist 11=11; installed `pickle-test` payload greps
+`governing` = 8; `DESIGN.md`/`AGENTS.md` unfalsified). `§5`'s blocking bullet still byte-identical
+to `main`. `fixed inline`/`folded` still absent. Every case re-walked once more: stale/in-reach,
+stale/out-of-reach, too-large, first-noticed-here — all legal and unchanged in outcome; the
+branch-wrong case is simply no longer described by this step, which is the fix.
+
+---
+
 **Root cause — fourth occurrence, and it has narrowed to one sentence.** Rounds 1–3 each had the
 blocking finding inside the *blocking carve-out*; round 3 deleted the carve-out and the blocking
 finding moved into the single surviving sentence that still mentions the blocking case at all.
@@ -657,3 +691,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-26 — plan amended inline (second time): decision 3's blocking carve-out removed with user sign-off. Step 7 now states a duty and its mechanics and defines no severity; §5's existing categories settle every case (a stale governing document is non-blocking under them; a branch that is actually wrong is blocking under "ships wrong behaviour"). Reason: all three review rounds put their blocking findings inside the carve-out and none in the non-blocking default, and R1 showed the carve-out's §5 warrant did not exist — rules §7 scopes "locked decision" to a numbered item in a ticket's Implementation Plan, which no governing document has. Removing it makes R1, R2, R5 and R6 moot rather than patched.
 - 2026-08-25 — REWORK → IN REVIEW: R1/R2 fixed by removing the blocking carve-out
 - 2026-08-25 — IN REVIEW → REWORK: 1 blocking (F1): step 7 asserts a route the state machine forbids
+- 2026-08-25 — REWORK → IN REVIEW: F1 fixed by deleting the branch-wrong sentence
