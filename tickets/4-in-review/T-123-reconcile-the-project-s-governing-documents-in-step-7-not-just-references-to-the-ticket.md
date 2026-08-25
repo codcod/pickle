@@ -507,6 +507,64 @@ as to the severity label** (see R2).
 cost: estimated S, actual XL — revised up from L. Three review rounds, each finding its blocking
 defect inside the previous round's own fix text, on a ticket graded S at refinement.
 
+### Rework fix record — round 3 (commit `b33b6ad`)
+
+Implements decision 3's **second amendment** (user sign-off, recorded in History): the blocking
+carve-out is **removed**, not re-argued. Line references are to
+`skill/resources/review-protocol.md` at `b33b6ad`.
+
+- **R1 — fixed by removal.** Step 7 no longer claims any §5 warrant, because it no longer defines
+  a blocking case: `:316-319` now reads "classified at step 5 on §5's ordinary terms. **This step
+  defines no severity of its own**". The one genuinely blocking situation — the document is right
+  and the branch is wrong — is pointed at §5's **"ships wrong behaviour"** (`:329-331`), which is
+  a real category (`review-protocol.md:260`, `tickets-README.md:398`) carrying **no** citation
+  format to fill, unlike "contradicts a locked decision". Verified by reading rules §7 rather
+  than assuming, which is the check round 2 skipped.
+- **R2 — fixed by removal.** No finding is labelled blocking by this step, so nothing is routed
+  from a blocking severity to a disposition the rules reserve for non-blocking findings. A
+  reconciliation too large to perform in the review is now an ordinary non-blocking finding with a
+  follow-up-ticket disposition (`:325-326`).
+- **R3 — fixed by removal.** With no blocking case in the step, the "why not" grounds
+  (`:333-336`) cannot discharge one. N2's original concern is closed by construction rather than
+  by the qualifier it asked for.
+- **R4 — fixed.** Step 4 now reads "classified before the ticket moves" (`:161`); blocking
+  findings take no disposition, so the old wording was wrong for exactly the case it mattered.
+- **R5, R6 — moot.** Both existed only to disambiguate the carve-out. There is no
+  out-of-reach-versus-disagreement precedence question and no lag-versus-disagreement test to
+  supply, because severity no longer turns on either distinction.
+- **R7 — fixed.** `lifecycle.adoc:129-131` and `CHANGELOG.md:24-28` no longer contrast "recorded"
+  against "dispositioned"; both now say the finding takes a severity and a disposition like any
+  other, and both state that the step adds no severity rule of its own.
+- **R8 — noted, unchanged**, as recorded at review.
+
+**Cases walked end to end before committing**, since three rounds have shown that reading the new
+prose in isolation is what misses the defect:
+
+| case | route | legal? |
+|---|---|---|
+| stale doc, in reach | step 4 → §5 non-blocking → 6b → step 7 reconciles, edit recorded | yes |
+| stale doc, out of reach | step 4 → §5 non-blocking, reach limit recorded → 6b | yes |
+| reconciliation too large | §5 non-blocking, follow-up-ticket disposition | yes |
+| document right, branch wrong | §5 "ships wrong behaviour" → blocking → 6a → `5-rework/` | yes — `4-in-review` → `5-rework` is a declared transition |
+| first noticed at step 7 | §5's ordinary terms; non-blocking is compatible with the ticket already being in `6-done/` | yes |
+
+**One boundary deliberately left as it was found.** A *blocking* finding first discovered at
+step 7, 8 or 9 — after step 6b has moved the ticket to the terminal `6-done/` — has no defined
+route in this protocol, and never did: step 8 has the same shape, framing everything it turns up
+as a disposition. This round's text does **not** assert a route for it (that was R2's error); it
+defers to §5 and says nothing more. Closing that hole properly means editing the generic protocol
+for every finding type, not just this one, which is outside this ticket's scope. Recorded here so
+the next reviewer sees it was considered rather than missed.
+
+**Verified after the fix:** four commands green; five acceptance checks re-verified (no
+renumbering; class table byte-identical to `main`; checklist 11=11; installed `pickle-test`
+payload greps `governing` = 8; `DESIGN.md`/`AGENTS.md` unfalsified — `DESIGN.md:53`'s "blocking vs
+non-blocking" is if anything more true now that the step defers to §5). §5's blocking bullet
+confirmed **byte-identical to `main`** by `diff`, this time with the category genuinely absent
+rather than relocated. `fixed inline`/`folded` still absent from the payload.
+
+---
+
 **Root cause — third occurrence of one pattern.** Every round's blocking finding has been in the
 **blocking carve-out**, never in the non-blocking default:
 
@@ -552,3 +610,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-25 — REWORK → IN REVIEW: N1/N2 fixed under amended decision 3
 - 2026-08-25 — IN REVIEW → REWORK: 2 blocking (R1, R2): blocking carve-out has no §5 warrant and routes to a forbidden disposition
 - 2026-08-26 — plan amended inline (second time): decision 3's blocking carve-out removed with user sign-off. Step 7 now states a duty and its mechanics and defines no severity; §5's existing categories settle every case (a stale governing document is non-blocking under them; a branch that is actually wrong is blocking under "ships wrong behaviour"). Reason: all three review rounds put their blocking findings inside the carve-out and none in the non-blocking default, and R1 showed the carve-out's §5 warrant did not exist — rules §7 scopes "locked decision" to a numbered item in a ticket's Implementation Plan, which no governing document has. Removing it makes R1, R2, R5 and R6 moot rather than patched.
+- 2026-08-25 — REWORK → IN REVIEW: R1/R2 fixed by removing the blocking carve-out
