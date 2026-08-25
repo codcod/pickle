@@ -20,11 +20,10 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-25
 
 | id | title | open findings |
 |---|---|---|
+| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | 2 blocking (R1, R2): blocking carve-out has no §5 warrant and routes to a forbidden disposition |
 
 ## READY (impact order, per child)
 

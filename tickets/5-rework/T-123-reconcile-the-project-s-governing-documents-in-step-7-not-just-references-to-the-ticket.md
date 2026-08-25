@@ -456,6 +456,67 @@ made false — `DESIGN.md:53` "blocking vs non-blocking" and `:191-192` "keyed t
 both remain true under the amended rule); `fixed inline`/`folded` still absent from the payload per
 `TestPayloadDispositionVocabulary`.
 
+> **Round 3 correction.** The claim above that N5's drift was closed is **false as stated**, and
+> so is amended decision 3's third bullet. Deleting §5's blocking category while keeping the
+> blocking case in step 7 did not close the drift — it hid it, on a warrant ("§5 already carries
+> this as contradicting a locked decision") that R1 below shows does not exist. The N5 verdict
+> stands only in its narrow, mechanical sense: the §5 bullet is byte-identical to `main`.
+
+---
+
+## Scoped re-review (round 3)
+
+Reviewer independence: **delegated** again — the orchestrating reviewer wrote the round-2 pass in
+the same session. Scope: verify N1–N8, and — per this branch's established pattern and the thesis
+of T-124 — audit round 2's **own replacement text** (`git diff 6f0f135 6d3aaee`) as fresh,
+unreviewed prose. Every finding re-verified by hand against the rules before recording.
+
+**Commands:** all four green at `6d3aaee`. **Five acceptance checks:** all met (numbering, class
+table byte-identical, checklist 11=11, installed payload `governing` = 8, `DESIGN.md`/`AGENTS.md`
+unfalsified). **Foreign-workspace test on new payload prose:** passes. `fixed inline`/`folded`
+still absent. **Step 4b:** 11 suggestions, 11 quotes verified verbatim, 0 discarded; 2 target
+reworked text and are folded into the fix below, which replaces those sentences.
+
+**Prior findings:** N1, N3, N4, N5 (mechanically), N6, N7 — **resolved**. N8 — accepted as-is.
+N2 — **partial** (see R3). The self-caught terminal-status fix — **resolved as to the route, not
+as to the severity label** (see R2).
+
+### Round-3 findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | blocking | `spec-unclear` | — | **The stated ground for the blocking case is false, leaving that case unbacked.** Step 7 says a genuine branch-vs-document disagreement is blocking "which §5 already carries as contradicting a locked decision". But §5's category demands a citation `<ID> decision <N>`, and rules §7 defines a locked decision as **one numbered item in a ticket's Implementation Plan**. A design of record or conventions file is not a ticket and has no such address — so §5 does not carry the case, and the reviewer cannot fill the citation the bullet demands. §5 is meanwhile declared severity's "single source of truth", so step 7 now declares a blocking category appearing nowhere in that source. **N5's drift was not closed; it was made invisible.** Amended decision 3's third bullet rests on the same false claim. | `review-protocol.md:325-327` vs `:260-261`, `:234-235`; `tickets-README.md` §7 *Confirmed design decisions* and `:503` | Either state the ground on its own terms and drop the §5 attribution, or — preferred — remove the blocking carve-out entirely (see the root-cause note). |
+| R2 | blocking | `spec-unclear` | — | **A finding labelled blocking is routed to a follow-up ticket, which the rules say never happens.** Step 7 fixes the severity as blocking, then says that if the ticket already concluded in `6-done/` the disagreement "becomes a follow-up ticket". But a blocking finding is never dispositioned (leave the cell `—`), must move to `5-rework/`, and "the ticket does not proceed until it is [fixed]" — it already proceeded; and `new ticket` is defined only for **non-blocking** findings. The reviewer must write a row whose severity says blocking and whose disposition says both `—` and a spawned id. Round 2 fixed the illegal *transition* and left the illegal *severity label*: the contradiction moved rather than closed. | `review-protocol.md:325`, `:329-332` vs `:262-263`, `:265-266`; `tickets-README.md:401-402`, `:403-417` | Once step 6b has run, record it as **non-blocking** with a new-ticket disposition — severity governs whether *this* ticket ships, and it already has. Keep blocking only for the pre-6b path (or drop it entirely). |
+| R3 | non-blocking | `spec-unclear` | folded | **N2 residual: the "why not" grounds are still unscoped.** Three grounds are offered with no qualifier, including "the reconciliation belongs to a ticket that owns the document". A reviewer facing a genuine disagreement about a document another ticket owns has one paragraph saying blocking and another saying write a note and finish. N2's own suggested fix — scope the grounds to the non-blocking case — was never applied; the fix record argued the default change made it moot, which it does only for the lag case. | `review-protocol.md:334-337` vs `:325-327` | Apply N2's original fix: scope the grounds explicitly to the non-blocking case. |
+| R4 | non-blocking | `spec-unclear` | folded | Step 4's hand-off says findings are "**dispositioned** before the ticket moves", but blocking findings are never dispositioned. | `review-protocol.md:160-161` vs `:262-263` | Read "classified" or "given a severity". |
+| R5 | non-blocking | `spec-unclear` | folded | **Out-of-reach × genuine-disagreement precedence is unstated.** Both clauses match a disagreement about a document in another team's repository, and they give opposite answers. Structure implies the blocking exception wins; amended decision 3's own rationale ("blocking here would strand the ticket on an edit the reviewer cannot make") argues the reverse. | `review-protocol.md:321-322` vs `:325-327` | One clause naming which test runs first. Moot if the carve-out is removed. |
+| R6 | non-blocking | `spec-unclear` | folded | **The severity split turns on a distinction the payload gives no test for.** "Documentation lag" vs "genuinely disagree about what is *correct*" is the whole rule, and both are triggered by the same fact — the branch made the document false. Compare 4a.1's crisp one-liner. | `review-protocol.md:325-327` | A usable test is one sentence: if steps 2–4 already accepted the branch's behaviour as correct, it is a lag. Moot if the carve-out is removed. |
+| R7 | non-blocking | `docs-gap` | folded | **Manual and CHANGELOG imply the in-reach case takes no disposition**, contrasting "recorded when it is within reach" against "dispositioned … when it is not" — while every non-blocking finding takes exactly one disposition, the in-reach one included. Otherwise both files match the payload and neither restates the full rule. | `lifecycle.adoc:129-131`, `CHANGELOG.md:24-26` vs `tickets-README.md:406-407` and `review-protocol.md:320` | Say "recorded as a disposition" in both, or drop the contrast. |
+| R8 | non-blocking | `design` | noted | **The recorded disposition precedes the edit it asserts.** Classification happens at step 4/5, the in-reach edit at step 7; if step 7 then shows the document was right, the ticket is already in `6-done/` with a table asserting an inline fix that never happened. Defensible — the F1 fix deliberately split classification from mechanics — but worth a clause. | `review-protocol.md:161`, `:302-303` vs `:319-320` | Optional clause, or accept. |
+
+**Disposition summary:** 2 blocking (R1, R2 — round-3 rework scope) · 5 folded into that pass (R3, R4, R5, R6, R7) · 1 noted (R8) · 0 new tickets. The 9 readability suggestions against untouched prose are **noted**.
+
+cost: estimated S, actual XL — revised up from L. Three review rounds, each finding its blocking
+defect inside the previous round's own fix text, on a ticket graded S at refinement.
+
+**Root cause — third occurrence of one pattern.** Every round's blocking finding has been in the
+**blocking carve-out**, never in the non-blocking default:
+
+- round 1 (F1): blocking severity minted at step 7, after step 6 already moved the ticket;
+- round 2 (N1, N2): the disposition recommendation attached to the case where the reviewer cannot
+  act, and the "why not" grounds could discharge the blocking case;
+- round 3 (R1, R2): the carve-out's §5 warrant does not exist, and a blocking finding is routed to
+  a disposition the rules reserve for non-blocking ones.
+
+The non-blocking default has survived all three rounds untouched. The evidence says the carve-out
+itself is the defect: **step 7 should not define severity at all.** §5 already owns severity, and a
+branch that genuinely ships wrong behaviour is already blocking under "ships wrong behaviour"
+without step 7 minting anything. Removing the carve-out makes R1, R2, R5 and R6 vanish rather than
+be patched, needs no new §5 category, and leaves amended decision 3's first two bullets exactly as
+the user signed them off. It does require deleting that decision's **third** bullet — the one R1
+falsifies — which is a design change and therefore the human's call.
+
+
 ---
 
 **Root cause, for the rework pass to weigh.** N1 is not a slip of the pen. F1's suggested fix and
@@ -481,3 +542,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-25 — IN REVIEW → REWORK: 2 blocking findings (N1, N2): step-7 disposition clause contradicts its own severity rule
 - 2026-08-26 — plan amended inline: decision 3 replaced with user sign-off. In-reach reconciliation is now non-blocking and done during the review (the rules §5 disposition for prose this branch made false); blocking is reserved for a genuine branch-vs-document disagreement, which §5's existing "contradicts a locked decision" already carries. Reason: two review rounds (F1, then N1/N2) showed the original in-reach → blocking split could not be stated without contradicting either the disposition vocabulary or its own "why not" grounds. Closes N5's severity-list drift as a side effect.
 - 2026-08-25 — REWORK → IN REVIEW: N1/N2 fixed under amended decision 3
+- 2026-08-25 — IN REVIEW → REWORK: 2 blocking (R1, R2): blocking carve-out has no §5 warrant and routes to a forbidden disposition
