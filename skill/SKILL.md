@@ -49,14 +49,15 @@ hand-written planning prose lives in `tickets/NOTES.md` (created by `pickle inst
 
 `pickle install` (run once in the overarching project) creates `tickets/` with the seven
 ordered status directories (`1-to-do/` … `7-dropped/`), renders a fresh `tickets/BOARD.md`,
-scaffolds `tickets/NOTES.md`, writes the `tickets/README.md` pointer, installs this skill for the
-detected agents (`.agents/skills/brine/`, symlinked into `.claude/skills/` for Claude
-Code), injects the `AGENTS.md`/`CLAUDE.md` marker block, and writes `pickle.toml` — recording the
-**layout** there (`umbrella` by default, or `in-tree` with `--in-tree`; rules §0). A plain
-`install` registers **no** child, and `pickle project add <name> <path>` registers the first one
-and every one after it; `--path <dir>` registers that first child immediately, and `--in-tree`
-registers the sole child at `.`. Install scope is **per-project** — nothing is written to
-`~/`.
+scaffolds `tickets/NOTES.md`, writes the `tickets/README.md` pointer, installs this skill into
+`.agents/skills/brine/`, injects the `AGENTS.md` marker block, and writes `pickle.toml` —
+recording the **layout** there (`umbrella` by default, or `in-tree` with `--in-tree`; rules §0).
+Which coding agents it wires up is exactly the set `--agent` names (default `claude`) — **there
+is no autodetection**; naming `claude` is what adds the `.claude/skills/brine` symlink and
+`CLAUDE.md`. A plain `install` registers **no** child, and `pickle project add <name> <path>`
+registers the first one and every one after it; `--path <dir>` registers that first child
+immediately, and `--in-tree` registers the sole child at `.`. Install scope is **per-project** —
+nothing is written to `~/`.
 
 ## Project configuration (in `pickle.toml` + the `AGENTS.md` marker block)
 
@@ -325,7 +326,8 @@ Fix every error it reports — an error is a broken invariant, not a judgement c
 
 ## Notes
 
-`pickle` installs this skill **per project** (into `.agents/skills/brine/`, symlinked for
-Claude Code); it does not install globally, and each project pins its own payload version.
+`pickle` installs this skill **per project** (into `.agents/skills/brine/`, with the
+`.claude/skills/` symlink when `--agent` includes `claude`); it does not install globally, and
+each project pins its own payload version.
 `pickle upgrade` refreshes the installed skill + marker block from the binary without touching
 tickets.

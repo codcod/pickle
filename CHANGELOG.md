@@ -53,6 +53,14 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   what `--agent` names, defaulting to `claude`. The `upgrade` line now also mentions that it
   stamps `payload_version` in `pickle.toml`, which is the file most users care about (T-013).
 
+- **The same agent-autodetection claim also lived in the shipped skill payload** — the copy
+  every installed project actually reads, and that `pickle upgrade` re-installs verbatim.
+  `skill/SKILL.md`'s *Install & register* section said install works "for the detected agents";
+  its *Notes* section separately said the skill is "symlinked for Claude Code" unconditionally.
+  Both now say what T-009 decided: the agent set is exactly what `--agent` names (default
+  `claude`), and the `.claude/skills/` symlink and `CLAUDE.md` marker block exist only when
+  `claude` is in that set (T-119).
+
 - **`AGENTS.md`/`CLAUDE.md` keep their permissions across install, upgrade and uninstall.**
   Marker injection and stripping hard-coded `0644` on files the user owns, silently resetting a
   non-default mode. Both now write through the mode-preserving atomic writer already used for
