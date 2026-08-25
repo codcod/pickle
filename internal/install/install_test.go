@@ -1303,6 +1303,46 @@ func TestMarkerBlockGolden(t *testing.T) {
 	}
 }
 
+// TestMarkerBlockStatesNoUnconditionalAgentArtifact guards against the T-121
+// defect: the marker block is rendered into every project's own AGENTS.md (and
+// refreshed there by pickle upgrade) regardless of which --agent set was
+// installed, so any sentence in it that names a Claude-only artifact (.claude/
+// or CLAUDE.md) must also name the --agent condition that produces it — never
+// assert the artifact unconditionally. A golden pins today's wording but says
+// nothing about this property, so it would happily pass a future regression
+// that reworded the sentence back to an unconditional claim; this test keeps
+// failing for that shape even after the golden is regenerated.
+//
+// The containment assertion below is the other half: T-121 decision 3 keeps the
+// Claude view *mentioned*, because dropping the sentence would leave a Claude
+// Code user with no pointer from their primary instruction file to the path
+// their agent actually reads. Without it this test passes vacuously on a block
+// that names no Claude artifact at all — satisfying the "never unconditional"
+// rule by deleting the subject, which is the one fix decision 3 rules out.
+func TestMarkerBlockStatesNoUnconditionalAgentArtifact(t *testing.T) {
+	cfg := &config.Config{
+		Commit: config.CommitPolicy{OverarchingAuto: true, ChildPublishGated: true},
+		Projects: []config.Project{{
+			Name: "alpha", Path: ".", Build: "just build", Test: "just test",
+			Lint: "just lint", Docs: "just docs",
+			BranchPrefix: "feat/", WIPInDevelopment: 1, WIPInReview: 1,
+		}},
+	}
+	block := MarkerBlock(cfg)
+
+	if !strings.Contains(block, ".claude/skills/brine") {
+		t.Error("marker block no longer points Claude Code at .claude/skills/brine; " +
+			"T-121 decision 3 keeps the view mentioned — qualify the sentence, do not delete it")
+	}
+
+	for _, line := range strings.Split(block, "\n") {
+		mentionsClaudeArtifact := strings.Contains(line, ".claude/") || strings.Contains(line, "CLAUDE.md")
+		if mentionsClaudeArtifact && !strings.Contains(line, "--agent") {
+			t.Errorf("line mentions a Claude-only artifact without naming --agent as its condition: %q", line)
+		}
+	}
+}
+
 // TestPayloadDispositionVocabulary pins the two decisions behind T-036, not the
 // prose that expresses them.
 //
