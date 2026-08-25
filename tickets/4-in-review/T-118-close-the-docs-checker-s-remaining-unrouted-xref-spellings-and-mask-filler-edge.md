@@ -407,3 +407,4 @@ updated by Tasks 1–5 — which is where this checker has always documented its
   rules §5 rather than opened as a new ticket
 - 2026-08-25 — TO DO → READY: plan complete
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
+- 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
