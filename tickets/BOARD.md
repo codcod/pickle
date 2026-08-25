@@ -13,10 +13,11 @@ Last updated: 2026-08-25
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-120 | skill-payload summary labels describe contents, not work | [] |
 
 ## IN REVIEW
 
@@ -39,7 +40,6 @@ Last updated: 2026-08-25
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
 | T-121 | install's generated AGENTS.md marker block and help text state Claude-only artifacts unconditionally | medium | low | S | [] |  |
-| T-120 | skill-payload summary labels describe contents, not work | medium | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 
