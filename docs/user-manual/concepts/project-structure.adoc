@@ -45,8 +45,12 @@ register.
 pickle-owned::
   `{skill-dir}/`, the `.claude` symlink, the `.pi` scaffolds,
   and the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region inside
-  `AGENTS.md`/`CLAUDE.md`. `pickle upgrade` replaces these wholesale — keep
-  hand-written notes *outside* them (above the markers, in `AGENTS.md`'s case).
+  `AGENTS.md`/`CLAUDE.md`. Both `pickle install` and `pickle upgrade` replace
+  `{skill-dir}/` wholesale (<<skill-dir-labels>>), pruning anything the
+  payload does not ship, and re-inject the marker region whole; the `.claude`
+  symlink and `.pi` scaffolds are refreshed individually instead. Keep
+  hand-written notes *outside* all of them (above the markers, in
+  `AGENTS.md`'s case).
 
 tool-managed, still yours::
   `pickle.toml` — hand-edits survive every load, though `project add|remove`
