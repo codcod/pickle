@@ -117,11 +117,15 @@ ordering — if it lands first, rebase before starting.
    decisions log as examples, and points at the documents step 1 already told the reviewer to read
    (via the project's `AGENTS.md`). Adding a `governing_docs` key would turn a prose rule into a
    schema, install/upgrade, `doctor` and manual change, and the rule has no usage behind it yet.
-3. **Reconciling is the default and it is non-blocking; blocking is reserved for genuine
-   disagreement.** *(Amended 2026-08-26 with user sign-off — see History. The original text made
-   an in-reach falsified document **blocking**; two review rounds showed that split could not be
-   stated without contradicting either the disposition vocabulary (N1) or its own "why not"
-   grounds (N2). What follows replaces it.)*
+3. **Reconciling is ordinary review work; step 7 defines no severity of its own.** *(Amended
+   twice, both with user sign-off — see History. The original made an in-reach falsified document
+   **blocking**; the first amendment made it non-blocking but kept a blocking carve-out for a
+   genuine branch-vs-document disagreement. Three review rounds put every one of their blocking
+   findings inside that carve-out — F1, then N1/N2, then R1/R2 — and never in the non-blocking
+   default. R1 showed the carve-out's stated warrant was false: §5's "contradicts a locked
+   decision" demands a citation `<ID> decision <N>`, and rules §7 defines that as a numbered item
+   in a **ticket's** Implementation Plan, an address no design of record has. The carve-out is
+   therefore removed rather than re-argued. What follows replaces both earlier versions.)*
    - **Within the review's reach** — the repository holding the branch under review, or any
      repository this review is already authorised to commit to under the project's commit policy
      — the reviewer **reconciles the document during the review** and records it as a
@@ -132,15 +136,19 @@ ordering — if it lands first, rebase before starting.
    - **Out of reach** (another repository, another commit policy, another team) — **non-blocking**,
      with the reach limit recorded as the reason, dispositioned per the rules §5. Blocking here
      would strand the ticket on an edit the reviewer cannot make.
-   - **Blocking** — only when the branch and the governing document *genuinely disagree about what
-     is correct*, so someone must decide which one is right. That is a design conflict rather than
-     a documentation lag, and §5's existing "contradicts a locked decision" already carries it —
-     so **no new blocking category is added to §5**, which also closes the severity-list drift the
-     re-review recorded as N5.
+   - **No severity rule of its own.** §5 already owns severity, and its existing categories settle
+     every case without step 7 adding one. A stale governing document breaks no golden path, ships
+     no wrong behaviour, contradicts no *ticket* decision and is not missing 4a.1 coverage (that
+     row is about the docs the project **ships**) — so §5 makes it non-blocking, which is the
+     outcome the two bullets above describe. And if the document turns out to be **right** and the
+     branch **wrong**, §5's existing "ships wrong behaviour" makes that blocking by the ordinary
+     route, with no citation format to fill and nothing new to define. Both cases fall out of §5
+     unaided; the carve-out only ever added a way to contradict it.
 
    The original decision's worry — that a false governing document propagates into every ticket
    cut from it — is preserved: the document still cannot survive the review asserting something
-   false. What changes is that the fix happens *in* the review instead of via a rework round-trip.
+   false. What changes is that the fix happens *in* the review instead of via a rework round-trip,
+   and that step 7 states a **duty and its mechanics**, never a severity.
 4. **The finding is classed `stale-xref`; no new class value is added.** The existing definition
    ("a reference this branch made false … or plan prose describing behaviour that changed") already
    covers it. `docs-gap` is explicitly the *user-facing* docs class and must not absorb this. The
@@ -543,3 +551,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-26 — plan amended inline: decision 3 replaced with user sign-off. In-reach reconciliation is now non-blocking and done during the review (the rules §5 disposition for prose this branch made false); blocking is reserved for a genuine branch-vs-document disagreement, which §5's existing "contradicts a locked decision" already carries. Reason: two review rounds (F1, then N1/N2) showed the original in-reach → blocking split could not be stated without contradicting either the disposition vocabulary or its own "why not" grounds. Closes N5's severity-list drift as a side effect.
 - 2026-08-25 — REWORK → IN REVIEW: N1/N2 fixed under amended decision 3
 - 2026-08-25 — IN REVIEW → REWORK: 2 blocking (R1, R2): blocking carve-out has no §5 warrant and routes to a forbidden disposition
+- 2026-08-26 — plan amended inline (second time): decision 3's blocking carve-out removed with user sign-off. Step 7 now states a duty and its mechanics and defines no severity; §5's existing categories settle every case (a stale governing document is non-blocking under them; a branch that is actually wrong is blocking under "ships wrong behaviour"). Reason: all three review rounds put their blocking findings inside the carve-out and none in the non-blocking default, and R1 showed the carve-out's §5 warrant did not exist — rules §7 scopes "locked decision" to a numbered item in a ticket's Implementation Plan, which no governing document has. Removing it makes R1, R2, R5 and R6 moot rather than patched.
