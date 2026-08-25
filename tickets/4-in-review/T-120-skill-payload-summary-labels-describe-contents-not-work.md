@@ -318,3 +318,4 @@ rules.
   theme past the promotion test
 - 2026-08-25 — TO DO → READY: plan complete; re-graded impact low-medium->medium, cost S->M (install now prunes + docs)
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
+- 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
