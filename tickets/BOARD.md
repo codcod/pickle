@@ -20,10 +20,11 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-25
 
 | id | title | open findings |
 |---|---|---|
-| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | R1/R2 blocking: F2 residual on blockquote/list prefixes, F4 exit not admitted by the skip |
 
 ## READY (impact order, per child)
 

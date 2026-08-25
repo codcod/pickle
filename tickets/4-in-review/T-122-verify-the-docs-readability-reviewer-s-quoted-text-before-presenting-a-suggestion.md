@@ -415,6 +415,48 @@ the severity bar depend on reviewer fatigue rather than on the defect.
 the fix again needs an empirical check, the honest test is a run over a file with blockquotes and
 list items in it — not a hand-picked paragraph.
 
+---
+
+### Rework round 2 (2026-08-25), scoped to R1 and R2 only
+
+On the same branch, commit `9411503`.
+
+- **R1 — fixed, and generalised as the re-review asked.** The comparison no longer enumerates
+  layout artifacts. Consumer side now reads "comparing **words and punctuation only** and ignoring
+  layout — line wrapping, indentation, and any per-line prefix the format adds, such as a
+  blockquote marker or a list bullet carried onto a wrapped line", with the principle stated so it
+  covers cases nobody enumerated: "Layout is how the file is set, not what it says." Generator side
+  matches: "Quote the words, not the layout: drop line breaks, indentation, and any per-line prefix
+  the format adds … so the quote reads as one continuous run of text." The whack-a-mole framing
+  (whitespace, then `>`, then bullets, then table pipes) is gone from both sides.
+- **R2 — fixed.** The conscious skip's stated grounds now include "or its output cannot be trusted
+  (below)", and F4's fall-through names it explicitly: "take the conscious skip above — a reviewer
+  whose output cannot be trusted is one of its sanctioned grounds". The exit F4 relies on now
+  formally admits the case that reaches it.
+
+**Regression-tested on the surface R1 was about, per the note above.** Ran the docs-readability
+pass over `review-protocol.md` — a file that is 12% blockquote lines and 10% list lines — and
+verified all 10 returned quotes under the shipped rule (words and punctuation, layout ignored):
+**0 fabricated, 10/10 verified.** Re-checking the same 10 against the *previous* whitespace-only
+wording: **2 of 10 (20%) would have been falsely discarded**, both of them quotes crossing a
+blockquote line break — the precise defect R1 named, now measured on real reviewer output rather
+than a constructed example. Two of the run's own suggestions targeted the sentences R1 and R2 had
+just rewritten; both were verified and applied as polish on text this round owns.
+
+**Acceptance test re-ran green** after the fix: `just build/test/lint/docs-check` clean, and all
+five numbered checks re-verified — headings byte-identical to `main`, `verbatim` present in both
+payload files with the protocol hit inside 4b (`:202`), checklist count unchanged at 11, and a
+fresh throwaway `pickle-test` install confirming **both** halves of the generalised rule ship
+(`per-line prefix` present in each installed file).
+
+**Dispositions unchanged** for F1 (rejected), F3/F6 (fixed inline, round 1), F5 (noted, round 1),
+R3/R4 (fixed inline, round 2's re-review). Nothing about them was in scope for this pass.
+
+```
+cost: estimated S, actual M — unchanged from the re-review's assessment; this round did not add
+effort beyond what that line already accounted for
+```
+
 ## History
 
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace running step 4b got a full run of suggestions quoting text that existed nowhere in its tree, and now carries the verification rule in its own overarching addendum
@@ -424,3 +466,4 @@ list items in it — not a hand-picked paragraph.
 - 2026-08-25 — IN REVIEW → REWORK: F2/F4 blocking: verbatim rule misfires on wrapped prose, re-invoke loop unbounded
 - 2026-08-25 — REWORK → IN REVIEW: F2/F4 fixed: verbatim comparison tolerant of wrapping, re-invoke loop bounded
 - 2026-08-25 — IN REVIEW → REWORK: R1/R2 blocking: F2 residual on blockquote/list prefixes, F4 exit not admitted by the skip
+- 2026-08-25 — REWORK → IN REVIEW: R1/R2 fixed: comparison generalised to ignore layout, skip grounds widened
