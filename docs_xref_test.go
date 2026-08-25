@@ -14,9 +14,10 @@ package main
 // CI job is needed) and is additionally wired into `just docs-check` so that recipe's
 // own claim to catch a dead cross-reference is true for a human/agent who runs only it.
 //
-// Anchor matching is explicit-[#id]-only (optionally carrying a role, [#id.role], or
-// reftext, [#id,reftext]): the checker does not compute asciidoctor's auto-generated
-// section-id algorithm. Every <<...>> target in this manual resolves to an explicit
+// Anchor matching is explicit-[#id]-only, optionally carrying AsciiDoc's attribute
+// shorthand — a chain of roles and/or options ([#id.role], [#id.role1.role2],
+// [#id%breakable]) and/or a non-empty reftext ([#id,reftext]): the checker does not
+// compute asciidoctor's auto-generated section-id algorithm. Every <<...>> target in this manual resolves to an explicit
 // anchor today (TestDocsXrefsResolve passing IS that assertion, continuously, on every
 // run) — if a future xref is ever written to rely on an auto-generated id, add an
 // explicit [#id] to that heading rather than teaching this checker asciidoctor's
@@ -26,8 +27,8 @@ package main
 // [[id]] anchor definition. A naive `grep '\[\['` over the tree will surface them; they
 // are not anchors and this checker's [#id]-only pattern does not match them.)
 //
-// T-115 hardened the inter-document side and closed two edges that would otherwise
-// have made the gate quietly narrower than it looked:
+// T-115 and T-118 hardened the inter-document side, closing the edges that would
+// otherwise have made the gate quietly narrower than it looked:
 //
 //   - Every inter-document spelling the manual can legally contain now routes to the
 //     same "the book is one document" failure: xref:file.adoc[...] (with or without an
@@ -112,7 +113,7 @@ var (
 	// bracket.
 	//
 	// The reftext group requires at least one non-space, non-comma character, which
-	// rejects the degenerate forms [#id,], [#id,] and [#id,,] (T-118 item 4): an
+	// rejects the degenerate forms [#id,], [#id, ] and [#id,,] (T-118 item 4): an
 	// anchor with an empty reftext is a typo, not a legal attribute, and accepting it
 	// would teach this pattern a shape AsciiDoc itself does not render. The attribute
 	// group is non-capturing, so scanBook's m[1] (the id) is unaffected.
@@ -133,7 +134,10 @@ var (
 	// docsInterDocXrefRe's domain (the ".adoc"-suffixed sibling below), and admitting
 	// it here would report the same xref:file.adoc#anchor[...] site twice, once from
 	// each pattern. Keep the two classes disjoint on "." rather than "finishing the
-	// job" of widening this one to match its sibling.
+	// job" of widening this one to match its sibling. The residual cost of that
+	// disjointness: a *dotted extensionless* name — xref:my.page#anchor[x] — matches
+	// neither pattern and so stays silent. No page id in this manual contains a dot,
+	// which is what makes the trade acceptable; revisit it if one ever does.
 	docsInterDocXrefBareRe = regexp.MustCompile(`xref:([A-Za-z0-9_][A-Za-z0-9_/-]*)#([^\[\s]+)\[`)
 
 	// docsInterDocLinkRe catches link:file.adoc[...] / link:file.adoc#id[...]. Unlike
@@ -647,6 +651,13 @@ func TestDocsScannerPatternsMatchWhatTheyClaim(t *testing.T) {
 				"[#id,]",  // degenerate: comma with no reftext
 				"[#id, ]", // degenerate: comma with a blank reftext (item 4, T-118)
 				"[#id,,]", // degenerate: double comma, no reftext (item 4, T-118)
+				// These three bound the *widening* half of item 4, as decision 5 requires:
+				// the role/option chain takes one-or-more characters per link, so an empty
+				// or repeated separator is not an anchor. Without them a future "+"→"*"
+				// slip would make [#id.] a legal anchor and this whole table would still pass.
+				"[#id.]",
+				"[#id%]",
+				"[#id..role]",
 			},
 		},
 		{
@@ -915,7 +926,11 @@ func TestDocsProseLineSelection(t *testing.T) {
 // which docsXrefTargetRe then read as a reference to a phantom anchor "______"
 // (T-115 review finding F5b).
 func TestDocsMaskEscapedXrefsFillerIsInert(t *testing.T) {
-	const content = `<<\<<x>>>> and <<real>> resolves.`
+	// nested is the adversarial shape: an escape sitting inside a live reference.
+	// Slicing by its own length (rather than searching for a later substring) keeps
+	// the assertion pinned to exactly the span that was masked.
+	const nested = `<<\<<x>>>>`
+	const content = nested + ` and <<real>> resolves.`
 	got := docsMaskEscapedXrefs(content)
 
 	if len(got) != len(content) {
@@ -923,7 +938,7 @@ func TestDocsMaskEscapedXrefsFillerIsInert(t *testing.T) {
 			len(got), len(content), got)
 	}
 
-	masked := got[:strings.Index(got, "and")]
+	masked := got[:len(nested)]
 	if docsXrefTargetRe.MatchString(masked) {
 		t.Errorf("masked span %q still matches docsXrefTargetRe — the phantom-anchor hole "+
 			"(T-115 F5b) has reopened", masked)
