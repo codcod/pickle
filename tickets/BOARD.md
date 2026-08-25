@@ -20,11 +20,10 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-25
 
 | id | title | open findings |
 |---|---|---|
+| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | 5 blocking findings (F1-F5): step-7 rule under-specified |
 
 ## READY (impact order, per child)
 
