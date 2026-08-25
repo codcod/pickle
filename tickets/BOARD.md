@@ -20,11 +20,10 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-121 | install's generated AGENTS.md marker block and help text state Claude-only artifacts unconditionally | [] |
 
 ## REWORK
 
@@ -147,6 +146,7 @@ Last updated: 2026-08-25
 | T-118 | close the docs checker's remaining unrouted xref spellings and mask-filler edge | yes — merged to main (PR #74, history kept: b6b437b https://github.com/codcod/pickle/commit/b6b437b + 237a4ef https://g… |
 | T-119 | skill payload still claims agent autodetection in its Install & register section | yes — merged to main (PR #73, 11a2567, https://github.com/codcod/pickle/commit/11a2567; merge commit 43c7e20) |
 | T-120 | skill-payload summary labels describe contents, not work | yes — MERGED: feat/T-120-skill-payload-labels → main (PR #75, merge commit a08fc69), user-approved; 2 commits kept, not… |
+| T-121 | install's generated AGENTS.md marker block and help text state Claude-only artifacts unconditionally | no — publish-gated |
 
 ## DROPPED
 
