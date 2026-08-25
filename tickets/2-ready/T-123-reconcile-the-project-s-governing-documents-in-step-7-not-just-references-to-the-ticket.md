@@ -145,11 +145,11 @@ ordering — if it lands first, rebase before starting.
 
 ### Tasks
 
-> **Line numbers below are as of `main` at refinement time. T-122 adds 21 lines inside step 4b,
-> above every anchor this plan cites** — once it lands, `## 7.` sits at `:301` and the step-7
-> checklist line at `:365` (`:176` in 4a is unaffected, being above the insertion). Locate every
-> target by its heading or line text, not by the number. Figures measured against T-122's finished
-> branch by its final review; the earlier estimate of ~15 in this note was superseded.
+> **The line numbers in the tasks below are stale by 21 lines; T-122 has landed.** Verified against
+> `main` after the merge: `## 7.` is at `:301` (tasks say `:280`), the step-7 checklist line at
+> `:365` (tasks say `:344`), and 4a's "Follow any project-specific…" line is unmoved at `:176`,
+> being above T-122's insertion. Locate every target by its heading or line text rather than the
+> number — the numbers are recorded here only to show the offset is understood.
 
 #### Task 1 — widen step 7 and add the reconciliation rule
 In `skill/resources/review-protocol.md`, at `## 7. Update other references` (`:280`):
@@ -274,3 +274,4 @@ drifted) during this ticket's own review is the cheapest available proof the ste
 - 2026-08-25 — TO DO → READY: plan complete
 - 2026-08-25 — plan annotated by T-122's review impact sweep: the cited line numbers shift by ~15 once T-122 lands; targets to be located by heading text instead
 - 2026-08-25 — annotation corrected against T-122's finished branch: the shift is 21 lines, not ~15 (`## 7.` at :301, step-7 checklist line at :365)
+- 2026-08-26 — T-122 merged; the predicted anchors verified exact on main, annotation switched from predicted to actual

@@ -529,3 +529,4 @@ signal, worth keeping: every round's defect was found by executing the rule, nev
 - 2026-08-25 — IN REVIEW → REWORK: R1/R2 blocking: F2 residual on blockquote/list prefixes, F4 exit not admitted by the skip
 - 2026-08-25 — REWORK → IN REVIEW: R1/R2 fixed: comparison generalised to ignore layout, skip grounds widened
 - 2026-08-25 — IN REVIEW → DONE: review clean; 0 blocking, S2 fixed inline, S1 noted
+- 2026-08-26 — merged to main (PR #77, aef34a9, https://github.com/codcod/pickle/commit/aef34a9)

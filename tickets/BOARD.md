@@ -146,7 +146,7 @@ Last updated: 2026-08-25
 | T-119 | skill payload still claims agent autodetection in its Install & register section | yes — merged to main (PR #73, 11a2567, https://github.com/codcod/pickle/commit/11a2567; merge commit 43c7e20) |
 | T-120 | skill-payload summary labels describe contents, not work | yes — MERGED: feat/T-120-skill-payload-labels → main (PR #75, merge commit a08fc69), user-approved; 2 commits kept, not… |
 | T-121 | install's generated AGENTS.md marker block and help text state Claude-only artifacts unconditionally | yes — merged to main (PR #76, 7a354b0, https://github.com/codcod/pickle/commit/7a354b0; merge commit 1ac74e2); 1 commit… |
-| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | no — publish-gated |
+| T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | yes — merged to main (PR #77, aef34a9, https://github.com/codcod/pickle/commit/aef34a9) |
 
 ## DROPPED
 
