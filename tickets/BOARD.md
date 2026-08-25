@@ -47,8 +47,8 @@ Last updated: 2026-08-25
 |---|---|---|---|---|---|---|
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-076 | consume rick status --json as an artifact-state source | high | medium | M | [] | T-075 |
-| T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
+| T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
 | T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | medium | medium | M | [] |  |
 | T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | medium | medium | M | [] |  |
