@@ -326,7 +326,13 @@ cost: estimated S, actual M — the three-file edit was S as graded; the shipped
 
 **Note on the shape of this review.** Every blocking finding is in the same six lines of payload prose, and none is a coding error — the deliverable *is* the rule, so an under-specified rule is a defective deliverable rather than a cosmetic one. The four commands were green throughout and the five mechanical checks all passed; what the delegated audit caught is that a rule can satisfy every structural check and still be unfollowable by the reader it ships to. That is the argument for step 0's delegation, made against this very branch.
 
-### Rework fix record (commit `6f0f135`)
+### Rework fix record — round 1 (commit `6f0f135`)
+
+> **Superseded in part by round 2.** F2, F4, F5, F6 and F7 below stand as recorded and were
+> confirmed resolved by the scoped re-review. F1's and F3's fixes were replaced by the round-2
+> pass under amended decision 3 — see the round-2 record beneath the re-review findings. The
+> `:260-261` citation in F1's entry is off by one (the clause is at `:261-262`); that clause has
+> since been reverted entirely, so the line no longer exists on the branch (N7).
 
 - **F1 — fixed.** The governing-document check now triggers during the consistency audit
   (step 4, `review-protocol.md:158-161`) and classifies at step 5 like any other finding
@@ -410,6 +416,48 @@ cost: estimated S, actual L — revised up from M. Two rework cycles on the same
 with the second introducing a fresh contradiction while fixing five, is an L in substance whatever
 the diff size says.
 
+### Rework fix record — round 2 (commit `6d3aaee`)
+
+Implements **amended decision 3** (user sign-off, recorded in History). Line references are to
+`skill/resources/review-protocol.md` on the branch at `6d3aaee`.
+
+- **N1 — fixed.** The rule is now non-blocking by default. In reach → reconcile during the review
+  and record the edit, taking the rules §5 disposition for prose this branch made false with no
+  behaviour change (`:316-324`). The recommendation now attaches to the case where the reviewer
+  *can* act; previously it attached to the out-of-reach case, the one case where they cannot.
+- **N2 — fixed.** With non-blocking as the default, the "why not" grounds no longer contradict a
+  blocking verdict. They are scoped in their own paragraph (`:334-337`).
+- **N3 — fixed.** "(mechanics below)" removed; the bullet now reads "reconciled against what the
+  branch shipped, or an explicit note recording why not" (`:313-315`).
+- **N4 — fixed.** Step 4 no longer presupposes its own execution (`:158-161`), and step 7 carries
+  an explicit route for a falsehood first noticed there (`:322-323`, "A falsehood first noticed
+  here rather than at step 4 takes the same route").
+- **N5 — fixed.** Step 5's blocking bullet is reverted **byte-identical to `main`**: blocking is
+  carried by §5's existing "contradicts a locked decision", so the payload adds no new blocking
+  category and the two-item severity drift is closed. Verified by `diff` against `main`.
+- **N6 — fixed.** `CHANGELOG.md` now names the steps that actually carry the rule (4, 5 and 7)
+  and states the amended severity.
+- **N7 — fixed.** Corrected above, with a note that the cited clause no longer exists.
+- **N8 — noted, unchanged.** The manual paragraph stays at the end of its section; the section is
+  a concept overview rather than a strict sequence, so the placement is defensible.
+
+**Additionally fixed, found during this pass's own verification and not by either reviewer:** the
+first draft of this rework routed a blocking disagreement "back to §5 and step 6a" — which is
+**unexecutable** once step 6b has run, because `6-done/` is a terminal status with no outbound
+transition (`internal/flow/brine.go`, the brine transition table). The shipped text now routes
+that case to a follow-up ticket instead, and only adds it to a rework pass's scope when step 6a
+actually sent the ticket there. This is the same class of defect as N1 — a rule that reads
+plausibly and cannot be executed — caught this time before it shipped.
+
+**Verified after the fix:** all four commands green; the five original acceptance checks all
+re-verified (no step renumbered; class table byte-identical to `main`; checklist 11=11; installed
+`pickle-test` payload greps `governing` = 8 ≥ 3; `DESIGN.md`/`AGENTS.md` assert nothing this branch
+made false — `DESIGN.md:53` "blocking vs non-blocking" and `:191-192` "keyed to its step numbers"
+both remain true under the amended rule); `fixed inline`/`folded` still absent from the payload per
+`TestPayloadDispositionVocabulary`.
+
+---
+
 **Root cause, for the rework pass to weigh.** N1 is not a slip of the pen. F1's suggested fix and
 the plan's **decision 3** point in opposite directions: F1 proposed *in-reach → non-blocking, fix
 it right there*; decision 3 (user-confirmed at refinement) says *in-reach → blocking*. The rework
@@ -432,3 +480,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-25 — REWORK → IN REVIEW: findings fixed
 - 2026-08-25 — IN REVIEW → REWORK: 2 blocking findings (N1, N2): step-7 disposition clause contradicts its own severity rule
 - 2026-08-26 — plan amended inline: decision 3 replaced with user sign-off. In-reach reconciliation is now non-blocking and done during the review (the rules §5 disposition for prose this branch made false); blocking is reserved for a genuine branch-vs-document disagreement, which §5's existing "contradicts a locked decision" already carries. Reason: two review rounds (F1, then N1/N2) showed the original in-reach → blocking split could not be stated without contradicting either the disposition vocabulary or its own "why not" grounds. Closes N5's severity-list drift as a side effect.
+- 2026-08-25 — REWORK → IN REVIEW: N1/N2 fixed under amended decision 3

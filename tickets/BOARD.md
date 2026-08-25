@@ -20,10 +20,11 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-25
 
 | id | title | open findings |
 |---|---|---|
-| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | 2 blocking findings (N1, N2): step-7 disposition clause contradicts its own severity rule |
 
 ## READY (impact order, per child)
 
@@ -51,6 +51,7 @@ Last updated: 2026-08-25
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | medium | medium | M | [T-076] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-124 | scoped re-review only checks listed findings, missing defects the fix's own replacement text introduces | medium | medium | M | [] |  |
 | T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low-medium | medium | M | [] |  |
 
 ## DONE
