@@ -445,3 +445,4 @@ Flagged to the user with the rework hand-back.
 - 2026-08-25 — IN REVIEW → REWORK: review: 2 blocking (docs still attribute wholesale replacement to upgrade alone; labelSkillDir doc contradicts decision 1)
 - 2026-08-25 — REWORK → IN REVIEW: findings fixed: F1, F2 (comments/docs only, no behaviour change)
 - 2026-08-25 — IN REVIEW → DONE: scoped re-review passed: F1, F2 resolved; F11/F12 fixed inline; 5 noted, 0 new tickets
+- 2026-08-25 — MERGED: feat/T-120-skill-payload-labels → main (PR #75, merge commit a08fc69), user-approved; 2 commits kept, not squashed (root-path default)

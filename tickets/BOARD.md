@@ -144,7 +144,7 @@ Last updated: 2026-08-25
 | T-117 | remove pickle scaffold docs — docs/release scaffolding belongs to snowball, not pickle | yes — merged to main (MR !70, 22ae947, https://github.com/codcod/pickle/commit/22ae947795e526fdb14a79b2190df7737b834a2b) |
 | T-118 | close the docs checker's remaining unrouted xref spellings and mask-filler edge | yes — merged to main (PR #74, history kept: b6b437b https://github.com/codcod/pickle/commit/b6b437b + 237a4ef https://g… |
 | T-119 | skill payload still claims agent autodetection in its Install & register section | yes — merged to main (PR #73, 11a2567, https://github.com/codcod/pickle/commit/11a2567; merge commit 43c7e20) |
-| T-120 | skill-payload summary labels describe contents, not work | no — publish-gated |
+| T-120 | skill-payload summary labels describe contents, not work | yes — MERGED: feat/T-120-skill-payload-labels → main (PR #75, merge commit a08fc69), user-approved; 2 commits kept, not… |
 
 ## DROPPED
 
