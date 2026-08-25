@@ -8,6 +8,17 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **The docs-readability pass now verifies a suggestion's quoted current text against the file
+  before it is presented, and discards any suggestion it cannot back with a verbatim quote (or
+  that changes content rather than wording).** A run that mostly fails verification is discarded
+  and re-invoked once — and if the second run fails the same way, recorded as a conscious skip
+  rather than retried indefinitely. The count of suggestions discarded as fabricated is recorded in
+  the ticket's `## Review`. Shipped in `resources/review-protocol.md` (step 4b) and
+  `resources/docs-readability.prompt.md`, the one prompt both installed backends read, so every
+  project picks up the check on its next `pickle upgrade` (T-122).
+
 ## [0.12.0] - 2026-08-25
 
 ### Added
