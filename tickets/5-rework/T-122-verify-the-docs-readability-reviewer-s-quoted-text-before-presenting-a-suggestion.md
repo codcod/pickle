@@ -354,6 +354,13 @@ shipped rule is read as covering that case, not only plain paragraph wrapping. O
 verified suggestion from this run (rule-then-rationale reordering of the F2 sentence) was applied
 to the branch as further inline polish on text this branch owns.
 
+> **⚠ The last claim in the paragraph above is wrong — falsified by the scoped re-review below
+> (R1).** "Leading indentation" is *not* read as covering a `>` continuation marker: the shipped
+> rule's operational clause collapses **whitespace runs**, and `>` is not whitespace. The three
+> blockquote quotes did not pass under the shipped rule; they passed only because the ad-hoc test
+> script stripped `>` markers itself. Left in place rather than rewritten, because a record that
+> quietly loses its own falsified claim is worth less than one that carries the correction.
+
 **Acceptance test re-ran green** after the fix: `just build/test/lint/docs-check` clean, and all
 five of the plan's numbered checks re-verified — no renumbering, `verbatim` present in both files
 with the protocol hits inside 4b (now 2, both from this fix), checklist count unchanged at 11, and
@@ -366,6 +373,48 @@ round) — nothing about them was in scope for this pass and nothing about them 
 cost: estimated S, actual S
 ```
 
+---
+
+### Scoped re-review (2026-08-25) — F2 and F4 only
+
+Against `7deb400`, plus this round's inline-fix commit `bb95025`. Reviewer independence: **delegated**
+again — the reviewing agent authored the rework in the same session, so the scoped audit went to a
+fresh independent reviewer. Every finding re-verified by hand before recording, which is what caught
+the two below: the independent reviewer's own verdict was "return to DONE", and hand-verification
+overturned it.
+
+**Verdict: back to `5-rework/`. F2 and F4 are each only *partially* resolved.** The general rule
+landed and is a real improvement; the residuals are the same two defects surviving in a narrower
+form, which is precisely what a scoped re-review is for.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | **blocking** | spec-unclear | — | **Residual of F2.** The fix's operational clause is "once whitespace runs are collapsed", but a Markdown blockquote `>` or list bullet continuing a wrapped line is *not* whitespace, so it survives normalisation and sits mid-quote — reproducing F2's false discard on any quote that crosses a line break inside such a block | Measured: `"A **non-blocking** finding takes one of the four dispositions…"` fails under the shipped rule and passes only with `>` stripped; the collapsed file reads `…four > dispositions…`. **22% of `review-protocol.md`'s own lines** are blockquote (12%) or list (10%) lines, and 3 of the 13 suggestions in the rework round's own 4b run came from that surface | Stop enumerating layout artifacts — whitespace, then `>`, then bullets, then table pipes is whack-a-mole. State the rule generally: compare the **words and punctuation, ignoring layout entirely** — wrapping, indentation, and any per-line prefix the format adds |
+| R2 | **blocking** | spec-unclear | — | **Residual of F4.** The bound now falls through to "this step's existing conscious skip", but that skip's stated triggers are "no reviewer configured, or the session cannot reach one" — a reviewer that is reachable and fabricates twice is neither, so F4's exit names a door that formally does not open for this case | `review-protocol.md:188-191` (skip triggers) against `:204-206` (the new fall-through) | Widen the skip's enumeration to admit output that cannot be trusted, so the exit F4 relies on actually covers the case that reaches it |
+| R3 | non-blocking | docs-gap | fixed inline | The `[Unreleased]` CHANGELOG entry still described the retry as "discarded and re-invoked rather than salvaged", omitting the bound the rework added — prose this branch authored, made incomplete by this branch's own later commit | `CHANGELOG.md:14-16` before `bb95025` | Fixed in `bb95025`: names the single retry and the fall-through to a conscious skip |
+| R4 | non-blocking | other | fixed inline | Cosmetic wrap regression introduced by the rework commit: one line at 113 chars against 88–90 for its neighbours | `docs-readability.prompt.md:23` at `7deb400` | Fixed in `bb95025`; the paragraph is now 88/90/97/86 |
+
+**Disposition summary:** 4 findings — 2 blocking (R1, R2 → rework), 2 fixed inline (R3, R4). No
+follow-up ticket. F1/F3/F5/F6 from the first round are untouched and their dispositions stand.
+
+```
+cost: estimated S, actual M — three review rounds on a two-file prose change; the mechanism needed
+empirical testing rather than reading, and each test round found a narrower instance of the same defect
+```
+
+**Delegated verdict overturned — recorded, because it is the second time in this ticket that
+hand-verification changed the outcome.** The independent reviewer classified R1 as a non-blocking
+note and recommended DONE. Hand-verification made it blocking on two grounds it had not weighed:
+the defect is the *same* one F2 was blocked for, differing only in which layout artifact triggers
+it; and it reproduces on a measured 22% of the shipped file's own lines. Consistency is the point —
+waving through a failure mode one round after blocking it, because it is now narrower, would make
+the severity bar depend on reviewer fatigue rather than on the defect.
+
+**Note on scope for the next rework.** R1's fix should *generalise* the comparison rather than add
+`>` to a list of exceptions; R2's should widen the skip's stated triggers. Both are one clause. If
+the fix again needs an empirical check, the honest test is a run over a file with blockquotes and
+list items in it — not a hand-picked paragraph.
+
 ## History
 
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace running step 4b got a full run of suggestions quoting text that existed nowhere in its tree, and now carries the verification rule in its own overarching addendum
@@ -374,3 +423,4 @@ cost: estimated S, actual S
 - 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-25 — IN REVIEW → REWORK: F2/F4 blocking: verbatim rule misfires on wrapped prose, re-invoke loop unbounded
 - 2026-08-25 — REWORK → IN REVIEW: F2/F4 fixed: verbatim comparison tolerant of wrapping, re-invoke loop bounded
+- 2026-08-25 — IN REVIEW → REWORK: R1/R2 blocking: F2 residual on blockquote/list prefixes, F4 exit not admitted by the skip
