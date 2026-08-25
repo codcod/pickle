@@ -20,10 +20,11 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-120 | skill-payload summary labels describe contents, not work | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-25
 
 | id | title | open findings |
 |---|---|---|
-| T-120 | skill-payload summary labels describe contents, not work | review: 2 blocking (docs still attribute wholesale replacement to upgrade alone; labelSkillDir doc contradicts decision… |
 
 ## READY (impact order, per child)
 
