@@ -457,6 +457,67 @@ cost: estimated S, actual M — unchanged from the re-review's assessment; this 
 effort beyond what that line already accounted for
 ```
 
+---
+
+### Scoped re-review 2 (2026-08-25) — R1 and R2 only — **VERDICT: DONE**
+
+Against `9411503`, plus this round's inline fix; branch then tidied to `f7a1d57` + `5a3caf3`.
+Reviewer independence: **delegated** for the third time — the reviewing agent authored round 2 in
+the same session. The delegating brief carried an explicit calibration warning, because this
+ticket's two prior rounds were each triggered by a narrower instance of one defect class, and the
+standing risk was now a reviewer inventing a third round rather than missing a defect.
+
+**R1 — resolved, as a principle rather than a longer list.** The operative test is "comparing
+**words and punctuation only** and ignoring layout", with the two artifacts marked `such as`
+(illustration, not enumeration) and the general clause "any per-line prefix the format adds"
+deciding cases nobody listed. "Whitespace runs" is gone from both files. Independently confirmed:
+the delegated reviewer ran its own 4b pass over the same file and measured **0 of 9 quotes matching
+byte-for-byte, 9 of 9 under the shipped rule, and 3 of 9 (33%) failing under round 1's
+whitespace-only wording** — all three crossing a blockquote line break. Same mechanism and
+direction as this ticket's own 2-of-10 measurement, at a higher rate, so the recorded claim was
+conservative rather than inflated.
+
+**R2 — resolved, and the cross-reference resolves both ways.** The skip's grounds now read "no
+reviewer configured, the session cannot reach one, or its output cannot be trusted (below)", and
+the fall-through names it back: "take the conscious skip above — a reviewer whose output cannot be
+trusted is one of its sanctioned grounds".
+
+**Scope held.** Round 2 touched two files in three places, all R1/R2; the two applied readability
+suggestions were sentence splits *inside* the sentences R1/R2 were already rewriting, and the last
+hunk was a pure rewrap with zero word changes.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| S1 | non-blocking | spec-unclear | noted | Inline markup that is not a per-line prefix (`**bold**`, backticks, `*italics*`) is decidable under the shipped rule but never stated, and the aphorism "Layout is how the file is set, not what it says" is quotable out of context to justify dropping `**` from a quote | `review-protocol.md:199-203` against `:211-214` | **Deliberately not fixed.** Three independent constraints already decide it — "layout" is defined in the same sentence as wrapping/indentation/per-line prefixes, "words and **punctuation** … match in order" positively requires the markers, and the content-versus-wording rule discards dropped emphasis outright. Adding a fourth statement is the enumerate-every-artifact instinct R1 exists to kill, in a paragraph already at the limit of what a reader absorbs. Worst case is one lost polish suggestion on an optional, never-blocking step. Recoverable: a later reviewer can promote it by citing this row |
+| S2 | non-blocking | other | fixed inline | Cosmetic wrap regression from round 2 — one line at 79 chars against 89–99 for every neighbour in the same paragraph | `review-protocol.md:208` at `9411503` | Fixed by rewrapping the paragraph; verified content-identical to `9411503` apart from the wrap (`git diff` shows only three re-flowed lines, no word change). Paragraph now 89–99 throughout |
+
+**Disposition summary:** 2 findings — 0 blocking, 1 fixed inline (S2), 1 noted (S1). No follow-up
+ticket: S1 alone does not pass the promotion test, and F5 from round 1 (the two stale
+`promptGuidelines` copies) remains the only other open note — two notes about different subsystems
+do not batch into a theme.
+
+**Correction to this ticket's own record.** The round-2 note reported the file as "12% blockquote
+lines and 10% list lines"; recomputed exactly, it is **11.4% and 9.8%** (42 and 36 of 367 lines,
+21.3% together, not 22%). Rounding, not fabrication — but this ticket has already carried one
+genuinely false claim, so the precise figures are recorded here rather than left rounded upward.
+
+**Acceptance test, final run on the tidied history:** `just build`, `just test` (20 packages ok,
+`payload_lint_test.go` included), `just lint`, `just docs-check` all clean; all five numbered checks
+pass — headings byte-identical to `main`, `verbatim` 3/1 with the 4b hit at `:202`, checklist count
+11/11, throwaway `pickle-test` install carrying `per-line prefix` in both payload files, docs build
+clean. Branch tree verified identical to the reviewed state apart from S2's rewrap.
+
+**Publish readiness (step 9).** Five WIP commits tidied into two atomic ones (root-path child, so
+history is kept rather than squashed): `f7a1d57` feat(skill) for the payload rule, `5a3caf3` docs
+for the manual and CHANGELOG. Three-dot diff against `main` confirms the branch touches **only**
+the four source files and leaks no `tickets/` path, so the in-tree pre-push condition holds.
+Nothing pushed and no MR opened — awaiting explicit user approval.
+
+```
+cost: estimated S, actual M — three review rounds and two reworks on a two-file prose change. The
+signal, worth keeping: every round's defect was found by executing the rule, never by reading it
+```
+
 ## History
 
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace running step 4b got a full run of suggestions quoting text that existed nowhere in its tree, and now carries the verification rule in its own overarching addendum
@@ -467,3 +528,4 @@ effort beyond what that line already accounted for
 - 2026-08-25 — REWORK → IN REVIEW: F2/F4 fixed: verbatim comparison tolerant of wrapping, re-invoke loop bounded
 - 2026-08-25 — IN REVIEW → REWORK: R1/R2 blocking: F2 residual on blockquote/list prefixes, F4 exit not admitted by the skip
 - 2026-08-25 — REWORK → IN REVIEW: R1/R2 fixed: comparison generalised to ignore layout, skip grounds widened
+- 2026-08-25 — IN REVIEW → DONE: review clean; 0 blocking, S2 fixed inline, S1 noted
