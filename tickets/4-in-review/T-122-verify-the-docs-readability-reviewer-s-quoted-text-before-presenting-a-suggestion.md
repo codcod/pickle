@@ -268,3 +268,4 @@ merely well-phrased.
 - 2026-08-25 — created (TO DO). source: field-use: a downstream workspace running step 4b got a full run of suggestions quoting text that existed nowhere in its tree, and now carries the verification rule in its own overarching addendum
 - 2026-08-25 — TO DO → READY: plan complete
 - 2026-08-25 — READY → IN DEVELOPMENT: picked up
+- 2026-08-25 — IN DEVELOPMENT → IN REVIEW: acceptance green
