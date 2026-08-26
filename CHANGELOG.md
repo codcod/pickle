@@ -19,6 +19,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   `resources/docs-readability.prompt.md`, the one prompt both installed backends read, so every
   project picks up the check on its next `pickle upgrade` (T-122).
 
+- **A review now also reconciles the project's governing documents, not just references to the
+  ticket.** A design of record, conventions file, locked-decisions guide or decisions log that a
+  branch made false is classed `stale-xref` and handled like any other finding. Within the
+  review's reach it is reconciled there and then and the edit recorded; out of reach, the reach
+  limit is recorded as the reason. The step adds no severity rule of its own — a document merely
+  lagging the branch matches none of the rules §5's blocking categories. Shipped in
+  `resources/review-protocol.md`: surfaced by the consistency audit (step 4), classified at step 5,
+  stated in full at step 7. Every project picks up the rule on its next `pickle upgrade` (T-123).
+
 ## [0.12.0] - 2026-08-25
 
 ### Added
