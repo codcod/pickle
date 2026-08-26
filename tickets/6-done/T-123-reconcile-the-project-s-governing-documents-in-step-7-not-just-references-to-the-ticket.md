@@ -603,7 +603,7 @@ cost: estimated S, actual XL (unchanged from round 3 — already at the top of t
 Line references to `skill/resources/review-protocol.md` at `42b67b4`.
 
 - **F1 — fixed by deletion, not rephrasing.** The document-right/branch-wrong sentence is gone.
-  Step 7 (`:316-337`) now states only the reconciliation duty for a document lagging the branch;
+  Step 7 (`:316-338`) now states only the reconciliation duty for a document lagging the branch;
   it asserts no route for any other case. The branch-being-wrong case is ordinary rules §5
   territory found (if at all) during steps 2–3, before step 6 runs, so step 7 saying nothing
   about it is accurate rather than silent-on-a-gap. **One boundary knowingly left open**, same as
@@ -614,7 +614,7 @@ Line references to `skill/resources/review-protocol.md` at `42b67b4`.
   buried in the out-of-reach sentence, and applies regardless of reach.
 - **F3 — fixed.** Every bare `§5` in the section now reads "the rules §5" (`:317`, `:319`,
   `:325`, `:327`, `:333`). "Already settle the case" replaced with the checkable claim at
-  `:318-320`: a document merely lagging the branch matches none of the rules §5's three blocking
+  `:318-321`: a document merely lagging the branch matches none of the rules §5's three blocking
   categories (`tickets-README.md:398`) — golden path, wrong behaviour, or a *ticket's* locked
   decision.
 - **F4 — fixed.** `lifecycle.adoc` and `CHANGELOG.md` now say the finding is "handled like any
@@ -629,6 +629,59 @@ renumbering; class table byte-identical; checklist 11=11; installed `pickle-test
 to `main`. `fixed inline`/`folded` still absent. Every case re-walked once more: stale/in-reach,
 stale/out-of-reach, too-large, first-noticed-here — all legal and unchanged in outcome; the
 branch-wrong case is simply no longer described by this step, which is the fix.
+
+---
+
+## Scoped re-review (round 5) — **clean**
+
+Reviewer independence: **delegated** (round-4 author = orchestrating reviewer). The delegated
+reviewer was briefed explicitly that a clean verdict and a blocking verdict were equally
+acceptable and that neither manufacturing nor suppressing a finding was wanted — worth recording,
+because the orchestrating reviewer had publicly committed to recommending the ticket be dropped
+if round 5 surfaced another blocking finding, and that pressure cuts both ways.
+
+**Commands:** four green at `42b67b4`. **Five acceptance checks:** all met. **Foreign-workspace
+test:** passes. `fixed inline`/`folded` absent. §5's blocking bullet byte-identical to `main`.
+**Step 4b:** 10 suggestions, 10 quotes verified verbatim, 0 discarded; none touches the reworked
+step-7 prose, and none is of the clipped-subject class round 4 fixed.
+
+**Round-4 findings F1–F5: all resolved.** The branch-wrong sentence is gone, and no sentence in
+step 7 now names a route, a status or a severity for that case. The one surviving "takes the same
+route" clause has the *governing document's* falsehood as its antecedent and points at the
+non-blocking reconciliation route, which needs no transition out of `6-done/`.
+
+**The deletion was verified not to strand the reader.** Step 2 already requires that "Every
+confirmed design decision was honoured, **including any project-specific rules named in
+`AGENTS.md`**" — a branch violating a governing document's rule is therefore caught at step 2,
+before step 6 runs. Deleting step 7's sentence removed a wrong answer, not the only answer.
+
+**Boundary claim verified precisely:** nothing in the section implies the post-6b gap is closed,
+and no added sentence asserts a move from the terminal status. Round 4's claim is accurate —
+unlike round 3's, which this same check falsified.
+
+### Round-5 findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| G1 | non-blocking | `spec-unclear` | noted | Grounds #4 names the follow-up-ticket outcome without the promotion-test reminder the same file gives six lines below for the structurally identical step-8 spawn. A reconciliation can be too large *and* never actually scheduled, in which case the promotion test says note it instead. "per the rules §5" imports the test implicitly, so the rule is correct as written — only less explicit than its neighbour. | `review-protocol.md:332-333` vs `:346` | Optional clause. Closed without change: adding it risks the very over-specification that cost this ticket four rounds. |
+| G2 | non-blocking | `docs-gap` | fixed inline | Round 4's edit left two `CHANGELOG.md` lines at 55 and 51 characters where the surrounding entry wraps in the 84–98 range. Cosmetic; `docs-check` was green either way. | `CHANGELOG.md:27-30` before the fix | Rewrapped in commit `465ef4c`. |
+| G3 | non-blocking | `stale-xref` | fixed inline | Two citations in this ticket's own round-4 fix record clip their block's last line by one: step 7 ends at `:338` not `:337`, and the checkable-claim sentence runs `:318-321` not `:318-320`. Precisely the defect class this ticket ships a rule about, in the record of the round that shipped it. | round-4 fix record vs `review-protocol.md:336-338`, `:318-321` | Corrected in this review. |
+
+**Disposition summary:** 0 blocking · 2 fixed inline (G2, G3) · 1 noted (G1) · 0 new tickets. The
+9 readability suggestions against untouched prose are **noted**.
+
+cost: estimated S, actual XL — unchanged; recorded once at round 3 and not restated per round.
+
+### Step 7 applied to this ticket's own governing documents
+
+The rule this ticket ships, applied to pickle's own `DESIGN.md` and `AGENTS.md`, as acceptance
+check 5 required and as step 7 now directs: **neither asserts anything this branch made false.**
+`DESIGN.md:53` ("reviewing and classifying findings blocking vs non-blocking") holds — the
+distinction still exists and step 7 now defers to it rather than competing with it.
+`DESIGN.md:191-192` and `:201` ("keyed to its step numbers") hold because no step was renumbered,
+which is the whole reason decision 1 forbade renumbering. `AGENTS.md:73-74` names the protocol
+generically. No reconciliation edit was needed, and this paragraph is the record of that
+conclusion rather than silence — which is what the shipped rule asks for.
 
 ---
 
@@ -692,3 +745,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-25 — REWORK → IN REVIEW: R1/R2 fixed by removing the blocking carve-out
 - 2026-08-25 — IN REVIEW → REWORK: 1 blocking (F1): step 7 asserts a route the state machine forbids
 - 2026-08-25 — REWORK → IN REVIEW: F1 fixed by deleting the branch-wrong sentence
+- 2026-08-26 — IN REVIEW → DONE: round-5 re-review clean: 0 blocking, 2 fixed inline, 1 noted

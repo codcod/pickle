@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 ## IN DEVELOPMENT
 
@@ -20,11 +20,10 @@ Last updated: 2026-08-25
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | [] |
 
 ## REWORK
 
@@ -148,6 +147,7 @@ Last updated: 2026-08-25
 | T-120 | skill-payload summary labels describe contents, not work | yes — MERGED: feat/T-120-skill-payload-labels → main (PR #75, merge commit a08fc69), user-approved; 2 commits kept, not… |
 | T-121 | install's generated AGENTS.md marker block and help text state Claude-only artifacts unconditionally | yes — merged to main (PR #76, 7a354b0, https://github.com/codcod/pickle/commit/7a354b0; merge commit 1ac74e2); 1 commit… |
 | T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | yes — merged to main (PR #77, aef34a9, https://github.com/codcod/pickle/commit/aef34a9) |
+| T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | no — publish-gated |
 
 ## DROPPED
 
