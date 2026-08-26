@@ -746,3 +746,4 @@ needs user sign-off. The choice belongs to the human, not to the rework pass.
 - 2026-08-25 — IN REVIEW → REWORK: 1 blocking (F1): step 7 asserts a route the state machine forbids
 - 2026-08-25 — REWORK → IN REVIEW: F1 fixed by deleting the branch-wrong sentence
 - 2026-08-26 — IN REVIEW → DONE: round-5 re-review clean: 0 blocking, 2 fixed inline, 1 noted
+- 2026-08-26 — merged to main (PR #78, 43fbc0d, https://github.com/codcod/pickle/commit/43fbc0d)
