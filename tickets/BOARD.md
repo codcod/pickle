@@ -20,11 +20,10 @@ Last updated: 2026-08-27
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-124 | scoped re-review only checks listed findings, missing defects the fix's own replacement text introduces | [] |
 
 ## REWORK
 
@@ -149,6 +148,7 @@ Last updated: 2026-08-27
 | T-121 | install's generated AGENTS.md marker block and help text state Claude-only artifacts unconditionally | yes — merged to main (PR #76, 7a354b0, https://github.com/codcod/pickle/commit/7a354b0; merge commit 1ac74e2); 1 commit… |
 | T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | yes — merged to main (PR #77, aef34a9, https://github.com/codcod/pickle/commit/aef34a9) |
 | T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | yes — merged to main (PR #78, 43fbc0d, https://github.com/codcod/pickle/commit/43fbc0d) |
+| T-124 | scoped re-review only checks listed findings, missing defects the fix's own replacement text introduces | no — publish-gated |
 
 ## DROPPED
 

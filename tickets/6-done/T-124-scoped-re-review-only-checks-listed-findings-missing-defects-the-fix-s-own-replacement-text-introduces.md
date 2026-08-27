@@ -346,7 +346,69 @@ clean.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+Reviewed at `762b6bb` on `feat/T-124-re-review-reads-the-fix-diff`; inline fixes landed as
+`bd19d68`.
+
+- [x] Reviewer independence settled (step 0): **delegated** — the reviewing agent authored the
+      branch in this same session, so steps 2-4a ran in a fresh sub-agent briefed adversarially
+      with the ticket (read from `main`), the branch and the four configured commands. Every
+      finding it returned was re-verified by hand before entering the table below; one detail of
+      F5's evidence did not survive that check and is corrected in the row.
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (steps 1, 2). No
+      scoped re-review: this is round 1, so there is no fix diff to read.
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4) — project-wide sweep of `skill/`, `docs/`, `agents/`,
+      `internal/`, `scaffold/`, `README.md`, `DESIGN.md`: no seventh surface still states the old
+      scope, and nothing contradicts `DESIGN.md` or `AGENTS.md`.
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass (step 4b) — run; 12 suggestions returned, **0 fabricated** (quoted
+      text verified against the files), and **all 12 sat on pre-existing prose outside this
+      branch's diff** → discarded as out of scope rather than applied, since taking them would
+      edit prose this ticket does not touch.
+- [x] Findings recorded with severity, class and disposition (step 5)
+- [x] Ticket moved; `## History` appended (step 6)
+- [x] Other references updated if needed; governing documents reconciled (step 7) — `DESIGN.md`
+      and `AGENTS.md` re-read against what shipped: neither asserts anything this branch made
+      false (both describe the review flow's mechanics at a level this change does not touch), so
+      no edit was required.
+- [x] Remaining-tickets impact sweep done (step 8)
+- [ ] Summary + commit message & MR attributes presented for approval (step 9) — pending the
+      user's decision.
+
+**Acceptance test:** `just build` · `just test` (20 packages ok, including `payload_lint_test.go`
+over the edited payload) · `just lint` · `just docs-check` — **all four green**, re-run verbatim by
+the delegated reviewer on the branch and again after the inline fixes. The plan's six specific
+checks: 1 **met** (with corrected commands — F4), 2 **met** (step headings identical to `main`),
+3 **met** (11 checklist rows before and after), 4 **met** (class-vocabulary table byte-identical),
+5 **partially met** (F5 — substance verified under a corrected pattern), 6 **met** in the only way
+round 1 can meet it: the rule was applied to this branch's own prose during implementation, which
+is what produced the two pre-commit corrections recorded in the summary, and F1-F3 below are the
+same read finding more.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | spec-unclear | fixed inline | The single-commit record form had no stated way to obtain a diff, and it inverts the pair form's semantics (single = the fix commit itself; pair = opens with the commit *before* the fix). A reviewer told the record "pastes straight into `git diff`" could run `git diff <sha>`, which diffs the working tree. | `review-protocol.md:124-127` before the fix | Gloss the single form as `git show <sha>` and state which SHA each form names. Done in `bd19d68`. |
+| F2 | non-blocking | spec-unclear | fixed inline | `TEMPLATE.md`'s two examples used the same SHA (`6f0f135`) for the fix commit *and* for the excluded pre-fix tip, contradicting the gloss beside them. | `TEMPLATE.md:155-156` before the fix | Use distinct SHAs. Done in `bd19d68`. |
+| F3 | non-blocking | design | fixed inline | "write it **after** any tidy that rewrites the branch's SHAs" was unreachable guidance: the rework procedure has no tidy step — the tidies are implementation-Finish (before the first review) and publish (after the review concludes) — so a fix pass has no tidy to follow, while the publish tidy invalidates recorded SHAs afterwards. | `SKILL.md:264-265` before the fix vs the rework procedure `SKILL.md:248-266` | Tell the fix pass not to tidy, record SHAs as they stand at handback, and lean on §1's fallback for records stale after publish. Done in `bd19d68`. |
+| F4 | non-blocking | plan-wrong | noted & closed | Acceptance check 1 is unrunnable as written: 1b greps `re-audit the whole feature`, but the shipped text reads "re-audit **of** the whole feature", so the check passes vacuously (0 hits); and 1a's `git diff main --stat` now lists 8 files, because `main` carries this ticket's board moves. | `grep -rn 're-audit the whole feature' skill/` → no output; `git diff main --stat` → 8 files | Verified instead with `grep -rn 're-audit of the whole feature' skill/` (2 hits, `review-protocol.md:121` and `tickets-README.md:402`, both in sentences naming the fix diff) and `git diff $(git merge-base main HEAD)..HEAD --stat` (exactly the 6 planned files). Not worth a plan amendment for a check that has now served its purpose. |
+| F5 | non-blocking | plan-wrong | noted & closed | Acceptance check 5 expects `fix diff\|fix pass` in three installed payload files; the throwaway install yields hits in `review-protocol.md` only (4). *(The delegated reviewer reported two files here; re-verification found `tickets-README.md` at 0 — the finding stands, its evidence is corrected.)* The rule itself does ship: `Rework fix record` appears in `SKILL.md`, `review-protocol.md` and `TEMPLATE.md`, and `tickets-README.md` carries "read the diff that closed them". | `grep -rc 'fix diff\|fix pass'` / `grep -rc 'Rework fix record'` in a `pickle-test install --in-tree` tree | The check grepped the ticket's vocabulary rather than the payload's. Recorded as **partially met** with the substituted evidence above. |
+| F6 | non-blocking | other | fixed inline | "git's own exclusive range form" was loose terminology: for `git diff A..B` the dots are a synonym for `git diff A B`; "exclusive range" is `git log` language, and two of the three surfaces stated it without the gloss that made it useful. | `review-protocol.md:125`, `SKILL.md:263`, `TEMPLATE.md:156` before the fix | Drop the terminology; say the form `git diff <before>..<after>` takes as written. Done in `bd19d68`. |
+| F7 | non-blocking | other | fixed inline | "is where the next round's blocking finding usually lives" (5 surfaces) is a frequency claim no reader of an installed skill can check — the invisible-evidence shape the foreign-workspace test names, passing the lint only because it carries no digits. | `review-protocol.md:124`, `tickets-README.md:401`, `SKILL.md:260`, `lifecycle.adoc:88`, `CHANGELOG.md:14` before the fix | Restate as reasoning that stands on its own: the fix's replacement text is the one part of the branch nothing has audited yet. Done in `bd19d68`. |
+| F8 | non-blocking | other | noted & closed | Task 1 asked for "one short paragraph **or** a two-item nested list — not more"; §1 shipped both (~16 lines) inside a context-loading step. | `review-protocol.md:119-134` vs the plan's Task 1 | Deviation accepted: the two mechanics (getting the diff, the bound) each needed stating, and F1/F3 show the prose was if anything under-specified rather than over-long. Recorded rather than reverted. |
+
+dispositions: 8 non-blocking — 5 fixed inline (F1, F2, F3, F6, F7, in `bd19d68`), 3 noted & closed
+(F4, F5, F8); 0 blocking; 0 spawned tickets.
+
+cost: estimated M, actual M — as graded. Six surfaces of prose, one delegated audit, one round, no
+rework; the re-grade from S at refinement is what made this land on estimate.
+
+**Verdict: no blocking findings.** The rule is correct, complete and stated consistently on all six
+surfaces; the four configured commands are green; the payload survives the foreign-workspace test
+by hand as well as by `payload_lint_test.go`. Proceeds to `6-done/` per step 6b.
+
+**Note for whoever reads this next:** three of the five inline fixes (F1, F2, F6) were defects in
+the *notation this very ticket introduced* — found by reading the branch's own new prose closely,
+which is exactly the discipline the ticket ships. The rule earned its keep on its own diff.
 
 ## History
 
@@ -358,3 +420,4 @@ clean.
 - 2026-08-26 — TO DO → READY: plan complete
 - 2026-08-27 — READY → IN DEVELOPMENT: picked up, branch feat/T-124-re-review-reads-the-fix-diff; applicability gate: 1 blocking + 5 non-blocking folded into the plan in 2-ready/
 - 2026-08-27 — IN DEVELOPMENT → IN REVIEW: acceptance green; 8 tasks landed on 6 surfaces
+- 2026-08-27 — IN REVIEW → DONE: review clean; 8 non-blocking, all dispositioned (5 fixed inline in bd19d68, 3 noted & closed); 0 blocking
