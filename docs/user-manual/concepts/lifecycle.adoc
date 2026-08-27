@@ -136,6 +136,15 @@ reach it is reconciled there and then and the edit recorded; out of reach, the
 reach limit is recorded as the reason. See the skill's
 `resources/review-protocol.md` step 7 for the full rule.
 
+A blocking finding discovered only after a review already moved the ticket to
+`6-done/` — while updating references, sweeping dependent tickets, or writing
+the summary — has no route back into that ticket, since the status is
+terminal; it is filed as its own ticket instead (not the `new ticket`
+disposition, since a blocking finding is never dispositioned), `spawned-by:`
+the concluded one, with a `## History` line on the concluded ticket recording
+the filed id. See the skill's `resources/review-protocol.md` step 6c for the
+full rule.
+
 == Done ≠ merged
 
 DONE records the review verdict. *Merging is always the human's* and may lag —

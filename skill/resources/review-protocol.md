@@ -319,6 +319,21 @@ verifies those findings *and reads the diff that closed them* (§1), then conclu
 dispositioned): move `tickets/4-in-review/T-NNN-*.md` → `tickets/6-done/`; append a `## History`
 line noting the verdict and the disposition summary, including any spawned ids.
 
+**6c. A blocking finding first identified at step 7, 8 or 9 — after 6b has already moved the
+ticket to the terminal `6-done/`.** `6-done/` declares no outbound transition, so the finding
+cannot take the `5-rework/` route above, and it is not dispositioned either — the rules §5's
+four dispositions, `new ticket` included, are defined only for non-blocking findings. **It is
+filed as its own ticket instead**: `pickle ticket new … --spawned-by "T-NNN"` (this skill's
+`resources/TEMPLATE.md`, graded per the rules §3) — the same command the `new ticket`
+disposition uses, but not that disposition, since a blocking finding is never dispositioned.
+More than one such finding in the same review pass is **batched by theme**, exactly as the rules
+§5 batches non-blocking follow-ups: findings of the same theme join one filed ticket rather than
+each starting a new one; findings of different themes are filed separately. Append a dated
+`## History` line to the concluded ticket for each ticket filed, recording its id — the archive
+stays terminal, but the pointer is not silent — and a finding that joins a ticket already filed
+needs no second line. Steps 7, 8 and 9 below take this route for a blocking finding about the
+ticket that just moved; their own text otherwise covers the non-blocking case.
+
 ## 7. Update other references — and reconcile the project's governing documents
 
 - **`BOARD.md` needs no hand edit** — it is generated, and the `pickle ticket move` in step 6
@@ -359,10 +374,14 @@ Re-read every ticket in `tickets/2-ready/` and `tickets/1-to-do/` that lists thi
 `depends-on:` (or references it in Description) and check whether the implementation invalidated
 any assumption they encode. Patching the affected ticket **is** the expected outcome — record the
 correction in its History. This sweep is a spawn gate like any other, so anything it turns up that
-is not a patch takes a disposition per the rules §5, and a new ticket needs the promotion test.
+is not a patch takes a disposition per the rules §5, and a new ticket needs the promotion test. A
+blocking finding about the ticket that just concluded, rather than about a dependent ticket, is
+filed per step 6c instead of taking a disposition.
 
 ## 9. Finish
 
+- A blocking finding noticed only now — writing the summary is often when the whole change is
+  finally seen at once — takes step 6c's route before anything below is presented.
 - Summarize: what was verified, findings by severity, the ticket's new status, any newly-spawned
   tickets, and the remaining-tickets impact.
 - **Child-project (build target):** present the full Conventional Commit message —

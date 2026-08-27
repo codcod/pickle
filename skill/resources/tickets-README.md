@@ -402,7 +402,11 @@ non-blocking — a **disposition**.
   branch nothing has audited yet — still not a re-audit of the whole feature from scratch; the
   mechanics are
   in `resources/review-protocol.md` §1). A blocking finding is never dispositioned: it is
-  fixed, and the ticket does not proceed until it is.
+  fixed, and the ticket does not proceed until it is. Such a finding, first identified after the
+  ticket has already moved to `6-done/`, cannot take that route: it is filed as its own ticket
+  instead (not the `new ticket` disposition), `spawned-by` the concluded one, with a dated
+  `## History` line on the concluded ticket recording the filed id, and batched by theme when one
+  pass turns up more than one (`resources/review-protocol.md` §6c).
 - **Non-blocking** — quality/consistency/polish that doesn't block shipping. The reviewed ticket
   proceeds to `6-done/`, and each finding takes exactly one disposition below.
 
