@@ -327,11 +327,12 @@ filed as its own ticket instead**: `pickle ticket new … --spawned-by "T-NNN"` 
 `resources/TEMPLATE.md`, graded per the rules §3) — the same command the `new ticket`
 disposition uses, but not that disposition, since a blocking finding is never dispositioned.
 Append a dated `## History` line to the concluded ticket recording the filed id — the archive
-stays terminal, but the pointer is not silent. More than one such finding in the same review
-pass is **batched by theme** into a single filed ticket — one ticket carrying several findings
-rather than one per finding — the same principle the rules §5 `new ticket` disposition already
-applies. Steps 7, 8 and 9 below take this route for a blocking finding about the ticket that just
-moved; their own text otherwise covers the non-blocking case.
+stays terminal, but the pointer is not silent. More than one such finding in the same review pass
+is **batched by theme**, exactly as the rules §5 batches non-blocking follow-ups: one filed
+ticket carries several findings rather than one ticket per finding, and a second found later in
+the same pass joins the ticket already filed rather than starting another. Steps 7, 8 and 9 below
+take this route for a blocking finding about the ticket that just moved; their own text otherwise
+covers the non-blocking case.
 
 ## 7. Update other references — and reconcile the project's governing documents
 
