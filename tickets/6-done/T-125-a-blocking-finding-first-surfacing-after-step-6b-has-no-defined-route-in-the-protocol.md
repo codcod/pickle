@@ -518,3 +518,4 @@ scope is drawn in the right place rather than one step too wide.
 - 2026-08-27 — IN REVIEW → REWORK: 1 blocking (V1): the R3 join clause contradicts batch-by-theme
 - 2026-08-27 — REWORK → IN REVIEW: V1 fixed: 6c's batching sentence rewritten as one rule (join-same-theme/file-separately)
 - 2026-08-27 — IN REVIEW → DONE: round-3 re-review clean: 0 blocking, 0 non-blocking
+- 2026-08-27 — merged to main (PR #80, 7f9d03c, https://github.com/codcod/pickle/commit/7f9d03c)
