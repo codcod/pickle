@@ -357,3 +357,4 @@ clean.
   T-098/T-013/T-122 repeat rounds)
 - 2026-08-26 — TO DO → READY: plan complete
 - 2026-08-27 — READY → IN DEVELOPMENT: picked up, branch feat/T-124-re-review-reads-the-fix-diff; applicability gate: 1 blocking + 5 non-blocking folded into the plan in 2-ready/
+- 2026-08-27 — IN DEVELOPMENT → IN REVIEW: acceptance green; 8 tasks landed on 6 surfaces
