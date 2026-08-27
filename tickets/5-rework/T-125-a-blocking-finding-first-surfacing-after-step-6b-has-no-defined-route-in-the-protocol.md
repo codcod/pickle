@@ -249,7 +249,34 @@ changed files during review (protocol step 4b).
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Checklist
+
+- [x] Reviewer independence settled (step 0): **delegated** — the reviewing agent authored the branch in this same session, so audits 2–4a ran in a freshly spawned, adversarially briefed sub-agent with no memory of writing the code; classification, severity, dispositions and the move stayed with the orchestrating reviewer, and the delegated findings were re-verified by hand before entering the table below
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4) — every case walked by hand against the shipped text, independently of the ticket's own case table
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass on the ticket's changed `.adoc`/`.md` files — run over all four (`review-protocol.md`, `tickets-README.md`, `lifecycle.adoc`, `CHANGELOG.md`); 12 suggestions, all against prose this branch never touched, 0 targeting the branch's own new text (step 4b)
+- [x] Findings recorded with severity, class and disposition (step 5)
+- [x] Ticket moved to `tickets/5-rework/`; `## History` appended (step 6a)
+- [ ] Other references / governing documents — not applicable; this ticket touches no governing document
+- [x] Remaining-tickets impact sweep done (step 8) — no ticket in `2-ready/`/`1-to-do/` lists T-125 in `depends-on:` or references it
+- [ ] Summary + commit message presented for approval (step 9) — not applicable on a rework verdict; nothing is published
+
+### Commands
+
+`just build` · `just test` · `just lint` · `just docs-check` — **all four green**, re-run independently by the delegated reviewer at commit `471fcbd` and again by the orchestrating reviewer after the F2 inline fix at `0fa89d3`. `just test` includes `payload_lint_test.go` and `go test . -run TestPayloadSpeaksToAForeignReader -v -count=1` (uncached), both green. Throwaway install as `pickle-test` (`AGENTS.md`'s self-modify policy): `grep -c '6c' .agents/skills/brine/resources/review-protocol.md` = 3 (≥ 1 required).
+
+### Findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | correctness | — | **Confirmed design decision 5's batching clause never shipped.** Decision 5 says a review pass surfacing more than one late-blocking finding about the concluded ticket must batch them by theme into one filed ticket, mirroring the flow's existing batching principle. No occurrence of "batch"/"theme" exists anywhere in the shipped 6c text, the step 8/9 redirect clauses, or the `tickets-README.md` §5 addition — only the two pre-existing, unrelated uses (for the rules §5 `new ticket` disposition) survive untouched. A reviewer following only the shipped rule with two unrelated late-blocking findings in one pass has no batching instruction and would file two, contradicting the plan's own confirmed decision — the "contradicts a locked decision" ground the rules' own severity test names as blocking. | plan decision 5 (T-125 decision 5) vs `grep -n batch skill/resources/review-protocol.md skill/resources/tickets-README.md` (only pre-existing `review-protocol.md:285` and `tickets-README.md:321`, both about the `new ticket` disposition, neither touched by this branch) | Add one clause to 6c (or the redirect text) stating that more than one such finding in the same review pass is filed as one ticket, batched by theme, per the same principle rules §5 already states for the `new ticket` disposition. |
+| F2 | non-blocking | other | fixed inline | Dangling modifier: "First identified after the ticket has already moved to `6-done/`, this route no longer exists…" reads as modifying "this route" (which cannot be "identified"), when it means the *finding*. Cosmetic, no behaviour change. | `skill/resources/tickets-README.md` (pre-fix, committed `471fcbd`) | Fixed by this review at `0fa89d3`: reworded to "A blocking finding first identified after the ticket has already moved to `6-done/` cannot take this route — it is filed as its own ticket instead…", giving the participial phrase an unambiguous subject. |
+
+**Disposition summary:** 1 blocking (F1 — defines the rework scope) · 1 fixed inline (F2) · 0 new tickets. The delegated audit also proposed a second non-blocking finding (F3, a corroborating docs-readability claim against the new `lifecycle.adoc` paragraph) that did not survive hand-verification: the orchestrating reviewer's own `docs_readability` run returned zero suggestions against any of this branch's new prose in `lifecycle.adoc` or `CHANGELOG.md` (its 12 suggestions all target paragraphs this branch never touched) — discarded as unverified rather than recorded, per step 0's "delegation buys independence, not accuracy."
+
+cost: estimated S, actual S — one round so far; F1 is a small, well-scoped addition (one clause) and does not itself change that estimate.
 
 ## History
 
@@ -277,3 +304,4 @@ changed files during review (protocol step 4b).
   during implementation itself, one layer earlier than the review that has caught this exact
   vocabulary-overlap shape in T-123 four times.
 - 2026-08-27 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-27 — IN REVIEW → REWORK: 1 blocking finding (F1): decision 5's batching clause never shipped
