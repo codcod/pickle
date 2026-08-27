@@ -276,3 +276,4 @@ changed files during review (protocol step 4b).
   case table against the shipped text before committing (task 3), not by a reviewer — caught
   during implementation itself, one layer earlier than the review that has caught this exact
   vocabulary-overlap shape in T-123 four times.
+- 2026-08-27 — IN DEVELOPMENT → IN REVIEW: acceptance green
