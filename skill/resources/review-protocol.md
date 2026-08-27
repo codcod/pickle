@@ -117,8 +117,23 @@ than carrying the heavier session through the publish steps by default.
   `## Implementation Plan` (its acceptance test, tasks, and confirmed decisions are the
   checklist for step 2), and `## History`.
 - If this is a **scoped re-review** (the ticket was previously in `tickets/5-rework/`), read the
-  existing `## Review` section first — only the findings listed there need re-verification; do
-  not re-audit the whole feature from scratch.
+  existing `## Review` section first. The scope is **the findings listed there, plus the diff that
+  closed them** — not a re-audit of the whole feature from scratch. Read the new text or code the
+  fix pass wrote and audit it as you would any other new work, classing whatever you find from §5's
+  vocabulary, whether or not a listed finding names that ground: a fix's own replacement text is
+  the one part of the branch nothing has audited yet. Two mechanics:
+  - **Getting the diff.** The fix pass records its commits in `## Review` under
+    `### Rework fix record — round N (commit <sha>)` for a single commit — read that one with
+    `git show <sha>` — or `(commits <tip before the fix>..<tip after>)` for several, which
+    `git diff <tip before the fix>..<tip after>` takes as written. Mind which is which: the single
+    form names the fix commit itself, the pair opens with the commit *before* the fix. A round that
+    committed nothing says `no commits this round — <why>`, which closes the question rather than
+    leaving you to hunt. If that record is missing or its SHAs no longer resolve — a tidy at publish
+    time rewrites them — reconstruct the range from the branch log instead of skipping the read, and
+    treat the missing or broken record as a finding of its own (never blocking on its own).
+  - **The bound.** This is **this round's** fix diff, not every rework diff since the first
+    review — each round reads its predecessor's new text, so nothing goes unread and no round
+    re-reads the whole branch.
 - Read any project-wide decisions and the configured build/validate commands from the project's
   `AGENTS.md` and the ticket's target `[[project]]` block in `pickle.toml`.
 - Check `depends-on:` frontmatter — every listed ticket must be in `tickets/6-done/` **with
@@ -295,9 +310,10 @@ estimate would erase it.
 
 **6a. If any blocking finding exists:** move `tickets/4-in-review/T-NNN-*.md` →
 `tickets/5-rework/`; append a `## History` line. A fix pass (**"rework ticket T-NNN"** — see
-the skill's procedure) then addresses *only the listed findings* on the same branch and moves
+the skill's procedure) then addresses *only the listed findings* on the same branch, records the
+commits it produced in `## Review` (the rework fix record — §1), and moves
 the ticket back to `tickets/4-in-review/` (History line on each move); a **scoped re-review**
-verifies just those findings and concludes via 6a/6b again.
+verifies those findings *and reads the diff that closed them* (§1), then concludes via 6a/6b again.
 
 **6b. If there are no blocking findings** (zero, or only non-blocking with every one
 dispositioned): move `tickets/4-in-review/T-NNN-*.md` → `tickets/6-done/`; append a `## History`
@@ -387,7 +403,7 @@ is not a patch takes a disposition per the rules §5, and a new ticket needs the
 ### Checklist (paste into the ticket's `## Review` section)
 
 - [ ] Reviewer independence settled (step 0): audits run independently, delegated, or a recorded conscious skip — name which
-- [ ] Implementation audit — acceptance test re-run, tasks & criteria verified (step 2)
+- [ ] Implementation audit — acceptance test re-run, tasks & criteria verified; on a scoped re-review, the diff that closed the findings also read for new defects (steps 1, 2)
 - [ ] Quality audit (step 3)
 - [ ] Consistency audit (step 4)
 - [ ] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a, if the project ships docs)

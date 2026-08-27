@@ -253,9 +253,17 @@ When asked to rework ticket T-NNN (a review found blocking findings):
 2. Read the ticket's `## Review` section: the **blocking findings are the entire scope**.
    Implement nothing else — any new work needs a new ticket.
 3. On the **same** `feat/T-NNN-<slug>` branch (in the target child's repo), fix only the listed
-   findings (local commits per the commit policy — they make the re-review diffable).
+   findings (local commits per the commit policy — they make the re-review diffable). Note the
+   branch tip **before your first fix commit**: that is what the re-review diffs against.
 4. Re-run the acceptance test and the child's build/validate commands until green.
-5. Record what was fixed against each finding in `## Review`.
+5. Record what was fixed against each finding in `## Review`, and **re-read the replacement text
+   you just wrote** before handing back — nothing else audits it before it ships, and you are its
+   cheapest reader. Head the record `### Rework fix record — round N (commit <sha>)` for a single
+   commit, or `(commits <the tip you noted in step 3>..<tip after>)` for several — the form
+   `git diff <before>..<after>` takes as written — or `no commits this round — <why>` for none.
+   Record the SHAs as they stand when you hand back, and do not tidy the branch here: the tidy
+   belongs to publishing, and it rewrites them (§1's fallback covers a record whose SHAs no longer
+   resolve). The scoped re-review reads that diff (`resources/review-protocol.md` §1).
 6. `pickle ticket move T-NNN in-review --reason "findings fixed"` and hand back for a **scoped
    re-review**.
 
@@ -270,7 +278,8 @@ none is available. In short:
 
 1. The ticket must be in `4-in-review/`. Audit implementation, quality, consistency, and docs
    (running the child's configured commands); classify each finding **blocking** (→
-   `5-rework/`, scoped re-review after the fix) vs **non-blocking** (→ one of the four
+   `5-rework/`, scoped re-review of the findings *and the diff that fixed them*) vs
+   **non-blocking** (→ one of the four
    dispositions in the rules §5, whose default is to note and close; the original proceeds to
    `6-done/`), and give every finding — blocking ones included — a **class** from the closed
    vocabulary in `resources/review-protocol.md` §5. A follow-up ticket is the exception, is
