@@ -40,6 +40,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   `resources/review-protocol.md`: surfaced by the consistency audit (step 4), classified at step 5,
   stated in full at step 7. Every project picks up the rule on its next `pickle upgrade` (T-123).
 
+- **A blocking finding first identified after a review has already moved the ticket to `6-done/`
+  now has a defined route.** `6-done/` is terminal, so the finding cannot take the usual
+  `5-rework/` route, and it is not dispositioned either — dispositions are defined only for
+  non-blocking findings. It is filed as its own ticket instead — not the `new ticket`
+  disposition — `spawned-by` the concluded one, with a dated `## History` line on the concluded
+  ticket recording the filed id. Shipped as step 6c in `resources/review-protocol.md` (with
+  matching redirect clauses in steps 8 and 9) and a matching sentence in
+  `resources/tickets-README.md` §5, so every project picks up the rule on its next
+  `pickle upgrade` (T-125).
+
 ## [0.12.0] - 2026-08-25
 
 ### Added
