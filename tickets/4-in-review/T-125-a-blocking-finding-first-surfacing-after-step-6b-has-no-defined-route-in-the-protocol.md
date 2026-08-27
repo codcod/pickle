@@ -278,6 +278,31 @@ changed files during review (protocol step 4b).
 
 cost: estimated S, actual S — one round so far; F1 is a small, well-scoped addition (one clause) and does not itself change that estimate.
 
+### Rework fix record — round 1 (commit `4cf190a`)
+
+- **F1 — fixed.** Added one sentence to 6c, immediately after the History-line instruction and
+  before the "steps 7, 8 and 9 below take this route" close: "More than one such finding in the
+  same review pass is **batched by theme** into a single filed ticket — one ticket carrying
+  several findings rather than one per finding — the same principle the rules §5 `new ticket`
+  disposition already applies." (`skill/resources/review-protocol.md:330-333`). No new clause
+  added to the step 8/9 redirects or to `tickets-README.md` §5 — 6c is the rule's single home, so
+  batching lives there once rather than being restated at every call site, consistent with
+  decision 1's "fewest sentences" discipline and decision 6's "one statement, not two that can
+  drift."
+
+**Verified after the fix:** `just build`, `just test` (including `payload_lint_test.go` and an
+uncached `go test . -run TestPayloadSpeaksToAForeignReader -v -count=1`), `just lint`,
+`just docs-check` all green at `4cf190a`. No step renumbered; both closed vocabularies
+(`class`, disposition) still byte-identical to `main`. Throwaway install as `pickle-test`:
+`grep -c '6c'` = 3 (≥ 1); the batching sentence itself greps present in the installed payload.
+Every case from the review's own walk-through re-checked against the new sentence — it fires
+only inside 6c's existing scope (a blocking finding about the ticket this same review pass just
+concluded), so it cannot reach the pre-6b, non-blocking, or dependent-ticket cases the review
+confirmed unaffected. Re-read the replacement sentence once more before handing back: it does not
+name or imply a route out of `6-done/`, and "filed ticket" is used, not "follow-up ticket" or
+"new ticket", preserving the vocabulary separation the review's F2 fix and the ticket's own
+second implementation-time correction both depended on.
+
 ## History
 
 - 2026-08-26 — created (TO DO). source: pickle ticket new
@@ -305,3 +330,4 @@ cost: estimated S, actual S — one round so far; F1 is a small, well-scoped add
   vocabulary-overlap shape in T-123 four times.
 - 2026-08-27 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-27 — IN REVIEW → REWORK: 1 blocking finding (F1): decision 5's batching clause never shipped
+- 2026-08-27 — REWORK → IN REVIEW: F1 fixed: batching clause added to 6c

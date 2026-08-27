@@ -20,10 +20,11 @@ Last updated: 2026-08-27
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-125 | a blocking finding first surfacing after step 6b has no defined route in the protocol | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-27
 
 | id | title | open findings |
 |---|---|---|
-| T-125 | a blocking finding first surfacing after step 6b has no defined route in the protocol | 1 blocking finding (F1): decision 5's batching clause never shipped |
 
 ## READY (impact order, per child)
 
