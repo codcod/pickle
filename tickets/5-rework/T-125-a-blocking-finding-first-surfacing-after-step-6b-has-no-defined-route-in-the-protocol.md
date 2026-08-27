@@ -303,6 +303,94 @@ name or imply a route out of `6-done/`, and "filed ticket" is used, not "follow-
 "new ticket", preserving the vocabulary separation the review's F2 fix and the ticket's own
 second implementation-time correction both depended on.
 
+> **SHA note.** This record cites `4cf190a`; a rebase onto `main` immediately after the fix
+> rewrote it to `84810d5`. The old object still resolves but is no longer an ancestor of the
+> branch. Content verified byte-identical apart from the SHA line. Recorded per §1's
+> broken-record clause rather than silently corrected, and noted as R5 below — the rework
+> procedure says not to tidy during rework precisely because it rewrites these SHAs, and
+> rebasing to stay current is a tidy.
+
+---
+
+## Scoped re-review (round 2)
+
+Reviewer independence: **delegated** — the orchestrating reviewer wrote the round-1 rework in this
+same session. Scope per §1: verify F1, plus read the diff that closed it. That diff is **two**
+commits, not one: `84810d5` (the F1 rework fix) and `c3dd85c` (the F2 inline fix, written *during*
+round 1's review after the delegated audit had already finished, so no reviewer had ever read it).
+Range audited: `5d336e3..84810d5`.
+
+**Commands:** `just build` · `just test` · `just lint` · `just docs-check` — all four green at
+`84810d5`, re-run independently. `TestPayloadSpeaksToAForeignReader` PASS (uncached). Throwaway
+install as `pickle-test`: `grep -c '6c'` = 3, batching sentence present in the installed payload.
+**Step 4b:** 13 suggestions, **0** against either commit's new text — all target prose this branch
+never touched; **noted**.
+
+**F1 — resolved.** The batching sentence reproduces decision 5's substance, and placing it only at
+6c is defensible: steps 8 and 9 both *redirect* to 6c rather than restating the route, so a reader
+arriving by either path lands on it. **F2 — resolved in substance, but its replacement text
+introduced R1** (below), which is the precise hazard §1 names: a fix's own replacement text is the
+one part of the branch nothing has audited.
+
+### Round-2 findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | non-blocking | other | fixed inline | The F2 inline fix left two em-dashes reading as a matched pair, so the trailing "`spawned-by` the concluded one, with a dated `## History` line…" attached to "cannot take this route" instead of to "is filed as its own ticket". Introduced by the previous round's own fix. | `tickets-README.md` §5 Blocking bullet at `c3dd85c` | Fixed at `cc13850`: recast the aside as a parenthetical so the trailing clauses attach to the right verb. |
+| R2 | non-blocking | spec-unclear | fixed inline | 6c claimed batching was "the same principle the rules §5 `new ticket` disposition already applies", but §5's rule is "One new ticket per *theme*" (several tickets when themes differ) while 6c said "a single filed ticket" regardless — a false identity claim, and the sentence's two halves disagreed for the 2-themes case. | `review-protocol.md:330-333` vs `tickets-README.md:440-441` | Fixed at `cc13850`: dropped "a single filed ticket", so by-theme genuinely *is* §5's mechanism and the claim became true. |
+| R3 | non-blocking | spec-unclear | fixed inline | Batching timing was undefined for the multi-step case, which is 6c's primary case: a reviewer filing at step 8 and finding a second at step 9 had no stated rule. | `review-protocol.md:330-333` vs `:377-378`, `:383-384` | Fixed at `cc13850` by adding a join clause — **which introduced V1 below.** |
+| R4 | non-blocking | docs-gap | fixed inline | `tickets-README.md` §5 restated 6c's mechanics inline (filed ticket, `spawned-by`, History line) but omitted batching, so a rules-only reader would file one per finding — asymmetric with the same file's non-blocking path, which does state batching. | `tickets-README.md:405-409`, 0 occurrences of "batch" | Fixed at `cc13850`: added "and batched by theme when one pass turns up more than one". |
+| R5 | non-blocking | stale-xref | noted | The round-1 fix record cites `4cf190a`, which a post-rework rebase rewrote to `84810d5`; the old object resolves but is not on the branch. Content verified byte-identical. §1 makes a broken fix record a finding of its own, never blocking. | fix record vs `git merge-base --is-ancestor 4cf190a HEAD` → false | Recorded in the SHA note above. The deeper fix is procedural, not textual: the rework procedure says not to tidy during rework *because* it rewrites these SHAs — and rebasing to stay current is a tidy. |
+
+### Verification of the inline fixes — second delegated pass
+
+The four `fixed inline` repairs above were themselves unaudited replacement text, and a
+non-blocking verdict means no rework round would ever read them. Rather than ship them unread
+— or inflate their severity to force an audit — they were committed at `cc13850` and handed to a
+second, independently briefed reviewer before concluding. That pass found:
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| V1 | **blocking** | correctness | — | **The clause added to close R3 resurrects the exact contradiction R2 was raised for.** "a second found later in the same pass joins the ticket already filed rather than starting another" is **unconditional**: for a second finding of a *different* theme, "batched by theme" (and the rules §5's "One new ticket per *theme*", and decision 5's "batch by theme") say file a second ticket, while the join clause says do not. Two answers for one real case, and it re-falsifies the "exactly as the rules §5 batches" claim that R2's fix had just made true. Contradicts locked decision 5. | `review-protocol.md:330-333` vs `tickets-README.md:440-441`; T-125 decision 5 | Scope the clause to the same theme: "…a second **of the same theme** found later in the same pass joins the ticket already filed rather than starting another." |
+| V2 | non-blocking | spec-unclear | folded | The History instruction is singular ("recording the filed id") and sits *before* the batching sentence, so it is silent on both batched cases: two themes → two ids, and join-an-existing → id already recorded. Coherent only by charitable default. | `review-protocol.md:329` vs `:330-333` | Folded into the V1 rework pass, which rewrites that sentence anyway: state one line per filed id, and none for a finding joining an already-recorded ticket. |
+
+**Disposition summary:** 1 blocking (V1 — defines the round-2 rework scope) · 4 fixed inline (R1–R4) · 1 folded (V2) · 1 noted (R5) · 0 new tickets. The 13 step-4b suggestions, all against untouched prose, are **noted**.
+
+cost: estimated S, actual M — revised up from S. Two review rounds, the second finding a blocking
+defect inside the first round's own fix text, on a one-clause change.
+
+### Root cause — fifth occurrence, and this time inside a review's own inline fix
+
+Every blocking finding in this ticket family has been in **whatever sentence tries to tell the
+reviewer what to do when there is more than one way to handle a blocking case** — four times in
+T-123's carve-out, and now once here, in the batching clause. The new datum is *where* it was
+introduced: not by the implementer, and not by a rework pass, but by the **reviewer, fixing a
+non-blocking finding inline during the review itself**. R3 was a genuine gap; the clause written
+to close it re-opened R2. The pattern is not carelessness, it is that each fix is written with the
+finding it closes in view and the neighbouring rule out of view.
+
+Two things follow, and only the first is this ticket's business:
+
+1. **The V1 fix must be checked against the by-theme rule and §5 together, not against R3 alone.**
+   The suggested two-word scope ("of the same theme") does that; the rework pass should re-read
+   the whole sentence as one rule afterwards, not just the words it changed.
+2. **A review that fixes findings inline has no audit step of its own.** This review invented one
+   (the second delegated pass above) and it is what caught V1 — an unaudited inline fix would
+   otherwise have shipped a rule contradicting the rules file. Whether that should become part of
+   the generic protocol is a real question, but it is a change to the review protocol for *every*
+   finding type, which is exactly the scope this ticket already declined once. Recorded here, not
+   acted on.
+
+### A note on this review's own routing — evidence for 6c's boundary
+
+V1 is a blocking finding that surfaced **late in this ticket's own review**, after the delegated
+audits had finished, while recording findings at step 5. Step 6 had not yet run, so the ordinary
+route was available and nothing had to be invented: 6a, to `5-rework/`. That is not a 6c case, and
+it should not be — 6c begins only once 6b has moved a ticket into the terminal status. This
+ticket's own review therefore exercised the exact boundary the ticket draws, from the pre-6b side,
+and found the existing machinery sufficient there. It is the cheapest available evidence that 6c's
+scope is drawn in the right place rather than one step too wide.
+
 ## History
 
 - 2026-08-26 — created (TO DO). source: pickle ticket new
@@ -331,3 +419,4 @@ second implementation-time correction both depended on.
 - 2026-08-27 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-27 — IN REVIEW → REWORK: 1 blocking finding (F1): decision 5's batching clause never shipped
 - 2026-08-27 — REWORK → IN REVIEW: F1 fixed: batching clause added to 6c
+- 2026-08-27 — IN REVIEW → REWORK: 1 blocking (V1): the R3 join clause contradicts batch-by-theme
