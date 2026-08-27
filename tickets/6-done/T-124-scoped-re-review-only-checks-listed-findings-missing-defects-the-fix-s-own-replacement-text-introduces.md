@@ -421,3 +421,4 @@ which is exactly the discipline the ticket ships. The rule earned its keep on it
 - 2026-08-27 — READY → IN DEVELOPMENT: picked up, branch feat/T-124-re-review-reads-the-fix-diff; applicability gate: 1 blocking + 5 non-blocking folded into the plan in 2-ready/
 - 2026-08-27 — IN DEVELOPMENT → IN REVIEW: acceptance green; 8 tasks landed on 6 surfaces
 - 2026-08-27 — IN REVIEW → DONE: review clean; 8 non-blocking, all dispositioned (5 fixed inline in bd19d68, 3 noted & closed); 0 blocking
+- 2026-08-27 — merged to main (PR #79, 2af801c, https://github.com/codcod/pickle/commit/2af801c)
