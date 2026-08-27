@@ -359,6 +359,39 @@ second, independently briefed reviewer before concluding. That pass found:
 cost: estimated S, actual M — revised up from S. Two review rounds, the second finding a blocking
 defect inside the first round's own fix text, on a one-clause change.
 
+### Rework fix record — round 2 (commit `94fd5a6`)
+
+- **V1 — fixed, by rewriting the whole batching sentence rather than patching the join clause
+  alone** (root-cause note item 1, above). The sentence now states one rule with both halves
+  explicit: findings of the *same* theme join one filed ticket; findings of *different* themes
+  are filed separately — matching the rules §5's "one new ticket per theme, never one per
+  finding" exactly, not just in wording (`skill/resources/review-protocol.md:329-331`).
+- **V2 — fixed as part of the same rewrite.** The `## History` instruction now reads "for each
+  ticket filed, recording its id… and a finding that joins a ticket already filed needs no
+  second line" (`:331-334`) — explicit for both the multi-theme case (one line per ticket) and
+  the join case (no line), closing the silence V2 identified.
+
+**Cases walked end to end before committing** (this ticket's own established practice, now
+exercised against its own fix a third time):
+
+| case | route | legal? |
+|---|---|---|
+| one blocking finding, one pass | filed as its own ticket; one History line | yes |
+| two findings, same theme, one pass | join one filed ticket; one History line, none for the second | yes |
+| two findings, different themes, one pass | filed separately; one History line per ticket | yes — matches rules §5 and decision 5 exactly |
+| non-blocking or pre-6b finding | unaffected — 6c's opening clause still scopes it to post-6b blocking findings only | yes |
+
+**Verified after the fix:** `just build`, `just test` (incl. `payload_lint_test.go` and an
+uncached `TestPayloadSpeaksToAForeignReader`), `just lint`, `just docs-check` all green at
+`94fd5a6`. No step renumbered; both closed vocabularies still byte-identical to `main`. Throwaway
+install as `pickle-test`: the installed payload now carries both the pre-existing §5 `batched by
+theme` line and the rewritten 6c sentence. `tickets-README.md`'s §5 pointer ("batched by theme
+when one pass turns up more than one") re-checked against the rewritten 6c text and still holds
+— it was never as specific as 6c's join/separate mechanics, so it needed no edit. Re-read the
+replacement paragraph once more, word by word, before handing back: neither "new ticket" use
+drifted from the disposition token, "follow-up" does not appear in it, and nothing asserts a
+route out of `6-done/`.
+
 ### Root cause — fifth occurrence, and this time inside a review's own inline fix
 
 Every blocking finding in this ticket family has been in **whatever sentence tries to tell the
@@ -372,8 +405,10 @@ finding it closes in view and the neighbouring rule out of view.
 Two things follow, and only the first is this ticket's business:
 
 1. **The V1 fix must be checked against the by-theme rule and §5 together, not against R3 alone.**
-   The suggested two-word scope ("of the same theme") does that; the rework pass should re-read
-   the whole sentence as one rule afterwards, not just the words it changed.
+   Done in the round-3 rework below by rewriting the whole batching sentence as one rule —
+   join-same-theme, file-different-themes-separately, one `## History` line per ticket filed and
+   none for a join — rather than patching V1's two words in isolation, per this note's own
+   instruction.
 2. **A review that fixes findings inline has no audit step of its own.** This review invented one
    (the second delegated pass above) and it is what caught V1 — an unaudited inline fix would
    otherwise have shipped a rule contradicting the rules file. Whether that should become part of
@@ -420,3 +455,4 @@ scope is drawn in the right place rather than one step too wide.
 - 2026-08-27 — IN REVIEW → REWORK: 1 blocking finding (F1): decision 5's batching clause never shipped
 - 2026-08-27 — REWORK → IN REVIEW: F1 fixed: batching clause added to 6c
 - 2026-08-27 — IN REVIEW → REWORK: 1 blocking (V1): the R3 join clause contradicts batch-by-theme
+- 2026-08-27 — REWORK → IN REVIEW: V1 fixed: 6c's batching sentence rewritten as one rule (join-same-theme/file-separately)
