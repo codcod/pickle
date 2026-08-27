@@ -65,10 +65,13 @@ feature") while closing the blind spot that let a fix's own replacement text shi
   `resources/tickets-README.md` § *5*'s blocking bullet, `SKILL.md`'s rework and validate
   procedures, and `docs/user-manual/concepts/lifecycle.adoc`'s review treatment. They restate one
   rule and must move together, or the payload ships two policies.
-- **Nothing today anchors "the fix diff".** A re-reviewer has no recorded commit to diff against:
-  the ticket's `## History` records the status transitions, not the branch tip the previous round
-  audited. That is why decision 3 puts a one-line range in the fix record rather than leaving the
-  reviewer to reconstruct it from `git log`.
+- **A de-facto anchor already exists; the payload just never names it.** *(Corrected by the
+  applicability audit at pickup — the earlier version of this bullet claimed "nothing today anchors
+  the fix diff", which is false in practice.)* Reworked tickets already head each round's fix
+  record `### Rework fix record — round N (commit <sha>)`, and re-reviews already anchor against a
+  SHA. What is missing is that no shipped document *asks* for it, so it is convention rather than
+  duty and an older or hurried round simply omits it. Decision 3 therefore **normalises the shape
+  already in use** instead of minting a second one.
 - **No new severity or disposition machinery is needed.** A defect found in the fix diff is an
   ordinary finding: the rules §5 already routes it (blocking → another rework round; non-blocking →
   one of the four dispositions). The widened mandate changes *what is read*, never *what a finding
@@ -135,13 +138,24 @@ ordering — if it lands first, rebase before starting.
    N audits the text round N's fix wrote. Each round therefore covers its predecessor's new text,
    so by induction every line the branch gained after the first review is read exactly once, at the
    round that can still act on it cheaply.
-3. **The fix pass records the range; the reviewer derives it only as a fallback.** Before its first
-   fix commit the rework pass captures the branch tip (the commit the previous review audited) and,
-   when done, records the range in the ticket's `## Review` alongside what it fixed — one line,
-   e.g. `round 2 fix: a1b2c3d..e4f5g6h`. Nothing today anchors "the diff that fixed them": History
-   records status transitions, not commits. If the line is absent (an older ticket, a forgotten
-   step), the re-reviewer reconstructs the range from the branch log rather than skipping the
-   audit — the missing line is itself worth a finding, but never a blocker on its own.
+3. **The fix pass records what it committed, in the shape already in use.** *(Rewritten at the
+   pickup applicability gate; the original is quoted in the amendment note under Tasks.)* The
+   rework pass captures the branch tip **before its first fix commit** — not "the commit the
+   previous review audited", which is a different commit whenever that review authored inline
+   fixes after auditing — and records the round's commits in the ticket's `## Review` under the
+   heading the flow already uses: `### Rework fix record — round N (commit <sha>)`, or
+   `(commits <sha>..<sha>)` when the round produced several. Three edges the rule states rather
+   than leaves to the reader:
+   - **Record after the tidy, not before.** A root-path child rebases its WIP commits into atomic
+     ones (Finish step 5), which rewrites the SHAs; a range recorded earlier can point at commits
+     that no longer exist.
+   - **A round with no commits says so** — `no commits this round — <why>` (a ticket-text-only fix,
+     a deferred commit) — so the re-reviewer stops looking instead of hunting for a diff that was
+     never made.
+   - **The reviewer's fallback covers absent *and* unresolvable.** If the record is missing or its
+     SHAs do not resolve, the re-reviewer reconstructs the range from the branch log rather than
+     skipping the audit. The missing or broken record is itself worth a finding, but never a
+     blocker on its own.
 4. **The fixer re-reads its own replacement text before handing back.** One clause in the rework
    procedure, added to steps it already has — no new numbered step. The re-review remains the
    guarantee; this only moves the cheapest catch one pass earlier, to the agent that still has the
@@ -164,7 +178,19 @@ ordering — if it lands first, rebase before starting.
 
 > Line numbers below were read from `main` at refinement time and are given only as a locator.
 > Find each target by its heading or quoted text; if T-125 lands first, the numbers in
-> `review-protocol.md` shift.
+> `review-protocol.md` shift. Task 2's `:263-267` is **already** stale in a way that matters: it
+> now lands on §5's blocking bullet, and §6a is at `:296-300` — locate that one by its quoted text
+> alone.
+
+> **Amended at the pickup applicability gate (2026-08-26), before any move or branch.** An
+> independent audit found one blocking defect in decision 3 and five improvements; all were folded
+> in while the ticket was still in `2-ready/`. The blocking one: decision 3 originally read *"the
+> rework pass captures the branch tip (the commit the previous review audited)"* and asserted
+> *"nothing today anchors the diff that fixed them"* — the parenthetical is false whenever a review
+> authored inline fixes after auditing, and the assertion is false in practice, a
+> `### Rework fix record — round N (commit <sha>)` convention already being in use. Decision 3 and
+> the "What refinement confirmed" bullet above were rewritten accordingly, and tasks 2, 5 and 6
+> below now normalise the existing shape rather than introducing `round N fix: <sha>..<sha>`.
 
 #### Task 1 — widen the authoritative statement (`review-protocol.md` §1)
 In `skill/resources/review-protocol.md`, the scoped re-review bullet under `## 1. Load context`
@@ -191,8 +217,11 @@ whatever the read turns up already belongs to §5.
 In the same file, `## 6. Move the ticket`, 6a (`:263-267`) currently ends *"a **scoped re-review**
 verifies just those findings and concludes via 6a/6b again."* Extend that clause so it names the
 fix diff too (decision 1), and add — in the same sentence or one short one after it — the fix
-pass's duty from decision 3: it records the commit range it produced in `## Review`. Keep it to a
-clause; §1 is the authority and 6a is the pointer.
+pass's duty from decision 3: it records the commits it produced in `## Review`, under that
+section's rework fix record. Keep it to a clause; §1 is the authority and 6a is the pointer.
+
+Locate 6a by that quoted sentence: the section is at `:294`, its 6a paragraph at `:296-300`, and
+the plan's original `:263-267` locator points at §5 instead.
 
 #### Task 3 — extend the reviewer checklist line
 In the same file's checklist block (the `### Checklist …` heading at the end of the file), extend the
@@ -215,17 +244,21 @@ In `skill/SKILL.md`, *Procedure: rework a ticket* (`:248-260`):
 - **step 3** (`:255-256`, "fix only the listed findings") — add the capture from decision 3: before
   the first fix commit, record the branch tip, since that is the commit the re-review diffs
   against;
-- **step 5** (`:258`, "Record what was fixed against each finding") — add that the record includes
-  the round's commit range, and the self-read from decision 4: re-read the replacement text the fix
-  wrote before handing back, since the next round's finding otherwise lands there.
+- **step 5** (`:258`, "Record what was fixed against each finding") — add that the record names the
+  round's commits in the `### Rework fix record — round N (commit <sha>)` shape (decision 3,
+  including its zero-commit form and the record-after-tidy ordering), and the self-read from
+  decision 4: re-read the replacement text the fix wrote before handing back, since the next
+  round's finding otherwise lands there.
 
 Also extend *Procedure: validate a ticket*'s summary clause (`:273`, "scoped re-review after the
 fix") so it does not contradict the widened scope — four or five words.
 
 #### Task 6 — give the recorded range a documented home (`TEMPLATE.md`)
 In `skill/resources/TEMPLATE.md`, the `## Review` guidance (`:148-155`) already lists what the
-section carries, including "notes from any scoped re-review". Add the fix-range line to that list
-in one clause (decision 3), so the range has a defined place rather than an ad-hoc one.
+section carries, including "notes from any scoped re-review". Name the rework fix record in that
+list — heading shape and the commit(s) it carries (decision 3) — in one clause, so the convention
+already in use has a documented home instead of being re-invented each round. Use a plausible hex
+SHA in any example.
 
 #### Task 7 — the manual
 In `docs/user-manual/concepts/lifecycle.adoc`, the *Reviews: severity, then disposition* section
@@ -259,8 +292,9 @@ Then, specifically:
    `git diff main --stat` lists exactly `skill/resources/review-protocol.md`,
    `skill/resources/tickets-README.md`, `skill/SKILL.md`, `skill/resources/TEMPLATE.md`,
    `docs/user-manual/concepts/lifecycle.adoc` and `CHANGELOG.md`; and
-   `grep -rn 'do not re-audit the whole feature\|re-audit the whole feature' skill/` shows every
-   remaining occurrence sitting in a sentence that also names the fix diff.
+   `grep -rn -B1 -A1 're-audit the whole feature' skill/` shows every remaining occurrence sitting
+   in a sentence that also names the fix diff (the `-B1 -A1` matters — the phrase wraps across
+   lines, so a bare `grep -rn` cannot show what this check asserts).
 2. **No step was renumbered** (decision 8) —
    `grep -n '^## [0-9]' skill/resources/review-protocol.md` matches
    `git show main:skill/resources/review-protocol.md | grep -n '^## [0-9]'` on every number
@@ -322,3 +356,4 @@ clean.
   findings" wording is the recurring shape behind repeat-round rework (T-109 x4, T-067/T-018 x3,
   T-098/T-013/T-122 repeat rounds)
 - 2026-08-26 — TO DO → READY: plan complete
+- 2026-08-27 — READY → IN DEVELOPMENT: picked up, branch feat/T-124-re-review-reads-the-fix-diff; applicability gate: 1 blocking + 5 non-blocking folded into the plan in 2-ready/
