@@ -14,9 +14,9 @@ cost: S
 ## Outcome
 
 After this ships, a reviewer who discovers a blocking defect *after* the ticket has already been
-moved to `6-done/` has a defined, legal next step instead of a dead end: the finding becomes a new
-ticket, `spawned-by` the concluded one, with a dated `## History` line on it pointing at the
-follow-up. The reviewer stops having to invent an answer at the point where the state machine
+moved to `6-done/` has a defined, legal next step instead of a dead end: the finding becomes a
+follow-up ticket, `spawned-by` the concluded one, with a dated `## History` line on it pointing at
+the follow-up. The reviewer stops having to invent an answer at the point where the state machine
 offers none, and steps 8 and 9 stop implying that a blocking finding can be "dispositioned" like a
 non-blocking one.
 
@@ -59,10 +59,10 @@ statuses are terminal by design; re-opening an archived ticket would undermine t
 meaning and the board's `merged` accounting. The point of this ticket is to define the route, not
 to widen the state machine.
 
-**Couplings.** Sibling of T-124 (which widens what a *scoped re-review* must check). Both come
-from the same review series and both touch `resources/review-protocol.md`, but they are
-independent: T-124 is about re-review scope, this one about step ordering. Either can land first;
-whichever lands second rebases.
+**Couplings.** Sibling of T-124 (which widened what a *scoped re-review* must check). Both came
+from the same review series and both touch `resources/review-protocol.md`, but are independent:
+T-124 was about re-review scope, this one is about step ordering. T-124 is already merged to
+`6-done/`, so there is no rebase risk left to track — noted resolved at pickup (applicability gate).
 
 ## Implementation Plan
 
@@ -89,7 +89,7 @@ so no rebase risk.
    route reachable.** T-123's own history (five review rounds, all four blocking-finding clusters
    inside whatever sentence tried to say what happens to a blocking case) is the direct warning:
    every extra clause is another chance to ship a plausible, unexecutable rule. The new text says
-   only "this became a new ticket instead" and stops.
+   only "this became a follow-up ticket instead" and stops.
 2. **Structural home: a third bold lead-in paragraph, `6c`, inside the existing `## 6. Move the
    ticket` section — a sibling of `6a`/`6b`, not a new `## ` heading.** Review addenda are keyed
    to `## ` step numbers (the protocol's intro); adding a heading here would risk exactly the
@@ -132,10 +132,11 @@ after the `6b` paragraph (`:318-320`), add a third bold lead-in paragraph:
 > **6c. A blocking finding first identified at step 7, 8 or 9 — after 6b has already moved the
 > ticket to the terminal `6-done/`.** `6-done/` declares no outbound transition, so the finding
 > cannot take the `5-rework/` route above, and it is not dispositioned either — the rules §5's
-> four dispositions are defined only for non-blocking findings. It becomes a **new ticket**
+> four dispositions are defined only for non-blocking findings. It becomes a **follow-up ticket**
 > instead (`pickle ticket new … --spawned-by "T-NNN"`, this skill's `resources/TEMPLATE.md`,
-> graded per the rules §3); append a dated `## History` line to the concluded ticket recording
-> the follow-up id — the archive stays terminal, but the pointer is not silent. Steps 7, 8 and 9
+> graded per the rules §3) — deliberately not called a "new ticket" here, so this route is never
+> misread as the rules §5 disposition of that name; append a dated `## History` line to the
+> concluded ticket recording the follow-up id — the archive stays terminal, but the pointer is not silent. Steps 7, 8 and 9
 > below take this route for a blocking finding about the ticket that just moved; their own text
 > otherwise covers the non-blocking case.
 
@@ -155,17 +156,18 @@ finally seen at once — takes step 6c's route before anything below is presente
 #### Task 4 — matching line in the rules
 In `skill/resources/tickets-README.md` §5's Blocking bullet (`:398-404`), append one sentence:
 first identified after the ticket has already moved to `6-done/`, this route no longer exists, so
-it becomes a new ticket instead, `spawned-by` the concluded one, with a dated `## History` line on
-it pointing at the follow-up (`resources/review-protocol.md` §6c).
+it becomes a follow-up ticket instead (not the `new ticket` disposition — this route sits outside
+the four, since a blocking finding is never dispositioned), `spawned-by` the concluded one, with a
+dated `## History` line on it pointing at the follow-up (`resources/review-protocol.md` §6c).
 
 #### Task 5 — the manual
 In `docs/user-manual/concepts/lifecycle.adoc`, in the *Reviews: severity, then disposition*
 section, after the paragraph on reconciling governing documents (around `:130-136`), add a short
 paragraph: a blocking finding discovered only after a review already moved the ticket to
 `6-done/` — while updating references, sweeping dependent tickets, or writing the summary — has no
-route back into that ticket, since the status is terminal; it becomes a new ticket instead,
+route back into that ticket, since the status is terminal; it becomes a follow-up ticket instead,
 `spawned-by:` the concluded one, with a `## History` line on it pointing at the follow-up. Point at
-`resources/review-protocol.md` step 6c for the full rule; do not restate the mechanics.
+the skill's `resources/review-protocol.md` step 6c for the full rule; do not restate the mechanics.
 
 #### Task 6 — CHANGELOG entry
 Add an `[Unreleased]` entry in `CHANGELOG.md` in the established style (bold lead sentence, then
@@ -204,7 +206,7 @@ Then, specifically:
    | blocking, found at step 4 (before move) | 6a → `5-rework/` | yes — unaffected |
    | non-blocking governing-doc finding, found at step 7 | step 5 disposition, per existing text | yes — unaffected |
    | blocking finding about a dependent ticket, found at step 8 | patch the dependent per existing text | yes — unaffected |
-   | blocking finding about the just-concluded ticket, found at step 7, 8, or 9 | 6c → new ticket, `spawned-by`, History line on the concluded ticket | yes — no transition out of `6-done/` asserted |
+   | blocking finding about the just-concluded ticket, found at step 7, 8, or 9 | 6c → follow-up ticket, `spawned-by`, History line on the concluded ticket | yes — no transition out of `6-done/` asserted |
 
 4. **The rule ships, not just exists locally** — install into a throwaway dir per `AGENTS.md`'s
    self-modify policy:
@@ -231,7 +233,7 @@ changed files during review (protocol step 4b).
    above against the shipped text.
 4. Suggested commit message:
    ```
-   feat(skill): route a late-surfacing blocking finding to a new ticket (T-125)
+   feat(skill): route a late-surfacing blocking finding to a follow-up ticket (T-125)
    ```
 5. Tidy WIP commits into atomic ones (root-path child) before presenting.
 6. Commit locally; do not push or open an MR without explicit user approval. Hand back with
@@ -245,3 +247,15 @@ changed files during review (protocol step 4b).
 
 - 2026-08-26 — created (TO DO). source: pickle ticket new
 - 2026-08-27 — TO DO → READY: plan complete
+- 2026-08-27 — plan amended inline: pickup applicability gate (independent sub-agent audit) found
+  0 blocking, 5 non-blocking findings. F1 fixed: the Couplings note's T-124 land-order hedge was
+  stale (T-124 already merged) — reworded to note it resolved. F2 fixed: Task 5's manual sentence
+  now says "the skill's `resources/review-protocol.md`", matching the adjacent paragraph's own
+  phrasing. F3 fixed: every occurrence of the 6c mechanism was renamed from "new ticket" to
+  "follow-up ticket" throughout the plan (Outcome, decision 1, Tasks 1/4/5, the acceptance-test
+  case table, the commit message) so it can never be misread as the rules §5 `new ticket`
+  disposition — the exact vocabulary-overlap shape that cost T-123 five rounds. F4 (6c is silent
+  on the follow-up ticket's branch/merge-base relative to the concluded ticket's own branch) and
+  F5 (T-123, a comparably-sized prose-only edit to the same file, also graded cost S and finished
+  actual XL) noted — both out of this ticket's scope, recorded for the record.
+- 2026-08-27 — READY → IN DEVELOPMENT: picked up; applicability gate clean, F1-F3 amended inline, F4/F5 noted
