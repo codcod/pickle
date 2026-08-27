@@ -20,11 +20,10 @@ Last updated: 2026-08-27
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-125 | a blocking finding first surfacing after step 6b has no defined route in the protocol | [] |
 
 ## REWORK
 
@@ -150,6 +149,7 @@ Last updated: 2026-08-27
 | T-122 | Verify the docs-readability reviewer's quoted text before presenting a suggestion | yes — merged to main (PR #77, aef34a9, https://github.com/codcod/pickle/commit/aef34a9) |
 | T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | yes — merged to main (PR #78, 43fbc0d, https://github.com/codcod/pickle/commit/43fbc0d) |
 | T-124 | scoped re-review only checks listed findings, missing defects the fix's own replacement text introduces | yes — merged to main (PR #79, 2af801c, https://github.com/codcod/pickle/commit/2af801c) |
+| T-125 | a blocking finding first surfacing after step 6b has no defined route in the protocol | no — publish-gated |
 
 ## DROPPED
 

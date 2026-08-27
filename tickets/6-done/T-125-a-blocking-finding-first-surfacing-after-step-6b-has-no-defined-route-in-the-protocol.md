@@ -392,6 +392,67 @@ replacement paragraph once more, word by word, before handing back: neither "new
 drifted from the disposition token, "follow-up" does not appear in it, and nothing asserts a
 route out of `6-done/`.
 
+---
+
+## Scoped re-review (round 3) — **clean**
+
+Reviewer independence: **delegated** — the orchestrating reviewer wrote the round-2 rework in
+this same session. Scope per §1: verify V1 and V2, and read `git show 9e68b1e` (one commit, one
+file, 14 lines, entirely inside 6c) as fresh, unaudited prose — nothing had read this exact
+wording before this round.
+
+**Commands:** `just build` · `just test` · `just lint` · `just docs-check` — all four green at
+`9e68b1e`, re-run independently and again by hand afterward. `TestPayloadSpeaksToAForeignReader`
+PASS (uncached, twice). No step renumbered; both closed vocabularies byte-identical to `main`.
+**Step 4b:** 12 suggestions against `review-protocol.md`, **0** against the 6c paragraph or any
+prior round's new text — all against prose no round of this ticket has ever touched; **noted**.
+
+**V1 — resolved.** "findings of the same theme join one filed ticket … findings of different
+themes are filed separately" states one rule with both halves explicit, matching the rules §5's
+"one new ticket per theme, never one per finding" exactly rather than by loose analogy. No
+unconditional clause survives.
+
+**V2 — resolved.** "for each ticket filed, recording its id … needs no second line" covers all
+three cases by hand-walk: one finding → one ticket → one line; two same-theme → one ticket → one
+line (explicit no-second-line); two different-theme → two tickets → two lines ("for each").
+
+**Did this fix introduce anything new? No — verified independently, not just by the delegated
+pass.** Re-read the full paragraph in context myself: the em-dash aside ("the archive stays
+terminal, but the pointer is not silent") still attaches to "recording its id", not to the
+trailing join clause — stripping it leaves a clean compound sentence, unlike R1's fix which broke
+under the same test. "A ticket already filed" has one candidate antecedent (the ticket the same
+sentence just described being filed, within the same review pass named one sentence earlier) —
+no competing "ticket already filed" phrase exists anywhere else in the file. No transition out of
+`6-done/` is asserted (`internal/flow/brine.go` still declares none). Vocabulary sweep: `new
+ticket` still names only the disposition token; `follow-up ticket` does not appear in 6c;
+`filed`/`filed separately`/`ticket filed` name only the 6c mechanism, consistently.
+
+**Step 7 — governing documents.** `DESIGN.md:191-192` ("projects layer extra checks … keyed to
+its step numbers") and `AGENTS.md:74` (names `resources/review-protocol.md` generically) both
+hold, precisely because no step was renumbered across any of the three rounds. Nothing this
+branch shipped falsifies either document; no reconciliation edit needed.
+
+**Step 8 — impact sweep.** No ticket in `tickets/2-ready/` or `tickets/1-to-do/` names T-125 in
+`depends-on:` or references it in Description. Nothing to patch.
+
+**Disposition summary:** 0 blocking · 0 non-blocking · 0 new tickets. The 12 step-4b suggestions,
+all against untouched prose, are **noted**.
+
+cost: estimated S, actual XL — unchanged from round 2's revision. Three review rounds, two of
+which found a blocking defect inside the immediately preceding round's own fix text, is XL in
+substance whatever the shipped diff (~20 lines across two files) suggests.
+
+### Root cause, closed
+
+The family's signature pattern — a blocking finding hiding inside whatever sentence tries to
+settle a case with more than one legal outcome — broke five times across two tickets (T-123 four
+times, T-125 once, the one time inside a reviewer's own inline fix rather than an implementer's).
+The round-2 fix that finally holds did what the ticket's own root-cause note prescribed: rewrote
+the whole rule as one sentence pair (join same-theme / file separately) instead of patching the
+words a single finding named, and a second, independent pass then read that replacement text
+before anything shipped. Both halves of that discipline — rewrite the rule, then audit the
+rewrite — were necessary; round 2's own V1 is what the first without the second looks like.
+
 ### Root cause — fifth occurrence, and this time inside a review's own inline fix
 
 Every blocking finding in this ticket family has been in **whatever sentence tries to tell the
@@ -456,3 +517,4 @@ scope is drawn in the right place rather than one step too wide.
 - 2026-08-27 — REWORK → IN REVIEW: F1 fixed: batching clause added to 6c
 - 2026-08-27 — IN REVIEW → REWORK: 1 blocking (V1): the R3 join clause contradicts batch-by-theme
 - 2026-08-27 — REWORK → IN REVIEW: V1 fixed: 6c's batching sentence rewritten as one rule (join-same-theme/file-separately)
+- 2026-08-27 — IN REVIEW → DONE: round-3 re-review clean: 0 blocking, 0 non-blocking
