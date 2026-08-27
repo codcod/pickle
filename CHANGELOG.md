@@ -10,6 +10,18 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ### Added
 
+- **A scoped re-review now also reads the diff that closed the findings, not just whether they are
+  closed.** A rework fix's own replacement text is the one part of the branch nothing has audited
+  yet, so the re-review reads it for defects of the same classes — bounded to that round's fix
+  diff, still not a re-audit of the whole feature. To make the diff unambiguous, a fix pass records
+  the commits it produced in the ticket's `## Review` (`### Rework fix record — round N (commit
+  <sha>)`, with a stated form for a round that commits nothing), and the fixer re-reads its own
+  replacement text before handing back. No new severity, disposition or finding class: whatever the
+  read turns up is routed by the existing rules. Shipped in `resources/review-protocol.md` (steps 1
+  and 6a, and the reviewer checklist), `resources/tickets-README.md` §5, `SKILL.md`'s rework and
+  validate procedures, and `resources/TEMPLATE.md`, so every project picks the rule up on its next
+  `pickle upgrade` (T-124).
+
 - **The docs-readability pass now verifies a suggestion's quoted current text against the file
   before it is presented, and discards any suggestion it cannot back with a verbatim quote (or
   that changes content rather than wording).** A run that mostly fails verification is discarded

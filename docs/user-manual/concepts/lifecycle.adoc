@@ -83,7 +83,11 @@ A review gives every finding a *severity*:
 
 * *Blocking* — breaks the golden path, ships wrong behaviour, or contradicts a
   locked decision. The ticket moves to `5-rework/`; only the listed findings
-  are fixed, on the same branch, then a *scoped* re-review verifies them.
+  are fixed, on the same branch, then a *scoped* re-review verifies them — and
+  reads the diff that closed them, since a fix's own replacement text is the one
+  part of the branch nothing has audited yet. The fix pass records the commits it
+  made in the ticket's `## Review` so that diff is unambiguous; the review
+  protocol's step 1 states the mechanics.
 * *Non-blocking* — the ticket proceeds to `6-done/`, and each finding takes
   exactly one of four *dispositions*, recorded in the ticket's `## Review`
   table:

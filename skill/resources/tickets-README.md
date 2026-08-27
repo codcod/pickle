@@ -397,8 +397,11 @@ non-blocking — a **disposition**.
 
 - **Blocking** — breaks the golden path, ships wrong behaviour, or contradicts a locked
   decision. → ticket moves to **`5-rework/`**. Fix *only the findings* on the same branch, then
-  move back to `4-in-review/` for a **scoped re-review** (verify the findings are resolved — do
-  not re-audit the whole feature from scratch). A blocking finding is never dispositioned: it is
+  move back to `4-in-review/` for a **scoped re-review** (verify the findings are resolved **and
+  read the diff that closed them**, since a fix's own replacement text is the one part of the
+  branch nothing has audited yet — still not a re-audit of the whole feature from scratch; the
+  mechanics are
+  in `resources/review-protocol.md` §1). A blocking finding is never dispositioned: it is
   fixed, and the ticket does not proceed until it is.
 - **Non-blocking** — quality/consistency/polish that doesn't block shipping. The reviewed ticket
   proceeds to `6-done/`, and each finding takes exactly one disposition below.
