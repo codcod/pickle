@@ -163,9 +163,20 @@ None. `depends-on:` is empty and every reader this plan builds on is shipped and
    `internal/state`'s decision 3 established for `board state --json`.
 9. **A ticket that cannot supply an endpoint is reported, never imputed.** Three data-quality
    cases are counted and named in the output: no `created` entry; an end date earlier than its
-   start date (out-of-order History — two tickets in this repo have one); a merge line with no
-   parseable date. Each is excluded from its aggregate and listed with the ticket id. No silent
-   drops, and no clamping a negative interval to zero.
+   start date, checked per computed interval — created vs. first departure, created vs. newest
+   merge — not by scanning every dated line in the file for monotonicity (a note can legally
+   carry an earlier or out-of-sequence date than the transition above it, and is not this issue);
+   a merge line with no parseable date. Each is excluded from its aggregate and listed with the
+   ticket id. No silent drops, and no clamping a negative interval to zero.
+   *Amended during implementation: this decision originally cited "two tickets in this repo have
+   one" as measured evidence for the out-of-order case. That count came from a whole-file
+   monotonicity scan across every dated line — a cruder check than what this decision actually
+   specifies. Once implemented, the real check — which only ever looks at the two endpoints each
+   metric is defined over, and inherits `ticket.HistoryEntries`'s guard against reading an arrow
+   out of a folded continuation line (the exact T-043 defect class) — finds zero such tickets in
+   this tree today; the code path itself is proven by `internal/metrics/metrics_test.go`'s own
+   out-of-order fixture instead. The cited count was a pre-existing measurement error in the filed
+   ticket, not a defect in the shipped parser — see the History line recording this.*
 10. **Aggregates are n / min / p50 / p90 / max, never a mean.** Percentiles use the
     nearest-rank method on the sorted sample (`p50` = element at `ceil(0.5·n)`, 1-indexed) — one
     documented convention, stated in the package doc and the manual, so no reader has to guess
@@ -274,7 +285,9 @@ re-measure rather than treating them as fixed.
 ./pickle board metrics --as-of 2026-08-28 --json \
   | jq -r '[.intervals[] | select(.metric=="open_age")] | length'      # equals the non-terminal ticket count
 
-# 4. the two out-of-order tickets are reported, not silently dropped
+# 4. data-quality issues, if any, are reported with the ticket id and never silently dropped
+# (this tree currently has none — internal/metrics/metrics_test.go's own fixture is what proves
+# the out_of_order/no_created/unparseable_date code paths, per decision 9's amendment above)
 ./pickle board metrics --as-of 2026-08-28 --json | jq -r '.issues[] | "\(.kind) \(.ticket_id)"'
 
 # 5. determinism: a fixed as-of run is byte-identical
@@ -291,10 +304,10 @@ diff <(./pickle board metrics --as-of 2026-08-28 --json) <(./pickle board metric
 ./pickle board metrics --json | jq -e '.schema == 1 and .resolution == "days" and (.intervals|type)=="array"'
 ```
 
-Expected: case 1 prints both tables and the resolution line; cases 2–4 pass their `jq` predicates,
-case 4 listing exactly the tickets whose History dates are out of order (two at refinement:
-`T-111`, `T-123`); case 5 prints nothing; case 6 exits `0`; case 7 prints an error to stderr and
-exits `1` twice; case 8 exits `0`.
+Expected: case 1 prints both tables and the resolution line; cases 2–4 pass their `jq` predicates
+(case 4 prints nothing today — zero data-quality issues in this tree — which is itself the pass);
+case 5 prints nothing; case 6 exits `0`; case 7 prints an error to stderr and exits `1` twice;
+case 8 exits `0`.
 
 Cross-check against the refinement measurement, which used an independent script over the same
 tree: `lead_time` n=91 / p50=1 / p90=12 / max=32, `backlog_dwell` n=119 / p50=1 / p90=12 / max=30,
@@ -371,3 +384,13 @@ than during it).
   direction, as T-105's was — recorded in `NOTES.md` § "T-126 refinement (2026-08-28)"
 - 2026-08-28 — TO DO → READY: plan complete
 - 2026-08-28 — READY → IN DEVELOPMENT: picked up
+- 2026-08-28 — plan amended inline: confirmed decision 9's out-of-order example ("two tickets in
+  this repo have one", naming T-111 and T-123) is corrected. The refinement-time count came from a
+  whole-file dated-line monotonicity scan; the shipped check only compares each metric's own two
+  endpoints and inherits `ticket.HistoryEntries`'s first-physical-line-only Kind classification (the
+  T-043 guard against reading an arrow out of a folded continuation line), so it does not flag
+  either ticket — both carry a note, dated earlier than a neighbouring line, whose *folded* text
+  happens to contain a transition-shaped arrow that the correct parser never reads as one. The
+  current tree has zero data-quality issues under the real check; the out-of-order code path is
+  proven by `internal/metrics/metrics_test.go`'s own fixture instead. Acceptance test case 4 and
+  its Expected line amended to match; decision 9 amended in place with the correction quoted
