@@ -9,9 +9,10 @@ Commands that change an existing ticket tree (`ticket new`, `ticket move`,
 `board sync`, `project add`, `project remove`) first take an exclusive lock,
 so two `pickle` commands — or a `pickle` command and `pickle serve` — cannot
 race each other. `pickle serve`, `pickle board state --json`
-(<<cmd-board-state>>) and `pickle board decisions`
-(<<cmd-board-decisions>>) take only a shared read lock, so any number of
-dashboards or read-projection calls can run at once alongside the CLI.
+(<<cmd-board-state>>), `pickle board decisions` (<<cmd-board-decisions>>) and
+`pickle board metrics` (<<cmd-board-metrics>>) take only a shared read lock,
+so any number of dashboards or read-projection calls can run at once
+alongside the CLI.
 `install` is the exception: it creates the tree rather than changing one, so
 there is nothing for a concurrent reader to observe half-done. The
 lock file lives at `.git/pickle-tree.lock` (or, outside a git checkout, a
@@ -67,6 +68,9 @@ the same tree. Wait for it to finish, then try again.
 
 | `pickle board decisions [--project …] [--status …] [--grep …] [--json]`
 | Query every ticket's confirmed design decisions, in citable `<ID> decision <N>` form.
+
+| `pickle board metrics [--project …] [--as-of …] [--json]`
+| Report backlog dwell, lead time and open-ticket age, mined from `## History`.
 
 | `pickle changelog check [--since …] [--until …] [--changelog …] [--section …] [--show-excluded]`
 | Report tickets that shipped since the last release but aren't named in the
@@ -1217,6 +1221,174 @@ that simply matches nothing**, is exit `0` with an empty result — these are
 legitimate answers, not failures, and the command is deliberate about the
 distinction: an ad-hoc `grep`-based script this command replaces routinely
 conflated the two by leaking `grep`'s own exit `1` into the empty case.
+
+[#cmd-board-metrics]
+== `pickle board metrics`
+
+----
+pickle board metrics [--project <child>] [--as-of YYYY-MM-DD] [--json]
+----
+
+*Reports three intervals mined from every ticket's `## History`* — backlog
+dwell, lead time, and the age of what is still open — aggregated per
+child-project. Read-only: nothing under `tickets/` is ever written, and the
+whole read runs inside the same shared tree lock `pickle serve` and
+`pickle board state` use. Like `board decisions`, `--json` is *not*
+mandatory — the default output is two short tables, not a document dump.
+
+=== Why three metrics, and no time-in-status table
+
+A `## History` line carries a date, not a time, so a metric bounded by two
+transitions that happen inside one working session produces a column of
+zeros — the resolution is coarser than the phenomenon on any workspace
+where a ticket routinely moves through several statuses in a single day.
+Backlog-side durations do not have that problem: a ticket can sit in the
+backlog, or stay open, for many days. That is why `created` → first
+departure, `created` → merge, and `created` → today all carry real signal
+at day resolution, even where a same-day build/review/rework cycle would
+not — and why this command reports exactly those three and no per-status
+timing table.
+A workspace that moves more slowly — over weeks rather than hours — may well
+find signal in the gaps between statuses; nothing about the endpoints below
+prevents computing that separately from the same parsed `## History` that
+<<cmd-board-state>> already exposes.
+
+[cols="1,3"]
+|===
+| Metric | Endpoints
+
+| `backlog_dwell`
+| The ticket's `created` date to the date of its *first* transition out of
+  the flow's initial state (brine: `TO DO`). A ticket dropped straight out
+  of the backlog still counts — it waited, even though it never shipped. A
+  ticket sent back to the backlog and picked up again later counts only its
+  *first* wait; re-entry is not modelled.
+
+| `lead_time`
+| `created` to the newest merge line — `merged to …`, or the legacy
+  `MERGED: …` form an upgraded tree may still carry. A ticket sitting in a
+  terminal state that is not the flow's "done" state (brine: `DROPPED`) is
+  excluded entirely — nothing will ever merge it, so it is absent, not zero.
+  A ticket that has reached "done" but has no merge line yet is *not*
+  excluded: "done" and "merged" are different states in this flow, so it
+  appears as a still-open row (see below) instead. That is the *only* case
+  that yields an open `lead_time` row. A **non-terminal** unmerged ticket has
+  not reached "done", so its open lead time would be `created` → `--as-of` —
+  the very interval `open_age` already reports, and it is reported once,
+  there. A ticket in a non-"done" terminal state is reported by neither, as
+  above: it is archived, and nothing is still running.
+
+| `open_age`
+| `created` to `--as-of`, for every ticket not yet in a terminal state.
+|===
+
+Every endpoint comes from the same `## History` parsing `pickle board state
+--json` already uses (<<cmd-board-state>>) — nothing here re-scans a ticket
+file on its own.
+
+=== Flags
+
+[cols="1,3"]
+|===
+| Flag | Meaning
+
+| `--project <child>`
+| Narrow to one registered child-project. An unregistered name is an
+  *error* (exit `1`); a registered child with nothing to report is exit `0`
+  with an empty result.
+
+| `--as-of YYYY-MM-DD`
+| The report's reference date for `open_age` and any still-open `lead_time`
+  row. Defaults to today. A malformed value is an error (exit `1`). Pinning
+  this flag is what makes two runs against an unchanged tree byte-identical
+  — the report is otherwise a pure function of the tree, exactly the
+  property `board state --json` established (<<cmd-board-state>>).
+
+| `--json`
+| Print the machine-readable form instead of the two tables (see below).
+|===
+
+=== Aggregates: n/min/p50/p90/max, never a mean
+
+Each metric is aggregated per child-project (plus a synthetic `all` row when
+more than one child is registered and `--project` is not set) as `n`, `min`, the 50th and 90th
+percentiles, and `max` — never a mean. A zero-heavy, day-resolution sample is
+not the place for a statistic that implies more precision than the
+underlying dates carry. Percentiles use the *nearest-rank* method on the
+sorted sample: the element at 1-indexed rank `ceil(q · n)`. A registered
+child with no samples for a metric still gets a row, `n=0`, rather than being
+omitted — an empty child is a fact worth seeing, not a reason to hide the
+row. A still-open `lead_time` row (a done-but-unmerged ticket) is excluded
+from `lead_time`'s aggregate — it is not yet a completed duration, and
+folding a growing sample in would understate the true figure — but is still
+visible in the open-ticket table below.
+
+=== Text output
+
+The first table is the aggregates, `METRIC | PROJECT | N | MIN | P50 | P90 |
+MAX`. The second lists *every* still-open interval, oldest first, nothing
+truncated: `TICKET | PROJECT | STATUS | METRIC | AGE`. That is **at most one
+row per open ticket** — an `open_age` row for a ticket still in flight, or a
+`lead_time` row for one that reached "done" without a merge line, never both,
+since for a ticket still in flight the two would be the same number. A ticket
+whose endpoints are unusable (below) contributes no row at all, only an
+issue line. Any
+data-quality issue (see below) is printed next, one line per affected
+*interval*, so a ticket with two unusable endpoints prints two lines. Then a
+closing summary line, `board metrics: N ticket(s), M open, as of
+YYYY-MM-DD; intervals are whole days`, so an empty tree prints a clear `0`
+rather than silence.
+
+=== Data-quality issues: reported, never imputed
+
+A ticket that cannot supply a needed endpoint is named in the output instead
+of being silently dropped or having a value guessed for it:
+
+[cols="1,3"]
+|===
+| Issue | Meaning
+
+| `no_created`
+| No parseable `created (...)` History line at all — every metric for this
+  ticket is skipped.
+
+| `out_of_order`
+| A computed interval's end date is earlier than its start date. Checked per
+  interval, against that metric's own two endpoints — not by scanning every
+  dated line in the file for overall monotonicity, since a free-form dated
+  note can legally carry an earlier date than the transition above it
+  without that being this issue.
+
+| `unparseable_date`
+| A transition or merge line's own date does not parse as a calendar date
+  (shape-valid but out of range, e.g. `2026-13-40`).
+|===
+
+The affected interval is excluded from its aggregate; it is never clamped to
+zero and never guessed at.
+
+=== The `--json` envelope
+
+This command's own small envelope, versioned independently of both
+`pickle board state --json`'s `schema` and `pickle board decisions`'s — the
+three evolve on separate schedules: `{schema,
+pickle_version, as_of, resolution, filters, aggregates, intervals, issues}`.
+`resolution` is always `"days"`. `filters` records the query the document was
+built from: `project` as given, and `as_of` as the *effective* date — so with
+the flag omitted it carries today's date rather than an empty string, and it
+always matches the top-level `as_of`.
+`aggregates` is `{metric, project, n, min, p50, p90, max}`. `intervals` is
+`{ticket_id, prefix, num, project, status, dir, metric, days, start, end,
+open}` (`end` omitted while `open` is true). `issues` is `{ticket_id, kind,
+detail}`. Every array marshals as `[]`, never `null`, when empty.
+
+=== Exit codes
+
+An **unregistered** `--project` and a **malformed** `--as-of` are each an
+error (exit `1`). An unknown flag or a stray positional argument is a usage
+error (exit `2`). An empty tree, or a filter combination that matches
+nothing, is exit `0` — the summary line prints `0 ticket(s), 0 open` rather
+than failing.
 
 [#cmd-changelog-check]
 == `pickle changelog check`

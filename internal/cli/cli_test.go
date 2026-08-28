@@ -109,6 +109,7 @@ func TestRunExitCodes(t *testing.T) {
 		{"uninstall stray arg", []string{"uninstall", "extra"}, exitUsage},
 		{"board sync bad flag", []string{"board", "sync", "--bogus"}, exitUsage},
 		{"board decisions bad flag", []string{"board", "decisions", "--bogus"}, exitUsage},
+		{"board metrics bad flag", []string{"board", "metrics", "--bogus"}, exitUsage},
 		{"board no subcommand", []string{"board"}, exitUsage},
 		{"board unknown subcommand", []string{"board", "xyz"}, exitUsage},
 		{"ticket new missing title", []string{"ticket", "new"}, exitUsage},

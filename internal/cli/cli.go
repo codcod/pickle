@@ -136,6 +136,11 @@ Flow commands:
                           Query every ticket's confirmed design decisions, in citable
                           "<ID> decision <N>" form. Read-only. --json is optional here
                           (default output is a short table, not a document dump).
+  board metrics [--project <name>] [--as-of YYYY-MM-DD] [--json]
+                          Report backlog dwell, lead time and open-ticket age, mined from
+                          each ticket's History, aggregated per child-project as
+                          n/min/p50/p90/max. Read-only. --json is optional here (default
+                          output is two short tables, not a document dump).
   changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]
                           Report tickets that shipped in <since>..<until> (defaults: the
                           last git tag before <until>, and HEAD) but aren't named
