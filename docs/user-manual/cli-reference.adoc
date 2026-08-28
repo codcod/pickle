@@ -1243,9 +1243,9 @@ transitions that happen inside one working session is structurally a column
 of zeros — the resolution is coarser than the phenomenon on any workspace
 where a ticket routinely moves through several statuses in a single day.
 Backlog-side durations do not have that problem: a ticket can sit in the
-backlog, or stay open, for many days, so `created` → first departure,
-`created` → merge, and `created` → today all carry real signal at day
-resolution even where a same-day build/review/rework cycle would not. That is
+backlog, or stay open, for many days. That is why `created` → first
+departure, `created` → merge, and `created` → today all carry real signal at
+day resolution, even where a same-day build/review/rework cycle would not. That is
 why this command reports exactly those three and no per-status timing table.
 A workspace that moves more slowly — over weeks rather than hours — may well
 find signal in the gaps between statuses; nothing about the endpoints below
