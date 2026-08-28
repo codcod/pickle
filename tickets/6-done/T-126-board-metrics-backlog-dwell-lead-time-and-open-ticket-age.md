@@ -756,3 +756,4 @@ still be true after the rework round.
   disposition: the rebase would rewrite 8 SHAs, 7 of which this ticket's rework fix records cite,
   and the blemish is cosmetic — the other 8 commits carry the id, so changelog attribution is
   unaffected
+- 2026-08-28 — merged to main (PR #81, 6ef7f19, https://github.com/codcod/pickle/commit/6ef7f1933eb470a6a172a467623bf9ae637345f6). Reviewed tip `f428608` confirmed an ancestor of `origin/main` before recording, not assumed from the merge notification; re-verified against merged `main` directly — `just build`/`test`/`lint`/`docs-check`, `pickle doctor` and `pickle changelog check` all clean

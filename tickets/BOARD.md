@@ -149,7 +149,7 @@ Last updated: 2026-08-28
 | T-123 | Reconcile the project's governing documents in step 7, not just references to the ticket | yes — merged to main (PR #78, 43fbc0d, https://github.com/codcod/pickle/commit/43fbc0d) |
 | T-124 | scoped re-review only checks listed findings, missing defects the fix's own replacement text introduces | yes — merged to main (PR #79, 2af801c, https://github.com/codcod/pickle/commit/2af801c) |
 | T-125 | a blocking finding first surfacing after step 6b has no defined route in the protocol | yes — merged to main (PR #80, 7f9d03c, https://github.com/codcod/pickle/commit/7f9d03c) |
-| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | no — publish-gated |
+| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | yes — merged to main (PR #81, 6ef7f19, https://github.com/codcod/pickle/commit/6ef7f1933eb470a6a172a467623bf9ae637345f6… |
 
 ## DROPPED
 
