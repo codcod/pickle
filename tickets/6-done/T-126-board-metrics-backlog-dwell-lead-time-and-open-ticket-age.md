@@ -613,6 +613,69 @@ applied in `1a1ce1b` — wording only, both verified verbatim against the files 
 `just build` · `just test` · `just lint` · `just docs-check` all clean; acceptance cases re-run green;
 `pickle board audit` 126 tickets, 0 errors, 0 warnings.
 
+### Scoped re-review — round 2's fix (2026-08-28) — CONCLUDING
+
+Scope per `review-protocol.md` §1: R1 and R2, **plus the diff that closed them**
+(`git diff 179a306..1a1ce1b`), the latter read as new work. Independence: **delegated** a third time,
+to a fresh adversarial sub-agent briefed that the two previous rounds had each found real blocking
+defects the author's own checks missed. Every claim re-verified by hand before recording.
+
+**Verdict: no blocking findings. R1 and R2 are closed, and the ticket concludes.**
+
+**The arithmetic every other claim rests on was verified independently, twice** — by the delegated
+reviewer and by the orchestrating reviewer using separate tooling. A literal that happened to match a
+wrong implementation is the one failure mode nothing downstream would catch, so it was checked first:
+
+| check | result |
+|---|---|
+| R2's four `(zone, wall clock, as-of, days)` rows against a `2026-08-07` fixture | all four correct — and **three of the four are discriminating** (local date ≠ the instant's UTC date), which is what gives the table its kill power |
+| R1's `38 days` (T-002 created `2026-07-20` → pinned as-of `2026-08-27`) | correct; the defective path yields 39, so the assertion separates them |
+| R1's pinned instant straddles the date boundary | confirmed — 20:30 at UTC−11 is `2026-08-28 07:30` UTC |
+| the record's range `179a306..1a1ce1b` | resolves, to exactly `5041b9d` and `1a1ce1b` |
+
+**Mutation testing: six mutations, no survivors** — including the round-1 survivor (reverting F1 at
+the call site) and a new one the reviewer added (bypassing `metricsNow` to call `time.Now()`
+directly). The `DateOf`-off-by-one mutation now fails **in isolation on all four rows and both
+assertions**, where round 1's version passed in isolation. `metricsNow` was attacked specifically as
+new mutable global state and came back clean: two readers only, `defer` restore safe under `t.Fatalf`
+(`capture` runs `fn` on the test goroutine, so `Goexit` still runs defers), no `t.Parallel` anywhere
+in the package, and `-count=2`, `-shuffle=on` and `-race` all green — re-confirmed independently here.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| N1 | non-blocking | docs-gap | fixed inline | The approved docs-readability edit split one long sentence and created a stutter: two consecutive sentences both opening "That is why". It also left an 82-column line in a paragraph that otherwise wraps at 69–80. | `docs/user-manual/cli-reference.adoc`, "Why three metrics" paragraph | Second sentence rewritten as a trailing "— and why this command reports exactly those three…" and the paragraph reflowed. Fixed in `f428608` |
+| N2 | non-blocking | stale-xref | fixed inline | A comment called `asOf := metricsNow()` "the verbatim pre-fix body". The verbatim pre-fix body was `asOf := time.Now()`; `metricsNow` did not exist until the fix that comment documents. | `internal/cli/board_metrics_test.go`, `TestBoardMetricsDefaultPathUsesTheDateNotTheInstant` doc | Reworded to "the pre-fix body … or its equivalent under the seam". Fixed in `f428608` |
+| N3 | non-blocking | spec-unclear | fixed inline | `metricsNow`'s doc claimed a plain end-to-end test "**provably** cannot guard" the default path. Overstated: on a non-UTC machine such a test catches the defect for part of the day — which is arguably worse than not having it, since it fails by the clock. The following sentence already scoped the claim to a UTC environment, so the absolute reading was never intended. | `internal/cli/board.go`, `metricsNow` doc comment | "cannot *deterministically* guard it", with the partial-catch behaviour spelled out. Fixed in `f428608` |
+| N4 | non-blocking | test-gap | fixed inline | **Both guards protecting a blocking finding could silently retire themselves.** Each built its zone with `time.LoadLocation` and `t.Skipf`'d when zoneinfo was missing, so on a scratch or distroless CI image the regression tests for F1 and R1/R2 would skip rather than run — the same class of hole (coverage that looks real and is not) that this ticket has now produced three times. | `internal/cli/board_metrics_test.go` and `internal/metrics/metrics_test.go`, the `LoadLocation`/`Skipf` pairs | Both switched to `time.FixedZone`, which needs no zoneinfo: `DateOf` hard-wires its output location to UTC and never constructs local midnight, so a fixed offset exercises it fully. `TestDateOf` and `TestResolveMetricsAsOf` deliberately keep real named zones as the complementary check that real tzdata behaves identically — those two may still skip, and neither is the primary guard for a finding. Fixed in `f428608`, with the whole mutation set re-run afterwards |
+| N5 | non-blocking | docs-gap | fixed inline | Applying the approved readability edit to `CHANGELOG.md` only left the two surfaces describing the same phenomenon differently — "produces a column of zeros" against "is structurally a column of zeros". | `CHANGELOG.md` vs `docs/user-manual/cli-reference.adoc` | Manual aligned to the approved wording. Fixed in `f428608` |
+
+Disposition summary: 0 blocking; 5 non-blocking, all **fixed inline** in `f428608` (N1–N5), 0 folded,
+0 noted, 0 new tickets. Every one is prose, a comment, or a test's zone-construction idiom this
+branch itself authored; none changes what the command does.
+
+```
+cost: estimated S, actual L — three review rounds and two rework rounds against an S estimate. The
+feature itself was S, as filed; the overrun is entirely in verification, and specifically in one
+defect class: coverage that reads as real and is not. Round 1 shipped a clock bug the whole suite
+missed, round 2's fix for it was itself unguarded at the call site, and round 3 found both guards
+could skip themselves off a machine without tzdata. Each was cheap to fix and expensive to find.
+```
+
+### Why this ticket took three review rounds — the one lesson worth carrying
+
+All five blocking findings across the three rounds (F1, F2, R1, R2, and N4 had it not been caught)
+are the same shape: **a check that appears to establish a property and does not.** The suite was
+green at every single hand-back. What moved each time was an *independent* reader running a mutation
+the author had not thought to run — and twice the author's own recorded mutation table was the thing
+that turned out to be wrong, once naming a mutation it had not actually performed.
+
+The transferable rule, and the reason it is recorded here rather than in a new ticket: **when a fix
+is justified by "and now a test would catch it", run the mutation before writing that sentence down.**
+Delegation is what made this visible — a self-review would have accepted its own coverage claim three
+times running, because the claim was made in the same reasoning that produced the code. `NOTES.md`
+carries the standing note for the theme; nothing here needs a new ticket, and the promotion test does
+not pass for any of it.
+
 ### Delegated claims not accepted as written (step 0's "verify before recording")
 
 Two of the three delegated audits disagreed on F2's severity — the implementation audit called the
@@ -682,3 +745,4 @@ still be true after the rework round.
 - 2026-08-28 — REWORK → IN REVIEW: findings fixed
 - 2026-08-28 — IN REVIEW → REWORK: scoped re-review: 2 blocking (R1 call-site mutation survives; R2 consistency test cannot fail)
 - 2026-08-28 — REWORK → IN REVIEW: round 2 findings fixed (R1 call-site guard, R2 tautological test)
+- 2026-08-28 — IN REVIEW → DONE: review passed: 0 blocking, 5 fixed inline; F1/F2/R1/R2 all closed and mutation-verified
