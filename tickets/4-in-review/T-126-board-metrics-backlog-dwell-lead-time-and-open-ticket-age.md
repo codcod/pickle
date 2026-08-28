@@ -394,3 +394,4 @@ than during it).
   current tree has zero data-quality issues under the real check; the out-of-order code path is
   proven by `internal/metrics/metrics_test.go`'s own fixture instead. Acceptance test case 4 and
   its Expected line amended to match; decision 9 amended in place with the correction quoted
+- 2026-08-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
