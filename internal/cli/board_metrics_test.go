@@ -225,9 +225,9 @@ func TestResolveMetricsAsOf(t *testing.T) {
 
 // TestBoardMetricsDefaultPathUsesTheDateNotTheInstant is R1's regression test
 // (T-126 re-review): it guards the *call site*, which is what actually shipped
-// wrong in F1 and what round 1's fix left uncovered. Reverting
-// runBoardMetrics to `asOf := metricsNow()` — the verbatim pre-fix body —
-// passed the entire suite before this test existed.
+// wrong in F1 and what round 1's fix left uncovered. Reverting runBoardMetrics
+// to read the clock directly — the pre-fix body, `asOf := time.Now()`, or its
+// equivalent under the seam — passed the entire suite before this test existed.
 //
 // The clock is pinned rather than read, for the reason metricsNow's own doc
 // gives: the defect is invisible whenever the local date and the instant's UTC
@@ -235,15 +235,21 @@ func TestResolveMetricsAsOf(t *testing.T) {
 // chosen so they disagree — 20:30 in a UTC-11 zone is already the next day in
 // UTC — so the fixed and the defective behaviours give different answers on
 // every machine.
+//
+// The zone is a time.FixedZone rather than a tzdata lookup so this guard can
+// never silently skip: a t.Skipf on a missing zoneinfo database (a scratch or
+// distroless CI image) would quietly retire the regression test for a blocking
+// finding, which is the same class of hole this test exists to close. No DST
+// rule is needed here — DateOf's output location is hard-wired UTC and local
+// midnight is never constructed, so a fixed offset exercises it fully.
+// TestDateOf in internal/metrics keeps the real named zones, as the
+// complementary check that real tzdata behaves the same.
 func TestBoardMetricsDefaultPathUsesTheDateNotTheInstant(t *testing.T) {
 	boardMetricsSandbox(t)
 
-	midway, err := time.LoadLocation("Pacific/Midway") // UTC-11
-	if err != nil {
-		t.Skipf("zoneinfo unavailable: %v", err)
-	}
-	// 2026-08-27 20:30 in Midway == 2026-08-28 07:30 UTC. "Today" is the 27th.
-	pinned := time.Date(2026, time.August, 27, 20, 30, 0, 0, midway)
+	minus11 := time.FixedZone("UTC-11", -11*60*60)
+	// 2026-08-27 20:30 at UTC-11 == 2026-08-28 07:30 UTC. "Today" is the 27th.
+	pinned := time.Date(2026, time.August, 27, 20, 30, 0, 0, minus11)
 
 	orig := metricsNow
 	metricsNow = func() time.Time { return pinned }

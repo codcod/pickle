@@ -373,36 +373,40 @@ func TestDateOf(t *testing.T) {
 // whole day, while claiming in a comment to compute the expectation
 // independently. An expected value that comes from the thing being tested
 // cannot falsify it.
+//
+// Offsets are time.FixedZone rather than tzdata lookups so this guard can never
+// silently skip on an image without a zoneinfo database — retiring the
+// regression test for a blocking finding by accident is the same class of hole
+// it exists to close. TestDateOf above keeps the real named zones, as the
+// complementary check that real tzdata (and its DST rules) behave the same.
 func TestDateOfDrivesAgesFromTheLocalCalendarDate(t *testing.T) {
 	def := flow.ForName("brine")
 	const createdOn = "2026-08-07"
 
 	cases := []struct {
-		zone string
-		// wall-clock reading in that zone
+		name      string
+		offsetSec int
+		// wall-clock reading at that offset
 		y         int
 		mo        time.Month
 		d, h, min int
 		wantAsOf  string // the calendar date a user there calls "today"
 		wantDays  int    // hand-computed from createdOn to wantAsOf
 	}{
-		{"UTC", 2026, time.August, 28, 12, 0, "2026-08-28", 21},
+		{"UTC", 0, 2026, time.August, 28, 12, 0, "2026-08-28", 21},
 		// East of UTC, just after local midnight: the instant is still 2026-08-27
 		// in UTC, so reading it raw gave 20. "Today" is the 28th and the age is 21.
-		{"Europe/Warsaw", 2026, time.August, 28, 0, 30, "2026-08-28", 21},
+		{"UTC+2", 2 * 60 * 60, 2026, time.August, 28, 0, 30, "2026-08-28", 21},
 		// West of UTC, late evening: the instant is already 2026-08-28 in UTC, so
 		// reading it raw gave 21. "Today" is the 27th and the age is 20.
-		{"Pacific/Midway", 2026, time.August, 27, 20, 30, "2026-08-27", 20},
+		{"UTC-11", -11 * 60 * 60, 2026, time.August, 27, 20, 30, "2026-08-27", 20},
 		// Far east of the dateline: genuinely the 29th there.
-		{"Pacific/Kiritimati", 2026, time.August, 29, 1, 0, "2026-08-29", 22},
+		{"UTC+14", 14 * 60 * 60, 2026, time.August, 29, 1, 0, "2026-08-29", 22},
 	}
 
 	for _, c := range cases {
-		t.Run(c.zone, func(t *testing.T) {
-			loc, err := time.LoadLocation(c.zone)
-			if err != nil {
-				t.Skipf("zoneinfo for %s unavailable: %v", c.zone, err)
-			}
+		t.Run(c.name, func(t *testing.T) {
+			loc := time.FixedZone(c.name, c.offsetSec)
 			asOf := DateOf(time.Date(c.y, c.mo, c.d, c.h, c.min, 0, 0, loc))
 
 			if got := asOf.Format(dateLayout); got != c.wantAsOf {
