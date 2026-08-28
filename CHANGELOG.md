@@ -13,13 +13,13 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 - **`pickle board metrics` reports backlog dwell, lead time and open-ticket age, mined from every
   ticket's `## History`.** Aggregated per child-project as n/min/p50/p90/max (never a mean), with
   `--project` and `--as-of` filters and a `--json` form. It deliberately does not report per-status
-  timing (queue/build/review/rework durations): a `## History` line carries a date, not a time, so
-  a metric bounded by two transitions inside one working session is structurally a column of
-  zeros at that resolution — only the backlog-side intervals, and how long what is still open has
-  been waiting, carry real signal at day granularity. A ticket that cannot supply a needed endpoint
-  is named in the output (`no_created`, `out_of_order`, `unparseable_date`) rather than being
-  silently dropped or guessed at. Shipped in `internal/metrics` and `pickle board metrics`
-  (T-126).
+  timing (queue/build/review/rework durations). A `## History` line carries a date, not a time, so
+  a metric bounded by two transitions inside one working session is structurally a column of zeros
+  at that resolution. Only the backlog-side intervals, and how long what is still open has been
+  waiting, carry real signal at day granularity. The open-ticket table carries one row per open
+  ticket, and a ticket that cannot supply a needed endpoint is named in the output (`no_created`,
+  `out_of_order`, `unparseable_date`) rather than being silently dropped or guessed at. Shipped in
+  `internal/metrics` and `pickle board metrics` (T-126).
 
 ## [0.13.0] - 2026-08-27
 

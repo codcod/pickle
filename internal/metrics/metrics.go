@@ -85,14 +85,36 @@ const (
 // dateLayout is the one date format `## History` lines and --as-of both use.
 const dateLayout = "2006-01-02"
 
+// DateOf converts a wall-clock instant into this package's own date
+// convention: the calendar date as it reads in t's **own location**,
+// re-expressed as midnight UTC.
+//
+// Every endpoint this package computes comes from time.Parse(dateLayout, …),
+// which yields midnight UTC. A caller that passed time.Now() straight in
+// would therefore be subtracting a UTC midnight from a local instant, and
+// the int(d / 24h) truncation in TicketIntervals would straddle the zone
+// boundary: in any non-UTC zone the same tree yields different ages at
+// different hours of the day, and the report's own printed as-of date
+// disagrees with the ages printed beneath it by one day (T-126 review, F1).
+// Converting through the *local calendar date* — not through UTC — is what
+// makes "today" mean the day the user believes it is, while still landing on
+// the midnight-UTC grid every parsed endpoint sits on.
+func DateOf(t time.Time) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
 // Interval is one computed duration for one ticket. Metric is one of the
-// constants above. Open is true only for open_age (which has no "closed"
-// form — it always measures a still-running age) and for a lead_time row on
-// a ticket that has not merged yet: "done ≠ merged" is a real state of this
-// flow (rules §3), so a done-but-unmerged ticket is not excluded from
-// lead-time visibility, only from the *closed* lead_time aggregate (Compute
-// excludes an Open lead_time row from that aggregate's sample, since it is
-// not yet a completed duration and would understate the true figure).
+// constants above. Open is true in exactly two cases: an open_age row (which
+// has no "closed" form — it always measures a still-running age), and a
+// lead_time row on a ticket that has reached the done state without a merge
+// line, since "done ≠ merged" is a real state of this flow (rules §3) and a
+// done ticket is terminal, so open_age does not cover it. A non-terminal
+// unmerged ticket gets no lead_time row at all — its open lead time and its
+// open age are the same two endpoints, so reporting both duplicated every
+// open ticket (T-126 review, F2). Compute excludes an Open lead_time row
+// from that aggregate's sample, since it is not yet a completed duration and
+// would understate the true figure.
 type Interval struct {
 	TicketID string `json:"ticket_id"`
 	Prefix   string `json:"prefix"`
@@ -222,19 +244,32 @@ func TicketIntervals(def *flow.Definition, t *ticket.Ticket, status flow.State, 
 
 	// Lead time: excluded entirely for a ticket in a terminal state that is
 	// not "done" (brine: 7-dropped/) — nothing will ever merge it, so it is
-	// not zero, it is absent. A done-but-unmerged ticket is not excluded:
-	// "done != merged" is real (rules §3), so it gets an Open row instead of
-	// none — visible, but excluded from the closed aggregate by Compute.
-	willNeverMerge := status.Terminal && status.Dir != def.DependencySatisfied().Dir
+	// not zero, it is absent.
+	//
+	// An *open* lead-time row is emitted for exactly one case: a ticket that
+	// has reached the done state but carries no merge line. "done != merged"
+	// is a real state of this flow (rules §3), and open_age does not cover it
+	// (a done ticket is terminal), so without this row that wait would be
+	// invisible. It is still excluded from the closed aggregate by Compute.
+	//
+	// Every *other* unmerged ticket gets no lead-time row at all, because for
+	// a non-terminal ticket the open lead time is `asOf - created` — the same
+	// two endpoints open_age already reports, hence always the identical
+	// number. Emitting both listed every open ticket twice with the same age
+	// on the command's flagship human surface, carrying no information the
+	// open_age row did not already carry (T-126 review, F2).
+	doneDir := def.DependencySatisfied().Dir
+	willNeverMerge := status.Terminal && status.Dir != doneDir
 	if !willNeverMerge {
-		if mergedDate != "" {
+		switch {
+		case mergedDate != "":
 			if d, err := time.Parse(dateLayout, mergedDate); err == nil {
 				addClosed(MetricLeadTime, created, d)
 			} else {
 				issues = append(issues, Issue{TicketID: t.ID, Kind: IssueUnparseableDate,
 					Detail: "merge date " + mergedDate + " is not a valid date"})
 			}
-		} else {
+		case status.Dir == doneDir:
 			addOpen(MetricLeadTime, created)
 		}
 	}

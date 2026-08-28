@@ -238,6 +238,27 @@ const boardMetricsUsage = "usage: pickle board metrics [--project <child>] [--as
 // `board state --json` established, T-065 decision 3, and the reason
 // internal/metrics.Compute takes a caller-supplied time rather than reading
 // one itself).
+// resolveMetricsAsOf turns the --as-of flag value and a wall-clock instant
+// into the report's reference date: the flag when given, otherwise today.
+//
+// Split out of runBoardMetrics deliberately. As three lines inline it was
+// unreachable by any test — the default branch depends on the process clock
+// and on time.Local, which Go caches at first use, so no test could pin it —
+// and that is precisely where F1 hid (T-126 review): `time.Now()` went in raw,
+// so the day arithmetic against parsed midnight-UTC endpoints moved with the
+// hour and the zone. As a pure function of (flag, instant) both branches are
+// directly testable, including from zones the test machine is not in.
+func resolveMetricsAsOf(flagValue string, now time.Time) (time.Time, error) {
+	if flagValue == "" {
+		return metrics.DateOf(now), nil
+	}
+	d, err := time.Parse("2006-01-02", flagValue)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid --as-of %q: must be YYYY-MM-DD", flagValue)
+	}
+	return d, nil
+}
+
 func runBoardMetrics(args []string) int {
 	fs := flag.NewFlagSet("board metrics", flag.ContinueOnError)
 	project := fs.String("project", "", "filter by registered child-project name")
@@ -251,13 +272,9 @@ func runBoardMetrics(args []string) int {
 		return exitUsage
 	}
 
-	asOf := time.Now()
-	if *asOfFlag != "" {
-		d, err := time.Parse("2006-01-02", *asOfFlag)
-		if err != nil {
-			return errf("board metrics: invalid --as-of %q: must be YYYY-MM-DD", *asOfFlag)
-		}
-		asOf = d
+	asOf, err := resolveMetricsAsOf(*asOfFlag, time.Now())
+	if err != nil {
+		return errf("board metrics: %v", err)
 	}
 
 	cfg, code := loadConfig()
@@ -270,12 +287,11 @@ func runBoardMetrics(args []string) int {
 	// Same lock discipline as runBoardState/runBoardDecisions: a concurrent
 	// writer's atomic rename is either fully visible or not visible yet, never
 	// half-written.
-	err := lock.WithShared(cfg.Root(), func() error {
+	if err := lock.WithShared(cfg.Root(), func() error {
 		var merr error
 		res, merr = metrics.Compute(def, cfg.Root(), cfg, metrics.Options{Project: *project, AsOf: asOf})
 		return merr
-	})
-	if err != nil {
+	}); err != nil {
 		return errf("board metrics: %v", err)
 	}
 
@@ -308,9 +324,9 @@ func runBoardMetrics(args []string) int {
 
 // renderMetricsText prints res as two pasteable tables — the aggregates,
 // then every still-open interval (an open_age row, or a lead_time row on a
-// ticket that has not merged yet), oldest first — followed by any
-// data-quality issues and a summary line mirroring `board audit`'s own, so
-// the zero case prints a clear 0 rather than silence.
+// done-but-unmerged ticket), oldest first — followed by any data-quality
+// issues and a summary line mirroring `board audit`'s own, so the zero case
+// prints a clear 0 rather than silence.
 func renderMetricsText(res metrics.Result) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
 	fmt.Fprintln(w, "METRIC\tPROJECT\tN\tMIN\tP50\tP90\tMAX")
@@ -320,9 +336,11 @@ func renderMetricsText(res metrics.Result) {
 	w.Flush()
 
 	// Every still-open interval, nothing truncated (decision 12): an open_age
-	// row, or a lead_time row on a done-but-unmerged ticket. Age descending,
-	// then ticket id, so the oldest — what is most worth acting on — sorts
-	// first.
+	// row, or a lead_time row on a done-but-unmerged ticket — one row per open
+	// ticket, since a non-terminal ticket no longer also yields an open
+	// lead_time row identical to its open_age (T-126 review, F2). Age
+	// descending, then ticket id, so the oldest — what is most worth acting
+	// on — sorts first.
 	open := make([]metrics.Interval, 0, len(res.Intervals))
 	for _, iv := range res.Intervals {
 		if iv.Open {

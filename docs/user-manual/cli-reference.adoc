@@ -1270,7 +1270,10 @@ prevents computing that separately from the same parsed `## History` that
   excluded entirely — nothing will ever merge it, so it is absent, not zero.
   A ticket that has reached "done" but has no merge line yet is *not*
   excluded: "done" and "merged" are different states in this flow, so it
-  appears as a still-open row (see below) instead.
+  appears as a still-open row (see below) instead. That is the *only* case
+  that yields an open `lead_time` row — any other unmerged ticket has not
+  reached "done", so its open lead time would be `created` → `--as-of`, the
+  very interval `open_age` already reports, and it is reported once, there.
 
 | `open_age`
 | `created` to `--as-of`, for every ticket not yet in a terminal state.
@@ -1320,12 +1323,16 @@ visible in the open-ticket table below.
 === Text output
 
 The first table is the aggregates, `METRIC | PROJECT | N | MIN | P50 | P90 |
-MAX`. The second lists *every* still-open interval — an `open_age` row, or a
-`lead_time` row on a ticket that has not merged yet — oldest first, nothing
-truncated: `TICKET | PROJECT | STATUS | METRIC | AGE`. Any data-quality issue
-(see below) is printed next, one line per ticket, then a closing summary
-line, `board metrics: N ticket(s), M open, as of YYYY-MM-DD; intervals are
-whole days`, so an empty tree prints a clear `0` rather than silence.
+MAX`. The second lists *every* still-open interval, oldest first, nothing
+truncated: `TICKET | PROJECT | STATUS | METRIC | AGE`. That is **one row per
+open ticket** — an `open_age` row for a ticket still in flight, or a
+`lead_time` row for one that reached "done" without a merge line, never both,
+since for a ticket still in flight the two would be the same number. Any
+data-quality issue (see below) is printed next, one line per affected
+*interval*, so a ticket with two unusable endpoints prints two lines. Then a
+closing summary line, `board metrics: N ticket(s), M open, as of
+YYYY-MM-DD; intervals are whole days`, so an empty tree prints a clear `0`
+rather than silence.
 
 === Data-quality issues: reported, never imputed
 

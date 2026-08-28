@@ -71,7 +71,10 @@ func TestTicketIntervals(t *testing.T) {
 			asOf:      "2026-08-01",
 			wantDwell: nil,
 			wantOpen:  &Interval{Metric: MetricOpenAge, Days: 12, Start: "2026-07-20", Open: true},
-			wantLead:  &Interval{Metric: MetricLeadTime, Days: 12, Start: "2026-07-20", Open: true},
+			// No open lead_time row: a non-terminal ticket's open lead time is
+			// `asOf - created`, identical to its open_age, so emitting both
+			// double-listed every open ticket (T-126 review, F2).
+			wantLead: nil,
 		},
 		{
 			name: "dropped straight out of the backlog: dwell counts, lead time absent",
@@ -129,7 +132,7 @@ func TestTicketIntervals(t *testing.T) {
 			wantIssue: IssueOutOfOrder,
 			wantDwell: nil,
 			wantOpen:  &Interval{Metric: MetricOpenAge, Days: 22, Start: "2026-07-10", Open: true},
-			wantLead:  &Interval{Metric: MetricLeadTime, Days: 22, Start: "2026-07-10", Open: true},
+			wantLead:  nil, // F2: non-terminal, so no open lead_time row
 		},
 		{
 			name: "returned to the backlog and left twice: the first departure wins",
@@ -142,7 +145,7 @@ func TestTicketIntervals(t *testing.T) {
 				"- 2026-07-21 — READY → IN DEVELOPMENT: picked up\n",
 			asOf:      "2026-08-01",
 			wantDwell: &Interval{Metric: MetricBacklogDwell, Days: 4, Start: "2026-07-01", End: "2026-07-05"},
-			wantLead:  &Interval{Metric: MetricLeadTime, Days: 31, Start: "2026-07-01", Open: true},
+			wantLead:  nil, // F2: non-terminal, so no open lead_time row
 			wantOpen:  &Interval{Metric: MetricOpenAge, Days: 31, Start: "2026-07-01", Open: true},
 		},
 		{
@@ -211,6 +214,77 @@ func TestTicketIntervals(t *testing.T) {
 	}
 }
 
+// TestTicketIntervalsEmitsOneOpenRowPerTicket is F2's regression test
+// (T-126 review). The defect was an open lead_time row emitted for *every*
+// non-terminal unmerged ticket, where it equals open_age by construction, so
+// the command's open table listed every open ticket twice with the same
+// number. Asserted as a count, because the table-driven test above uses a
+// first-match helper and so cannot see a duplicate.
+//
+// The done-but-unmerged case is the one open lead_time row that carries
+// information open_age does not (a done ticket is terminal, so it has no
+// open_age at all) — asserted here too, so a fix that removed open lead_time
+// altogether would fail rather than pass.
+func TestTicketIntervalsEmitsOneOpenRowPerTicket(t *testing.T) {
+	def := flow.ForName("brine")
+	asOf := mustDate(t, "2026-08-01")
+
+	cases := []struct {
+		name        string
+		dir         string
+		text        string
+		wantOpen    int    // how many Open intervals this ticket should yield
+		wantMetrics string // which metric carries it
+	}{
+		{
+			name:     "non-terminal: exactly one open row, and it is open_age",
+			dir:      "1-to-do",
+			text:     "## History\n\n- 2026-07-20 — created (TO DO). source: chat: fixture\n",
+			wantOpen: 1, wantMetrics: MetricOpenAge,
+		},
+		{
+			name: "in development: exactly one open row, and it is open_age",
+			dir:  "3-in-development",
+			text: "## History\n\n- 2026-07-20 — created (TO DO). source: chat: fixture\n" +
+				"- 2026-07-21 — TO DO → READY: plan complete\n" +
+				"- 2026-07-22 — READY → IN DEVELOPMENT: picked up\n",
+			wantOpen: 1, wantMetrics: MetricOpenAge,
+		},
+		{
+			name: "done but unmerged: exactly one open row, and it is lead_time",
+			dir:  "6-done",
+			text: "## History\n\n- 2026-07-01 — created (TO DO). source: chat: fixture\n" +
+				"- 2026-07-02 — TO DO → READY: plan complete\n" +
+				"- 2026-07-05 — IN REVIEW → DONE: review clean\n",
+			wantOpen: 1, wantMetrics: MetricLeadTime,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			tk := &ticket.Ticket{
+				ID: "T-900", Dir: c.dir,
+				Front: map[string]string{"project": "pickle"},
+				Text:  c.text,
+			}
+			ivs, _ := TicketIntervals(def, tk, statusFor(t, def, c.dir), asOf)
+
+			var open []Interval
+			for _, iv := range ivs {
+				if iv.Open {
+					open = append(open, iv)
+				}
+			}
+			if len(open) != c.wantOpen {
+				t.Fatalf("got %d open interval(s) %+v, want %d", len(open), open, c.wantOpen)
+			}
+			if open[0].Metric != c.wantMetrics {
+				t.Errorf("open interval metric = %q, want %q", open[0].Metric, c.wantMetrics)
+			}
+		})
+	}
+}
+
 // TestTicketIntervalsMalformedID mirrors internal/decisions.Query's own
 // contract: a malformed id is silently skipped, not this package's job to
 // report (ticket.LoadAll's own issues already cover it).
@@ -226,6 +300,109 @@ func TestTicketIntervalsMalformedID(t *testing.T) {
 	ivs, issues := TicketIntervals(def, tk, status, mustDate(t, "2026-08-01"))
 	if ivs != nil || issues != nil {
 		t.Errorf("malformed id: got ivs=%+v issues=%+v, want nil, nil", ivs, issues)
+	}
+}
+
+// TestDateOf is F1's regression test (T-126 review): the default `board
+// metrics` path converts time.Now() through DateOf, and the bug was that it
+// did not — a local wall-clock instant was subtracted from parsed
+// midnight-UTC endpoints, so ages moved with the hour and the zone.
+//
+// Locations are loaded explicitly rather than read from the process TZ: Go
+// caches time.Local at first use, so a test that set TZ would not reliably
+// change it, and the original defect is precisely a *location* defect. Each
+// case therefore states an instant in a named zone and the calendar date a
+// user standing in that zone would call "today".
+func TestDateOf(t *testing.T) {
+	load := func(name string) *time.Location {
+		loc, err := time.LoadLocation(name)
+		if err != nil {
+			t.Skipf("zoneinfo for %s unavailable: %v", name, err)
+		}
+		return loc
+	}
+
+	cases := []struct {
+		name string
+		zone string
+		// the wall-clock reading in that zone
+		y         int
+		mo        time.Month
+		d, h, min int
+		wantDate  string
+	}{
+		{"UTC midday", "UTC", 2026, time.August, 28, 12, 0, "2026-08-28"},
+		{"UTC one minute past midnight", "UTC", 2026, time.August, 28, 0, 1, "2026-08-28"},
+		{"UTC one minute to midnight", "UTC", 2026, time.August, 28, 23, 59, "2026-08-28"},
+		// UTC+2: just after local midnight is still the *previous* day in UTC.
+		// The pre-fix code reported the previous day's age under today's date.
+		{"UTC+2 just after midnight", "Europe/Warsaw", 2026, time.August, 28, 0, 30, "2026-08-28"},
+		// UTC-11: late local evening is already the *next* day in UTC.
+		{"UTC-11 late evening", "Pacific/Midway", 2026, time.August, 27, 20, 30, "2026-08-27"},
+		// UTC+14, the far end of the dateline.
+		{"UTC+14 early morning", "Pacific/Kiritimati", 2026, time.August, 28, 1, 0, "2026-08-28"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			in := time.Date(c.y, c.mo, c.d, c.h, c.min, 0, 0, load(c.zone))
+			got := DateOf(in)
+
+			if got.Format(dateLayout) != c.wantDate {
+				t.Errorf("DateOf(%s) date = %s, want %s", in, got.Format(dateLayout), c.wantDate)
+			}
+			if got.Location() != time.UTC {
+				t.Errorf("DateOf(%s) location = %v, want UTC", in, got.Location())
+			}
+			if h, m, s := got.Clock(); h != 0 || m != 0 || s != 0 {
+				t.Errorf("DateOf(%s) clock = %02d:%02d:%02d, want midnight", in, h, m, s)
+			}
+		})
+	}
+}
+
+// TestDateOfKeepsAgesConsistentWithTheDateItReports is the invariant F1
+// actually broke, asserted end-to-end over TicketIntervals rather than over
+// the helper: the age reported for a ticket must be exactly the difference
+// between the as-of date the report prints and the ticket's created date, in
+// every zone. Before the fix, a UTC-11 evening instant produced an age one
+// day larger than its own printed as-of date implied.
+func TestDateOfKeepsAgesConsistentWithTheDateItReports(t *testing.T) {
+	def := flow.ForName("brine")
+	for _, zone := range []string{"UTC", "Europe/Warsaw", "Pacific/Midway", "Pacific/Kiritimati"} {
+		loc, err := time.LoadLocation(zone)
+		if err != nil {
+			t.Skipf("zoneinfo for %s unavailable: %v", zone, err)
+		}
+		for _, hour := range []int{0, 6, 12, 18, 23} {
+			now := time.Date(2026, time.August, 28, hour, 30, 0, 0, loc)
+			asOf := DateOf(now)
+
+			tk := &ticket.Ticket{
+				ID:    "T-900",
+				Dir:   "1-to-do",
+				Front: map[string]string{"project": "pickle"},
+				Text:  "## History\n\n- 2026-08-07 — created (TO DO). source: chat: fixture\n",
+			}
+			ivs, _ := TicketIntervals(def, tk, statusFor(t, def, "1-to-do"), asOf)
+			age := findMetric(ivs, MetricOpenAge)
+			if age == nil {
+				t.Fatalf("%s %02d:30: no open_age interval", zone, hour)
+			}
+
+			// What the printed as-of date itself implies, computed independently.
+			reported, err := time.Parse(dateLayout, asOf.Format(dateLayout))
+			if err != nil {
+				t.Fatal(err)
+			}
+			created, _ := time.Parse(dateLayout, "2026-08-07")
+			want := int(reported.Sub(created) / (24 * time.Hour))
+
+			if age.Days != want {
+				t.Errorf("%s %02d:30: open_age = %d days, but the report's own as_of %s implies %d",
+					zone, hour, age.Days, asOf.Format(dateLayout), want)
+			}
+		}
 	}
 }
 

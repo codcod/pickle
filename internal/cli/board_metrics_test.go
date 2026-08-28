@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // writeMetricsTicket writes a minimal, audit-independent ticket file directly
@@ -153,6 +154,122 @@ func TestBoardMetricsOpenTicketsListed(t *testing.T) {
 	}
 	if i3 > i2 {
 		t.Errorf("expected T-003 (older, 31d) to sort before T-002 (12d), got:\n%s", out)
+	}
+}
+
+// TestResolveMetricsAsOf pins the F1 fix at its call site (T-126 review).
+// TestDateOf in internal/metrics covers the conversion itself; this covers the
+// wiring, which is what actually shipped wrong — reverting `runBoardMetrics`
+// to a bare `time.Now()` passed every other test in the tree.
+//
+// Locations are loaded explicitly: Go caches time.Local at first use, so a
+// test that set TZ would not reliably change it, and the defect was a
+// location defect.
+func TestResolveMetricsAsOf(t *testing.T) {
+	load := func(name string) *time.Location {
+		loc, err := time.LoadLocation(name)
+		if err != nil {
+			t.Skipf("zoneinfo for %s unavailable: %v", name, err)
+		}
+		return loc
+	}
+
+	t.Run("default: today's local date at UTC midnight, in every zone and hour", func(t *testing.T) {
+		for _, zone := range []string{"UTC", "Europe/Warsaw", "Pacific/Midway", "Pacific/Kiritimati"} {
+			loc := load(zone)
+			for _, hour := range []int{0, 1, 12, 20, 23} {
+				now := time.Date(2026, time.August, 28, hour, 30, 0, 0, loc)
+				got, err := resolveMetricsAsOf("", now)
+				if err != nil {
+					t.Fatalf("%s %02d:30: unexpected error %v", zone, hour, err)
+				}
+				// The date a user standing in that zone calls "today"...
+				if got.Format("2006-01-02") != "2026-08-28" {
+					t.Errorf("%s %02d:30: as-of = %s, want 2026-08-28",
+						zone, hour, got.Format("2006-01-02"))
+				}
+				// ...expressed on the same midnight-UTC grid every parsed
+				// History endpoint sits on. This is the assertion a bare
+				// time.Now() fails.
+				if got.Location() != time.UTC {
+					t.Errorf("%s %02d:30: location = %v, want UTC", zone, hour, got.Location())
+				}
+				if h, m, s := got.Clock(); h != 0 || m != 0 || s != 0 {
+					t.Errorf("%s %02d:30: clock = %02d:%02d:%02d, want midnight",
+						zone, hour, h, m, s)
+				}
+			}
+		}
+	})
+
+	t.Run("flag given: used verbatim, the instant ignored", func(t *testing.T) {
+		now := time.Date(2026, time.August, 28, 20, 30, 0, 0, load("Pacific/Midway"))
+		got, err := resolveMetricsAsOf("2026-07-04", now)
+		if err != nil {
+			t.Fatalf("unexpected error %v", err)
+		}
+		if got.Format("2006-01-02") != "2026-07-04" || got.Location() != time.UTC {
+			t.Errorf("as-of = %s (%v), want 2026-07-04 UTC", got.Format("2006-01-02"), got.Location())
+		}
+	})
+
+	t.Run("flag malformed: error, and no date", func(t *testing.T) {
+		if _, err := resolveMetricsAsOf("2026-13-99", time.Now()); err == nil {
+			t.Error("expected an error for 2026-13-99, got none")
+		}
+		if _, err := resolveMetricsAsOf("yesterday", time.Now()); err == nil {
+			t.Error("expected an error for a non-date, got none")
+		}
+	})
+}
+
+// TestBoardMetricsOpenTableHasOneRowPerTicket is F2's regression test at the
+// CLI surface (T-126 review). The defect was visible precisely here: the open
+// table listed every open ticket twice with an identical AGE, because a
+// non-terminal unmerged ticket yielded both an open lead_time row and an
+// open_age row over the same two endpoints. Asserted on the rendered text,
+// since the rendered table is what the defect corrupted.
+func TestBoardMetricsOpenTableHasOneRowPerTicket(t *testing.T) {
+	boardMetricsSandbox(t)
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"board", "metrics", "--as-of", "2026-08-01"}); got != exitOK {
+			t.Fatalf("= %d", got)
+		}
+	})
+
+	// Count rows in the second table (the one headed TICKET) per ticket id.
+	perTicket := map[string]int{}
+	inOpenTable := false
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "TICKET") {
+			inOpenTable = true
+			continue
+		}
+		if !inOpenTable || strings.TrimSpace(line) == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "ISSUE:") || strings.HasPrefix(line, "board metrics:") {
+			break
+		}
+		if id := strings.Fields(line)[0]; strings.Contains(id, "-") {
+			perTicket[id]++
+		}
+	}
+
+	if len(perTicket) == 0 {
+		t.Fatalf("parsed no open rows out of:\n%s", out)
+	}
+	for id, n := range perTicket {
+		if n != 1 {
+			t.Errorf("ticket %s appears %d times in the open table, want exactly 1:\n%s", id, n, out)
+		}
+	}
+	// T-002 (non-terminal) and T-003 (done-but-unmerged) are both open, by
+	// different metrics — so a fix that dropped either case would fail here.
+	for _, want := range []string{"T-002", "T-003"} {
+		if perTicket[want] != 1 {
+			t.Errorf("expected %s in the open table exactly once, got %d", want, perTicket[want])
+		}
 	}
 }
 
