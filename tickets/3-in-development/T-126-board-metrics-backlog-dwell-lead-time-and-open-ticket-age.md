@@ -370,3 +370,4 @@ than during it).
   in `NOTES.md` § "Rejected outright, so they are not re-proposed" is overridden by human
   direction, as T-105's was — recorded in `NOTES.md` § "T-126 refinement (2026-08-28)"
 - 2026-08-28 — TO DO → READY: plan complete
+- 2026-08-28 — READY → IN DEVELOPMENT: picked up

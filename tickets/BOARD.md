@@ -13,10 +13,11 @@ Last updated: 2026-08-28
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-08-28
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | low | low-medium | S | [] |  |
 
 ## TO DO (impact order, per child)
 
