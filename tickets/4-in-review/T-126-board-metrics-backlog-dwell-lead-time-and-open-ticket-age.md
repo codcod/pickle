@@ -481,12 +481,18 @@ copy; each is caught:
 | mutation | caught by |
 |---|---|
 | revert F2 (open `lead_time` for every non-terminal ticket) | `TestTicketIntervals`, `TestTicketIntervalsEmitsOneOpenRowPerTicket`, `TestBoardMetricsOpenTableHasOneRowPerTicket` |
-| revert F1 wiring (`resolveMetricsAsOf` returns the raw instant) | `TestResolveMetricsAsOf` |
+| `resolveMetricsAsOf`'s **body** returns the raw instant | `TestResolveMetricsAsOf` |
 | `DateOf` computes from the **UTC** date instead of the local one | `TestDateOf`, `TestResolveMetricsAsOf` |
 
-The middle row is the one that matters procedurally: an earlier attempt at this fix put the F1
-regression test only on `DateOf` itself, and reverting the *call site* still passed the entire suite —
-the same shape of gap as the original defect. The seam exists so that mutation fails.
+> **Corrected 2026-08-28 by the scoped re-review (finding R1).** This table originally labelled the
+> middle row "revert F1 wiring", and the paragraph that followed claimed: *"an earlier attempt at this
+> fix put the F1 regression test only on `DateOf` itself, and reverting the call site still passed the
+> entire suite — the same shape of gap as the original defect. The seam exists so that mutation
+> fails."* **That was false.** The mutation actually run changed the *body* of `resolveMetricsAsOf`,
+> not the wiring; reverting the **call site** — restoring `asOf := time.Now()` inside
+> `runBoardMetrics`, leaving the seam defined and green — still passed the whole suite, so round 1
+> had moved the untested gap one function outward rather than closing it. The row is relabelled above
+> to say what was really tested, and the false paragraph is struck. Closed in round 2 below.
 
 **Docs and CHANGELOG** were corrected to match what now ships: the `lead_time` endpoint row states
 that the done-but-unmerged case is the only open `lead_time` row; the text-output section states one
@@ -549,6 +555,63 @@ verification script itself** — it stripped a line-leading `*` as a list bullet
 emphasis. Re-checked without that rule, the quote is verbatim. The protocol's "ignore layout, compare
 words and punctuation" is easy to over-apply in exactly this way, and doing so would have libelled a
 clean run.
+
+### Rework fix record — round 2 (commits 179a306..1a1ce1b)
+
+Scope was R1 and R2, the two blocking findings of the scoped re-review. Two commits on the same
+branch — `5041b9d` (the R1/R2 fix) and `1a1ce1b` (the two approved docs-readability edits, wording
+only) — so the next re-review reads `git diff 179a306..1a1ce1b`, the form the range takes as written.
+
+**R1 — fixed, and the reason the obvious fix does not work is worth recording.** The re-review's
+suggestion was "a test that invokes `board metrics` with no `--as-of` and asserts the result". That
+alone would **not** have closed this: the F1 defect only changes output when the local date and the
+instant's UTC date differ — for local times before the zone's UTC offset (east) or after 24h minus it
+(west) — and in a UTC test environment those never differ at any hour. A no-flag end-to-end test
+would therefore have passed against the defect on most CI machines and "covered" nothing, which is
+the third time this same blind spot has produced a green suite over a real bug.
+
+So the clock itself is now indirected, through an unexported `metricsNow = time.Now` in
+`internal/cli/board.go`, and `TestBoardMetricsDefaultPathUsesTheDateNotTheInstant` pins it to
+**20:30 in a UTC-11 zone** — already the next day in UTC — before invoking the command with no
+`--as-of`. The correct and the defective behaviours give different answers at that instant on any
+machine in any zone, so the guard is deterministic rather than environment-dependent. It asserts the
+printed `as_of` (`2026-08-27`, the local date, not the instant's UTC date), one hand-computed literal
+age (T-002: `2026-07-20` → `2026-08-27` = 38 days; reading the raw instant yields 39), and the
+self-consistency invariant across every open row.
+
+**R2 — fixed.** `TestDateOfKeepsAgesConsistentWithTheDateItReports` derived its expected value from
+`asOf` round-tripped through `Format`/`Parse` — the value under test — so it could only ever assert
+that `asOf` sat on the midnight-UTC grid. Replaced by
+`TestDateOfDrivesAgesFromTheLocalCalendarDate`, a table of four zones whose expected as-of date *and*
+expected age are **hand-computed literals** (e.g. Midway 2026-08-27 20:30 → as-of `2026-08-27`, age
+20 from a `2026-08-07` fixture). The misleading `// … computed independently.` comment went with it.
+Proof the tautology is gone: with `DateOf` mutated to add a day, the old test passed in isolation and
+the new one fails in isolation on both assertions.
+
+**Mutation results — the round-1 survivor now dies.** Each mutation applied to the tip and the two
+packages re-run:
+
+| mutation | round 1 | round 2 |
+|---|---|---|
+| revert F1 **at the call site** (verbatim pre-fix body) | 🔴 survived | ✅ caught — `TestBoardMetricsDefaultPathUsesTheDateNotTheInstant` |
+| `DateOf` identity (`return t`) | ✅ caught | ✅ caught |
+| `DateOf` via the **UTC** date | ✅ caught | ✅ caught |
+| `DateOf` off by one day | partly — R2's test passed in isolation | ✅ caught, including in isolation |
+| revert F2 | ✅ caught | ✅ caught |
+
+**Round 1's fix record has been corrected in place** rather than left standing: the mutation row that
+was mislabelled "revert F1 wiring" now says what it actually mutated, and the false claim that "the
+seam exists so that mutation fails" is struck with a dated note pointing at R1. The archive should
+not keep asserting a coverage property a single command falsifies.
+
+**Not touched:** R5 remains `noted`; R3 and R4 were already fixed inline in `179a306`; F3–F5 and
+F8–F10 from the first review are unchanged. No commit was rewritten — F11's missing `(T-126)` subject
+on `b53f8af` still awaits the publish-time tidy.
+
+The two in-scope docs-readability suggestions held at the re-review were approved by the user and
+applied in `1a1ce1b` — wording only, both verified verbatim against the files before being presented.
+`just build` · `just test` · `just lint` · `just docs-check` all clean; acceptance cases re-run green;
+`pickle board audit` 126 tickets, 0 errors, 0 warnings.
 
 ### Delegated claims not accepted as written (step 0's "verify before recording")
 
@@ -618,3 +681,4 @@ still be true after the rework round.
 - 2026-08-28 — IN REVIEW → REWORK: 2 blocking findings (F1 default-clock timezone off-by-one; F2 open table double-lists every open ticket)
 - 2026-08-28 — REWORK → IN REVIEW: findings fixed
 - 2026-08-28 — IN REVIEW → REWORK: scoped re-review: 2 blocking (R1 call-site mutation survives; R2 consistency test cannot fail)
+- 2026-08-28 — REWORK → IN REVIEW: round 2 findings fixed (R1 call-site guard, R2 tautological test)

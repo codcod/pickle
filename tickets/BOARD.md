@@ -20,10 +20,11 @@ Last updated: 2026-08-28
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-08-28
 
 | id | title | open findings |
 |---|---|---|
-| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | scoped re-review: 2 blocking (R1 call-site mutation survives; R2 consistency test cannot fail) |
 
 ## READY (impact order, per child)
 
