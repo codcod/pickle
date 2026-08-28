@@ -8,6 +8,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-28
+
 ### Added
 
 - **`pickle board metrics` reports backlog dwell, lead time and open-ticket age, mined from every
@@ -871,7 +873,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/codcod/pickle/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/codcod/pickle/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/codcod/pickle/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/codcod/pickle/compare/v0.10.0...v0.11.0
