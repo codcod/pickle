@@ -226,18 +226,6 @@ func renderDecisionsText(res decisions.Result) {
 
 const boardMetricsUsage = "usage: pickle board metrics [--project <child>] [--as-of YYYY-MM-DD] [--json]"
 
-// runBoardMetrics implements `pickle board metrics` (T-126): backlog dwell,
-// lead time and open-ticket age mined from every ticket's `## History`,
-// aggregated per child-project. Modeled directly on runBoardDecisions
-// (T-105): a leaf query package wrapped in the shared tree lock, a short
-// human table by default, `--json` for the versioned envelope.
-//
-// --as-of defaults to today, but is the one flag that makes a run's own
-// output depend on the clock rather than only the tree — pinning it, as the
-// acceptance test does, is what keeps two runs byte-identical (the property
-// `board state --json` established, T-065 decision 3, and the reason
-// internal/metrics.Compute takes a caller-supplied time rather than reading
-// one itself).
 // resolveMetricsAsOf turns the --as-of flag value and a wall-clock instant
 // into the report's reference date: the flag when given, otherwise today.
 //
@@ -259,6 +247,18 @@ func resolveMetricsAsOf(flagValue string, now time.Time) (time.Time, error) {
 	return d, nil
 }
 
+// runBoardMetrics implements `pickle board metrics` (T-126): backlog dwell,
+// lead time and open-ticket age mined from every ticket's `## History`,
+// aggregated per child-project. Modeled directly on runBoardDecisions
+// (T-105): a leaf query package wrapped in the shared tree lock, a short
+// human table by default, `--json` for the versioned envelope.
+//
+// --as-of defaults to today, but is the one flag that makes a run's own
+// output depend on the clock rather than only the tree — pinning it, as the
+// acceptance test does, is what keeps two runs byte-identical (the property
+// `board state --json` established, T-065 decision 3, and the reason
+// internal/metrics.Compute takes a caller-supplied time rather than reading
+// one itself).
 func runBoardMetrics(args []string) int {
 	fs := flag.NewFlagSet("board metrics", flag.ContinueOnError)
 	project := fs.String("project", "", "filter by registered child-project name")

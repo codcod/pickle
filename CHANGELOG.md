@@ -16,8 +16,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   timing (queue/build/review/rework durations). A `## History` line carries a date, not a time, so
   a metric bounded by two transitions inside one working session is structurally a column of zeros
   at that resolution. Only the backlog-side intervals, and how long what is still open has been
-  waiting, carry real signal at day granularity. The open-ticket table carries one row per open
-  ticket, and a ticket that cannot supply a needed endpoint is named in the output (`no_created`,
+  waiting, carry real signal at day granularity. The open-ticket table carries at most one row per
+  open ticket, and a ticket that cannot supply a needed endpoint is named in the output (`no_created`,
   `out_of_order`, `unparseable_date`) rather than being silently dropped or guessed at. Shipped in
   `internal/metrics` and `pickle board metrics` (T-126).
 
