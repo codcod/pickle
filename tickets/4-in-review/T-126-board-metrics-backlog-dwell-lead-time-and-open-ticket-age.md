@@ -427,6 +427,81 @@ Disposition summary: 2 blocking (F1, F2) → `5-rework/`; 9 non-blocking — 3 f
 cost: estimated S, actual M — provisional, pending the rework round; the implementation itself landed at S, but two blocking defects (an untested default clock path, and a duplicated flagship table) add a fix-and-re-review cycle the S estimate did not carry
 ```
 
+### Rework fix record — round 1 (commit 9e77eea)
+
+Scope was the two blocking findings and nothing else. One commit on the same branch; the tip before
+it was `4495250`, so the scoped re-review reads `git show 9e77eea` (equivalently
+`git diff 4495250..9e77eea`).
+
+**F1 — fixed.** `internal/metrics/metrics.go` gains `DateOf(t time.Time) time.Time`, which takes an
+instant's calendar date *in its own location* and re-expresses it as midnight UTC — so "today" means
+the day the user believes it is, while landing on the same midnight-UTC grid every parsed `## History`
+endpoint sits on. `internal/cli/board.go` no longer passes `time.Now()` anywhere near the metric.
+
+The flag-or-clock resolution also moved out of `runBoardMetrics` into a new pure
+`resolveMetricsAsOf(flagValue string, now time.Time)`. That is the substantive half of the fix: as
+three lines inline, the default branch depended on the process clock *and* on `time.Local`, which Go
+caches at first use, so no test could reach it — which is exactly why the defect shipped. As a pure
+function of `(flag, instant)` both branches are testable from zones the test machine is not in.
+
+A live sweep confirms self-consistency in every zone tried — the printed `as_of` and the ages beneath
+it agree (run at 13:48 UTC):
+
+| `TZ` | printed `as_of` | ages self-consistent with it |
+|---|---|---|
+| `UTC` | 2026-08-28 | yes |
+| `Europe/Warsaw` (+2) | 2026-08-28 | yes |
+| `Pacific/Midway` (−11) | 2026-08-28 | yes |
+| `Pacific/Kiritimati` (+14) | 2026-08-29 | yes |
+
+Kiritimati reporting the 29th is correct, not a residual defect: it *is* the 29th there, and the ages
+match that date.
+
+**What that sweep does and does not prove — stated precisely, because it is weaker than it looks.**
+The defect was *hour-dependent*, so a live sweep only catches it during the window when the local
+date and the UTC date disagree. At 13:48 UTC, Midway is on 2026-08-28 02:48 — inside the same
+calendar day as UTC — so the **pre-fix** code would have looked self-consistent in this sweep too.
+The earlier review-time observation (`TZ=Pacific/Midway` printing `as_of=2026-08-27` while computing
+ages against the 28th) was taken before 11:00 UTC, when Midway was still on the 27th and the two
+dates genuinely diverged. So the sweep above is a sanity check, not the proof; the **deterministic**
+proof is `TestResolveMetricsAsOf` and `TestDateOf`, which state the instant and the location
+explicitly instead of depending on when the suite happens to run, plus the mutation checks below.
+
+**F2 — fixed.** An open `lead_time` row is now emitted only for a ticket that has reached the flow's
+done state without a merge line — decision 7's literal case, and the only one `open_age` does not
+cover (a done ticket is terminal, so it has no `open_age`). Every other unmerged ticket gets no
+lead-time row, because for a non-terminal ticket the open lead time is `asOf - created`: the same two
+endpoints `open_age` already reports. Live: the open table went from 14 rows for 7 tickets to **7 rows
+for 7 tickets**, one per ticket. The duplicated data-quality lines F2's suggestion column also named
+fell out with it — `--as-of 2026-07-01` now prints 7 issue lines, not 14.
+
+**Regression tests, mutation-checked.** Three mutations were run against the fixed tree in a scratch
+copy; each is caught:
+
+| mutation | caught by |
+|---|---|
+| revert F2 (open `lead_time` for every non-terminal ticket) | `TestTicketIntervals`, `TestTicketIntervalsEmitsOneOpenRowPerTicket`, `TestBoardMetricsOpenTableHasOneRowPerTicket` |
+| revert F1 wiring (`resolveMetricsAsOf` returns the raw instant) | `TestResolveMetricsAsOf` |
+| `DateOf` computes from the **UTC** date instead of the local one | `TestDateOf`, `TestResolveMetricsAsOf` |
+
+The middle row is the one that matters procedurally: an earlier attempt at this fix put the F1
+regression test only on `DateOf` itself, and reverting the *call site* still passed the entire suite —
+the same shape of gap as the original defect. The seam exists so that mutation fails.
+
+**Docs and CHANGELOG** were corrected to match what now ships: the `lead_time` endpoint row states
+that the done-but-unmerged case is the only open `lead_time` row; the text-output section states one
+row per open ticket and that issue lines are per *interval*, not per ticket (F2's own suggestion
+column flagged that sentence). The one in-scope docs-readability suggestion from step 4b — splitting
+this branch's `CHANGELOG.md` sentence — was approved by the user and applied in the same commit.
+
+**Not touched:** F3–F5 and F8–F10 remain `noted` as recorded. Nothing outside the two blocking
+findings was changed, and no commit was rewritten — the `(T-126)` subject suffix missing from
+`b53f8af` (F11) is still pending the publish-time tidy, where it belongs.
+
+Acceptance test re-run verbatim after the fix: all 8 cases pass, plus the newly-documented exit-`2`
+path. `just build` · `just test` · `just lint` · `just docs-check` all clean. `pickle board audit`:
+126 tickets, 0 errors, 0 warnings.
+
 ### Delegated claims not accepted as written (step 0's "verify before recording")
 
 Two of the three delegated audits disagreed on F2's severity — the implementation audit called the
@@ -493,3 +568,4 @@ still be true after the rework round.
   its Expected line amended to match; decision 9 amended in place with the correction quoted
 - 2026-08-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-28 — IN REVIEW → REWORK: 2 blocking findings (F1 default-clock timezone off-by-one; F2 open table double-lists every open ticket)
+- 2026-08-28 — REWORK → IN REVIEW: findings fixed
