@@ -1284,3 +1284,39 @@ check` all clean, and both reproductions from the review (`feat/T-001-demo` refu
 The mechanical-check proposal above (compare a ticket's branch tip against its Review section
 before reporting a push, or as a `board audit` check) is unaffected by this closing — still not
 filed, for the same reason.
+
+## T-126 refinement (2026-08-28) — a rejected-outright entry overridden, and two thirds of the ticket cut by its own measurement
+
+T-126 (a cycle-time report over `## History`) was filed from chat on 2026-08-27 and refined the
+next day. Recorded here because refinement did two things the board alone will not show.
+
+**It overrides § *"Rejected outright, so they are not re-proposed"*.** That section lists "a
+metrics command, a retro command, or a dashboard", on the reasoning "build T-065 and let the
+queries be ad-hoc". The override is by human direction, exactly as T-105's was — the second time
+that section has been overridden, both times deliberately, both times recorded. The section is not
+amended: it still states the default, and these are the two exceptions to it.
+
+**But the rejection's own reasoning is what cut the ticket in half, so the entry earned its keep.**
+Refinement measured all 453 adjacent History intervals across the 126 tickets in this tree:
+**90% are zero days**, and every in-flight interval — queue, build, review, rework, done→merged —
+has median 0 and max 1. A `## History` line carries a date and no time, so any metric bounded by
+two transitions inside one working session is structurally a column of zeros. The time-in-status
+half of the ticket was therefore **cut, not deferred**: reviving it needs clock times in History,
+which is a different ticket with a much larger argument to win.
+
+What survived is the third of the filing where the resolution is coarser than the phenomenon
+*and* the phenomenon is still visible: **backlog dwell** (n=119, p50 1, p90 12, max 30),
+**lead time** (n=91, p50 1, p90 12, max 32), and **open-ticket age** (7 open, oldest 21 days). All
+three are backlog-side. The pattern worth carrying forward: on a corpus this fast, day-resolution
+metrics can only see the waiting, never the working.
+
+**Two secondary findings, both now decisions in the plan.** The corpus contains genuine
+data-quality cases — two tickets (T-111, T-123) have out-of-order History dates — so the command
+reports per-ticket data-quality issues rather than imputing or clamping them. And open age is the
+one metric needing a clock, which is why `--as-of` exists: pinning it makes the whole report a pure
+function of the tree, preserving the byte-identical property `board state --json` established.
+
+**Pre-registered criterion, in the T-045 style.** This command is a bet that the backlog-side
+numbers change a decision. If, three months after it ships, no refinement, drop or re-grade cites
+a number it produced, remove the command rather than extending it — and do not re-open the
+time-in-status half on the grounds that "the metrics we have are not the useful ones".
