@@ -746,3 +746,13 @@ still be true after the rework round.
 - 2026-08-28 — IN REVIEW → REWORK: scoped re-review: 2 blocking (R1 call-site mutation survives; R2 consistency test cannot fail)
 - 2026-08-28 — REWORK → IN REVIEW: round 2 findings fixed (R1 call-site guard, R2 tautological test)
 - 2026-08-28 — IN REVIEW → DONE: review passed: 0 blocking, 5 fixed inline; F1/F2/R1/R2 all closed and mutation-verified
+- 2026-08-28 — published, user-approved: `origin main` pushed first (the in-tree precondition —
+  `origin/main...HEAD` verified to carry no `tickets/` path afterwards), then
+  `feat/T-126-board-metrics` pushed and PR #81 opened against `main`, 9 commits, history kept rather
+  than squashed (root-path default). The pushed tip is `f428608`, the same commit this ticket's
+  `## Review` certifies — checked explicitly rather than assumed, per `NOTES.md` § "T-109 partial
+  merge (2026-08-18)". Not merged: merging is the human's. F11 (commit `b53f8af` carrying no
+  `(T-126)` subject suffix) was deliberately **not** fixed at tidy time, reversing its original
+  disposition: the rebase would rewrite 8 SHAs, 7 of which this ticket's rework fix records cite,
+  and the blemish is cosmetic — the other 8 commits carry the id, so changelog attribution is
+  unaffected
