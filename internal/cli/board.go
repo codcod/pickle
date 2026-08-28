@@ -226,6 +226,23 @@ func renderDecisionsText(res decisions.Result) {
 
 const boardMetricsUsage = "usage: pickle board metrics [--project <child>] [--as-of YYYY-MM-DD] [--json]"
 
+// metricsNow is time.Now, indirected so a test can pin the clock the default
+// (no --as-of) path reads.
+//
+// This exists because a plain end-to-end test of that path provably cannot
+// guard it (T-126 review, R1). The F1 defect — a raw local instant used where
+// a midnight-UTC date belongs — only changes the output when the local date
+// and the instant's UTC date differ, i.e. for local times before the zone's
+// UTC offset (east of UTC) or after 24h minus it (west). In a UTC test
+// environment the two agree at every hour, so a test that merely ran the
+// command with no flag would pass against the defect and "cover" nothing.
+// Pinning the clock to an instant chosen to straddle that boundary is what
+// makes the guard deterministic on any machine, in any zone.
+//
+// Kept unexported and restored via defer by its one test; nothing else in the
+// package reads it.
+var metricsNow = time.Now
+
 // resolveMetricsAsOf turns the --as-of flag value and a wall-clock instant
 // into the report's reference date: the flag when given, otherwise today.
 //
@@ -272,7 +289,7 @@ func runBoardMetrics(args []string) int {
 		return exitUsage
 	}
 
-	asOf, err := resolveMetricsAsOf(*asOfFlag, time.Now())
+	asOf, err := resolveMetricsAsOf(*asOfFlag, metricsNow())
 	if err != nil {
 		return errf("board metrics: %v", err)
 	}

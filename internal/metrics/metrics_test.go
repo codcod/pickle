@@ -361,48 +361,70 @@ func TestDateOf(t *testing.T) {
 	}
 }
 
-// TestDateOfKeepsAgesConsistentWithTheDateItReports is the invariant F1
-// actually broke, asserted end-to-end over TicketIntervals rather than over
-// the helper: the age reported for a ticket must be exactly the difference
-// between the as-of date the report prints and the ticket's created date, in
-// every zone. Before the fix, a UTC-11 evening instant produced an age one
-// day larger than its own printed as-of date implied.
-func TestDateOfKeepsAgesConsistentWithTheDateItReports(t *testing.T) {
+// TestDateOfDrivesAgesFromTheLocalCalendarDate composes DateOf with
+// TicketIntervals and checks the resulting age against a **literal** expected
+// value per case — hand-computed from the fixture's created date and the
+// calendar date a user in that zone is standing in.
+//
+// The literals are the point (T-126 re-review, R2). This test previously
+// derived its own expectation by re-running the implementation's arithmetic on
+// the value under test, which made it near-tautological: it passed with DateOf
+// mutated to return the UTC date, and passed again with DateOf mutated to add a
+// whole day, while claiming in a comment to compute the expectation
+// independently. An expected value that comes from the thing being tested
+// cannot falsify it.
+func TestDateOfDrivesAgesFromTheLocalCalendarDate(t *testing.T) {
 	def := flow.ForName("brine")
-	for _, zone := range []string{"UTC", "Europe/Warsaw", "Pacific/Midway", "Pacific/Kiritimati"} {
-		loc, err := time.LoadLocation(zone)
-		if err != nil {
-			t.Skipf("zoneinfo for %s unavailable: %v", zone, err)
-		}
-		for _, hour := range []int{0, 6, 12, 18, 23} {
-			now := time.Date(2026, time.August, 28, hour, 30, 0, 0, loc)
-			asOf := DateOf(now)
+	const createdOn = "2026-08-07"
+
+	cases := []struct {
+		zone string
+		// wall-clock reading in that zone
+		y         int
+		mo        time.Month
+		d, h, min int
+		wantAsOf  string // the calendar date a user there calls "today"
+		wantDays  int    // hand-computed from createdOn to wantAsOf
+	}{
+		{"UTC", 2026, time.August, 28, 12, 0, "2026-08-28", 21},
+		// East of UTC, just after local midnight: the instant is still 2026-08-27
+		// in UTC, so reading it raw gave 20. "Today" is the 28th and the age is 21.
+		{"Europe/Warsaw", 2026, time.August, 28, 0, 30, "2026-08-28", 21},
+		// West of UTC, late evening: the instant is already 2026-08-28 in UTC, so
+		// reading it raw gave 21. "Today" is the 27th and the age is 20.
+		{"Pacific/Midway", 2026, time.August, 27, 20, 30, "2026-08-27", 20},
+		// Far east of the dateline: genuinely the 29th there.
+		{"Pacific/Kiritimati", 2026, time.August, 29, 1, 0, "2026-08-29", 22},
+	}
+
+	for _, c := range cases {
+		t.Run(c.zone, func(t *testing.T) {
+			loc, err := time.LoadLocation(c.zone)
+			if err != nil {
+				t.Skipf("zoneinfo for %s unavailable: %v", c.zone, err)
+			}
+			asOf := DateOf(time.Date(c.y, c.mo, c.d, c.h, c.min, 0, 0, loc))
+
+			if got := asOf.Format(dateLayout); got != c.wantAsOf {
+				t.Errorf("as-of = %s, want %s", got, c.wantAsOf)
+			}
 
 			tk := &ticket.Ticket{
 				ID:    "T-900",
 				Dir:   "1-to-do",
 				Front: map[string]string{"project": "pickle"},
-				Text:  "## History\n\n- 2026-08-07 — created (TO DO). source: chat: fixture\n",
+				Text:  "## History\n\n- " + createdOn + " — created (TO DO). source: chat: fixture\n",
 			}
 			ivs, _ := TicketIntervals(def, tk, statusFor(t, def, "1-to-do"), asOf)
 			age := findMetric(ivs, MetricOpenAge)
 			if age == nil {
-				t.Fatalf("%s %02d:30: no open_age interval", zone, hour)
+				t.Fatalf("no open_age interval")
 			}
-
-			// What the printed as-of date itself implies, computed independently.
-			reported, err := time.Parse(dateLayout, asOf.Format(dateLayout))
-			if err != nil {
-				t.Fatal(err)
+			if age.Days != c.wantDays {
+				t.Errorf("open_age = %d days, want %d (%s to %s)",
+					age.Days, c.wantDays, createdOn, c.wantAsOf)
 			}
-			created, _ := time.Parse(dateLayout, "2026-08-07")
-			want := int(reported.Sub(created) / (24 * time.Hour))
-
-			if age.Days != want {
-				t.Errorf("%s %02d:30: open_age = %d days, but the report's own as_of %s implies %d",
-					zone, hour, age.Days, asOf.Format(dateLayout), want)
-			}
-		}
+		})
 	}
 }
 

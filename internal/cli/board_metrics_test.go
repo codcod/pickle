@@ -223,6 +223,94 @@ func TestResolveMetricsAsOf(t *testing.T) {
 	})
 }
 
+// TestBoardMetricsDefaultPathUsesTheDateNotTheInstant is R1's regression test
+// (T-126 re-review): it guards the *call site*, which is what actually shipped
+// wrong in F1 and what round 1's fix left uncovered. Reverting
+// runBoardMetrics to `asOf := metricsNow()` — the verbatim pre-fix body —
+// passed the entire suite before this test existed.
+//
+// The clock is pinned rather than read, for the reason metricsNow's own doc
+// gives: the defect is invisible whenever the local date and the instant's UTC
+// date agree, which in a UTC test environment is always. The instant below is
+// chosen so they disagree — 20:30 in a UTC-11 zone is already the next day in
+// UTC — so the fixed and the defective behaviours give different answers on
+// every machine.
+func TestBoardMetricsDefaultPathUsesTheDateNotTheInstant(t *testing.T) {
+	boardMetricsSandbox(t)
+
+	midway, err := time.LoadLocation("Pacific/Midway") // UTC-11
+	if err != nil {
+		t.Skipf("zoneinfo unavailable: %v", err)
+	}
+	// 2026-08-27 20:30 in Midway == 2026-08-28 07:30 UTC. "Today" is the 27th.
+	pinned := time.Date(2026, time.August, 27, 20, 30, 0, 0, midway)
+
+	orig := metricsNow
+	metricsNow = func() time.Time { return pinned }
+	defer func() { metricsNow = orig }()
+
+	var doc struct {
+		AsOf      string `json:"as_of"`
+		Intervals []struct {
+			TicketID string `json:"ticket_id"`
+			Metric   string `json:"metric"`
+			Days     int    `json:"days"`
+			Start    string `json:"start"`
+		} `json:"intervals"`
+	}
+	out := captureStdout(t, func() {
+		// No --as-of: this is the path users get by typing the command.
+		if got := Run(nil, "test", []string{"board", "metrics", "--json"}); got != exitOK {
+			t.Fatalf("= %d, want %d", got, exitOK)
+		}
+	})
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+
+	// The date the user is standing in, not the instant's UTC date (the 28th).
+	if doc.AsOf != "2026-08-27" {
+		t.Errorf("as_of = %q, want \"2026-08-27\" (the local calendar date)", doc.AsOf)
+	}
+
+	// T-002 is created 2026-07-20 in the sandbox. 2026-07-20 -> 2026-08-27 is
+	// 38 days, computed here from the fixture's own literal dates rather than
+	// from anything the implementation returns. Reading the raw instant instead
+	// yields 39, which is exactly the defect.
+	var found bool
+	for _, iv := range doc.Intervals {
+		if iv.TicketID == "T-002" && iv.Metric == "open_age" {
+			found = true
+			if iv.Days != 38 {
+				t.Errorf("T-002 open_age = %d days, want 38 (2026-07-20 to 2026-08-27)", iv.Days)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no open_age interval for T-002 in:\n%s", out)
+	}
+
+	// And the whole report agrees with the date it prints — the invariant F1
+	// broke, asserted over every open row rather than one.
+	asOf, err := time.Parse("2006-01-02", doc.AsOf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, iv := range doc.Intervals {
+		if iv.Metric != "open_age" {
+			continue
+		}
+		start, err := time.Parse("2006-01-02", iv.Start)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := int(asOf.Sub(start) / (24 * time.Hour)); iv.Days != want {
+			t.Errorf("%s open_age = %d, but the report's own as_of %s implies %d",
+				iv.TicketID, iv.Days, doc.AsOf, want)
+		}
+	}
+}
+
 // TestBoardMetricsOpenTableHasOneRowPerTicket is F2's regression test at the
 // CLI surface (T-126 review). The defect was visible precisely here: the open
 // table listed every open ticket twice with an identical AGE, because a
