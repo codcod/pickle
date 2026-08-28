@@ -1246,11 +1246,11 @@ Backlog-side durations do not have that problem: a ticket can sit in the
 backlog, or stay open, for many days, so `created` → first departure,
 `created` → merge, and `created` → today all carry real signal at day
 resolution even where a same-day build/review/rework cycle would not. That is
-why this command reports exactly those three and no per-status timing table
-— a workspace that moves more slowly, over weeks rather than hours, may find
-more signal in the gaps between statuses than this one measured; nothing
-about the endpoints below prevents computing that separately from this
-command's own `## History` reader (<<cmd-board-state>>).
+why this command reports exactly those three and no per-status timing table.
+A workspace that moves more slowly — over weeks rather than hours — may well
+find signal in the gaps between statuses; nothing about the endpoints below
+prevents computing that separately from the same parsed `## History` that
+<<cmd-board-state>> already exposes.
 
 [cols="1,3"]
 |===
@@ -1264,7 +1264,8 @@ command's own `## History` reader (<<cmd-board-state>>).
   *first* wait; re-entry is not modelled.
 
 | `lead_time`
-| `created` to the newest `merged to …` History line. A ticket sitting in a
+| `created` to the newest merge line — `merged to …`, or the legacy
+  `MERGED: …` form an upgraded tree may still carry. A ticket sitting in a
   terminal state that is not the flow's "done" state (brine: `DROPPED`) is
   excluded entirely — nothing will ever merge it, so it is absent, not zero.
   A ticket that has reached "done" but has no merge line yet is *not*
@@ -1304,7 +1305,7 @@ file on its own.
 === Aggregates: n/min/p50/p90/max, never a mean
 
 Each metric is aggregated per child-project (plus a synthetic `all` row when
-more than one child is registered) as `n`, `min`, the 50th and 90th
+more than one child is registered and `--project` is not set) as `n`, `min`, the 50th and 90th
 percentiles, and `max` — never a mean. A zero-heavy, day-resolution sample is
 not the place for a statistic that implies more precision than the
 underlying dates carry. Percentiles use the *nearest-rank* method on the
@@ -1356,11 +1357,14 @@ zero and never guessed at.
 
 === The `--json` envelope
 
-This command's own small envelope, versioned independently of
-`pickle board state --json`'s `schema` and `pickle board decisions`'s
-(T-105 decision 13's pattern, applied a second time): `{schema,
+This command's own small envelope, versioned independently of both
+`pickle board state --json`'s `schema` and `pickle board decisions`'s — the
+three evolve on separate schedules: `{schema,
 pickle_version, as_of, resolution, filters, aggregates, intervals, issues}`.
-`resolution` is always `"days"`. `filters` echoes back `--project`/`--as-of`.
+`resolution` is always `"days"`. `filters` records the query the document was
+built from: `project` as given, and `as_of` as the *effective* date — so with
+the flag omitted it carries today's date rather than an empty string, and it
+always matches the top-level `as_of`.
 `aggregates` is `{metric, project, n, min, p50, p90, max}`. `intervals` is
 `{ticket_id, prefix, num, project, status, dir, metric, days, start, end,
 open}` (`end` omitted while `open` is true). `issues` is `{ticket_id, kind,
@@ -1369,7 +1373,8 @@ detail}`. Every array marshals as `[]`, never `null`, when empty.
 === Exit codes
 
 An **unregistered** `--project` and a **malformed** `--as-of` are each an
-error (exit `1`). An empty tree, or a filter combination that matches
+error (exit `1`). An unknown flag or a stray positional argument is a usage
+error (exit `2`). An empty tree, or a filter combination that matches
 nothing, is exit `0` — the summary line prints `0 ticket(s), 0 open` rather
 than failing.
 
