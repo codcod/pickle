@@ -502,6 +502,54 @@ Acceptance test re-run verbatim after the fix: all 8 cases pass, plus the newly-
 path. `just build` · `just test` · `just lint` · `just docs-check` all clean. `pickle board audit`:
 126 tickets, 0 errors, 0 warnings.
 
+### Scoped re-review — round 1's fix (2026-08-28)
+
+Scope per `review-protocol.md` §1: the two blocking findings, **plus the diff that closed them**
+(`git show 9e77eea`), the latter read as new work. Not a re-audit of the feature. Independence:
+**delegated** again — the reviewing agent wrote the fix in this same session — to a fresh adversarial
+sub-agent, with every finding re-verified by hand before recording here.
+
+**F1 and F2 are closed in shipped behaviour.** Verified independently, and more thoroughly than
+round 1 managed: a 7-zone sweep including non-hour offsets neither the fix nor its record thought to
+try (`Asia/Kathmandu` +5:45, `Pacific/Chatham` +12:45) found the printed `as_of` and every age
+beneath it consistent in all 7. `DateOf` is DST-safe by construction — the output location is
+hard-wired `time.UTC`, and local midnight is never constructed, so the "midnight does not exist /
+happens twice" cases cannot arise. F2 was exercised against a fixture carrying a ticket in **each of
+the seven status directories** plus done+merged, dropped+merged, created-in-the-future, and
+`--as-of == created`: exactly one open row per open ticket in every case, `0` present rather than
+absent for the same-day case, and no `lead_time` at all for a dropped ticket.
+
+**But F1 is not closed as a *finding*, because the coverage its own remediation required still does
+not exist** — R1 and R2 below. Nine of ten mutations are killed, including all five this reviewer
+named; the tenth is the one that matters.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | blocking | test-gap | — | **Reverting F1 at the call site still passes the whole suite.** Restoring the verbatim pre-fix body of `runBoardMetrics` (`asOf := time.Now()` plus the inline parse), leaving `resolveMetricsAsOf` defined and green, re-ships the entire F1 defect with `just test` clean. `TestResolveMetricsAsOf` tests the *seam*; nothing asserts `runBoardMetrics` actually **uses** it. No test in the tree invokes `board metrics` without `--as-of` and asserts its output — the 11 no-flag invocations are error/usage cases asserting exit codes only. This is the identical shape of gap as the original F1, relocated one function outward. It also **falsifies this ticket's own fix record**, which claims "the seam exists so that mutation fails" and lists a mutation row labelled "revert F1 wiring" that in fact mutates the function *body*. F1's own suggestion column required "a test that exercises the **default** path — the gap that hid this"; that requirement is unmet. | reproduced by hand: pre-fix body restored on top of `179a306` → `ok internal/cli`, `ok internal/metrics` | Add a test that invokes `board metrics` with **no** `--as-of` and asserts the result — e.g. `as_of` equals `metrics.DateOf(time.Now())`, and every `open_age` equals `as_of - created`. Then correct the fix record's claim and relabel the mislabelled mutation row |
+| R2 | blocking | test-gap | — | **`TestDateOfKeepsAgesConsistentWithTheDateItReports` cannot detect a wrong date**, and its comment says it can. `want` is derived from `asOf` round-tripped through `Format`/`Parse` — the value under test — so it asserts only that `asOf` sits on the midnight-UTC grid, which `TestDateOf`'s explicit `Location()`/`Clock()` assertions already state directly. Verified: with `DateOf` mutated to `+1 day`, the test **passes in isolation**. The inline comment `// What the printed as-of date itself implies, computed independently.` is false — it is not computed independently. Recorded blocking alongside R1 not because behaviour is wrong, but because F1 cannot be certified closed while the one check that looks like an end-to-end guard cannot fail. | mutated `DateOf` to `d+1`, ran that test alone → `ok internal/metrics` | Derive the expected age from a source independent of `DateOf` (a literal, or the fixture's own dates), or delete the test as subsumed by `TestDateOf` + R1's new default-path test — and fix or remove the comment either way |
+| R3 | non-blocking | docs-gap | fixed inline | The rework commit inserted `resolveMetricsAsOf`'s comment block directly against `runBoardMetrics`'s existing one with no blank line, so Go attached the merged block to the new function: `runBoardMetrics` lost its godoc entirely, and `resolveMetricsAsOf`'s godoc opened with "runBoardMetrics implements…". Introduced by `9e77eea`; `gofmt` and `vet` do not catch it. | `go doc -all -u ./internal/cli` before the fix | Each comment moved back to its own function; verified with `go doc`. Fixed in `179a306` |
+| R4 | non-blocking | docs-gap | fixed inline | Two claims shipped looser than the code. The manual said any unmerged ticket that has not reached "done" has its open lead time "reported once, there" in `open_age` — but a ticket in a non-"done" **terminal** state (`DROPPED`) is reported by neither, correctly, since nothing is still running. And "one row per open ticket" is absolute in both the manual and `CHANGELOG.md`, while a ticket whose endpoints are unusable contributes an issue line and **zero** rows (verified: `--as-of 2026-07-01` → 7 issue lines, 0 open rows, "0 open"). `metrics.go`'s own comment scoped this correctly; the prose dropped the qualifier. | `docs/user-manual/cli-reference.adoc` `lead_time` row and text-output section; `CHANGELOG.md` | Both qualified ("a **non-terminal** unmerged ticket…", "**at most one** row per open ticket"). Fixed in `179a306` |
+| R5 | non-blocking | design | noted | F2's fix rests on "a done ticket is terminal, so `open_age` does not cover it" — an invariant `flow.New` does not enforce. It validates that `Initial` and `Pickup` are non-terminal but places **no** `Terminal` requirement on `DependencySatisfied`, so a user-authored flow (T-081's direction) with a non-terminal "done" state would re-create F2's duplication exactly. Latent only: brine ships as the sole flow, and its `6-done` is terminal. | `internal/flow/flow.go` — `Initial`/`Pickup` terminal checks present, `DependencySatisfied` has none | Either assert the invariant where F2's fix depends on it, or add the validation to `flow.New` when a second flow becomes loadable. Not this ticket's to fix — recorded with evidence so it is citable |
+
+Disposition summary: 2 blocking (R1, R2) → `5-rework/` for round 2; 3 non-blocking — 2 fixed inline (R3, R4) in `179a306`, 1 noted (R5), 0 folded, 0 new tickets.
+
+**Round-1 fix-record claims, audited.** "14 rows → 7 rows", "7 issue lines, not 14", the timezone
+table, mutation rows 1 and 3, acceptance cases 1–8 green, and "nothing outside the two blocking
+findings changed" were each independently reproduced and hold. The caveat paragraph about what the
+live sweep does *not* prove was confirmed accurate. **One claim is false and is the substance of
+R1**: "the seam exists so that mutation fails."
+
+**Docs-readability, round 2 (step 4b).** Re-run over both files this round changed: 7 suggestions,
+**all 7 verified verbatim, 0 discarded as fabricated**. 5 target prose this branch never touched. The
+2 in-scope suggestions (splitting the "Backlog-side durations" sentence in the manual, and
+"is structurally a column of zeros" → "produces a column of zeros" in `CHANGELOG.md`) are held for
+the user's approval and not applied. Recorded because it nearly went wrong: the reviewer's first
+verification pass reported one suggestion as fabricated, which was a **false negative in the
+verification script itself** — it stripped a line-leading `*` as a list bullet when the `*` was
+emphasis. Re-checked without that rule, the quote is verbatim. The protocol's "ignore layout, compare
+words and punctuation" is easy to over-apply in exactly this way, and doing so would have libelled a
+clean run.
+
 ### Delegated claims not accepted as written (step 0's "verify before recording")
 
 Two of the three delegated audits disagreed on F2's severity — the implementation audit called the
@@ -569,3 +617,4 @@ still be true after the rework round.
 - 2026-08-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-08-28 — IN REVIEW → REWORK: 2 blocking findings (F1 default-clock timezone off-by-one; F2 open table double-lists every open ticket)
 - 2026-08-28 — REWORK → IN REVIEW: findings fixed
+- 2026-08-28 — IN REVIEW → REWORK: scoped re-review: 2 blocking (R1 call-site mutation survives; R2 consistency test cannot fail)
