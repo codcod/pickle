@@ -20,11 +20,10 @@ Last updated: 2026-08-28
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-08-28
 
 | id | title | open findings |
 |---|---|---|
+| T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | 2 blocking findings (F1 default-clock timezone off-by-one; F2 open table double-lists every open ticket) |
 
 ## READY (impact order, per child)
 

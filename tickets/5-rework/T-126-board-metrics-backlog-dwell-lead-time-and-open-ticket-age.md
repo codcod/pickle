@@ -358,7 +358,104 @@ than during it).
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+Reviewed 2026-08-28 against `feat/T-126-board-metrics` (3 commits, `03b78fc..1d39267`, plus one
+`fixed inline` docs commit made during this review, `4495250`), following
+`resources/review-protocol.md`. No overarching or per-child review addendum is configured in
+`pickle.toml`, so the generic protocol is the whole standard.
+
+- [x] Reviewer independence settled (step 0) — **delegated**. The reviewing agent authored this
+      branch in the same session, so the audits (steps 2–4a) were delegated to three independent
+      sub-agents, spawned fresh and briefed adversarially: an implementation audit, a quality audit
+      (with mutation testing), and a consistency + documentation audit. Severity, class,
+      disposition and the moves stayed with the orchestrating reviewer. Every delegated finding was
+      re-verified by hand before entering the table below — delegation buys independence, not
+      accuracy; two delegated claims were **downgraded** on that re-verification (see *Delegated
+      claims not accepted as written*).
+- [x] Implementation audit — acceptance test re-run verbatim, tasks & criteria verified (step 2)
+- [x] Quality audit (step 3) — including a mutation-testing pass in a scratch copy
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass on the changed `.adoc`/`.md` files (step 4b) — run via the session's
+      `docs_readability` reviewer over `docs/user-manual/cli-reference.adoc` and `CHANGELOG.md`;
+      9 suggestions returned, **all 9 verified verbatim against the files, 0 discarded as
+      fabricated**. 8 of the 9 target prose this branch never touched (the lock intro's
+      `install` sentence, `cmd-install`'s `--agent` block, `cmd-ticket-new`, `cmd-board-state`'s
+      review-field caveat, `cmd-board-decisions`' flag table, and three older `CHANGELOG.md`
+      entries) and are therefore out of this ticket's scope. The 1 in-scope suggestion (splitting
+      this branch's own `CHANGELOG.md` sentence in three) is held for the user's approval and is
+      not applied here — readability polish, never a finding.
+- [x] Findings recorded with severity, class and disposition; disposition summary + cost line below
+      (step 5)
+- [x] Ticket moved to `5-rework/`; `## History` appended (step 6a)
+- [x] Other references updated; governing documents checked (step 7)
+- [x] Remaining-tickets impact sweep done (step 8) — see below
+- [ ] Summary + commit messages presented for approval (step 9) — **not reached**: two blocking
+      findings send this to rework before anything is published
+
+### Verification
+
+| what | result |
+|---|---|
+| `just build` · `just test` · `just lint` · `just docs-check` | all clean (`go vet`, `gofmt -l` empty, snowball check green) |
+| Acceptance cases 1–8, re-run verbatim | all 8 behave as the plan's *Expected* paragraph states |
+| Refinement cross-check (the plan's ±0 step) | independently reproduced: `backlog_dwell` n=120/p50=1/p90=11/max=30, `lead_time` n=91/p50=1/p90=12/max=32. The plan's recorded `n=119`/`p90=12` is **corpus drift**, not a parser bug — T-126 itself departed TO DO on 2026-08-28, after the refinement measurement, adding one low dwell sample. Verified by an independent reimplementation over the same tree |
+| Confirmed decisions 1, 2, 5, 6, 7, 9, 10, 11, 13, 14 | honoured. Decision 5 verified mechanically: no `regexp` import and no `T-\d+` pattern anywhere in the new code. Decision 10 verified exhaustively: `ceil(q·n)` matches exact integer arithmetic for all n ≤ 100000 |
+| Confirmed decision 3 ("never render a fractional day") | **violated in substance on the default path** — see F1 |
+| Confirmed decision 8 ("`--as-of` defaults to today's local *date*") | **not honoured** — the code uses a local *instant*; see F1 |
+| Confirmed decision 4 (endpoint via the initial state) | approximated; `def.Initial()` is never called — see F8 |
+| `pickle board audit` | 126 tickets, 0 errors, 0 warnings |
+
+### Findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | correctness | — | The default run (no `--as-of`) computes ages against a local wall-clock **instant** while every `created` parses to **UTC midnight**, so `Sub/24h` truncation straddles the zone boundary: the report's own printed `as_of` and the ages it prints can disagree by a day, and the same tree yields different numbers at different hours. Decision 8 says "today's local **date**"; the code takes `time.Now()`. Structurally untested — every test pins `--as-of`, which lands on UTC midnight, so the only uncovered path is the one a user gets by typing the command with no flags. | `internal/cli/board.go:254` `asOf := time.Now()` vs `internal/metrics/metrics.go:151` `time.Parse`. Reproduced live: `TZ=Pacific/Midway ./pickle board metrics --json` prints `as_of=2026-08-27` with `T-075 open_age=21`, while the authoritative `--as-of 2026-08-27` gives `20` | Truncate to a date before use: `n := time.Now(); asOf = time.Date(n.Year(), n.Month(), n.Day(), 0,0,0,0, time.UTC)`. Add a test that exercises the **default** path under at least one non-UTC `TZ` — the gap that hid this |
+| F2 | blocking | correctness | — | The open table lists **every open ticket twice with the same number**. An open `lead_time` row is emitted for *every* non-terminal unmerged ticket, where it equals `open_age` by construction, so the command's flagship human surface — the "what is rotting" table the ticket's own `## Outcome` promises — is doubled with zero added information. Both the manual and the code comment assert this row means the rare done-but-unmerged case, which is false. | `internal/metrics/metrics.go:213-232`: `willNeverMerge` is false for every non-terminal state, so `mergedDate == ""` → `addOpen(MetricLeadTime, …)`, then `addOpen(MetricOpenAge, …)` with identical `Days`. Measured: **7 of 7** open tickets duplicated. False prose at `docs/user-manual/cli-reference.adoc:1270-1272`, `:1314` and `internal/cli/board.go:296-297` | Emit the open `lead_time` row only for a ticket that has **reached the flow's done state but carries no merge line** — decision 7's literal case. For any other non-terminal ticket its open lead time *is* its open age, already reported. Then correct the manual and the code comment to match, including the "one line per ticket" claim at `:1324` (issues are emitted per **interval**: 14 lines for 7 tickets under `--as-of 2026-07-01`) |
+| F3 | non-blocking | test-gap | noted | Mutation testing found **12 surviving mutations** in a brand-new package: `mergedDate` first-wins vs last-wins; the `all` row always/never emitted; the `metricOrder` tie-break; `NonNil` gutted to `return s`; `summarize`'s empty row `N = -1`; the open-table id tie-break reversed; three separate corruptions of the summary line's counts; the aggregate table's columns reversed; and the dwell `break` removed. Additionally the `"empty result marshals every slice as [] not null"` subtest runs `--project demo` where `demo` has five fixture tickets, so it asserts nothing — `NonNil` has no effective coverage — and `unparseable_date` is implemented and documented but asserted by no test. Root cause of several: the unit tests' `findMetric` helper returns the *first* match, so no test ever asserts the interval **count** per metric. | mutation run in a scratch copy of the tree; `internal/cli/board_metrics_test.go` subtest `empty result marshals every slice as [] not null`; no occurrence of `IssueUnparseableDate` in any `_test.go` | Left `noted` deliberately: the rework for F1/F2 must land regression tests over exactly these paths (default-clock, one-row-per-open-ticket), and the scoped re-review re-runs the mutation set against the fix diff. Whatever still survives then is citable from this row and can be promoted rather than re-derived |
+| F4 | non-blocking | design | noted | A ticket whose `project:` names an **unregistered** child is counted into the hidden `all` sample but gets no per-project row; in a single-child workspace there is no `all` row at all, so it appears in `intervals[]` and in the text table while contributing to **no aggregate** — the exact opposite of decision 11's "visible rather than absent". Requires a tree `board audit` already errors on, which is why it is not blocking. | `internal/metrics/metrics.go:352` appends to `samples[m]["all"]` unconditionally; the row loop at `:344-349` iterates `cfg.Projects` only. Measured with a `ghost` project: `all` n=2 max=100 while its parts are n=1 max=2 and n=0 | Either drop unregistered projects from `all` too, or give them their own row |
+| F5 | non-blocking | design | noted | The open table's tie-break compares ticket ids as **strings**, so `T-100` sorts before `T-9`, disagreeing with `Compute`'s own ordering, which splits the id and compares `Num` numerically for exactly this reason. The `issues` sort has the same defect. Invisible in this tree only because every open id happens to be the same width. | `internal/cli/board.go` open-table comparator; `internal/metrics/metrics.go:300-305` issues comparator, vs `:290-299` | Reuse `ticket.SplitID`'s prefix/number ordering on both surfaces |
+| F6 | non-blocking | docs-gap | fixed inline | Five claims in the new manual section were false or narrower than the code: the `all` row is also suppressed by `--project` (not only by a single-child registry); `filters.as_of` records the *effective* date, not the flag as given; `lead_time` also reads the legacy `MERGED: …` form; exit `2` was undocumented. | `docs/user-manual/cli-reference.adoc` — `all`-row sentence, `filters` sentence, `lead_time` endpoint row, `Exit codes` section | All four corrected in `4495250`; `just docs-check` green |
+| F7 | non-blocking | docs-gap | fixed inline | Two **foreign-workspace-test** violations shipped in user-facing docs (`AGENTS.md` defines the test): a `(T-105 decision 13's pattern…)` citation no reader outside this repo can resolve — shape (a) — and "than this one measured", a claim about a corpus the reader does not have — shape (b). Note `payload_lint_test.go` scopes its mechanical check to `skill/` and `agents/` only, so **nothing would ever have caught these in `docs/`**. | `docs/user-manual/cli-reference.adoc`, JSON-envelope paragraph and the "Why three metrics" paragraph | Both rewritten to stand on their own in `4495250`. Whether the payload lint should extend to `docs/` is left as a question this row records, not a change made here |
+| F8 | non-blocking | design | noted | Decision 4 defines the dwell endpoint as "the first transition whose **From** state is the flow's initial state"; the code takes "the first transition of any kind" and `def.Initial()` is never called. Equivalent for any tree built by `ticket new` (a ticket always lands in the initial state), and the reasoning is written into the package doc — but it is a deviation from a confirmed decision, which the plan said not to make without asking. | `internal/metrics/metrics.go:199-211`; `grep Initial() internal/metrics/metrics.go` matches comments only | Either derive the running status (mirroring `ticket.LastHistoryStatus`) and check it against `def.Initial()`, or amend decision 4 to state the equivalence it actually relies on |
+| F9 | non-blocking | design | noted | Three smaller taxonomy/robustness gaps, all in the same function: a calendar-invalid **first** `created` date reports `no_created` rather than `unparseable_date`, which exists for exactly that; a **second** `created` line is silently ignored with no issue raised; and the `mergedDate` loop's comment says "newest merge line" while the code takes the **last line in file order** (identical for an append-only history, divergent if dates are ever out of order). | `internal/metrics/metrics.go:147-155` (the unconditional `break`), `:198-202` | Batched here rather than split: one function, one fix pass, none of them reachable in a well-formed tree |
+| F10 | non-blocking | stale-xref | noted | `project-structure.adoc` says "`pickle board audit` and `pickle board state --json` read `tickets/` the same way … all three describe the board as it stood last week" — now four commands, five counting `board decisions`. **Pre-existing**: T-105 already omitted `board decisions`, so this branch widened a gap it did not open, and the inline bar is causation, not size. | `docs/user-manual/concepts/project-structure.adoc:203-207` | Left for whoever next touches that page, or a docs-sweep ticket; recorded here with its evidence so it is citable |
+| F11 | non-blocking | other | fixed inline | Commit `b53f8af`'s subject carries no `(T-126)` suffix, which this project's commit convention requires for child-project code (the id is in the body as `Refs T-126.` instead). | `git log --format=%s 03b78fc..HEAD` | To be corrected when the branch is tidied for the rework round — the tidy is now happening regardless, so no separate history rewrite is incurred |
+
+Disposition summary: 2 blocking (F1, F2) → `5-rework/`; 9 non-blocking — 3 fixed inline (F6, F7, F11), 6 noted (F3, F4, F5, F8, F9, F10), 0 folded, 0 new tickets. No follow-up ticket was minted: F3 and F9 are the only candidates that could pass the promotion test, and both sit squarely in the code paths the F1/F2 rework must touch, so promoting them now would file work about to be done anyway — the scoped re-review is the gate that decides whether anything survives.
+
+```
+cost: estimated S, actual M — provisional, pending the rework round; the implementation itself landed at S, but two blocking defects (an untested default clock path, and a duplicated flagship table) add a fix-and-re-review cycle the S estimate did not carry
+```
+
+### Delegated claims not accepted as written (step 0's "verify before recording")
+
+Two of the three delegated audits disagreed on F2's severity — the implementation audit called the
+doubled open table non-blocking ("documented, so a deliberate deviation"), the consistency audit
+called it blocking ("ships a false statement about visible output"). Resolved as **blocking** by the
+orchestrating reviewer: the duplication is on the surface the ticket's own `## Outcome` names, and
+being *documented* does not rescue output that carries no information — especially when the
+documentation describing it is itself false.
+
+One delegated claim was **rejected**: an audit reported the refinement cross-check
+(`n=119` vs the shipped `n=120`) as a possible parser defect. Re-verified by hand as ordinary corpus
+drift — T-126's own departure from TO DO on 2026-08-28 is the 120th dwell sample — and recorded in
+the Verification table rather than as a finding.
+
+### Impact sweep (step 8)
+
+No ticket references T-126, none lists it in `depends-on:`, and `2-ready/` is empty, so nothing
+downstream encodes an assumption this branch could have invalidated. The six `1-to-do/` tickets
+(the five `rick`-interop tickets and T-102) touch neither `## History` parsing nor the `board`
+command surface.
+
+### Publish precondition found during review (step 9)
+
+The branch itself is clean against local `main` — `git diff --name-only main...HEAD` carries no
+`tickets/` path. But `origin/main` is **4 commits behind** local `main`, so
+`origin/main...HEAD` *does* carry four `tickets/` paths today. Under `layout = "in-tree"` that means
+`origin main` must be pushed **first**, and the check re-run, before this feature branch is ever
+pushed — otherwise the merge request would carry ticket bookkeeping. Recorded here because it will
+still be true after the rework round.
 
 ## History
 
@@ -395,3 +492,4 @@ than during it).
   proven by `internal/metrics/metrics_test.go`'s own fixture instead. Acceptance test case 4 and
   its Expected line amended to match; decision 9 amended in place with the correction quoted
 - 2026-08-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-08-28 — IN REVIEW → REWORK: 2 blocking findings (F1 default-clock timezone off-by-one; F2 open table double-lists every open ticket)
