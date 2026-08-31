@@ -6,9 +6,22 @@ version := `git describe --tags --always --dirty 2>/dev/null || echo dev`
 default:
     @just --list
 
+# --- Build ---
+
 # Compile the pickle binary into ./pickle
 build:
     go build -ldflags "-X main.version={{version}}" -o pickle .
+
+# Print the version the binary reports
+show-version: build
+    ./pickle version
+
+# Remove build artifacts
+clean:
+    rm -f pickle
+    rm -rf dist
+
+# --- Test & lint ---
 
 # Run the test suite
 test:
@@ -26,6 +39,8 @@ lint-ci-surface:
     @if command -v actionlint >/dev/null 2>&1; then actionlint; else echo "warning: actionlint not installed — skipping workflow lint (CI still runs it)"; fi
     @if command -v shellcheck >/dev/null 2>&1; then shellcheck .github/scripts/*.sh; else echo "warning: shellcheck not installed — skipping shell lint (CI still runs it)"; fi
 
+# --- Docs ---
+
 # Validate the AsciiDoc manual: snowball check (render-and-discard, catches broken
 # includes) plus the Go tests that catch what rendering silently lets through — a
 # dead <<anchor>>, an inter-document xref:<file>.adoc form, or an orphaned page
@@ -38,9 +53,7 @@ docs-check:
 docs-build:
     snowball build -o dist/docs
 
-# Print the version the binary reports
-show-version: build
-    ./pickle version
+# --- Release ---
 
 # Validate the goreleaser config (also run in CI).
 # GitLab tokens are unset so goreleaser detects the GitHub forge deterministically
@@ -53,8 +66,3 @@ dist-check:
 # Local, unpublished cross-compiled build into ./dist (no tokens, no upload).
 dist-snapshot:
     env -u GITLAB_TOKEN -u GITLAB_PERSONAL_ACCESS_TOKEN goreleaser release --snapshot --clean
-
-# Remove build artifacts
-clean:
-    rm -f pickle
-    rm -rf dist
