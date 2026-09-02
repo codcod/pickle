@@ -1089,6 +1089,47 @@ func TestMultiHandlerIndexListsEveryRoot(t *testing.T) {
 	}
 }
 
+// TestMultiHandlerIndexNeverFabricatesCleanHealth is the T-127 review's F2
+// regression guard. The index page has no single project's health to report
+// (page.Health is left at its zero value there), and HealthView{}.OK() reads
+// as true, so rendering the shared "health" block unconditionally shipped a
+// fabricated top-level "board audit clean" banner directly above a project
+// row correctly reporting a real error — the two contradicted each other on
+// the same page. The banner must be absent on the index entirely (it is
+// per-project chrome, not global chrome — the per-project row already carries
+// the real count), while an ordinary per-project board page must keep it.
+func TestMultiHandlerIndexNeverFabricatesCleanHealth(t *testing.T) {
+	bad := newTree(t, fixture{dir: "1-to-do", id: "T-001", title: "bad grade", impact: "spicy",
+		history: []string{"- 2026-07-20 — created (TO DO). source: test"}})
+	h, err := MultiHandler([]NamedRoot{{Slug: "broken", Options: Options{Root: bad, Cfg: testCfg()}}})
+	if err != nil {
+		t.Fatalf("MultiHandler: %v", err)
+	}
+
+	body := get(t, h, "/").Body.String()
+	if strings.Contains(body, "health-ok") || strings.Contains(body, "board audit clean") {
+		t.Errorf("GET / (index) still renders a fabricated clean health banner:\n%s", body)
+	}
+	if !strings.Contains(body, "1 audit error(s)") {
+		t.Error("GET / (index) lost the real per-project error count it must still show")
+	}
+
+	// The per-project board page for the same root is unaffected: it still
+	// reports its own real health, not the index's absence of one.
+	boardBody := get(t, h, "/p/broken/").Body.String()
+	if !strings.Contains(boardBody, "illegal impact value") {
+		t.Error("GET /p/broken/ lost its own health banner detail")
+	}
+
+	// Classic mode (a plain Handler, not behind MultiHandler) must keep the
+	// banner — this fix scopes to the index page, not to health reporting
+	// generally.
+	classicBody := get(t, newHandler(t, standardTree(t)), "/").Body.String()
+	if !strings.Contains(classicBody, "board audit clean") {
+		t.Error("classic mode board page lost its health banner")
+	}
+}
+
 // TestMultiHandlerDuplicateSlugRejected: two roots resolving to the same slug
 // is a startup error, never a silent overwrite (decision 5).
 func TestMultiHandlerDuplicateSlugRejected(t *testing.T) {

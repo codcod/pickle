@@ -27,7 +27,12 @@
   </nav>
   {{end}}
 </header>
-{{template "health" .Health}}
+{{/* T-127 review F2: the index page (.Index set) has no single project's health to
+     report — page.Health is left at its zero value there, whose OK() reads as true,
+     so rendering this unconditionally shipped a fabricated "board audit clean"
+     banner over the index. The per-project row (index.html) already carries the
+     real per-root health; this banner is per-project chrome, not global chrome. */}}
+{{if not .Index}}{{template "health" .Health}}{{end}}
 {{if .StaleBoard}}
 <section class="health health-warn stale-board">
   <div class="health-line">
