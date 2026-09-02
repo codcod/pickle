@@ -201,25 +201,58 @@ same shape with `MultiHandler`.
 
 #### Task 4 — thread `BasePath`/`Peers` through `page` and every template link
 
+> **Amended in place, 2026-09-02** (History has the dated line): the paragraphs below
+> describe what actually shipped, not the original plan. The original text said
+> `{{.BasePath}}` could be read directly wherever a page-level link needed it. That is true
+> only for a link inside a template block reached by `{{with}}`/`{{range}}` — it breaks for
+> `ticket-item` and `idlist`, both reached via `{{template "name" arg}}`, because Go's
+> `{{template}}` action rebinds `$` to `arg` for that invocation, so a nested block can never
+> read the page's `BasePath` back through `$`. Verified empirically (a two-line reproduction
+> against `text/template`) before writing the fix below, not assumed.
+
 `internal/serve/view.go`: add `BasePath string`, `Roots []PeerLink`, `Index *IndexView` to
-`page`; `newPage` sets `BasePath: h.opts.BasePath, Roots: h.opts.Peers`.
+`page`; `newPage` sets `BasePath: h.opts.BasePath, Roots: h.opts.Peers`. Additionally, give
+**every leaf view struct a `BasePath` field of its own** — `Entry.BasePath`, `Event.BasePath`,
+and a new `IDList{BasePath string; IDs []string}` — populated by `newEntry`, `buildActivity`'s
+event literal, and a new `idListOf(basePath string, ids []string) IDList` template func
+(`funcs.go`) respectively. `TicketView` embeds `Entry`, so it gets `BasePath` for free.
+`buildBoard`, `buildActivity` and `buildTicket` each gain a trailing `basePath string`
+parameter, threaded down to `newEntry`/`stateChildGroup`; every call site in `serve.go`
+(`board`, `boardFragment`, `activity`, `activityFragment`, `ticket`) passes `h.opts.BasePath`.
+This means a template reads `.BasePath` off whatever `.` it already has — Entry, Event,
+TicketView or IDList — never `$.BasePath`, and the result is correct regardless of how many
+`{{template}}` calls sit between the page and the link.
 
 `internal/serve/templates/*.html`: prefix every internal absolute link with `{{.BasePath}}`
 (classic mode's `BasePath == ""` makes this a no-op, so these edits change no rendered output
 for an existing single-root caller):
 
-- `layout.html`: `href="{{.BasePath}}/"` (brand + nav), `href="{{.BasePath}}/activity"` (nav),
-  the `idlist` block's `href="{{.BasePath}}/t/{{$id}}"`. Wrap the Board/Activity nav in
-  `{{if not .Index}}...{{end}}` (they don't apply to the index page). Add, inside `head`, a
-  switcher: `{{if .Roots}}<nav class="switcher">{{range .Roots}}<a
-  href="/p/{{.Slug}}/">{{.Name}}</a>{{end}}</nav>{{end}}` — an absolute `/p/{slug}/` per peer,
-  not `{{.BasePath}}`-relative, since it must reach a *different* project's namespace.
-  `href="/static/..."` and the `htmx.min.js` script tag stay absolute (decision 6).
-- `board.html`: prefix both `hx-get="/fragments/board"` occurrences, both `href="/t/{{.ID}}"`
-  occurrences, `href="/t/{{.Family}}"`.
-- `activity.html`: prefix both `hx-get="/fragments/activity"` occurrences,
-  `href="/t/{{.ID}}"`.
-- `ticket.html`: prefix the crumbs `href="/"` and the family `href="/t/{{.Family}}"`.
+- `layout.html`: `href="{{.BasePath}}/"` (brand + nav), `href="{{.BasePath}}/activity"` (nav);
+  `.` is `page` at both sites (reached via `{{template "head" .}}`, which passes `page` through
+  unchanged, not narrowed). Wrap the Board/Activity nav in `{{if not .Index}}...{{end}}` (they
+  don't apply to the index page). Add, inside `head`, a switcher: `{{if .Roots}}<nav
+  class="switcher">{{range .Roots}}<a href="/p/{{.Slug}}/">{{.Name}}</a>{{end}}</nav>{{end}}` —
+  an absolute `/p/{slug}/` per peer, not `{{.BasePath}}`-relative, since it must reach a
+  *different* project's namespace. `href="/static/..."` and the `htmx.min.js` script tag stay
+  absolute (decision 6). Change the shared `idlist` block itself to
+  `{{define "idlist"}}{{range $i, $id := .IDs}}...href="{{$.BasePath}}/t/{{$id}}"...{{end}}{{end}}`
+  — here `$` is correct, not a bug: `idlist` is invoked via `{{template}}`, so `$` inside it is
+  the `IDList` the caller passed, which is exactly where its own `BasePath` field lives.
+- `board.html`: prefix both `hx-get="/fragments/board"` occurrences (`.` = `page` there, direct).
+  Inside `ticket-item` (`.` = `Entry`, via `{{template "ticket-item" .}}`): both
+  `href="{{.BasePath}}/t/{{.ID}}"` occurrences and `href="{{.BasePath}}/t/{{.Family}}"` read
+  `Entry.BasePath` directly; `{{if .DependsOn}}...{{template "idlist" (idListOf .BasePath
+  .DependsOn)}}...{{end}}` (and the same for `.SpawnedBy`) build the `IDList` the shared
+  `idlist` block needs, from `Entry.BasePath` still in scope at the call site.
+- `activity.html`: prefix both `hx-get="/fragments/activity"` occurrences (`.` = `page`,
+  direct). Inside `activity-body` (`.` = `Event`, via `{{range .Events}}` after a `{{template
+  "activity-body" .Activity}}` call): `href="{{.BasePath}}/t/{{.ID}}"` reads `Event.BasePath`.
+- `ticket.html`: the crumbs `href="{{.BasePath}}/"` and the family
+  `href="{{.BasePath}}/t/{{.Family}}"` both sit inside `{{with .Ticket}}` (which, unlike
+  `{{template}}`, does *not* rebind `$` — but does rebind `.` to `TicketView`, so `.BasePath`
+  resolves via the embedded `Entry` either way); the four `idlist` sites
+  (`DependsOn`/`Blocks`/`SpawnedBy`/`Spawned`/`Members`) each become `{{template "idlist"
+  (idListOf .BasePath .DependsOn)}}` and so on, same pattern as `ticket-item`.
 
 #### Task 5 — index page
 
@@ -329,3 +362,8 @@ mention needs no change — "visualize the board in a browser" already covers bo
   serve multiple project roots instead of one process per port
 - 2026-09-02 — TO DO → READY: plan complete
 - 2026-09-02 — READY → IN DEVELOPMENT: picked up
+- 2026-09-02 — plan amended inline: Task 4's BasePath threading did not account for Go's
+  `{{template}}` action resetting `$`, which breaks `ticket-item` and `idlist` (both invoked
+  via `{{template}}`); fixed by giving `Entry`, `Event` and a new `IDList` their own `BasePath`
+  field instead of relying on `$.BasePath`, verified against a two-line `text/template`
+  reproduction before implementing
