@@ -3,7 +3,7 @@
 
 The overarching project (where {product} is installed and the board lives) can
 hold several *connected child-projects* — cooperating build targets such as the
-frontend and backend of one application, each its own git repo. Summarises §0
+frontend and backend of one application, each its own git repo. This section summarises §0
 of the skill's rules.
 
 == The locked model
@@ -11,8 +11,8 @@ of the skill's rules.
 * *one shared board*, sub-grouped by child-project;
 * *per-child ticket-id prefixes* — each child's `ticket_prefix` (default `T`)
   namespaces and counts its ids independently (`RICK-137`, `SB-042`); children
-  that leave it unset share the one legacy global `T` counter. Numbers are unique
-  only within a prefix, so an id is always written in full across children;
+  that leave it unset share the legacy global `T` counter. Numbers are unique
+  only within a prefix, so ids are always written in full across children;
 * each ticket names its target child in a *`project:` frontmatter field*;
 * each child is *its own git repo*; `feat/T-NNN-<slug>` branches are cut
   inside it;
@@ -33,15 +33,15 @@ after it).
 Each `\[[project]]` entry in `pickle.toml` records the child's name and path,
 its build/test/lint (and optional docs) commands, its branch prefix (default
 `feat/`), its ticket-id prefix (`ticket_prefix`, default `T`), its WIP limits,
-and an optional per-child review addendum — see <<configuration>>. The agent
+and an optional per-child review addendum — see <<configuration>> for the key and
+<<lifecycle>> for how to write one. The agent
 uses the child's own commands when implementing and reviewing a ticket that
 targets it.
 
-A child registered at a path other than `.` is a nested git repository, and
-until `.gitignore` ignores it, it is an ordinary stageable directory to the
-overarching repo — `pickle project add` and `pickle doctor` both flag that gap
-(naming the entry to add), but neither ever writes to `.gitignore` itself; see
-<<project-structure>>.
+A child registered at a path other than `.` is a nested git repository. Until `.gitignore`
+ignores it, it is an ordinary stageable directory to the overarching repo. `pickle project add`
+and `pickle doctor` both flag that gap (naming the entry to add), but neither ever writes to
+`.gitignore` itself; see <<project-structure>>.
 
 == Crossing children
 

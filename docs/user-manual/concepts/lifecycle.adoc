@@ -1,8 +1,8 @@
 [#lifecycle]
 = Lifecycle
 
-The seven statuses, the gates between them, and what a review does. Summarises
-§2, §4, §5 and §8 of the skill's rules.
+This section covers the seven statuses, the gates between them, and what a review does. It
+summarises §2, §4, §5 and §8 of the skill's rules.
 
 == The seven statuses
 
@@ -27,9 +27,9 @@ to-do → ready → in-development → in-review → done
 backward/abort:  in-development → ready,  ready → to-do,  (any non-terminal) → dropped
 ----
 
-`pickle ticket move` enforces it — anything else is rejected. Backward and
-abort moves always need a `--reason`; dropping a ticket from development,
-review, or rework additionally needs explicit user sign-off.
+`pickle ticket move` enforces this state machine; any other move is rejected. Backward and
+abort moves always need a `--reason`. Dropping a ticket from development, review, or rework
+also needs explicit user sign-off.
 
 == The READY gate
 
@@ -54,14 +54,11 @@ All seven are *mechanically checked*. Each must appear as a required `### `
 heading inside `## Implementation Plan`, with a non-empty body. `pickle
 ticket move <T-NNN> ready` refuses the move when one is missing, and `pickle
 board audit` errors on a ticket already sitting past READY with one still
-missing. `1-to-do/` is the one *non-terminal* status the plan rows never
-apply to — from `2-ready/`, moving a ticket back there always clears the
-gate, whatever state the plan is in. (`6-done/` and `7-dropped/` require
-nothing at all, so *this* check never flags an archived ticket, however
-incomplete — the unfinalized-merge warning under *Done ≠ merged* is a
-separate check, and it does apply to `6-done/`.) The check is structural
-only — it proves a step is
-present, never that it says something *good* — so judging whether the
+missing. The rule does not apply in `1-to-do/`: from `2-ready/`, moving a ticket back
+there always clears the gate, whatever state the plan is in. It also does not apply in
+`6-done/` or `7-dropped/`, which require nothing at all. The unfinalized-merge warning under
+*Done ≠ merged* is a separate check, and it still applies to `6-done/`. The check is structural
+only: it proves a step is present, never that it says something *good*. Judging whether the
 plan's content actually holds up is still the reviewing agent's job.
 
 == Pickup gates
@@ -110,15 +107,14 @@ The same four dispositions apply at every gate that can spawn a ticket — the
 pickup applicability gate and refinement splits use the same vocabulary and
 the same default (§5).
 
-Every finding also carries a *class* — one word from a closed vocabulary naming
-what *kind* of defect it was, orthogonal to severity and disposition and
-recorded in the same table. Blocking findings carry one too (they take no
-disposition, but the kind-of-defect axis matters most on them). The vocabulary
-and the table's canonical column skeleton are defined once, in the skill's
-`resources/review-protocol.md` §5 — paste the skeleton rather than restating
-the columns. The point is aggregation: severity and disposition say how a
-finding was handled, class says what kept going wrong, and a class that recurs
-is a specification for a `pickle board audit` check.
+Every finding also carries a *class* — one word from a closed vocabulary that names
+what *kind* of defect it was. It is orthogonal to severity and disposition and is recorded
+in the same table. Blocking findings carry one too: they take no disposition, but the
+kind-of-defect axis matters most on them. The vocabulary and the table's canonical column
+skeleton are defined once, in the skill's `resources/review-protocol.md` §5, so paste the
+skeleton rather than restating the columns. The point is aggregation: severity and
+disposition say how a finding was handled, while class says what kept going wrong. A
+recurring class is a specification for a `pickle board audit` check.
 
 A review closes with two one-line summaries under the table: the *disposition
 summary*, counting each disposition and naming the ids involved, and a
@@ -144,6 +140,37 @@ disposition, since a blocking finding is never dispositioned), `spawned-by:`
 the concluded one, with a `## History` line on the concluded ticket recording
 the filed id. See the skill's `resources/review-protocol.md` step 6c for the
 full rule.
+
+=== Review addenda
+
+Two optional layers can be added on top of the skill's generic review protocol, applied *on
+top of — never instead of* it, in this order: the generic protocol, then an **overarching**
+addendum (`review_addendum` at the top of `pickle.toml`, true of the whole project), then a
+**per-child** addendum (`review_addendum` inside that child's `[[project]]` entry, that
+child's tech-specific checks) — see <<configuration>>. An addendum is written as numbered
+*additions* keyed to the generic protocol's own step numbers (`Step 2 — Implementation audit
+(additions)`), not a parallel checklist a reviewer runs separately.
+
+Adding one is optional, and in practice happens *after* a project has accumulated
+project-specific rules a generic reviewer would not know to check — distilled from real review
+findings or an audit, rather than written speculatively before any exist. A single-child
+project usually has nothing left for the overarching slot to say that the per-child slot
+doesn't already say, and should use only the per-child slot.
+
+An addendum's own shape, by convention: a short preamble naming what commit/date it was
+written against and restating that it layers on top of the protocol rather than replacing it; a
+body organized by the protocol's step numbers, with each item marked **Blocking** or *Advisory*
+using this page's own severity vocabulary; a closing revision history, dated like a ticket's
+`## History`. It documents the *audit procedure* for a project's existing conventions — its
+`AGENTS.md`, its design of record — not the conventions themselves: restating a rule in a
+second place is a second place for it to go stale.
+
+Setting `review_addendum` wires the mechanism, but it changes nothing about `AGENTS.md`: unlike
+`ticket_prefix`, `branch_prefix`, the WIP limits and the commit policy, it is never rendered
+into the marker block by `pickle upgrade` (<<configuration>>). If a project wants a reviewer to
+actually find it, it names the addendum file by hand among its other governing documents — a
+single pointer (what it's wired as, whether an overarching layer exists), not a restatement of
+its content, and stated once rather than repeated across sections.
 
 == Done ≠ merged
 

@@ -1,14 +1,14 @@
 [#configuration]
 = Configuration — `pickle.toml`
 
-`pickle.toml` lives at the overarching-project root and is *tool-managed*, but
-only one command rewrites a file you already own:
+`pickle.toml` lives at the overarching-project root and is *tool-managed*.
+Existing files are rewritten only in the cases below:
 
 * *`project add|remove`* re-render the whole file to a canonical layout. That
   re-render *does not preserve comments* — this is the one case where
   hand-written notes are lost.
-* *`upgrade`* rewrites only the `payload_version` line, and — the first time a
-  project upgrades on a binary that knows the key — inserts a `layout` line
+* *`upgrade`* rewrites only the `payload_version` line. The first time a
+  project upgrades on a binary that knows the key, it also inserts a `layout` line
   when one is not already present (<<install-layout>>). Comments, blank
   lines, key order and every other line's spacing survive; the
   `payload_version` line comes back normalised to `payload_version = "value"`,
@@ -50,12 +50,13 @@ Hand-edits are always preserved on load.
 * `flow` — the flow this project runs, read by `pickle flow show|list`
   (<<cmd-flow>>); defaults to `{flow}` when unset, currently the only legal
   value (`Config.Validate()` rejects any other).
-* `review_addendum` (optional) — a project-wide review addendum layered on the
-  skill's review protocol.
+* `review_addendum` (optional) — a project-wide addendum layered *on top of — never
+  instead of* — the skill's review protocol, applied before any per-child addendum; see
+  <<lifecycle>> for how it's structured and when to add one.
 * `[commit]` table — `overarching_auto`, `child_publish_gated`. Both default
-  to *`true`* when the key or the whole table is absent — the cautious
+  to *`true`* when the key or the whole table is absent. This is the cautious
   reading, and what `install` writes: a child is not pushed without your
-  approval. Set either to `false` explicitly to opt out; the wording rendered
+  approval. Set either to `false` explicitly to opt out. The wording rendered
   into `AGENTS.md` follows whichever way they are set (see <<cmd-upgrade>>).
 
 *Per child — the `\[[project]]` array* (one entry per connected child):
@@ -68,16 +69,19 @@ Hand-edits are always preserved on load.
 * `ticket_prefix` (default `T`) — the per-child id prefix (`<PREFIX>-NNN`);
 * `branch_prefix` (default `feat/`);
 * `wip_in_development` / `wip_in_review` (default 1);
-* optional per-child `review_addendum`.
+* optional per-child `review_addendum` — that child's own addendum, applied after the
+  overarching one, if any; same guidance, <<lifecycle>>.
 
 The shipped {flow} skill (`{skill-dir}/`) states only the
 flow's *defaults* for the ticket-id prefix, the branch prefix, the WIP limits
-and the commit policy, deferring to the project's actual configuration. The
-`AGENTS.md` marker block is the authoritative render of what is actually
-configured: after changing `ticket_prefix`, `branch_prefix`,
+and the commit policy; the project's actual configuration can differ. For the
+authoritative render of what is actually configured, read the `AGENTS.md` marker block.
+After changing `ticket_prefix`, `branch_prefix`,
 `wip_in_development`/`wip_in_review` or `[commit]`, re-run `pickle upgrade` (or
 `pickle project add`, which re-renders it directly) and read the marker block
-— not the skill — for this project's real values.
+— not the skill — for this project's real values. `review_addendum` is not part of that
+render — the review mechanism picks it up regardless, but nothing else points a reader at it
+unless the project names it by hand in `AGENTS.md` (<<lifecycle>>).
 
 == Parsing
 
