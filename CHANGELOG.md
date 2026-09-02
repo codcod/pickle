@@ -8,6 +8,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-02
+
 ### Added
 
 - **`pickle serve` can serve several project roots from one process, via repeatable `--dir
@@ -887,7 +889,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/codcod/pickle/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/codcod/pickle/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/codcod/pickle/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/codcod/pickle/compare/v0.11.0...v0.12.0
