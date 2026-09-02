@@ -2,19 +2,19 @@
 {{template "head" .}}
 {{with .Ticket}}
 <main class="page ticket-page">
-  <nav class="crumbs"><a href="/">Board</a> / <span>{{.ID}}</span></nav>
+  <nav class="crumbs"><a href="{{.BasePath}}/">Board</a> / <span>{{.ID}}</span></nav>
   <h1 class="page-title">{{.ID}} — {{.Title}}</h1>
 
   <dl class="meta">
     <dt>status</dt><dd>{{.Status}}</dd>
     <dt>project</dt><dd>{{.Project}}</dd>
     <dt>grades</dt><dd>{{template "grades" .}}</dd>
-    <dt>depends on</dt><dd>{{if .DependsOn}}{{template "idlist" .DependsOn}}{{else}}—{{end}}</dd>
-    <dt>blocks</dt><dd>{{if .Blocks}}{{template "idlist" .Blocks}}{{else}}—{{end}}</dd>
-    <dt>spawned by</dt><dd>{{if .SpawnedBy}}{{template "idlist" .SpawnedBy}}{{else}}—{{end}}</dd>
-    <dt>spawned</dt><dd>{{if .Spawned}}{{template "idlist" .Spawned}}{{else}}—{{end}}</dd>
-    <dt>family</dt><dd>{{if .Family}}<a href="/t/{{.Family}}">{{.Family}}</a>{{else}}—{{end}}</dd>
-    <dt>members</dt><dd>{{if .Members}}{{template "idlist" .Members}}{{else}}—{{end}}</dd>
+    <dt>depends on</dt><dd>{{if .DependsOn}}{{template "idlist" (idListOf .BasePath .DependsOn)}}{{else}}—{{end}}</dd>
+    <dt>blocks</dt><dd>{{if .Blocks}}{{template "idlist" (idListOf .BasePath .Blocks)}}{{else}}—{{end}}</dd>
+    <dt>spawned by</dt><dd>{{if .SpawnedBy}}{{template "idlist" (idListOf .BasePath .SpawnedBy)}}{{else}}—{{end}}</dd>
+    <dt>spawned</dt><dd>{{if .Spawned}}{{template "idlist" (idListOf .BasePath .Spawned)}}{{else}}—{{end}}</dd>
+    <dt>family</dt><dd>{{if .Family}}<a href="{{.BasePath}}/t/{{.Family}}">{{.Family}}</a>{{else}}—{{end}}</dd>
+    <dt>members</dt><dd>{{if .Members}}{{template "idlist" (idListOf .BasePath .Members)}}{{else}}—{{end}}</dd>
     <dt>file</dt><dd><code>{{.File}}</code></dd>
     {{if .Merged}}<dt>merged</dt><dd>{{linkify .Merged}}</dd>{{end}}
   </dl>

@@ -43,6 +43,40 @@ var assets embed.FS
 type Options struct {
 	Root string         // overarching project root (the directory holding tickets/)
 	Cfg  *config.Config // registered children, WIP limits
+	// BasePath and Peers are both "" / nil in classic single-root mode (the
+	// zero value, so every existing caller — the CLI's single-root path,
+	// every pre-T-127 test — is unaffected). MultiHandler sets both when it
+	// builds one Options per served root.
+
+	// BasePath is this root's URL prefix under MultiHandler, e.g. "/p/pickle".
+	BasePath string
+	// Peers names every *other* root MultiHandler is serving alongside this
+	// one, for the header switcher (T-127 decision 7).
+	Peers []PeerLink
+}
+
+// NamedRoot is one project root plus the slug MultiHandler serves it under
+// (T-127) — "pickle serve --dir a --dir name=b" becomes two of these.
+type NamedRoot struct {
+	Slug    string
+	Options Options
+}
+
+// mountStatic registers the embedded static/ subtree at "/static/", the one
+// route every mode (classic Handler, MultiHandler) serves unprefixed and only
+// once — it is the same bytes regardless of which root a request is for, so
+// prefixing or re-registering it per project would only waste bytes (T-127
+// decision 6).
+func mountStatic(mux *http.ServeMux) error {
+	static, err := fs.Sub(assets, "static")
+	if err != nil {
+		return fmt.Errorf("opening embedded static assets: %w", err)
+	}
+	// fs.Sub above is why this is not "/static/static/...": the embed is rooted at
+	// the package directory, so the FileServer needs the subtree, and StripPrefix
+	// removes the URL prefix the mux matched on.
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
+	return nil
 }
 
 // Handler builds the read-only dashboard's mux. Templates are parsed once, here,
@@ -55,10 +89,6 @@ func Handler(opts Options) (http.Handler, error) {
 	tmpls, err := template.New("").Funcs(funcs).ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parsing templates: %w", err)
-	}
-	static, err := fs.Sub(assets, "static")
-	if err != nil {
-		return nil, fmt.Errorf("opening embedded static assets: %w", err)
 	}
 	h := &handler{opts: opts, tmpls: tmpls}
 
@@ -74,11 +104,97 @@ func Handler(opts Options) (http.Handler, error) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "ok")
 	})
-	// fs.Sub above is why this is not "/static/static/...": the embed is rooted at
-	// the package directory, so the FileServer needs the subtree, and StripPrefix
-	// removes the URL prefix the mux matched on.
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
+	if err := mountStatic(mux); err != nil {
+		return nil, err
+	}
 	return mux, nil
+}
+
+// MultiHandler serves several project roots from one process (T-127): each
+// root renders the exact same single-board page Handler would build for it
+// alone, mounted at "/p/{slug}/" (StripPrefix, so the per-root mux still sees
+// its familiar unprefixed paths internally) — nothing is ever aggregated
+// across roots, so identically-numbered tickets in two different roots (every
+// project defaults to ticket_prefix "T" starting at T-001) can never collide.
+// "/" is a small index listing every served root. Static assets are mounted
+// once, unprefixed, shared by every root (decision 6).
+func MultiHandler(roots []NamedRoot) (http.Handler, error) {
+	seen := make(map[string]string, len(roots)) // slug -> this root's Root, for the error message
+	for _, r := range roots {
+		if prev, dup := seen[r.Slug]; dup {
+			return nil, fmt.Errorf("serve: duplicate project name %q (from %s and %s)", r.Slug, prev, r.Options.Root)
+		}
+		seen[r.Slug] = r.Options.Root
+	}
+
+	tmpls, err := template.New("").Funcs(funcs).ParseFS(assets, "templates/*.html")
+	if err != nil {
+		return nil, fmt.Errorf("parsing templates: %w", err)
+	}
+
+	mux := http.NewServeMux()
+	if err := mountStatic(mux); err != nil {
+		return nil, err
+	}
+	// A top-level liveness probe, independent of any single root (each
+	// project's own sub-mux also answers at /p/{slug}/healthz, which is
+	// harmless — neither reads project state).
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		fmt.Fprintln(w, "ok")
+	})
+
+	for _, r := range roots {
+		opts := r.Options
+		opts.BasePath = "/p/" + r.Slug
+		for _, other := range roots {
+			if other.Slug == r.Slug {
+				continue
+			}
+			opts.Peers = append(opts.Peers, PeerLink{Slug: other.Slug, Name: projectName(other.Options.Root)})
+		}
+		sub, err := Handler(opts)
+		if err != nil {
+			return nil, fmt.Errorf("serve: building handler for %q: %w", r.Slug, err)
+		}
+		prefix := "/p/" + r.Slug
+		// Method-qualified, like every other pattern this package registers: an
+		// unqualified "/p/a/" would match every method on that subtree, which
+		// ServeMux's precedence rule then finds ambiguous against "GET /" (the
+		// index) — neither pattern's request set would be a strict subset of
+		// the other's (its own documented "GET /" vs "/index.html" example),
+		// and Handle panics at registration time rather than guess.
+		mux.Handle("GET "+prefix+"/", http.StripPrefix(prefix, sub))
+	}
+
+	ih := &indexHandler{roots: roots, tmpls: tmpls}
+	mux.HandleFunc("GET /", ih.index)
+	return mux, nil
+}
+
+// indexHandler renders the "/" listing page in named-roots mode — kept
+// separate from handler (which always speaks for exactly one root) rather
+// than bolted onto it, since an index page has no single Options/root of its
+// own.
+type indexHandler struct {
+	roots []NamedRoot
+	tmpls *template.Template
+}
+
+func (ih *indexHandler) index(w http.ResponseWriter, r *http.Request) {
+	// Same catch-all guard as handler.board: "GET /" matches every unmatched
+	// path under this mux (favicon.ico, typos), which must 404 rather than
+	// render the index with a 200.
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	idx := buildIndex(ih.roots)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	p := page{Title: "Boards", Project: "pickle", Index: &idx}
+	if err := ih.tmpls.ExecuteTemplate(w, "index.html", p); err != nil {
+		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // Serve runs the dashboard on an already-open listener until ctx is cancelled.
@@ -90,6 +206,22 @@ func Serve(ctx context.Context, ln net.Listener, opts Options) error {
 	if err != nil {
 		return err
 	}
+	return serveHTTP(ctx, ln, h)
+}
+
+// ServeMulti is Serve's multi-root counterpart (T-127): same listener-driven,
+// context-cancelled lifecycle, built over MultiHandler instead of Handler.
+func ServeMulti(ctx context.Context, ln net.Listener, roots []NamedRoot) error {
+	h, err := MultiHandler(roots)
+	if err != nil {
+		return err
+	}
+	return serveHTTP(ctx, ln, h)
+}
+
+// serveHTTP is Serve/ServeMulti's shared body — factored out so the two entry
+// points can never drift on shutdown behaviour (T-127).
+func serveHTTP(ctx context.Context, ln net.Listener, h http.Handler) error {
 	srv := &http.Server{
 		Handler:           h,
 		ReadHeaderTimeout: 15 * time.Second,
@@ -107,7 +239,7 @@ func Serve(ctx context.Context, ln net.Listener, opts Options) error {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
-	err = srv.Serve(ln)
+	err := srv.Serve(ln)
 	<-done
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -138,13 +270,21 @@ type handler struct {
 // here — not once per request — and buildHealth's own, separate traversal
 // (audit.Audit) takes it again around itself for the same reason.
 func (h *handler) load() []*ticket.Ticket {
-	def := flow.ForName(h.opts.Cfg.FlowName())
+	return loadTickets(h.opts)
+}
+
+// loadTickets is handler.load's body, factored out (T-127) so the named-roots
+// index page (buildIndex) can do the identical locked, per-root read without
+// duplicating it or going through a *handler at all — the index has no single
+// root of its own to be one.
+func loadTickets(opts Options) []*ticket.Ticket {
+	def := flow.ForName(opts.Cfg.FlowName())
 	var tickets []*ticket.Ticket
 	// See buildHealth's identical comment: a lock-timeout error is
 	// deliberately not surfaced here either, for the same availability
 	// reason — it degrades to an empty ticket slice, not a broken page.
-	_ = lock.WithShared(h.opts.Root, func() error {
-		tickets, _ = ticket.LoadAll(def, h.opts.Root)
+	_ = lock.WithShared(opts.Root, func() error {
+		tickets, _ = ticket.LoadAll(def, opts.Root)
 		return nil
 	})
 	return tickets
@@ -174,6 +314,8 @@ func (h *handler) newPage(title string, tickets []*ticket.Ticket) page {
 		Project:    projectName(h.opts.Root),
 		Health:     buildHealth(def, h.opts.Root, tickets, h.opts.Cfg),
 		StaleBoard: staleBoardBranch(h.opts.Root, h.opts.Cfg),
+		BasePath:   h.opts.BasePath,
+		Roots:      h.opts.Peers,
 	}
 }
 
@@ -236,14 +378,14 @@ func (h *handler) board(w http.ResponseWriter, r *http.Request) {
 	}
 	tickets := h.load()
 	p := h.newPage("Board", tickets)
-	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg)
+	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg, h.opts.BasePath)
 	h.render(w, "board.html", p)
 }
 
 func (h *handler) activity(w http.ResponseWriter, _ *http.Request) {
 	tickets := h.load()
 	p := h.newPage("Activity", tickets)
-	p.Activity = buildActivity(flow.ForName(h.opts.Cfg.FlowName()), tickets)
+	p.Activity = buildActivity(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.BasePath)
 	h.render(w, "activity.html", p)
 }
 
@@ -254,7 +396,7 @@ func (h *handler) ticket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tickets := h.load()
-	view, ok := buildTicket(flow.ForName(h.opts.Cfg.FlowName()), tickets, id)
+	view, ok := buildTicket(flow.ForName(h.opts.Cfg.FlowName()), tickets, id, h.opts.BasePath)
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -269,13 +411,13 @@ func (h *handler) ticket(w http.ResponseWriter, r *http.Request) {
 func (h *handler) boardFragment(w http.ResponseWriter, _ *http.Request) {
 	tickets := h.load()
 	p := h.newPage("Board", tickets)
-	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg)
+	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg, h.opts.BasePath)
 	h.render(w, "board-fragment", p)
 }
 
 func (h *handler) activityFragment(w http.ResponseWriter, _ *http.Request) {
 	tickets := h.load()
 	p := h.newPage("Activity", tickets)
-	p.Activity = buildActivity(flow.ForName(h.opts.Cfg.FlowName()), tickets)
+	p.Activity = buildActivity(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.BasePath)
 	h.render(w, "activity-fragment", p)
 }

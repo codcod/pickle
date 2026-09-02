@@ -8,6 +8,20 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle serve` can serve several project roots from one process, via repeatable `--dir
+  [name=]path`.** With no `--dir` it behaves exactly as before (single root resolved from cwd,
+  unprefixed routes). With one or more, each root is mounted at `/p/{slug}/` — the slug defaults
+  to the resolved root's directory name, or is pinned explicitly with `--dir name=path`; a
+  collision is a startup error, before any listener opens, never a silent overwrite — and `/`
+  becomes an index listing every served project instead of any one board. Nothing is ever
+  aggregated across roots: each keeps its own board, search and audit banner, so two projects
+  that both default to `ticket_prefix = "T"` starting at `T-001` can never collide on one page.
+  A header switcher links between every served project's namespace. Static assets and `/healthz`
+  are shared, unprefixed, across every served project. Shipped in `internal/cli/serve.go` and
+  `internal/serve` (T-127).
+
 ## [0.14.0] - 2026-08-28
 
 ### Added

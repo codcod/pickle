@@ -916,7 +916,7 @@ func TestActivityCapReportsTruncation(t *testing.T) {
 	}
 	root := newTree(t, fixtures...)
 	tickets, _ := ticket.LoadAll(testDef, root)
-	view := buildActivity(testDef, tickets)
+	view := buildActivity(testDef, tickets, "")
 	if view.Total != 300 {
 		t.Errorf("Total = %d, want 300", view.Total)
 	}
@@ -974,6 +974,241 @@ func TestServeOnRealListener(t *testing.T) {
 func TestHandlerRejectsNilConfig(t *testing.T) {
 	if _, err := Handler(Options{Root: t.TempDir()}); err == nil {
 		t.Error("Handler(nil cfg) = nil error, want a startup error")
+	}
+}
+
+// --- multi-root (T-127) ------------------------------------------------------
+
+// TestClassicModeUnaffected pins T-127 decision 2: plain Handler (BasePath and
+// Peers left at their zero value) must render byte-identical HTML to the
+// pre-T-127 baseline for every route that gained a {{.BasePath}} prefix. This
+// is the regression guard for someone who never passes --dir.
+func TestClassicModeUnaffected(t *testing.T) {
+	h := newHandler(t, standardTree(t))
+	for _, path := range []string{"/", "/t/T-002", "/activity"} {
+		body := get(t, h, path).Body.String()
+		for _, unwanted := range []string{`href="/p/`, `hx-get="/p/`} {
+			if strings.Contains(body, unwanted) {
+				t.Errorf("GET %s contains %q in classic mode", path, unwanted)
+			}
+		}
+		// The links a classic-mode single-root page has always emitted must still
+		// be bare, not empty-prefixed ("{{.BasePath}}" resolving to "" must yield
+		// exactly "/t/...", never "//t/..." or similar).
+		if strings.Contains(body, `href="//`) || strings.Contains(body, `hx-get="//`) {
+			t.Errorf("GET %s has a doubled-slash link, BasePath is not empty in classic mode", path)
+		}
+	}
+}
+
+// twoRoots builds two independent fixture trees and wires them into
+// MultiHandler under fixed slugs — the shape every multi-root test below
+// starts from.
+func twoRoots(t *testing.T) (h http.Handler, rootA, rootB string) {
+	t.Helper()
+	rootA = standardTree(t)
+	rootB = newTree(t,
+		fixture{dir: "1-to-do", id: "T-001", title: "root b own idea", impact: "low",
+			history: []string{"- 2026-07-20 — created (TO DO). source: test"}},
+	)
+	h, err := MultiHandler([]NamedRoot{
+		{Slug: "a", Options: Options{Root: rootA, Cfg: testCfg()}},
+		{Slug: "b", Options: Options{Root: rootB, Cfg: testCfg()}},
+	})
+	if err != nil {
+		t.Fatalf("MultiHandler: %v", err)
+	}
+	return h, rootA, rootB
+}
+
+// TestMultiHandlerRoutesArePrefixed is the id-collision regression the
+// Description names: both fixture roots have their own T-001, and each must
+// resolve to *its own* ticket under its own "/p/{slug}/" namespace rather than
+// colliding or leaking into the other.
+func TestMultiHandlerRoutesArePrefixed(t *testing.T) {
+	h, _, _ := twoRoots(t)
+
+	recA := get(t, h, "/p/a/")
+	if recA.Code != http.StatusOK || !strings.Contains(recA.Body.String(), "low impact idea") {
+		t.Errorf("GET /p/a/ = %d, want 200 containing root a's own T-001 title", recA.Code)
+	}
+	recB := get(t, h, "/p/b/")
+	if recB.Code != http.StatusOK || !strings.Contains(recB.Body.String(), "root b own idea") {
+		t.Errorf("GET /p/b/ = %d, want 200 containing root b's own T-001 title", recB.Code)
+	}
+	// The defining case: T-001 exists in both roots, and each namespace's page
+	// must show only its own T-001's title, never the other's.
+	if strings.Contains(recA.Body.String(), "root b own idea") {
+		t.Error("GET /p/a/ leaks root b's T-001 title")
+	}
+	if strings.Contains(recB.Body.String(), "low impact idea") {
+		t.Error("GET /p/b/ leaks root a's T-001 title")
+	}
+
+	ticketA := get(t, h, "/p/a/t/T-001")
+	if ticketA.Code != http.StatusOK || !strings.Contains(ticketA.Body.String(), "low impact idea") {
+		t.Errorf("GET /p/a/t/T-001 = %d, want 200 for root a's own T-001", ticketA.Code)
+	}
+	ticketB := get(t, h, "/p/b/t/T-001")
+	if ticketB.Code != http.StatusOK || !strings.Contains(ticketB.Body.String(), "root b own idea") {
+		t.Errorf("GET /p/b/t/T-001 = %d, want 200 for root b's own T-001", ticketB.Code)
+	}
+
+	// Internal links stay inside their own namespace.
+	if !strings.Contains(ticketA.Body.String(), `href="/p/a/`) {
+		t.Error("root a's ticket page has no /p/a/-prefixed link")
+	}
+	if strings.Contains(ticketA.Body.String(), `href="/p/b/t/`) {
+		t.Error("root a's ticket page links into root b's namespace")
+	}
+
+	// The switcher reaches the other namespace.
+	if !strings.Contains(ticketA.Body.String(), `href="/p/b/"`) {
+		t.Error("root a's page has no switcher link to /p/b/")
+	}
+}
+
+// TestMultiHandlerIndexListsEveryRoot: "/" in named-roots mode is the index,
+// not any one project's board.
+func TestMultiHandlerIndexListsEveryRoot(t *testing.T) {
+	h, _, _ := twoRoots(t)
+	rec := get(t, h, "/")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET / = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`href="/p/a/"`, `href="/p/b/"`, "tickets"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("GET / (index) is missing %q", want)
+		}
+	}
+	// The index is not a board: it must not render either root's tickets
+	// directly (that would be aggregation, decision 6/7 rules out).
+	if strings.Contains(body, "low impact idea") || strings.Contains(body, "root b own idea") {
+		t.Error("the index page renders ticket content directly instead of linking to each board")
+	}
+}
+
+// TestMultiHandlerIndexNeverFabricatesCleanHealth is the T-127 review's F2
+// regression guard. The index page has no single project's health to report
+// (page.Health is left at its zero value there), and HealthView{}.OK() reads
+// as true, so rendering the shared "health" block unconditionally shipped a
+// fabricated top-level "board audit clean" banner directly above a project
+// row correctly reporting a real error — the two contradicted each other on
+// the same page. The banner must be absent on the index entirely (it is
+// per-project chrome, not global chrome — the per-project row already carries
+// the real count), while an ordinary per-project board page must keep it.
+func TestMultiHandlerIndexNeverFabricatesCleanHealth(t *testing.T) {
+	bad := newTree(t, fixture{dir: "1-to-do", id: "T-001", title: "bad grade", impact: "spicy",
+		history: []string{"- 2026-07-20 — created (TO DO). source: test"}})
+	h, err := MultiHandler([]NamedRoot{{Slug: "broken", Options: Options{Root: bad, Cfg: testCfg()}}})
+	if err != nil {
+		t.Fatalf("MultiHandler: %v", err)
+	}
+
+	body := get(t, h, "/").Body.String()
+	if strings.Contains(body, "health-ok") || strings.Contains(body, "board audit clean") {
+		t.Errorf("GET / (index) still renders a fabricated clean health banner:\n%s", body)
+	}
+	if !strings.Contains(body, "1 audit error(s)") {
+		t.Error("GET / (index) lost the real per-project error count it must still show")
+	}
+
+	// The per-project board page for the same root is unaffected: it still
+	// reports its own real health, not the index's absence of one.
+	boardBody := get(t, h, "/p/broken/").Body.String()
+	if !strings.Contains(boardBody, "illegal impact value") {
+		t.Error("GET /p/broken/ lost its own health banner detail")
+	}
+
+	// Classic mode (a plain Handler, not behind MultiHandler) must keep the
+	// banner — this fix scopes to the index page, not to health reporting
+	// generally.
+	classicBody := get(t, newHandler(t, standardTree(t)), "/").Body.String()
+	if !strings.Contains(classicBody, "board audit clean") {
+		t.Error("classic mode board page lost its health banner")
+	}
+}
+
+// TestMultiHandlerDuplicateSlugRejected: two roots resolving to the same slug
+// is a startup error, never a silent overwrite (decision 5).
+func TestMultiHandlerDuplicateSlugRejected(t *testing.T) {
+	_, err := MultiHandler([]NamedRoot{
+		{Slug: "dup", Options: Options{Root: standardTree(t), Cfg: testCfg()}},
+		{Slug: "dup", Options: Options{Root: standardTree(t), Cfg: testCfg()}},
+	})
+	if err == nil {
+		t.Fatal("MultiHandler with duplicate slugs = nil error, want one")
+	}
+	if !strings.Contains(err.Error(), "dup") {
+		t.Errorf("MultiHandler error %q does not name the duplicate slug", err)
+	}
+}
+
+// TestMultiHandlerSharesStaticAndHealthzUnprefixed: decision 6 — static
+// assets and the top-level healthz probe are shared, unprefixed, once, not
+// duplicated per root.
+func TestMultiHandlerSharesStaticAndHealthzUnprefixed(t *testing.T) {
+	h, _, _ := twoRoots(t)
+	for _, tc := range []struct{ path, wantSubstr string }{
+		{"/static/styles.css", "--accent"},
+		{"/healthz", "ok"},
+	} {
+		rec := get(t, h, tc.path)
+		if rec.Code != http.StatusOK {
+			t.Errorf("GET %s = %d, want 200", tc.path, rec.Code)
+			continue
+		}
+		if !strings.Contains(rec.Body.String(), tc.wantSubstr) {
+			t.Errorf("GET %s does not contain %q", tc.path, tc.wantSubstr)
+		}
+	}
+}
+
+// TestServeMultiOnRealListener is ServeMulti's TestServeOnRealListener
+// counterpart: bind port 0, serve two roots, request the shared /healthz and
+// one root's board, then cancel and require a clean return.
+func TestServeMultiOnRealListener(t *testing.T) {
+	rootA := standardTree(t)
+	rootB := standardTree(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	roots := []NamedRoot{
+		{Slug: "a", Options: Options{Root: rootA, Cfg: testCfg()}},
+		{Slug: "b", Options: Options{Root: rootB, Cfg: testCfg()}},
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- ServeMulti(ctx, ln, roots) }()
+
+	base := "http://" + ln.Addr().String()
+	var body string
+	for i := 0; i < 50; i++ {
+		resp, err := http.Get(base + "/p/a/healthz") //nolint:noctx // local test request
+		if err == nil {
+			b, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			body = string(b)
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if strings.TrimSpace(body) != "ok" {
+		t.Fatalf("/p/a/healthz body = %q, want ok", body)
+	}
+
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("ServeMulti returned %v, want nil after context cancellation", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Error("ServeMulti did not return after the context was cancelled")
 	}
 }
 
