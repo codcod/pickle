@@ -183,15 +183,15 @@ func resolveNamedRoots(dirs []dirArg) ([]serve.NamedRoot, int) {
 	for _, d := range dirs {
 		abs, err := filepath.Abs(d.Path)
 		if err != nil {
-			return nil, errf("pickle serve: --dir %s: %v", d.Path, err)
+			return nil, errf("--dir %s: %v", d.Path, err)
 		}
 		cfgPath, err := config.Find(abs)
 		if err != nil {
-			return nil, errf("pickle serve: --dir %s: %v", d.Path, err)
+			return nil, errf("--dir %s: %v", d.Path, err)
 		}
 		cfg, err := config.Load(cfgPath)
 		if err != nil {
-			return nil, errf("pickle serve: --dir %s: %v", d.Path, err)
+			return nil, errf("--dir %s: %v", d.Path, err)
 		}
 		root := cfg.Root()
 		slug := d.Name
