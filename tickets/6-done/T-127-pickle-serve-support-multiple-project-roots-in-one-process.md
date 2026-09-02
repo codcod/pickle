@@ -435,18 +435,24 @@ closed and must not be re-opened by the fix pass.
 Acceptance test re-run verbatim after the fix: `just test` PASS (all 21 packages, including the
 new regression test), `just lint` PASS, `just build` PASS, `just docs-check` PASS.
 
-> **SHA correction (round 2):** this record was written before the branch was rebased onto the
-> updated `main`, which rewrote the commit. The fix is **`9a162bb`** on the branch; the cited
-> `6d2c1a4` is the pre-rebase original — still resolvable as a dangling object today, but not
-> reachable from `HEAD` and gone on any fresh clone. Their code content is identical
-> (`git diff 6d2c1a4 9a162bb -- internal/ CHANGELOG.md` is empty); only the bookkeeping files
-> differ. Recorded per round 2's R1.
+> **SHA correction (round 2):** the cited `6d2c1a4` is the pre-rebase original and is **not**
+> reachable from the branch. Do not chase a SHA here. Under this repo's `in-tree` layout every
+> bookkeeping commit lands on `main`, and the feature branch is rebased onto it after each one,
+> so a SHA written into this ticket is rewritten within the hour — the correction first written
+> here (`9a162bb`) was itself stale one rebase later. The **durable handle is the commit
+> subject**: this round's fix is the commit titled *"fix(serve): suppress fabricated health
+> banner on the multi-root index, add CHANGELOG entry (T-127)"*, the last of the three on
+> `feat/T-127-serve-multi-dir`. Resolve it with
+> `git log --format=%H -1 --grep 'suppress fabricated health banner' feat/T-127-serve-multi-dir`,
+> or read it as `git show <that sha>`. Code content has been identical across every rewrite
+> (only the bookkeeping files moved). Recorded per round 2's R1.
 
 ### Round 2 — scoped re-review — 2026-09-02
 
 **Scope** (protocol §1): the two blocking findings from round 1, plus the diff that closed them
-(`9a162bb`) read as new work. Not a re-audit of the feature; F4–F7 stay closed and were not
-re-opened.
+(the *"suppress fabricated health banner"* commit — see the SHA correction above for why it is
+named by subject, not hash) read as new work. Not a re-audit of the feature; F4–F7 stay closed
+and were not re-opened.
 
 - [x] Reviewer independence (step 0): **degraded — recorded conscious skip, second time.**
       Delegation was attempted twice in round 1 and terminated mid-audit both times; for a
@@ -456,7 +462,8 @@ re-opened.
       confirmed end-to-end against the real binary on a deliberately corrupted board rather than
       only through the fixer's own unit test.
 - [x] Both blocking findings verified closed — evidence below
-- [x] Fix diff (`9a162bb`) audited as new work — 2 new non-blocking findings (R1, R2)
+- [x] Fix diff (the *"suppress fabricated health banner"* commit) audited as new work — 2 new
+      non-blocking findings (R1, R2)
 - [x] Scope check: the fix touched only `CHANGELOG.md`, `internal/serve/serve_test.go`,
       `internal/serve/templates/layout.html` — no creep beyond F2/F3
 - [x] Acceptance test re-run verbatim: `just test`, `just lint`, `just build`, `just docs-check`
@@ -487,7 +494,7 @@ and the shared unprefixed static/`healthz`.
 
 | id | severity | class | disposition | description | evidence | suggestion |
 |---|---|---|---|---|---|---|
-| R1 | non-blocking | stale-xref | fixed inline | The round-1 rework fix record cites commit `6d2c1a4`, which the post-rework rebase orphaned; the fix is `9a162bb` on the branch. Protocol §1 anticipates exactly this ("a tidy at publish time rewrites them") and directs that it be treated as a finding of its own, never blocking. | `git merge-base --is-ancestor 6d2c1a4 HEAD` → not reachable; `git diff 6d2c1a4 9a162bb -- internal/ CHANGELOG.md` → empty (code identical, only bookkeeping differs) | Corrected by the **SHA correction** note added directly above the round-2 heading, rather than by rewriting the original record — the rebase is part of the history, not something to erase. |
+| R1 | non-blocking | stale-xref | fixed inline | The round-1 rework fix record cites commit `6d2c1a4`, which the post-rework rebase orphaned. Protocol §1 anticipates exactly this ("a tidy at publish time rewrites them") and directs that it be treated as a finding of its own, never blocking. **The re-review then reproduced the fault while fixing it:** the replacement SHA (`9a162bb`) was itself orphaned by the very next rebase — evidence that under `in-tree`, where each bookkeeping commit on `main` is followed by a rebase of the feature branch, *no* SHA written into a ticket stays valid. | `git merge-base --is-ancestor 6d2c1a4 HEAD` → not reachable; same again for `9a162bb` one rebase later; `git diff` between them over `internal/`+`CHANGELOG.md` → empty (code identical throughout, only bookkeeping moved) | Fixed by replacing the hash with a **rebase-stable reference** — the commit *subject*, plus the `git log --grep` one-liner that resolves it — in the SHA-correction note above the round-2 heading. The original record is left as written; the rebase is history, not something to erase. |
 | R2 | non-blocking | stale-xref | fixed inline | Round 1's F5 measured classic-mode divergence from `main` as **27 bytes / 9 blank lines**. The F2 fix's own 5-line `{{/* … */}}` comment emits a bare newline where it sits, adding **1 blank line per page** in *every* mode, so that figure is now stale. | Classic `/`, `/t/T-002`, `/activity` rendered at `a35ef38` (pre-fix) vs `9a162bb`: +3 bytes, 3 blank-line-only additions. Against current `main`: **30 bytes / 12 blank lines**, and whitespace-normalized output is **identical** — still no semantic difference. | Figure corrected here; F5's round-1 row is left as written, since it was accurate when taken. Not chased further: the divergence remains cosmetic HTML whitespace, exactly the class F5 already dispositioned `noted`. Trim markers (`{{- -}}`) would remove it if anyone ever wants byte-parity. |
 
 **Disposition summary (round 2):** 2 findings, both non-blocking, both `fixed inline` (R1, R2) —
