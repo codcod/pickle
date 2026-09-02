@@ -501,6 +501,16 @@ and the shared unprefixed static/`healthz`.
 record-accuracy corrections, no code change. 0 blocking, 0 `folded`, 0 `new ticket`, 0 `noted`.
 Both round-1 blocking findings (F2, F3) verified closed. **Verdict: DONE.**
 
+**Post-merge verification (2026-09-02).** PR #82 merged as a **true merge commit** `ef3f387`
+(parents `9b71032` + `e9b1312`), not a squash, so the three reviewed commits `e6ddb18`,
+`1274211`, `e9b1312` are all present in `main` — each confirmed an ancestor of `origin/main`
+before the merge line was recorded, rather than inferred from the merge notification. R1's
+subject-based fix reference was re-resolved against merged `main` and still lands on `e9b1312`,
+which is the property it was rebuilt for (it has now survived four rebases, a push, and a
+merge). Merged `main` re-verified directly, not assumed from the pre-merge branch run:
+`just test`, `just lint`, `just build`, `just docs-check` all green, `pickle doctor` 0 errors /
+0 warnings, `pickle changelog check` no candidates.
+
 cost: estimated M, actual M
 
 ## History
@@ -518,3 +528,4 @@ cost: estimated M, actual M
 - 2026-09-02 — IN REVIEW → REWORK: review round 1: 2 blocking (index health banner, missing CHANGELOG entry)
 - 2026-09-02 — REWORK → IN REVIEW: findings fixed
 - 2026-09-02 — IN REVIEW → DONE: scoped re-review clean: F2 and F3 verified closed; 2 non-blocking (R1, R2) both fixed inline
+- 2026-09-02 — merged to main (PR #82, ef3f387, https://github.com/codcod/pickle/commit/ef3f387). True merge commit, so all three reviewed commits are kept in `main`; each verified an ancestor of `origin/main` before recording. Merged `main` re-verified clean — see the post-merge note in `## Review`
