@@ -5,8 +5,8 @@ project: pickle
 depends-on: []
 spawned-by: []
 impact: medium
-complexity: high
-cost: L
+complexity: medium
+cost: M
 ---
 
 # T-127 — pickle serve: support multiple project roots in one process
@@ -14,61 +14,92 @@ cost: L
 ## Outcome
 
 After this ships, someone who runs brine across several unrelated projects starts one
-`pickle serve` process — from any directory, naming each project root once — and gets one
-dashboard with a switcher between them, instead of one `pickle serve` per project root each
-bound to its own port.
+`pickle serve` process from any directory — `pickle serve --dir <a> --dir <b>` — and reaches
+every board from one port through a switcher, instead of running one `pickle serve` per project
+root and tracking which port each one took.
 
 ## Description
 
 `pickle serve` (`internal/cli/serve.go`, `internal/serve/serve.go`) currently resolves exactly
 one `pickle.toml` per process: `runServe` calls `loadConfig()`, which walks up from the current
 working directory (`config.Find`) to the nearest `pickle.toml`, and passes a single
-`serve.Options{Root, Cfg}` into `serve.Serve`. `Options.Root` is "the overarching project root"
-— note this is **not** the same axis T-061/T-104 already cover (a `pickle.toml` with several
-registered `[[project]]` children, filterable on one board): those children still share one
-ticket tree and one config file. This ticket is about **separate overarching projects** —
-each with its own `pickle.toml`, its own `tickets/` tree, on its own filesystem path, with no
-relation to each other — the case the ticket's Description names: someone who has brine
-installed in project A and project B today runs two independent `pickle serve` invocations,
-cwd'd into each, each claiming its own port, because the binary has no notion of "more than one
-root" anywhere in `internal/config` or `internal/serve`.
+`serve.Options{Root, Cfg}` into `serve.Serve`. So a person running brine in several projects
+runs one `pickle serve` per project, each cwd'd into its own root and each claiming its own
+port.
 
-The request is to let one process serve N such roots, so a person (or a machine running a
-dashboard for a team) does not have to track a per-project port map. This is a real
-architecture change, not a flag tweak, and should stay TO DO until refinement has answered at
-least:
+This is **not** the axis T-061/T-104 already cover (one `pickle.toml` with several registered
+`[[project]]` children, filterable on one board — those children share one ticket tree and one
+config file). This ticket is about **separate overarching projects**: each with its own
+`pickle.toml`, its own `tickets/` tree, unrelated to the others.
 
-- **Discovery.** How are the N roots named on the command line / in config — repeated
-  `--dir`/`--project` flags, a small workspace list file, or scanning a parent directory for
-  `pickle.toml`s? Each has different ergonomics and failure modes (a root that stops existing,
-  a root added after the process started).
-- **Routing.** `Handler` currently mounts one mux at `/`. Serving several roots needs each
-  project's routes disambiguated (e.g. a `/p/{slug}/...` prefix) without breaking the existing
-  single-project URLs anyone has bookmarked or scripted against — or an explicit decision to
-  break them, stated up front.
-- **Isolation.** `handler.load` takes `lock.WithShared(h.opts.Root, ...)` per request against
-  one root; multiple roots means multiple independent locks, and one project's malformed
-  ticket tree (the load path already tolerates this per-project) must not affect another
-  project's page.
-  `Options` and `handler` become a map/slice keyed by project rather than a single `Root`/`Cfg`
-  pair, and every place that currently reads `h.opts.Root`/`h.opts.Cfg` directly (`load`,
-  `newPage`, `staleBoardBranch`, `buildHealth`) needs to resolve "which project" first.
-- **Security posture.** The existing loopback warning (`isLoopback` in `internal/cli/serve.go`)
-  is scoped to "anyone who can reach this port can read every ticket in *the* project"; with N
-  roots behind one port that warning's blast radius grows to every registered project, which the
-  warning text and any future auth story should say plainly.
-- **UI.** A project switcher in the shared page chrome (`internal/serve/templates`), reusing
-  `projectName(root)` per project rather than the single label `newPage` sets today.
+### Evidence this is field-driven, not hypothetical
 
-Soft coupling: T-061 and T-104 already solved multi-*child* filtering within one project's
-board; this ticket's switcher is one level up (multi-*project*) and should look/feel
-consistent with that prior art rather than inventing a second pattern, but does not depend on
-either being reworked.
+Measured on the requesting user's machine (2026-09-02): six real brine workspaces, of which
+**three are live boards** — 127, 20 and 18 tickets — plus one umbrella with four registered
+children and no tickets yet. **All three live boards are `layout = "in-tree"`**, which is why
+`pickle project add` does not already solve this: an in-tree board lives inside its own git
+repo, so folding the three into one umbrella would mean moving each `tickets/` tree out of the
+repo it belongs to and abandoning in-tree.
 
-Refinement should also weigh a smaller alternative if the full switcher proves too costly for
-the payoff: keeping one process per port but adding a lightweight "pickle serve --list" or
-similar to at least surface the running instances, and explicitly recording why the full
-multi-root dashboard was or wasn't chosen.
+### Confirmed scope (user decision, 2026-09-02)
+
+Repeatable `--dir` only, and **no aggregation**. Each root gets its own URL namespace and
+renders the existing single-board page unchanged; a switcher links between namespaces. Nothing
+is ever merged into a combined view.
+
+This is what keeps the ticket small, and it is smaller than first estimated because T-053's
+design is already parameterized: only **13 reads of `h.opts.*`** exist, all in handler methods
+in `internal/serve/serve.go`, and every worker function already takes root/cfg as explicit
+arguments (`staleBoardBranch(root, cfg)`, `buildHealth(def, root, tickets, cfg)`,
+`buildBoard(def, tickets, cfg)`, `projectName(root)`). `view.go` reads no handler state at all,
+so the rendering layer needs no refactor — the work is resolving a per-request
+`rootState{root, cfg}` from the slug and threading it through those 13 sites.
+
+Work implied:
+
+- **Flags.** `parseServeArgs` accepts repeatable `--dir` (optionally `--dir name=path` to pin
+  the slug explicitly — see the collision note below). It is already the seam tested without
+  binding a port. Zero `--dir` flags keeps today's behaviour: resolve one root from cwd.
+- **Routing.** Project-qualified routes (`/p/{slug}/...`), with `/` an index listing the served
+  boards. This is **forced**, not chosen: all three live boards use `ticket_prefix = "T"` and
+  all start at T-001, so T-001–T-018 exist in all three at once and today's `GET /t/{id}`
+  cannot resolve. Deriving a slug from the directory name can itself collide (two checkouts
+  both named `pickle`), which is what the optional `--dir name=path` form is for.
+- **Per-root chrome.** The startup line and the T-108 stale-board banner become one per root.
+  Both matter here — 3/3 live boards are in-tree, so each can independently sit on a feature
+  branch. Mechanical, since `staleBoardBranch` already takes its root.
+- **Locks.** Free: `handler.load` already calls `lock.WithShared(root, …)`, so N roots means N
+  independent locks with no new machinery, and one project's malformed ticket tree already
+  degrades only its own page.
+- **Security wording.** `isLoopback`'s warning says "every ticket in the project"; with N roots
+  behind one port it must say every ticket in **every served project**.
+
+Because no view aggregates, ticket-id collision needs no dedup logic and **T-104's search stays
+unchanged** — it searches within whichever board is being rendered.
+
+### Alternatives rejected (recorded so they are not re-proposed)
+
+The decision axis was *where the list of roots lives*, not flag syntax. Repeatable `--dir` puts
+it in argv, so persistence is a shell alias or justfile recipe — the user's own config, not a
+format pickle must own, validate, audit and version.
+
+- **A `pickle.workspace.toml` found by walking up from cwd** — a second config format with its
+  own loader, validation and audit story. Not worth it for a list of paths.
+- **`[[peer]]` entries in an existing `pickle.toml`** — asymmetric: pickle's own committed
+  config would name unrelated repos, leaking personal workspace layout into a public repo, and
+  there is no principled "primary" among peers.
+- **`--scan <parent> [--depth N]`** — genuinely ergonomic (the user's boards are siblings under
+  one directory) but must exclude false positives (a `find` during triage turned up two stale
+  go-module-cache copies of a workspace), and the served set changes silently as the filesystem
+  does. Revisit only if maintaining the `--dir` list becomes a real burden.
+- **A `~/.config` registry or a `PICKLE_ROOTS` env var** — both would be firsts for this binary:
+  it makes zero `UserHomeDir`/`UserConfigDir`/`os.Getenv`/XDG calls anywhere in `internal/` or
+  `cmd/`, and `skill/SKILL.md` ships the promise "Install scope is **per-project** — nothing is
+  written to `~/`". A global root registry would contradict that sentence.
+
+Soft coupling: T-061/T-104 solved multi-*child* filtering within one board; this switcher is one
+level up (multi-*project*) and should match that prior art rather than invent a second pattern.
+Neither needs reworking for this.
 
 ## Implementation Plan
 
