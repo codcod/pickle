@@ -27,7 +27,14 @@ Scope — **read-only, zero writes to `docs/specs/**`**:
 
 - a route (`GET /specs/{key}/{name}`) rendering an artifact through the existing pipeline in
   `internal/serve/markdown.go` — GFM on, `goldmark.WithUnsafe` off, so raw HTML in an
-  artifact is escaped rather than executed, exactly as for ticket bodies;
+  artifact is escaped rather than executed, exactly as for ticket bodies.
+  **Since T-127 this route is per-project, not top-level:** `serve` can now serve several
+  project roots from one process, each mounted under `/p/{slug}/` with its own `Options`
+  (`MultiHandler`, `internal/serve/serve.go`). Artifacts belong to one specific root, so this
+  route must be registered on the per-root mux that `Handler` builds — where it inherits the
+  `/p/{slug}/` prefix automatically — and **never** on the top-level mux, which has no way to
+  tell whose `docs/specs/**` is meant. Any link to it rendered into a template must be prefixed
+  `{{.BasePath}}` (empty in classic single-root mode), like every other internal link;
 - on the ticket page, the ticket's artifacts listed with their `Kind` and a `Status` badge
   (`draft` / `complete` / `approved`) from T-076, so "what is this ticket waiting on" is
   visible from the board rather than only from inside the agent session.
@@ -70,3 +77,7 @@ adds lands there once rather than in two places.
 - 2026-08-07 — created (TO DO). source: pickle ticket new
 - 2026-08-15 — patched by T-104's review impact sweep: soft coupling repointed from T-055
   (dropped, absorbed by T-104) to T-104's shared `ticket-item` board template.
+- 2026-09-02 — patched by T-127's review impact sweep: `serve` now serves N project roots from
+  one process, so the planned `GET /specs/{key}/{name}` route must be registered per-root (under
+  `/p/{slug}/`, on the mux `Handler` builds) rather than top-level, and any template link to it
+  must carry `{{.BasePath}}`. Scope and grade otherwise unchanged.

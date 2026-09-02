@@ -78,10 +78,18 @@ here; folding it makes it explicit, so the `L` grade stands rather than rising.
 What comes with it:
 
 - **Two structural safety guarantees die on the day this ships, and both need replacing.**
-  (a) The **method-qualified mux** (`internal/serve/serve.go:63-77`) registers every route as
+  (a) The **method-qualified mux** (`internal/serve/serve.go:68-80`, moved from `:63-77` by
+  T-127) registers every route as
   `GET /…`, so today anything but GET/HEAD is a 405 *before a handler is reached* — the comment
-  at `:63` says exactly that. (b) **`TestServeNeverWrites`** (`internal/serve/serve_test.go:722`)
-  is a sha256 snapshot of the whole tree taken around a full crawl.
+  above the block says exactly that. **T-127 added a second such barrier that this ticket must
+  also clear:** in multi-root mode `MultiHandler` mounts each project's whole sub-handler as
+  `mux.Handle("GET /p/{slug}/", http.StripPrefix(…))`, so a POST to `/p/{slug}/…` is rejected
+  **405 at the top-level mux, before the per-root handler is ever consulted** (verified during
+  T-127's review). Registering a write route inside `Handler` is therefore *not sufficient* under
+  multi-root — `MultiHandler`'s mount must stop being GET-only too, and the write route must
+  resolve *which root* it writes to from the `{slug}` segment. (b) **`TestServeNeverWrites`**
+  (`internal/serve/serve_test.go:805`) is a sha256 snapshot of the whole tree taken around a full
+  crawl; under multi-root it must snapshot **every** served root, not just one.
   **Replace that test, do not delete it:** the same snapshot, asserting that *only* the file the
   request was allowed to touch changed. That is a strictly stronger invariant than "nothing
   changed", and it is what catches a handler regenerating a board it had no business touching.
@@ -131,3 +139,10 @@ pattern, different file format; compare notes rather than sharing code.
   method-qualified mux and the `TestServeNeverWrites` snapshot, CSRF/`Origin` checks, and the
   on-the-record renegotiation of T-053's decisions 1 and 9. Grade unchanged (`L`): the work was
   already implicit in `POST /fragments/preview`.
+- 2026-09-02 — patched by T-127's review impact sweep: `serve` now serves N roots from one
+  process. Two corrections. (1) `MultiHandler` mounts each root's sub-handler GET-only, so a POST
+  to `/p/{slug}/…` 405s at the *top-level* mux before the per-root handler runs — a second
+  barrier this ticket must clear, and the write route must resolve its target root from `{slug}`;
+  `TestServeNeverWrites` must also snapshot every served root. (2) Line references refreshed:
+  the mux block moved `:63-77` → `:68-80` (caused by T-127), and `serve_test.go:722` → `:805`
+  (drift that predates T-127, corrected while here). Grade unchanged (`L`).

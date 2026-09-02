@@ -354,7 +354,66 @@ mention needs no change — "visualize the board in a browser" already covers bo
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Round 1 — 2026-09-02
+
+- [x] Reviewer independence settled (step 0): **degraded — recorded conscious skip.** Delegation
+      to an independent reviewer was attempted **twice** (fresh sub-agents, briefed adversarially,
+      no memory of writing the branch); both runs were terminated by the user mid-audit (~86 min
+      and ~50 min). Their partial output survives and is credited below: the first confirmed F1,
+      the second was mid-way through confirming F2 when stopped. With no third delegation
+      available, the remaining audits were run by the **authoring agent** — the degradation this
+      step exists to flag. Mitigation: every finding below is backed by executed evidence
+      (command output, rendered HTML, a byte-diff against `main`), not by reading alone.
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (steps 1, 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass (step 4b) — run at implementation time over
+      `cli-reference.adoc`; 1 suggestion touching this branch's own new prose applied, the rest
+      discarded as out-of-scope pre-existing text. 0 fabricated quotes.
+- [x] Findings recorded with severity, class and disposition; disposition + cost lines present (step 5)
+- [x] Ticket moved; `## History` appended (step 6)
+- [x] Other references updated; governing documents reconciled (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message presented for approval (step 9)
+
+**Acceptance test re-run verbatim** — `just test` PASS (all 21 packages), `just lint` PASS
+(`go vet` + gofmt clean), `just build` PASS, `just docs-check` PASS (snowball render + `TestDocs`).
+Manual multi-root exercise re-run in a scratch dir with a renamed `pickle-test` binary per the
+self-modify policy: two in-tree trees each carrying their own `T-001`, `--dir a --dir b=./b` —
+index, both boards, both colliding `T-001` ticket pages, switcher, shared static, `/healthz`,
+wrong-slug 404 all correct; clean `SIGINT` shutdown with both locks released (verified by an
+immediate `pickle board audit` in each tree).
+
+**Audited clean** (recorded so the archive can tell "checked" from "not checked"): reserved-looking
+slugs (`static`, `healthz`, `t`, `p`) do **not** shadow the real routes — the `/p/` namespace
+prevents collision, all four verified serving 200 alongside intact `/static/` and `/healthz`;
+write-shaped requests still get **405** on both `/p/{slug}/` and the index, so the "never writes"
+posture holds in multi-root mode; `HEAD` works; template link prefixing is **complete** — the only
+remaining unprefixed links are `/static/*` (decision 6) and the deliberately-absolute cross-namespace
+`/p/{slug}/` switcher/index links; no path-traversal surface (static is an embedded FS, ids go
+through `ticket.ValidID`); whole-docs-tree sweep found no page made stale — `multi-project.adoc`
+describes the *opposite* axis (one shared board, connected children) and is untouched by this change.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | correctness | fixed inline | The three new `errf` calls in `resolveNamedRoots` add their own `"pickle serve: "` prefix, but `errf` already prepends `"pickle: "` — producing garbled double-prefixed output. Every pre-existing `errf` call in the same file relies on `errf`'s prefix alone. | `internal/cli/serve.go:186,190,194`; observed output `pickle: pickle serve: --dir /x: no pickle.toml found…` | Drop the redundant prefix. **Fixed during review** in `030cc26`; output is now `pickle: --dir /x: …`, matching the file's convention. |
+| F2 | **blocking** | correctness | — | The named-roots index page renders a fabricated green health banner. `indexHandler.index` builds `page{Title, Project, Index}` and never sets `Health`, but `layout.html`'s `head` block renders `{{template "health" .Health}}` unconditionally; the zero-valued `HealthView.OK()` returns true, so the banner claims **"0 tickets · board audit clean"** — describing no project at all, and directly contradicting the rows beneath it. | `internal/serve/serve.go` (`indexHandler.index`), `layout.html:30`. Rendered against a root with a real audit error: top banner `class="health health-ok"` → `0 tickets · board audit clean`, project row immediately below → `1 tickets · 1 audit error(s), 0 warning(s)`. | Suppress the page-level banner when `.Index` is set (`{{if not .Index}}{{template "health" .Health}}{{end}}`) — the per-row health already carries the real state, and aggregating instead would be the cross-project aggregation decisions 6/7 rule out. Add a regression test asserting the index carries no `health-ok` banner when a served root has audit errors. |
+| F3 | **blocking** | docs-gap | — | No `CHANGELOG.md` entry for a user-facing feature. `## [Unreleased]` is empty; every recent feature ticket (T-124, T-126) carries an entry naming its id. The Implementation Plan's own "Docs update" step omitted CHANGELOG, so the branch faithfully executed a plan that had the gap. | `pickle changelog check` → `1 candidate(s) shipped but not named in "Unreleased": T-127`; `CHANGELOG.md:9` (`## [Unreleased]`, empty) | Add an `### Added` entry under `## [Unreleased]` describing repeatable `--dir`, the `/p/{slug}/` namespacing and its id-collision rationale, the index page, and the unchanged zero-flag default — ending `(T-127)`. |
+| F4 | non-blocking | test-gap | noted | `TestClassicModeUnaffected` is weaker than the acceptance criterion it claims to guard. The plan specifies asserting classic-mode HTML is *byte-identical to pre-change golden output*; the test only asserts the absence of `/p/` and of doubled slashes, which would miss a dropped link or altered attribute. | `internal/serve/serve_test.go` (`TestClassicModeUnaffected`); plan's Acceptance test section | Left as `noted`: a golden-file harness is disproportionate here, and this review has now established the stronger property empirically (see F5) and recorded it permanently. A future reviewer can promote this row by citing it. |
+| F5 | non-blocking | stale-xref | noted | Decision 2's literal wording ("byte-for-byte today's behavior") is **not** met, though its intent is. Classic-mode output differs from `main` by exactly 27 bytes — 9 blank lines of indentation left behind by the `{{if not .Index}}` / `{{if .Roots}}` conditionals when false. | Rendered `/`, `/t/T-002`, `/activity` on `main` (detached worktree) vs this branch: `diff` shows only whitespace-only added lines; whitespace-normalized outputs are **identical**. | Recorded, not rewritten — the divergence between decision text and shipped behaviour is the datum (same reasoning as the cost line). Anyone later writing the golden test F4 describes must expect these 9 lines, or trim-mark the two conditionals first. |
+| F6 | non-blocking | design | noted | `MultiHandler` parses the full template set once for itself and then once more inside every `Handler(opts)` call it makes — N+1 parses of identical embedded templates for N roots. | `internal/serve/serve.go` (`MultiHandler` → `template.New("").Funcs(funcs).ParseFS(…)`, then `Handler` does the same per root) | Startup-only, and N is a handful, so not worth restructuring `Handler`'s signature to inject a shared `*template.Template`. Noted in case a future change makes `Handler` construction hot. |
+| F7 | non-blocking | spec-unclear | noted | `parseDirArg` splits on the **first** `=`, so a directory path legitimately containing `=` mis-parses: `--dir /tmp/a=b` silently becomes slug `/tmp/a`, path `b`, then fails resolving `b` against cwd with a confusing message. The `name=path` syntax's precedence is undocumented. | `internal/cli/serve.go` (`parseDirArg`, `strings.Cut(v, "=")`); `cli-reference.adoc` `#cmd-serve` documents `[name=]path` without stating the split rule | Common to every `name=value` CLI convention and rare in practice. If it ever bites, document "split on the first `=`" in `#cmd-serve` rather than adding escaping. |
+
+**Disposition summary:** 7 findings — **2 blocking** (F2 index health banner, F3 missing CHANGELOG
+entry) → `5-rework/`; 5 non-blocking: 1 `fixed inline` (F1, commit `030cc26`), 4 `noted`
+(F4, F5, F6, F7). 0 `folded`, 0 `new ticket` — nothing here passes the promotion test, and the four
+`noted` rows stay recoverable by citation.
+
+cost: estimated M, actual M
+
+**Blocking findings are the entire scope of the rework** (F2, F3). F1 is already fixed; F4–F7 are
+closed and must not be re-opened by the fix pass.
 
 ## History
 
@@ -368,3 +427,4 @@ mention needs no change — "visualize the board in a browser" already covers bo
   field instead of relying on `$.BasePath`, verified against a two-line `text/template`
   reproduction before implementing
 - 2026-09-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-02 — IN REVIEW → REWORK: review round 1: 2 blocking (index health banner, missing CHANGELOG entry)
