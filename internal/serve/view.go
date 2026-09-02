@@ -48,6 +48,26 @@ type Entry struct {
 	// field-concatenation logic in the template or client. Matches id/title
 	// only, deliberately (rules out reasons/merge lines/edges as noise).
 	Search string
+	// BasePath is "" in classic single-root mode, or "/p/{slug}" under
+	// MultiHandler (T-127). It rides on Entry itself, not just on page, because
+	// board.html's "ticket-item" and layout.html's "idlist" are invoked via
+	// {{template}}, which rebinds Go template's "$" to whatever was passed —
+	// so a nested block can never reach back to page.BasePath through "$".
+	// Copying BasePath onto every leaf view struct (Entry, Event, IDList) that
+	// a template block might be executed with keeps every internal href a
+	// plain "{{.BasePath}}/...", regardless of how deep the {{template}} calls
+	// nest.
+	BasePath string
+}
+
+// IDList pairs a list of ticket ids with the BasePath to link them from — the
+// wrapper the "idlist" template block is invoked with (funcs.go's idListOf),
+// since {{template "idlist" .DependsOn}} would otherwise hand "idlist" a bare
+// []string with no BasePath in scope (T-127; see Entry.BasePath's doc comment
+// for why "$" can't cross a {{template}} call).
+type IDList struct {
+	BasePath string
+	IDs      []string
 }
 
 // ChildGroup is one child-project's tickets within one status section.
@@ -110,7 +130,7 @@ type BoardView struct {
 // board.Sort-ordered, with its WIP count/limit when the status is WIP-limited
 // — the one grouping rule both the active-state lanes and the remaining
 // sections share (T-104), so it is written once rather than twice.
-func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.State, p config.Project, wip map[string]map[string]int, byID map[string]*ticket.Ticket) ChildGroup {
+func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.State, p config.Project, wip map[string]map[string]int, byID map[string]*ticket.Ticket, basePath string) ChildGroup {
 	var group []*ticket.Ticket
 	for _, t := range tickets {
 		if t.Dir == st.Dir && t.Project() == p.Name {
@@ -126,7 +146,7 @@ func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.Sta
 		}
 	}
 	for _, t := range group {
-		cg.Entries = append(cg.Entries, newEntry(def, t, st.Name))
+		cg.Entries = append(cg.Entries, newEntry(def, t, st.Name, basePath))
 	}
 	return cg
 }
@@ -138,7 +158,7 @@ func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.Sta
 // stateChildGroup for the actual grouping/sorting/WIP lookup, so board.Sort and
 // board.WIPCounts are still each called in exactly one place (decision 3: no
 // ordering rule is reimplemented or changed here).
-func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config) BoardView {
+func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config, basePath string) BoardView {
 	wip := board.WIPCounts(def, tickets)
 	// Whole-tree index for board.Sort's family-umbrella lookup (T-059); a member's
 	// umbrella may live in another status section, so the per-group slice is not
@@ -159,7 +179,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	for _, p := range cfg.Projects {
 		row := ChildRow{Child: p.Name}
 		for _, st := range active {
-			cg := stateChildGroup(def, tickets, st, p, wip, byID)
+			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath)
 			row.Lanes = append(row.Lanes, Lane{
 				Status: st.Name, Entries: cg.Entries, Count: cg.Count, Limit: cg.Limit,
 			})
@@ -175,7 +195,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 		}
 		section := Section{Status: st.Name}
 		for _, p := range cfg.Projects {
-			cg := stateChildGroup(def, tickets, st, p, wip, byID)
+			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath)
 			section.Total += cg.Count
 			section.Children = append(section.Children, cg)
 		}
@@ -197,7 +217,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	return view
 }
 
-func newEntry(def *flow.Definition, t *ticket.Ticket, statusName string) Entry {
+func newEntry(def *flow.Definition, t *ticket.Ticket, statusName, basePath string) Entry {
 	title := t.Front["title"]
 	return Entry{
 		ID:         t.ID,
@@ -215,6 +235,7 @@ func newEntry(def *flow.Definition, t *ticket.Ticket, statusName string) Entry {
 		Reason:     ticket.LastHistoryReason(def, t.Text),
 		Merged:     ticket.MergeLine(def, t.Text),
 		File:       filepath.Base(t.Path),
+		BasePath:   basePath,
 	}
 }
 
@@ -233,7 +254,7 @@ type TicketView struct {
 
 // buildTicket assembles one ticket's page. all is the whole tree, needed for the
 // reverse edges. It returns false when the id is unknown, so the handler can 404.
-func buildTicket(def *flow.Definition, all []*ticket.Ticket, id string) (TicketView, bool) {
+func buildTicket(def *flow.Definition, all []*ticket.Ticket, id, basePath string) (TicketView, bool) {
 	var found *ticket.Ticket
 	for _, t := range all {
 		if t.ID == id {
@@ -249,7 +270,7 @@ func buildTicket(def *flow.Definition, all []*ticket.Ticket, id string) (TicketV
 	if st, ok := def.ByDir(found.Dir); ok {
 		statusName = st.Name
 	}
-	view := TicketView{Entry: newEntry(def, found, statusName), History: ticket.HistoryEntries(def, found.Text)}
+	view := TicketView{Entry: newEntry(def, found, statusName, basePath), History: ticket.HistoryEntries(def, found.Text)}
 
 	body, err := renderMarkdown(found.Text)
 	if err != nil {
@@ -369,6 +390,10 @@ type Event struct {
 	Num     int
 	Title   string
 	Project string
+	// BasePath mirrors Entry.BasePath (see its doc comment): activity.html's
+	// per-event ticket link needs it, and "activity-body" is itself reached
+	// via {{template}}, so it must ride on Event rather than be read off page.
+	BasePath string
 }
 
 // ActivityView is the timeline page: every ticket's History, merged.
@@ -383,17 +408,18 @@ type ActivityView struct {
 // state and this shows movement. Ordering is (date desc, ticket number desc) so a
 // day's entries read as "latest ticket first"; within one ticket, file order is
 // preserved (History is append-only, so that is chronological).
-func buildActivity(def *flow.Definition, tickets []*ticket.Ticket) ActivityView {
+func buildActivity(def *flow.Definition, tickets []*ticket.Ticket, basePath string) ActivityView {
 	var events []Event
 	for _, t := range tickets {
 		for _, h := range ticket.HistoryEntries(def, t.Text) {
 			events = append(events, Event{
-				Date:    h.Date,
-				Text:    h.Text,
-				ID:      t.ID,
-				Num:     t.Num,
-				Title:   t.Front["title"],
-				Project: t.Project(),
+				Date:     h.Date,
+				Text:     h.Text,
+				ID:       t.ID,
+				Num:      t.Num,
+				Title:    t.Front["title"],
+				Project:  t.Project(),
+				BasePath: basePath,
 			})
 		}
 	}
@@ -493,6 +519,55 @@ type page struct {
 	// in this file: resolving it shells out to git, which the pure builders
 	// here deliberately never do.
 	StaleBoard string
+	// BasePath is "" in classic single-root mode, "/p/{slug}" under
+	// MultiHandler (T-127). Copied from Options.BasePath by newPage.
+	BasePath string
+	// Roots lists every *other* served project, for the header switcher — nil
+	// in classic mode, so single-root users see no chrome change at all.
+	// Copied from Options.Peers by newPage.
+	Roots []PeerLink
+	// Index is set only for the "/" listing page in named-roots mode; nil for
+	// every per-project page (Health/StaleBoard are per-project and do not
+	// apply to a page that lists several).
+	Index *IndexView
+}
+
+// PeerLink names one other served project, for the header switcher (T-127).
+type PeerLink struct {
+	Slug, Name string
+}
+
+// IndexRoot is one served project's row on the "/" listing page in
+// named-roots mode (T-127).
+type IndexRoot struct {
+	Slug, Name string
+	Health     HealthView
+}
+
+// IndexView is the "/" listing page's data in named-roots mode (T-127): every
+// served project, each with its own health summary, in the order --dir named
+// them.
+type IndexView struct {
+	Roots []IndexRoot
+}
+
+// buildIndex assembles the named-roots "/" listing: one row per served
+// project, each independently loaded and audited exactly as its own board
+// page would (T-127 decision 6–7: no aggregation, so this reuses the same
+// per-root load+health path handler.load/newPage take, just once per root
+// instead of once per request-to-that-root).
+func buildIndex(roots []NamedRoot) IndexView {
+	var view IndexView
+	for _, r := range roots {
+		def := flow.ForName(r.Options.Cfg.FlowName())
+		tickets := loadTickets(r.Options)
+		view.Roots = append(view.Roots, IndexRoot{
+			Slug:   r.Slug,
+			Name:   projectName(r.Options.Root),
+			Health: buildHealth(def, r.Options.Root, tickets, r.Options.Cfg),
+		})
+	}
+	return view
 }
 
 // projectName is the label in the header: the overarching project root's directory

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -1052,28 +1053,71 @@ func TestParseServeArgs(t *testing.T) {
 		name     string
 		args     []string
 		wantAddr string
+		wantDirs []dirArg
 		wantCode int
 	}{
-		{"default", nil, defaultAddr, exitOK},
-		{"addr separate value", []string{"--addr", "127.0.0.1:9999"}, "127.0.0.1:9999", exitOK},
-		{"addr equals form", []string{"--addr=0.0.0.0:1234"}, "0.0.0.0:1234", exitOK},
-		{"short flag", []string{"-a", "127.0.0.1:1"}, "127.0.0.1:1", exitOK},
-		{"unknown flag", []string{"--bogus"}, "", exitUsage},
-		{"stray positional", []string{"8080"}, "", exitUsage},
-		{"missing value", []string{"--addr"}, "", exitUsage},
-		{"empty value", []string{"--addr="}, "", exitUsage},
+		{"default", nil, defaultAddr, nil, exitOK},
+		{"addr separate value", []string{"--addr", "127.0.0.1:9999"}, "127.0.0.1:9999", nil, exitOK},
+		{"addr equals form", []string{"--addr=0.0.0.0:1234"}, "0.0.0.0:1234", nil, exitOK},
+		{"short flag", []string{"-a", "127.0.0.1:1"}, "127.0.0.1:1", nil, exitOK},
+		{"unknown flag", []string{"--bogus"}, "", nil, exitUsage},
+		{"stray positional", []string{"8080"}, "", nil, exitUsage},
+		{"missing value", []string{"--addr"}, "", nil, exitUsage},
+		{"empty value", []string{"--addr="}, "", nil, exitUsage},
+		{"dir separate value, default slug", []string{"--dir", "../a"}, defaultAddr,
+			[]dirArg{{Path: "../a"}}, exitOK},
+		{"dir equals form, default slug", []string{"--dir=../a"}, defaultAddr,
+			[]dirArg{{Path: "../a"}}, exitOK},
+		{"dir with explicit slug", []string{"--dir", "foo=../a"}, defaultAddr,
+			[]dirArg{{Name: "foo", Path: "../a"}}, exitOK},
+		{"repeated dir", []string{"--dir", "../a", "--dir", "b=../b"}, defaultAddr,
+			[]dirArg{{Path: "../a"}, {Name: "b", Path: "../b"}}, exitOK},
+		{"dir and addr together", []string{"--addr", "127.0.0.1:1", "--dir", "../a"}, "127.0.0.1:1",
+			[]dirArg{{Path: "../a"}}, exitOK},
+		{"dir missing value", []string{"--dir"}, "", nil, exitUsage},
+		{"dir empty value", []string{"--dir="}, "", nil, exitUsage},
+		{"dir name with no path", []string{"--dir", "foo="}, "", nil, exitUsage},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			addr, code := parseServeArgs(tc.args)
-			if code != tc.wantCode || addr != tc.wantAddr {
-				t.Fatalf("parseServeArgs(%v) = (%q, %d), want (%q, %d)",
-					tc.args, addr, code, tc.wantAddr, tc.wantCode)
+			addr, dirs, code := parseServeArgs(tc.args)
+			if code != tc.wantCode || addr != tc.wantAddr || !slices.Equal(dirs, tc.wantDirs) {
+				t.Fatalf("parseServeArgs(%v) = (%q, %v, %d), want (%q, %v, %d)",
+					tc.args, addr, dirs, code, tc.wantAddr, tc.wantDirs, tc.wantCode)
 			}
 		})
 	}
 	if defaultAddr != "127.0.0.1:8745" {
 		t.Errorf("defaultAddr = %q; the documented default is 127.0.0.1:8745", defaultAddr)
+	}
+}
+
+// TestServeDirDuplicateSlugIsUsageError: two --dir values landing on the same
+// slug (explicit here, but the default-slug path shares the same check) is a
+// startup error, never a silent overwrite (T-127 decision 5) — caught before
+// any listener is opened.
+func TestServeDirDuplicateSlugIsUsageError(t *testing.T) {
+	rootA := newProject(t)
+	rootB := newProject(t)
+	_, code := resolveNamedRoots([]dirArg{
+		{Name: "same", Path: rootA},
+		{Name: "same", Path: rootB},
+	})
+	if code != exitUsage {
+		t.Fatalf("resolveNamedRoots with a duplicate slug = %d, want exitUsage", code)
+	}
+}
+
+// TestServeDirUnresolvableIsError: a --dir that resolves to no pickle.toml
+// anywhere above it is a runtime error, via the same config.Find failure
+// loadConfig already surfaces for an unconfigured cwd.
+func TestServeDirUnresolvableIsError(t *testing.T) {
+	// A bare temp dir, deliberately never installed into — config.Find walks
+	// upward from it and (outside of this repo's own tree, which TestMain's
+	// sandbox keeps the process cwd out of) finds nothing.
+	_, code := resolveNamedRoots([]dirArg{{Path: t.TempDir()}})
+	if code != exitError {
+		t.Fatalf("resolveNamedRoots(unresolvable dir) = %d, want exitError", code)
 	}
 }
 

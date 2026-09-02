@@ -12,13 +12,20 @@
 <body>
 <header class="site-header">
   <div class="brand">
-    <a class="brand-name" href="/">{{.Project}}</a>
+    <a class="brand-name" href="{{.BasePath}}/">{{.Project}}</a>
     <span class="brand-sub">pickle board · read-only</span>
   </div>
+  {{if not .Index}}
   <nav class="site-nav">
-    <a href="/">Board</a>
-    <a href="/activity">Activity</a>
+    <a href="{{.BasePath}}/">Board</a>
+    <a href="{{.BasePath}}/activity">Activity</a>
   </nav>
+  {{end}}
+  {{if .Roots}}
+  <nav class="switcher" aria-label="Switch project">
+    {{range .Roots}}<a href="/p/{{.Slug}}/">{{.Name}}</a>{{end}}
+  </nav>
+  {{end}}
 </header>
 {{template "health" .Health}}
 {{if .StaleBoard}}
@@ -72,4 +79,4 @@
   ><span class="grade">{{.Cost}}</span
 ></span>{{end}}
 
-{{define "idlist"}}{{range $i, $id := .}}{{if $i}}, {{end}}<a class="tid" href="/t/{{$id}}">{{$id}}</a>{{end}}{{end}}
+{{define "idlist"}}{{range $i, $id := .IDs}}{{if $i}}, {{end}}<a class="tid" href="{{$.BasePath}}/t/{{$id}}">{{$id}}</a>{{end}}{{end}}

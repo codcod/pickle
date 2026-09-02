@@ -76,8 +76,9 @@ the same tree. Wait for it to finish, then try again.
 | Report tickets that shipped since the last release but aren't named in the
   changelog. Read-only and advisory — always exits `0`.
 
-| `pickle serve [--addr …]`
-| Serve a read-only browser view of the board, the tickets, and their history.
+| `pickle serve [--addr …] [--dir …]`
+| Serve a read-only browser view of the board, the tickets, and their history —
+  several project roots from one process with repeatable `--dir`.
 
 | `pickle scaffold release [--project-name …] [--force] [--dry-run]`
 | Write a Keep a Changelog `CHANGELOG.md` and a headings-only `RELEASING.md`.
@@ -1527,12 +1528,36 @@ and the fallback when either file is missing.
 == `pickle serve`
 
 ----
-pickle serve [--addr|-a host:port]
+pickle serve [--addr|-a host:port] [--dir [name=]path ...]
 ----
 
 Starts a *local, read-only* web view of the {flow} flow and runs until you stop
 it with kbd:[Ctrl+C]. Default address `127.0.0.1:8745`; `--addr` (`-a`)
 overrides it.
+
+With no `--dir`, `serve` resolves one project exactly as every other `pickle`
+command does — the nearest `pickle.toml` walking up from the current
+directory — and behaves exactly as described below. Passing `--dir` (repeatable)
+serves *several* project roots from one process instead. Each `path` resolves
+to its nearest `pickle.toml` the same way cwd does, so it may name a
+subdirectory of a project too. The project's routes then move to
+`/p/{slug}/...`, and `/` becomes an index listing every served project instead
+of any one board. The slug defaults to the resolved root's directory name;
+`--dir name=path` pins it explicitly, which is also how you resolve a
+collision — two roots landing on the same slug (default or explicit) is a
+startup error, before any listener opens, never a silent overwrite. This mode
+exists because two unrelated projects both default to `ticket_prefix = "T"`
+starting at `T-001`, so their ticket ids collide by default; nothing is ever
+aggregated across served projects — each keeps its own board, its own search,
+its own audit banner — so that collision can never surface as one ticket page
+shadowing another. A header switcher links between every served project's
+namespace without returning to `/`. Passing exactly one `--dir` still moves to
+this prefixed mode; it is an accepted, opt-in URL change, never something you
+hit by omission.
+
+Static assets and the `/healthz` probe are shared, unprefixed, across every
+served project — same bytes, same liveness check, regardless of which project a
+request is for.
 
 *It never writes.* No route creates, moves, rewrites or regenerates anything —
 not even a stale `BOARD.md`. `pickle ticket new`, `pickle ticket move` and
@@ -1605,8 +1630,9 @@ child already names.
 ====
 The dashboard has *no authentication*. The default address is loopback-only for
 that reason. `--addr` accepts any address, and a non-loopback one prints a
-warning: anyone who can reach the port can read every ticket in the project. Do
-not expose it.
+warning: anyone who can reach the port can read every ticket in the project — or,
+with one or more `--dir`, every ticket in *every* served project. Do not expose
+it.
 ====
 
 [#cmd-scaffold-release]

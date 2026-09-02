@@ -1,0 +1,26 @@
+{{/* index.html is the "/" listing page MultiHandler renders in named-roots
+     mode (T-127): every served project, one row each, with a one-line health
+     summary — deliberately not an aggregated board (decision 6/7): each row
+     just links into that project's own "/p/{slug}/" namespace. page.Index is
+     nil for every ordinary per-project page, so this template is only ever
+     reached through indexHandler.index. */}}
+{{define "index.html"}}
+{{template "head" .}}
+<main class="page">
+  <h1 class="page-title">Boards</h1>
+  <p class="lede">One <code>pickle serve</code> process, {{len .Index.Roots}} project(s) — pick a
+    board.</p>
+  <ul class="index-list">
+    {{range .Index.Roots}}
+    <li class="index-row">
+      <a class="index-link" href="/p/{{.Slug}}/">{{.Name}}</a>
+      <span class="index-meta">
+        <strong>{{.Health.Tickets}}</strong> tickets ·
+        {{if .Health.OK}}board audit clean{{else}}{{len .Health.Errors}} audit error(s), {{len .Health.Warnings}} warning(s){{end}}
+      </span>
+    </li>
+    {{end}}
+  </ul>
+</main>
+{{template "foot" .}}
+{{end}}
