@@ -435,6 +435,67 @@ closed and must not be re-opened by the fix pass.
 Acceptance test re-run verbatim after the fix: `just test` PASS (all 21 packages, including the
 new regression test), `just lint` PASS, `just build` PASS, `just docs-check` PASS.
 
+> **SHA correction (round 2):** this record was written before the branch was rebased onto the
+> updated `main`, which rewrote the commit. The fix is **`9a162bb`** on the branch; the cited
+> `6d2c1a4` is the pre-rebase original — still resolvable as a dangling object today, but not
+> reachable from `HEAD` and gone on any fresh clone. Their code content is identical
+> (`git diff 6d2c1a4 9a162bb -- internal/ CHANGELOG.md` is empty); only the bookkeeping files
+> differ. Recorded per round 2's R1.
+
+### Round 2 — scoped re-review — 2026-09-02
+
+**Scope** (protocol §1): the two blocking findings from round 1, plus the diff that closed them
+(`9a162bb`) read as new work. Not a re-audit of the feature; F4–F7 stay closed and were not
+re-opened.
+
+- [x] Reviewer independence (step 0): **degraded — recorded conscious skip, second time.**
+      Delegation was attempted twice in round 1 and terminated mid-audit both times; for a
+      one-commit, three-file fix diff a third long-running delegation was judged
+      disproportionate. Audits run by the authoring agent. Mitigation, beyond round 1's: the
+      regression test was **verified to fail when the fix is reverted** (below), and F2 was
+      confirmed end-to-end against the real binary on a deliberately corrupted board rather than
+      only through the fixer's own unit test.
+- [x] Both blocking findings verified closed — evidence below
+- [x] Fix diff (`9a162bb`) audited as new work — 2 new non-blocking findings (R1, R2)
+- [x] Scope check: the fix touched only `CHANGELOG.md`, `internal/serve/serve_test.go`,
+      `internal/serve/templates/layout.html` — no creep beyond F2/F3
+- [x] Acceptance test re-run verbatim: `just test`, `just lint`, `just build`, `just docs-check`
+      all PASS; `pickle changelog check` → `no candidates`
+
+**F2 — CLOSED.** Verified end-to-end with the built binary in a scratch dir (renamed
+`pickle-test`, per the self-modify policy), serving two in-tree roots of which one was
+deliberately corrupted to produce a real audit error (`impact: spicy` + a desynced board → 2
+errors):
+
+- index: **0** occurrences of `board audit clean`, **0** of `health-ok` — the fabricated banner
+  is gone;
+- index still reports the true per-root counts side by side: `0 audit error(s)` for the healthy
+  root, `2 audit error(s)` for the corrupted one;
+- the per-project page keeps its own detailed banner (`/p/broken/` → *illegal impact value
+  "spicy"*), and `/p/good/` renders `health-warn` → `1 tickets · 0 audit error(s), 1 warning(s)`,
+  which **matches that tree's own `pickle board audit` output exactly** — a stronger property
+  than the finding asked for: the served banner and the CLI agree on the same tree.
+
+**The regression test is a real guard, not a tautology:** reverting the one-line template change
+makes `TestMultiHandlerIndexNeverFabricatesCleanHealth` **FAIL**, and restoring it makes it pass
+— executed both ways during this re-review.
+
+**F3 — CLOSED.** `pickle changelog check` → `no candidates — every shipped ticket is mentioned`.
+Entry content re-read against shipped behaviour: accurate on the zero-flag default, the slug
+rule, the startup-error-before-listener guarantee, the no-aggregation rationale, the switcher,
+and the shared unprefixed static/`healthz`.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | non-blocking | stale-xref | fixed inline | The round-1 rework fix record cites commit `6d2c1a4`, which the post-rework rebase orphaned; the fix is `9a162bb` on the branch. Protocol §1 anticipates exactly this ("a tidy at publish time rewrites them") and directs that it be treated as a finding of its own, never blocking. | `git merge-base --is-ancestor 6d2c1a4 HEAD` → not reachable; `git diff 6d2c1a4 9a162bb -- internal/ CHANGELOG.md` → empty (code identical, only bookkeeping differs) | Corrected by the **SHA correction** note added directly above the round-2 heading, rather than by rewriting the original record — the rebase is part of the history, not something to erase. |
+| R2 | non-blocking | stale-xref | fixed inline | Round 1's F5 measured classic-mode divergence from `main` as **27 bytes / 9 blank lines**. The F2 fix's own 5-line `{{/* … */}}` comment emits a bare newline where it sits, adding **1 blank line per page** in *every* mode, so that figure is now stale. | Classic `/`, `/t/T-002`, `/activity` rendered at `a35ef38` (pre-fix) vs `9a162bb`: +3 bytes, 3 blank-line-only additions. Against current `main`: **30 bytes / 12 blank lines**, and whitespace-normalized output is **identical** — still no semantic difference. | Figure corrected here; F5's round-1 row is left as written, since it was accurate when taken. Not chased further: the divergence remains cosmetic HTML whitespace, exactly the class F5 already dispositioned `noted`. Trim markers (`{{- -}}`) would remove it if anyone ever wants byte-parity. |
+
+**Disposition summary (round 2):** 2 findings, both non-blocking, both `fixed inline` (R1, R2) —
+record-accuracy corrections, no code change. 0 blocking, 0 `folded`, 0 `new ticket`, 0 `noted`.
+Both round-1 blocking findings (F2, F3) verified closed. **Verdict: DONE.**
+
+cost: estimated M, actual M
+
 ## History
 
 - 2026-09-02 — created (TO DO). source: chat: user asked to let one `pickle serve` process
@@ -449,3 +510,4 @@ new regression test), `just lint` PASS, `just build` PASS, `just docs-check` PAS
 - 2026-09-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-02 — IN REVIEW → REWORK: review round 1: 2 blocking (index health banner, missing CHANGELOG entry)
 - 2026-09-02 — REWORK → IN REVIEW: findings fixed
+- 2026-09-02 — IN REVIEW → DONE: scoped re-review clean: F2 and F3 verified closed; 2 non-blocking (R1, R2) both fixed inline
