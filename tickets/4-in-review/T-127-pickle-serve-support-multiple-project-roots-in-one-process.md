@@ -367,3 +367,4 @@ mention needs no change — "visualize the board in a browser" already covers bo
   via `{{template}}`); fixed by giving `Entry`, `Event` and a new `IDList` their own `BasePath`
   field instead of relying on `$.BasePath`, verified against a two-line `text/template`
   reproduction before implementing
+- 2026-09-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
