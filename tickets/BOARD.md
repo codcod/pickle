@@ -13,10 +13,11 @@ Last updated: 2026-09-02
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-127 | pickle serve: support multiple project roots in one process | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-02
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-127 | pickle serve: support multiple project roots in one process | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 

@@ -328,3 +328,4 @@ mention needs no change — "visualize the board in a browser" already covers bo
 - 2026-09-02 — created (TO DO). source: chat: user asked to let one `pickle serve` process
   serve multiple project roots instead of one process per port
 - 2026-09-02 — TO DO → READY: plan complete
+- 2026-09-02 — READY → IN DEVELOPMENT: picked up
