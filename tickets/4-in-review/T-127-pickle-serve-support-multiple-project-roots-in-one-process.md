@@ -415,6 +415,26 @@ cost: estimated M, actual M
 **Blocking findings are the entire scope of the rework** (F2, F3). F1 is already fixed; F4–F7 are
 closed and must not be re-opened by the fix pass.
 
+### Rework fix record — round 1 (commit 6d2c1a4)
+
+- **F2 fixed.** `internal/serve/templates/layout.html`: the shared `{{template "health"
+  .Health}}` block is now guarded `{{if not .Index}}…{{end}}` — the index page (`page.Index`
+  set) never had a single project's health to report, so `page.Health`'s zero value read as
+  `OK() == true` and rendered a fabricated "board audit clean" banner directly contradicting the
+  real per-project error shown in the row beneath it. Regression-tested
+  (`TestMultiHandlerIndexNeverFabricatesCleanHealth`, `internal/serve/serve_test.go`): reproduces
+  the exact contradiction (a root with a real audit error), asserts the top-level banner is gone
+  **and** the real per-project error count still shows, **and** that classic mode and an ordinary
+  per-project board page both keep their own banner unchanged — the fix is scoped to the index
+  only.
+- **F3 fixed.** `CHANGELOG.md`: added the missing `## [Unreleased]` → `### Added` entry
+  describing repeatable `--dir`, the `/p/{slug}/` namespacing and its id-collision rationale, the
+  index page, and the unchanged zero-flag default, ending `(T-127)`. `pickle changelog check` now
+  reports `no candidates — every shipped ticket is mentioned`.
+
+Acceptance test re-run verbatim after the fix: `just test` PASS (all 21 packages, including the
+new regression test), `just lint` PASS, `just build` PASS, `just docs-check` PASS.
+
 ## History
 
 - 2026-09-02 — created (TO DO). source: chat: user asked to let one `pickle serve` process
@@ -428,3 +448,4 @@ closed and must not be re-opened by the fix pass.
   reproduction before implementing
 - 2026-09-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-02 — IN REVIEW → REWORK: review round 1: 2 blocking (index health banner, missing CHANGELOG entry)
+- 2026-09-02 — REWORK → IN REVIEW: findings fixed

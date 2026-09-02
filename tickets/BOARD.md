@@ -20,10 +20,11 @@ Last updated: 2026-09-02
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-127 | pickle serve: support multiple project roots in one process | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-09-02
 
 | id | title | open findings |
 |---|---|---|
-| T-127 | pickle serve: support multiple project roots in one process | review round 1: 2 blocking (index health banner, missing CHANGELOG entry) |
 
 ## READY (impact order, per child)
 
