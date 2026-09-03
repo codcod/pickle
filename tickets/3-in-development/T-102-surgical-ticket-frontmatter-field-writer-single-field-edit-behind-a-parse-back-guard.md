@@ -345,3 +345,4 @@ policy) — never the in-repo binary path, never against this repo's own tree.
   (medium/M). T-060 coupling note resolved as moot: `pickle ticket renumber` was considered and
   dropped, so there is no prior shape to check.
 - 2026-09-03 — TO DO → READY: plan complete
+- 2026-09-03 — READY → IN DEVELOPMENT: picked up

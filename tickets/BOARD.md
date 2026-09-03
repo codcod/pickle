@@ -13,10 +13,11 @@ Last updated: 2026-09-03
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-03
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | low | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
