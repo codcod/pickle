@@ -18,15 +18,14 @@
 // DuplicateKeys is non-empty (internal/ticketset.Set does this, over the
 // whole ticket, before ever calling in here — the Description requires
 // refusing rather than repairing a duplicate, and that precondition
-// belongs to the whole-ticket check, not this per-field primitive). Called
-// directly on a ticket whose *targeted* key is itself duplicated, the
-// parse-back guard below still refuses on its own: last-wins re-parsing
-// would report a value that disagrees with the one just written unless the
-// edited occurrence happens to be the last one, in which case the edit
-// legitimately took effect and the untouched duplicate is unrepaired, not
-// corrupted. A duplicate of some *other* key is invisible to this function
-// by design; it is the caller's job to have already refused for any
-// duplicate, not just the one being edited.
+// belongs to the whole-ticket check, not this per-field primitive). In
+// practice a duplicate of *any* key still trips the parse-back guard below
+// on its own — verifyFrontmatterEdit re-parses the whole frontmatter block,
+// not just the targeted key, so it reports a duplicate wherever one is,
+// refusing the edit either way (a stricter behaviour than SetField needs to
+// promise, not a documented contract of it — do not rely on this from
+// outside the package; the whole-ticket precondition above is still the one
+// callers must keep enforcing).
 package ticket
 
 import (

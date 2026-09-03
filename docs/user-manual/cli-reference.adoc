@@ -1611,8 +1611,8 @@ served project — same bytes, same liveness check, regardless of which project 
 request is for.
 
 *It never writes.* No route creates, moves, rewrites or regenerates anything —
-not even a stale `BOARD.md`. `pickle ticket new`, `pickle ticket move` and
-`pickle board sync` remain the only writers, so it is safe to leave the server
+not even a stale `BOARD.md`. `pickle ticket new`, `pickle ticket move`,
+`pickle ticket set` and `pickle board sync` remain the writers, so it is safe to leave the server
 running while you or an agent work on tickets — every read it does takes only
 a shared lock on the ticket tree, which never excludes another reader and
 never blocks behind a write for long (writes are quick, whole-tree
