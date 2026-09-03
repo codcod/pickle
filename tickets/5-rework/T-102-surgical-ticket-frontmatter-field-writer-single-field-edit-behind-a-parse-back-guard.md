@@ -311,7 +311,58 @@ policy) — never the in-repo binary path, never against this repo's own tree.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): **delegated**. The reviewing agent (this session)
+  authored the branch, so the implementation/quality/consistency/documentation audits (steps
+  2–4a) were run by a fresh, adversarially-briefed sub-agent with no memory of writing the code,
+  given the ticket as read from `main`, the branch to audit, and the child's configured
+  commands. Every delegated finding below was independently re-verified by hand (repro commands
+  re-run myself) before being recorded — one delegated finding (the blocking one, F0) was found
+  only during that re-verification and is not in the delegate's own report.
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (steps 1, 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass: **skipped** — already run once during implementation
+  (`docs_readability` against the three changed `.adoc`/`.md` files); every suggestion it
+  returned was pre-existing prose outside this ticket's diff, none applied. Not re-run at review
+  time since the changed files gained only the two inline prose fixes below (F1, F5) since then.
+- [x] Findings recorded with severity, class, disposition (step 5)
+- [x] Ticket moved (step 6)
+- [x] Other references reconciled (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented (step 9)
+
+**Implementation audit.** `just build`, `just test`, `just lint`, `just docs-check` all green.
+The plan's own acceptance-test script was re-run verbatim (against a throwaway install, per
+`AGENTS.md`'s self-modify policy) and every step matched: grade edit touches exactly one line,
+title edit touches exactly `title:` + the H1, the two-flag call is refused, `board audit` stays
+clean. Every task, and confirmed decisions 1–10, verified against the actual code — met, with
+one exception surfaced as F0 below (decision 7b's H1/frontmatter-title comparison is unsound for
+a legally whitespace-padded title, not merely "unverified").
+
+**Impact sweep (step 8).** No `2-ready/`/`1-to-do/` ticket lists T-102 in `depends-on:`. T-079's
+Description cross-references T-102 as the "tickets/-side sibling" of its own lifecycle-field
+guard — still accurate, no patch needed. `tickets/NOTES.md`'s historical triage table entry
+naming T-102 is append-only record, not a live assumption to correct.
+
+**Other references (step 7).** No governing document (`DESIGN.md`, `AGENTS.md`'s own rules) made
+a claim this branch falsified. Two prose staleness findings in the *shipped* docs tree are
+recorded as F1/F5 below (already fixed inline, since both are pure prose with no behaviour
+change).
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F0 | blocking | correctness | — | `pickle ticket set --title` refuses to retitle **any** ticket whose *original* title has leading/trailing whitespace — a title shape `ticket.ValidateTitle` legally permits — even when the ticket was never hand-edited and H1/frontmatter were written consistently by `Scaffold`. `setTitleAndHeading` (`internal/ticket/setfield.go`) compares the H1's raw, untrimmed captured title against `parseFrontmatter`'s **trimmed** `fm["title"]`; a frontmatter `key: value` line can never preserve the value's own leading whitespace distinguishably from the mandatory separator space (`fmKeyRE`'s `\s*` eats both alike), so the two sides disagree on any padded title regardless of whether the ticket ever drifted. | Repro (throwaway install): `ticket new "  padded title  " --project demo` (legal, `ValidateTitle` only rejects empty/newline/`"---"`/over-length) then `ticket set T-001 --title "clean new title"` → `heading "  padded title  " and frontmatter title "padded title" already disagree; fix by hand first`, on a ticket that was never hand-edited. | Compare both sides on the same basis — trim both the H1 capture and the frontmatter title before the decision-7b equality check — so the check tests title *content* agreement, not an artifact of the frontmatter line format's inherent inability to distinguish a value's own leading whitespace from the separator. |
+| F1 | non-blocking | other | fixed inline | `setfield.go`'s package doc claimed a duplicate of an unrelated (non-targeted) frontmatter key is "invisible to this function by design"; empirically `verifyFrontmatterEdit` re-parses the *whole* frontmatter block, so it still detects and refuses on such a duplicate — safe, but the comment overstated what callers must guarantee. | Ad hoc probe: `SetField` on a fixture with `impact` targeted but `complexity` duplicated → refused, naming `complexity`. | Comment corrected in place to describe the guard's actual (stricter) behaviour; no code change. |
+| F2 | non-blocking | design | noted | `fmKeyRE` (`^([A-Za-z-]+):\s*(.*)$`, pre-existing, unchanged by this branch) does not match an underscore-named key (e.g. the `schema_version` example this ticket's own package doc uses). A *duplicate* of such a key would bypass both `LoadAll`'s `DuplicateKeys` and `ticketset.Set`'s precondition — though the line-based writer still never corrupts or drops such a key either way, since copy-through is index-based, not regex-dependent. | `grep -n 'fmKeyRE\s*=' internal/ticket/ticket.go` (line predates this branch; `git diff main..feat/T-102-... -- internal/ticket/ticket.go` shows no change to it). | Pre-existing, shared with `board audit`'s own duplicate detection — not this ticket's to fix; noted for whoever next touches `fmKeyRE`. |
+| F3 | non-blocking | correctness | noted | `pickle ticket set --family` does not trim the value before validating it, unlike `pickle ticket new --family` (`strings.TrimSpace` in `runTicketNew`, absent from `runTicketSet`) — a padded id that `ticket new` accepts is refused by `ticket set` with a literal "is not a ticket id" message. Fails closed (no corruption), just an ergonomics inconsistency between two commands sharing the same validator. | Throwaway install: `ticket new … --family " T-001 "` → stores `family: T-001` (trimmed); `ticket set T-003 --family " T-001 "` → refused, `--family: " T-001 " is not a ticket id`. | One-line `strings.TrimSpace` in `runTicketSet` — a behaviour change, so not eligible for `fixed inline`; left for whoever next touches this command. |
+| F4 | non-blocking | stale-xref | fixed inline | `docs/user-manual/cli-reference.adoc`'s `pickle serve` section said `ticket new`, `ticket move` and `board sync` "remain the only writers" — stale now that `ticket set` also writes (confirmed: every non-no-op `ticket set` triggers a full `board.Regenerate`). | `docs/user-manual/cli-reference.adoc` (the `pickle serve` §, near "It never writes"). | Line corrected in place to add `pickle ticket set` and drop "only" (the safety claim — still lock-protected — is unaffected); no behaviour change. |
+| F5 | non-blocking | stale-xref | noted | Six other locations phrase `BOARD.md`'s regeneration as "`ticket new`, `ticket move` and `board sync`" without `ticket set` (already omitting `project add`/`project remove` before this branch, so not a new gap in kind, only in degree): `internal/board/board.go:363` (the header rendered into every generated `BOARD.md`), `internal/install/install.go:1399-1400` (the `AGENTS.md` marker-block payload) and `:1411` (the `tickets/README.md` payload), `internal/board/board_test.go:130` (fixture), `skill/SKILL.md:137-138`, and this repo's own hand-mirrored `AGENTS.md:111-112`. | `grep -rn "pickle board sync" internal/board/board.go internal/install/install.go internal/board/board_test.go skill/SKILL.md AGENTS.md` | Multi-file and touches `install.go`'s baked-in payload plus (per this repo's self-modify policy) a hand-mirrored edit to this repo's own `AGENTS.md` marker block — too broad and too sensitive for an inline fix during this review, and six near-identical one-word insertions don't clear the promotion test for a dedicated ticket on their own; noted for whoever next touches the enumeration (e.g. alongside a future ticket that also adds a `BOARD.md` writer). |
+| F6 | non-blocking | docs-gap | noted | `pickle changelog check` flags T-102 as shipped but not named in `CHANGELOG.md`'s "Unreleased" section. | `go run . changelog check` → `1 candidate(s) shipped but not named in "Unreleased": T-102`. | Same precedent as T-038's own review F7: the tool is advisory by design ("the entry may legitimately be written any time before the release"), and `RELEASING.md` opens by running it, so a release catches this — not a review-time gate. |
+
+Disposition summary: 1 blocking (F0, resolved via rework), 2 fixed inline (F1, F4), 4 noted (F2, F3, F5, F6 — F6 citing established precedent from T-038's own review). No folded, no new ticket — nothing here clears the promotion test alone.
+
+cost: estimated M, actual M
 
 ## History
 
@@ -347,3 +398,4 @@ policy) — never the in-repo binary path, never against this repo's own tree.
 - 2026-09-03 — TO DO → READY: plan complete
 - 2026-09-03 — READY → IN DEVELOPMENT: picked up
 - 2026-09-03 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-03 — IN REVIEW → REWORK: F0 blocking: --title refuses any padded original title, even undrifted
