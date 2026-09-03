@@ -6,7 +6,7 @@ current working directory (finding `pickle.toml` upward from it); nothing is
 ever written to `~/` or outside the project root.
 
 Commands that change an existing ticket tree (`ticket new`, `ticket move`,
-`board sync`, `project add`, `project remove`) first take an exclusive lock,
+`ticket set`, `board sync`, `project add`, `project remove`) first take an exclusive lock,
 so two `pickle` commands — or a `pickle` command and `pickle serve` — cannot
 race each other. `pickle serve`, `pickle board state --json`
 (<<cmd-board-state>>), `pickle board decisions` (<<cmd-board-decisions>>) and
@@ -56,6 +56,10 @@ the same tree. Wait for it to finish, then try again.
 
 | `pickle ticket move T-NNN <status>`
 | Move the file + append History + regenerate the board, atomically.
+
+| `pickle ticket set T-NNN (--impact\|--complexity\|--cost\|--family\|--title) <value>`
+| Rewrite exactly one field (or, for `--title`, the title and the heading together);
+  refuses unless nothing else in the file would change.
 
 | `pickle board audit`
 | Check every ticket invariant + board freshness.
@@ -842,6 +846,53 @@ moved T-081: IN REVIEW → DONE  (tickets/6-done/T-081-example.md)
   removed  tickets/4-in-review/T-081-example.md
   stage:   git add tickets/6-done/T-081-example.md tickets/4-in-review/T-081-example.md tickets/BOARD.md
 ----
+
+[#cmd-ticket-set]
+== `pickle ticket set`
+
+----
+pickle ticket set <T-NNN> (--impact V|--complexity V|--cost V|--family T-NNN|--title "<title>")
+----
+
+Rewrites exactly one field on an existing ticket — `impact`, `complexity`, `cost`,
+`family`, or `title` — and refuses unless every other line in the file would stay
+byte-for-byte identical. `depends-on:` is not settable this way: it is list-valued
+and gates pickup, so it stays a hand edit. Exactly one of the five flags must be
+present; passing zero or more than one is refused before anything is read.
+
+The write is a targeted line replacement, never a full frontmatter re-render: it
+finds the one line for the named key and rewrites it (inserting a new `family:`
+line, immediately before `impact:`, when none exists yet), or — for `--title` —
+rewrites the frontmatter `title:` line and the `# T-NNN — …` heading together. A
+key this binary does not recognize is never touched, so it survives verbatim with
+no separate check. After computing the candidate text, the write refuses unless:
+
+* the result still parses as frontmatter, with no duplicate key now reported;
+* the named key reads back as exactly the value requested;
+* no line other than the one(s) the edit intended actually changed.
+
+A few refusals are checked before any of the above is even attempted:
+
+* the ticket's frontmatter already has **any** duplicate key (T-040) — refused
+  outright, naming the key, regardless of which field was requested; a duplicate
+  is never silently repaired by picking a winner;
+* a `--title` edit where the current heading and the current frontmatter title
+  already disagree — refused, since there is no way to know which of the two
+  disagreeing values was the intended one.
+
+Setting a field to the value it already has is a no-op: nothing is written and
+`BOARD.md` is not regenerated. Otherwise, because every settable field renders on
+the board (a grade, the title, or a family grouping), a successful `set` always
+regenerates it, inside the same lock as the read-check-write:
+
+----
+set T-042.impact: "medium" → "high"  (tickets/2-ready/T-042-example.md)
+  stage:   git add tickets/2-ready/T-042-example.md tickets/BOARD.md
+----
+
+A `--title` edit changes the frontmatter `title:` and the heading only — never the
+filename or its slug (rules §3 already allows a stale slug: it "may be tidied",
+not must be).
 
 [#cmd-board-audit]
 == `pickle board audit`
