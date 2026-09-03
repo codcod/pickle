@@ -346,3 +346,4 @@ policy) — never the in-repo binary path, never against this repo's own tree.
   dropped, so there is no prior shape to check.
 - 2026-09-03 — TO DO → READY: plan complete
 - 2026-09-03 — READY → IN DEVELOPMENT: picked up
+- 2026-09-03 — IN DEVELOPMENT → IN REVIEW: acceptance green
