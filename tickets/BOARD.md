@@ -20,10 +20,11 @@ Last updated: 2026-09-03
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-09-03
 
 | id | title | open findings |
 |---|---|---|
-| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | F0 blocking: --title refuses any padded original title, even undrifted |
 
 ## READY (impact order, per child)
 

@@ -362,6 +362,23 @@ change).
 
 Disposition summary: 1 blocking (F0, resolved via rework), 2 fixed inline (F1, F4), 4 noted (F2, F3, F5, F6 — F6 citing established precedent from T-038's own review). No folded, no new ticket — nothing here clears the promotion test alone.
 
+### Rework fix record — round 1 (commit 870d840)
+
+F0 fixed. Root cause was one level broader than first filed: the trim asymmetry breaks **both**
+directions, not only reading a pre-existing padded title. `verifyFrontmatterEdit`'s post-write
+check (`fm[key] != value`) also refused setting a **new** padded title on an otherwise pristine,
+never-touched ticket, since `parseFrontmatter` always normalizes whatever it re-parses. Both
+manifestations share the same fix: a new `normalizeFrontmatterValue` helper (trim whitespace,
+then a surrounding quote char — exactly what `parseFrontmatter`'s own per-line scan already does)
+is applied to both sides of both comparisons — `setTitleAndHeading`'s H1-vs-frontmatter precheck,
+and `verifyFrontmatterEdit`'s re-parsed-vs-intended check. Two new regression tests added
+(`TestSetFieldTitleAcceptsPaddedOriginalTitle`, `TestSetFieldTitleAcceptsANewPaddedTitle`);
+`TestSetFieldTitleRefusesWhenH1AndFrontmatterDisagree` (genuine drift, no whitespace involved)
+re-confirmed still refusing correctly. Re-ran the acceptance test verbatim plus the exact F0 repro
+and its new-padded-title counterpart against a throwaway install — both now succeed; `just build`,
+`just test`, `just lint`, `just docs-check` all green. No other finding touched — F1–F6 stand as
+recorded above.
+
 cost: estimated M, actual M
 
 ## History
@@ -399,3 +416,4 @@ cost: estimated M, actual M
 - 2026-09-03 — READY → IN DEVELOPMENT: picked up
 - 2026-09-03 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-03 — IN REVIEW → REWORK: F0 blocking: --title refuses any padded original title, even undrifted
+- 2026-09-03 — REWORK → IN REVIEW: findings fixed
