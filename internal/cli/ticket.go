@@ -12,6 +12,7 @@ import (
 	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/move"
 	"github.com/codcod/pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/ticketset"
 )
 
 // Ticket mechanics. `ticket new` lands in P1 (id allocation + template + board
@@ -19,7 +20,7 @@ import (
 
 func runTicket(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: pickle ticket <new|move> ...")
+		fmt.Fprintln(os.Stderr, "usage: pickle ticket <new|move|set> ...")
 		return exitUsage
 	}
 	switch args[0] {
@@ -27,6 +28,8 @@ func runTicket(args []string) int {
 		return runTicketNew(args[1:])
 	case "move":
 		return runTicketMove(args[1:])
+	case "set":
+		return runTicketSet(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "pickle ticket: unknown subcommand %q\n", args[0])
 		return exitUsage
@@ -36,6 +39,7 @@ func runTicket(args []string) int {
 const (
 	ticketNewUsage  = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"] [--family T-NNN]`
 	ticketMoveUsage = `usage: pickle ticket move <T-NNN> <status> [--reason "<why>"]`
+	ticketSetUsage  = `usage: pickle ticket set <T-NNN> (--impact V|--complexity V|--cost V|--family T-NNN|--title "<title>")`
 )
 
 func runTicketMove(args []string) int {
@@ -83,6 +87,84 @@ func stageLine(newPath, oldPath string) string {
 	}
 	paths = append(paths, filepath.Join("tickets", "BOARD.md"))
 	return "git add " + strings.Join(paths, " ")
+}
+
+// runTicketSet implements `pickle ticket set` (T-102): exactly one of
+// --impact/--complexity/--cost/--family/--title must be present on the
+// command line (decision 3) — checked via fs.Visit rather than a zero-value
+// check, since an explicitly empty flag value must still count as "present".
+// Validation is the same per-field validator `ticket new` already uses;
+// the guarded write itself is internal/ticketset.Set.
+func runTicketSet(args []string) int {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		fmt.Fprintln(os.Stderr, ticketSetUsage)
+		return exitUsage
+	}
+	id := args[0]
+
+	fs := flag.NewFlagSet("ticket set", flag.ContinueOnError)
+	impact := fs.String("impact", "", "new impact grade")
+	complexity := fs.String("complexity", "", "new complexity grade")
+	cost := fs.String("cost", "", "new cost grade")
+	family := fs.String("family", "", "new umbrella ticket id")
+	title := fs.String("title", "", "new title")
+	if err := fs.Parse(args[1:]); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintln(os.Stderr, ticketSetUsage)
+		return exitUsage
+	}
+
+	valueByField := map[string]*string{
+		"impact": impact, "complexity": complexity, "cost": cost, "family": family, "title": title,
+	}
+	// fs.Visit walks only flags actually named on the command line — an empty
+	// default (e.g. --title "") would otherwise be indistinguishable from not
+	// passing --title at all, which matters here because "exactly one field"
+	// (T-102 decision 3) has to count what the caller typed, not what parsed.
+	var touched []string
+	fs.Visit(func(f *flag.Flag) {
+		if _, ok := valueByField[f.Name]; ok {
+			touched = append(touched, f.Name)
+		}
+	})
+	if len(touched) != 1 {
+		return errf("exactly one of --impact/--complexity/--cost/--family/--title is required (got %d)", len(touched))
+	}
+	field := touched[0]
+	value := *valueByField[field]
+
+	switch field {
+	case "impact", "complexity", "cost":
+		if !ticket.ValidGrade(field, value) {
+			return errf("illegal %s value %q (legal: single values or adjacent-pair ranges)", field, value)
+		}
+	case "family":
+		if !ticket.ValidID(value) {
+			return errf("--family: %q is not a ticket id (expected <PREFIX>-NNN, e.g. T-001)", value)
+		}
+	case "title":
+		if err := ticket.ValidateTitle(value); err != nil {
+			return errf("%v", err)
+		}
+	}
+
+	cfg, code := loadConfig()
+	if code != exitOK {
+		return code
+	}
+	res, err := ticketset.Set(cfg.Root(), cfg, id, field, value)
+	if err != nil {
+		return errf("%v", err)
+	}
+	if res.Old == res.New {
+		fmt.Printf("%s.%s already %q — nothing to do\n", id, res.Field, res.Old)
+		return exitOK
+	}
+	fmt.Printf("set %s.%s: %q → %q  (%s)\n", id, res.Field, res.Old, res.New, res.Path)
+	fmt.Printf("  stage:   %s\n", stageLine(res.Path, ""))
+	return exitOK
 }
 
 func runTicketNew(args []string) int {

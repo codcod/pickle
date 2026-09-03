@@ -727,6 +727,103 @@ func TestTicketNewPrintsStageLine(t *testing.T) {
 	}
 }
 
+// TestTicketSetGradeHappyPath is `ticket set`'s basic contract (T-102): change
+// exactly the named field, print the old→new value and a stage line, and
+// leave the ticket audit-clean.
+func TestTicketSetGradeHappyPath(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--impact", "high"}); got != exitOK {
+			t.Fatalf("ticket set = %d", got)
+		}
+	})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected exactly 2 lines, got %d:\n%s", len(lines), out)
+	}
+	wantFirst := `set T-001.impact: "medium" → "high"  (tickets/1-to-do/T-001-fixture.md)`
+	if lines[0] != wantFirst {
+		t.Errorf("first line = %q, want %q", lines[0], wantFirst)
+	}
+	wantStage := "  stage:   git add tickets/1-to-do/T-001-fixture.md tickets/BOARD.md"
+	if lines[1] != wantStage {
+		t.Errorf("stage line = %q, want %q", lines[1], wantStage)
+	}
+}
+
+// TestTicketSetNoFieldFlagRejected and TestTicketSetTwoFieldFlagsRejected pin
+// T-102 decision 3: `ticket set` requires exactly one of the five field
+// flags, checked by what was actually typed (fs.Visit), not by a zero-value
+// check.
+func TestTicketSetNoFieldFlagRejected(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001"}); got != exitError {
+		t.Errorf("Run(ticket set, no field flag) = %d, want %d", got, exitError)
+	}
+}
+
+func TestTicketSetTwoFieldFlagsRejected(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--impact", "high", "--cost", "L"}); got != exitError {
+		t.Errorf("Run(ticket set, two field flags) = %d, want %d", got, exitError)
+	}
+	body := readTicket(t, "", "T-001")
+	if !strings.Contains(body, "impact: medium") || !strings.Contains(body, "cost: M") {
+		t.Errorf("ticket changed on a rejected multi-flag call:\n%s", body)
+	}
+}
+
+func TestTicketSetUnknownFieldFlagIsAUsageError(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--depends-on", "T-002"}); got != exitUsage {
+		t.Errorf("Run(ticket set --depends-on) = %d, want %d (flag.ContinueOnError on an unregistered flag)", got, exitUsage)
+	}
+}
+
+// TestTicketSetIllegalGradeRejected confirms `ticket set` reuses the same
+// ticket.ValidGrade check `ticket new` does, rather than trusting the value
+// through to the writer.
+func TestTicketSetIllegalGradeRejected(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--impact", "nonsense"}); got != exitError {
+		t.Errorf("Run(ticket set --impact nonsense) = %d, want %d", got, exitError)
+	}
+}
+
+// TestTicketSetTitleUpdatesHeadingToo pins T-102 decision 4: a --title edit
+// rewrites both the frontmatter title: and the H1, never the filename.
+func TestTicketSetTitleUpdatesHeadingToo(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--title", "renamed"}); got != exitOK {
+		t.Fatalf("ticket set = %d", got)
+	}
+	body := readTicket(t, "", "T-001")
+	if !strings.Contains(body, "title: renamed") || !strings.Contains(body, "# T-001 — renamed") {
+		t.Errorf("title/H1 not both updated:\n%s", body)
+	}
+	if _, err := os.Stat(filepath.Join("tickets", "1-to-do", "T-001-fixture.md")); err != nil {
+		t.Errorf("filename changed on a title edit: %v", err)
+	}
+}
+
 // TestTicketNewUsesChildPrefix pins T-058 end to end: a child registered with a
 // ticket_prefix gets ids under that prefix, numbered independently of the default
 // "T" child, and the resulting tree audits clean.
