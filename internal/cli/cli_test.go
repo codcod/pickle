@@ -18,6 +18,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/testutil"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // repoRoot is the module root, resolved before TestMain moves the process CWD.
@@ -833,7 +834,7 @@ func TestTicketNewRejectsInjectionInTitle(t *testing.T) {
 		{"NEL line terminator", "a\u0085project: nope"},
 		{"line separator", "a\u2028project: nope"},
 		{"paragraph separator", "a\u2029project: nope"},
-		// One rune past maxTitleRuneLen (T-038 finding N2).
+		// One rune past the cap, ticket.MaxTitleRuneLen (T-038 finding N2).
 		{"over-length title", strings.Repeat("a", 121)},
 	} {
 		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
@@ -862,12 +863,12 @@ func TestTicketNewRejectsInjectionInTitle(t *testing.T) {
 // TestTicketNewAcceptsTitleAtTheCap pins the two halves of T-038 decision 2 that
 // the rejection table cannot reach, because a table of *rejected* titles can only
 // ever prove the cap fires — never that it fires in the right place. Both cases
-// below were confirmed to fail under a deliberate mutation of validateTitle, so
+// below were confirmed to fail under a deliberate mutation of ticket.ValidateTitle, so
 // neither is decorative:
 //
-//   - Exactly maxTitleRuneLen runes must be ACCEPTED. Catches an off-by-one:
+//   - Exactly ticket.MaxTitleRuneLen runes must be ACCEPTED. Catches an off-by-one:
 //     flipping `>` to `>=` rejects this title while every other test stays green.
-//   - maxTitleRuneLen *multi-byte* runes must be ACCEPTED. Catches the rune/byte
+//   - ticket.MaxTitleRuneLen multi-byte runes must be ACCEPTED. Catches the rune/byte
 //     confusion: 120 two-byte runes are 240 bytes, so a len()-based cap rejects
 //     this title — again with every other test still green. This is the case that
 //     makes utf8.RuneCountInString load-bearing rather than stylistic.
@@ -879,12 +880,12 @@ func TestTicketNewAcceptsTitleAtTheCap(t *testing.T) {
 	for _, tc := range []struct {
 		name, title string
 	}{
-		{"exactly at the cap", strings.Repeat("a", maxTitleRuneLen)},
-		{"at the cap in multi-byte runes", strings.Repeat("é", maxTitleRuneLen)},
+		{"exactly at the cap", strings.Repeat("a", ticket.MaxTitleRuneLen)},
+		{"at the cap in multi-byte runes", strings.Repeat("é", ticket.MaxTitleRuneLen)},
 	} {
 		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
-			if n := utf8.RuneCountInString(tc.title); n != maxTitleRuneLen {
-				t.Fatalf("test fixture is %d runes, want exactly %d", n, maxTitleRuneLen)
+			if n := utf8.RuneCountInString(tc.title); n != ticket.MaxTitleRuneLen {
+				t.Fatalf("test fixture is %d runes, want exactly %d", n, ticket.MaxTitleRuneLen)
 			}
 			root := newProject(t)
 			if got := Run(nil, "test", []string{"ticket", "new", tc.title, "--project", "demo"}); got != exitOK {
@@ -908,7 +909,7 @@ func TestTicketNewAcceptsTitleAtTheCap(t *testing.T) {
 // error came back.
 func TestTicketNewOverlongTitleErrorNamesTheContract(t *testing.T) {
 	root := newProject(t) // chdirs; also gives us a path that must not appear
-	title := strings.Repeat("a", maxTitleRuneLen+1)
+	title := strings.Repeat("a", ticket.MaxTitleRuneLen+1)
 
 	var code int
 	stderr := captureStderr(t, func() {
