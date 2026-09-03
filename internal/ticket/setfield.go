@@ -148,18 +148,29 @@ func setTitleAndHeading(text, id, newTitle string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("no frontmatter block")
 	}
-	fm, dupes, ok := parseFrontmatter(text)
+	_, dupes, ok := parseFrontmatter(text)
 	if !ok {
 		return "", fmt.Errorf("no frontmatter block")
 	}
 	if len(dupes) > 0 {
 		return "", fmt.Errorf("frontmatter has duplicate key(s) %s; refusing rather than guessing which value is current", strings.Join(dupes, ", "))
 	}
-	currentTitle := fm["title"]
 	titleAt := findFrontmatterKeyLine(lines, closeAt, "title")
 	if titleAt == -1 {
 		return "", fmt.Errorf("frontmatter has no %q key to set (a required key can only be missing on an already-malformed ticket)", "title")
 	}
+	// currentTitle is read straight from the frontmatter line's own raw
+	// capture (fmKeyRE), not through parseFrontmatter's fm["title"] — which
+	// also strips a surrounding quote character. A markdown heading has no
+	// quoting convention to mirror that, so comparing against the
+	// already-quote-stripped parsed value would treat a genuine
+	// quote-boundary disagreement between the two copies (H1 quoted,
+	// frontmatter not, or vice versa — a plausible result of hand-adding
+	// YAML-style quoting to only one copy) as agreement, silently papering
+	// over exactly the drift this function exists to catch (T-102 rework
+	// round 2, finding G0).
+	currentTitleRaw := fmKeyRE.FindStringSubmatch(lines[titleAt])[2]
+	currentTitle := strings.TrimSpace(currentTitleRaw)
 
 	h1RE := regexp.MustCompile(`^# ` + regexp.QuoteMeta(id) + ` — (.+)$`)
 	h1At := -1
@@ -174,8 +185,16 @@ func setTitleAndHeading(text, id, newTitle string) (string, error) {
 	if h1At == -1 {
 		return "", fmt.Errorf("no %q heading found to update", "# "+id+" — …")
 	}
-	if got := h1RE.FindStringSubmatch(lines[h1At])[1]; got != currentTitle {
-		return "", fmt.Errorf("heading %q and frontmatter title %q already disagree; fix by hand first", got, currentTitle)
+	// Compared trimmed of whitespace only, not raw and not quote-stripped
+	// (T-102 rework, F0 then G0): a frontmatter `key: value` line cannot tell
+	// the value's own leading whitespace apart from the mandatory separator
+	// space (fmKeyRE's `\s*` consumes both alike), so that — and only that —
+	// ambiguity is normalized away, symmetrically, on both sides. Anything
+	// else that differs between the two raw copies, including a boundary
+	// quote character, is a real disagreement and must still refuse.
+	h1RawTitle := h1RE.FindStringSubmatch(lines[h1At])[1]
+	if got := strings.TrimSpace(h1RawTitle); got != currentTitle {
+		return "", fmt.Errorf("heading %q and frontmatter title %q already disagree; fix by hand first", h1RawTitle, currentTitleRaw)
 	}
 
 	updated := slices.Clone(lines)
@@ -194,7 +213,8 @@ func setTitleAndHeading(text, id, newTitle string) (string, error) {
 
 // verifyFrontmatterEdit is the parse-back half of the guard: it re-parses
 // the candidate text's frontmatter and refuses unless it still parses, key
-// reads back as exactly value, and no duplicate key is now reported. The
+// reads back as the intended value (compared normalized — see
+// normalizeFrontmatterValue), and no duplicate key is now reported. The
 // caller's own line-diff check is the other half — together they turn
 // "nothing else changed" into a checked claim rather than a hope, the same
 // shape as config's verifyOnlyPayloadVersion.
@@ -206,10 +226,36 @@ func verifyFrontmatterEdit(after, key, value string) error {
 	if len(dupes) > 0 {
 		return fmt.Errorf("setting %s would leave a duplicate frontmatter key (%s); set it by hand", key, strings.Join(dupes, ", "))
 	}
-	if got := fm[key]; got != value {
+	if got, want := fm[key], normalizeFrontmatterValue(value); got != want {
 		return fmt.Errorf("could not set %s (it would end up %q, not %q); set it by hand", key, got, value)
 	}
 	return nil
+}
+
+// normalizeFrontmatterValue mirrors exactly what parseFrontmatter's own
+// per-line scan does to a value: trim surrounding whitespace, then trim any
+// surrounding matching quote characters. verifyFrontmatterEdit needs it
+// (T-102 rework, finding F0): title is the one settable field whose legal
+// values can carry leading/trailing whitespace (ticket.ValidateTitle does
+// not reject it), and a frontmatter `key: value` line cannot preserve a
+// value's own leading whitespace distinguishably from the mandatory
+// separator space — fmKeyRE's `\s*` consumes both alike — so an exact,
+// unnormalized comparison refuses a legal padded value regardless of
+// whether anything actually drifted. Comparing what a real re-parse would
+// report (which is exactly this normalization, applied by parseFrontmatter
+// itself) against this normalized form of the intended value is what makes
+// the check test title *content* agreement, not an artifact of the
+// frontmatter line format itself.
+//
+// Deliberately NOT used by setTitleAndHeading's H1-vs-frontmatter drift
+// precheck (T-102 rework round 2, finding G0): that check's job is
+// detecting whether the *current* ticket already disagrees with itself, and
+// a markdown heading has no quoting convention to mirror parseFrontmatter's
+// quote-stripping — stripping quotes there would treat a genuine
+// quote-boundary disagreement as agreement. That check trims whitespace
+// only, symmetrically, on its own raw captures instead.
+func normalizeFrontmatterValue(s string) string {
+	return strings.Trim(strings.TrimSpace(s), `"'`)
 }
 
 // onlyLinesChanged reports whether a and b are the same length and differ
