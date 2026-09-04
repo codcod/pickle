@@ -465,3 +465,6 @@ cost: estimated M, actual M
 - 2026-09-04 — IN REVIEW → REWORK: G0 blocking: round-1 fix's drift precheck masked a quote-boundary disagreement, contradicts decision 7
 - 2026-09-04 — REWORK → IN REVIEW: findings fixed
 - 2026-09-04 — IN REVIEW → DONE: review PASS after two rework rounds (F0, G0); no blocking findings remain
+- 2026-09-04 — merged to main (a4bb5d0, PR #83); all 7 commits kept as history rather than squashed
+  (the root-path default, rules §0) — the branch was tidied before publishing, squashing the two
+  review-round fix commits into one since the second corrected a defect the first introduced
