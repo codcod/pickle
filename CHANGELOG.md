@@ -8,6 +8,34 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-04
+
+### Added
+
+- **A registered child can opt into rick interop (`rick = true`), and `pickle doctor -v` then
+  reports how many of its artifacts exist and how many are still awaiting approval**, without
+  pickle ever re-scanning `docs/specs/**` itself. A new `internal/rickstatus` library shells out
+  to `rick status --json` and projects the result into a small `Report`/`Artifact` shape; every
+  failure mode — rick not opted in, not on `PATH`, erroring, timing out, or reporting an
+  unrecognised schema version — collapses to the same fail-open shape (`Available: false`), never
+  an error a caller has to remember to check for. The schema is pinned to an exact match (2), not
+  a floor, so a future rick major version degrades to "no artifacts shown" rather than a
+  best-effort parse. Off by default and never auto-detected; a child that has never heard of rick
+  sees no behaviour change at all. Shipped in `internal/rickstatus`, `internal/config`
+  (`rick`/`specs_root` fields) and `internal/doctor` (T-076).
+- **`pickle serve`'s ticket page shows a rick-enabled child's artifacts, read-only, with a new
+  `GET /specs/{key}/{name}` route to read one.** The board row gets a compact "N pending" badge;
+  the ticket page lists every artifact's kind and status, which instance is *effective* under
+  rick's own tie-break rule (filename-date descending, then artifact date, then path — status-
+  blind throughout), and a warning when a kind holds more than one instance or its effective one
+  is not yet approved — the reading surface a human otherwise gets only by scrolling a 400-line
+  solution design in a terminal before approving it. The route's whole security model is a
+  whitelist: a filename is servable only when this same request's fresh rick query actually
+  reported it for that ticket, nothing else, even if it exists on disk. No htmx polling on the
+  artifact page — rick's own session may rewrite or delete the file mid-read, so a stale render on
+  reload is expected, not silently swapped out from under the reader. Shipped in `internal/serve`
+  (T-077).
+
 ## [0.16.0] - 2026-09-04
 
 ### Added
@@ -913,7 +941,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/codcod/pickle/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/codcod/pickle/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/codcod/pickle/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/codcod/pickle/compare/v0.13.0...v0.14.0
