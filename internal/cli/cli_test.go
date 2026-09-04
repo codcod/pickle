@@ -18,6 +18,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/testutil"
+	"github.com/codcod/pickle/internal/ticket"
 )
 
 // repoRoot is the module root, resolved before TestMain moves the process CWD.
@@ -726,6 +727,103 @@ func TestTicketNewPrintsStageLine(t *testing.T) {
 	}
 }
 
+// TestTicketSetGradeHappyPath is `ticket set`'s basic contract (T-102): change
+// exactly the named field, print the old→new value and a stage line, and
+// leave the ticket audit-clean.
+func TestTicketSetGradeHappyPath(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	out := captureStdout(t, func() {
+		if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--impact", "high"}); got != exitOK {
+			t.Fatalf("ticket set = %d", got)
+		}
+	})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected exactly 2 lines, got %d:\n%s", len(lines), out)
+	}
+	wantFirst := `set T-001.impact: "medium" → "high"  (tickets/1-to-do/T-001-fixture.md)`
+	if lines[0] != wantFirst {
+		t.Errorf("first line = %q, want %q", lines[0], wantFirst)
+	}
+	wantStage := "  stage:   git add tickets/1-to-do/T-001-fixture.md tickets/BOARD.md"
+	if lines[1] != wantStage {
+		t.Errorf("stage line = %q, want %q", lines[1], wantStage)
+	}
+}
+
+// TestTicketSetNoFieldFlagRejected and TestTicketSetTwoFieldFlagsRejected pin
+// T-102 decision 3: `ticket set` requires exactly one of the five field
+// flags, checked by what was actually typed (fs.Visit), not by a zero-value
+// check.
+func TestTicketSetNoFieldFlagRejected(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001"}); got != exitError {
+		t.Errorf("Run(ticket set, no field flag) = %d, want %d", got, exitError)
+	}
+}
+
+func TestTicketSetTwoFieldFlagsRejected(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--impact", "high", "--cost", "L"}); got != exitError {
+		t.Errorf("Run(ticket set, two field flags) = %d, want %d", got, exitError)
+	}
+	body := readTicket(t, "", "T-001")
+	if !strings.Contains(body, "impact: medium") || !strings.Contains(body, "cost: M") {
+		t.Errorf("ticket changed on a rejected multi-flag call:\n%s", body)
+	}
+}
+
+func TestTicketSetUnknownFieldFlagIsAUsageError(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--depends-on", "T-002"}); got != exitUsage {
+		t.Errorf("Run(ticket set --depends-on) = %d, want %d (flag.ContinueOnError on an unregistered flag)", got, exitUsage)
+	}
+}
+
+// TestTicketSetIllegalGradeRejected confirms `ticket set` reuses the same
+// ticket.ValidGrade check `ticket new` does, rather than trusting the value
+// through to the writer.
+func TestTicketSetIllegalGradeRejected(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--impact", "nonsense"}); got != exitError {
+		t.Errorf("Run(ticket set --impact nonsense) = %d, want %d", got, exitError)
+	}
+}
+
+// TestTicketSetTitleUpdatesHeadingToo pins T-102 decision 4: a --title edit
+// rewrites both the frontmatter title: and the H1, never the filename.
+func TestTicketSetTitleUpdatesHeadingToo(t *testing.T) {
+	newProject(t)
+	if got := Run(nil, "test", []string{"ticket", "new", "fixture", "--project", "demo"}); got != exitOK {
+		t.Fatalf("ticket new = %d", got)
+	}
+	if got := Run(nil, "test", []string{"ticket", "set", "T-001", "--title", "renamed"}); got != exitOK {
+		t.Fatalf("ticket set = %d", got)
+	}
+	body := readTicket(t, "", "T-001")
+	if !strings.Contains(body, "title: renamed") || !strings.Contains(body, "# T-001 — renamed") {
+		t.Errorf("title/H1 not both updated:\n%s", body)
+	}
+	if _, err := os.Stat(filepath.Join("tickets", "1-to-do", "T-001-fixture.md")); err != nil {
+		t.Errorf("filename changed on a title edit: %v", err)
+	}
+}
+
 // TestTicketNewUsesChildPrefix pins T-058 end to end: a child registered with a
 // ticket_prefix gets ids under that prefix, numbered independently of the default
 // "T" child, and the resulting tree audits clean.
@@ -833,7 +931,7 @@ func TestTicketNewRejectsInjectionInTitle(t *testing.T) {
 		{"NEL line terminator", "a\u0085project: nope"},
 		{"line separator", "a\u2028project: nope"},
 		{"paragraph separator", "a\u2029project: nope"},
-		// One rune past maxTitleRuneLen (T-038 finding N2).
+		// One rune past the cap, ticket.MaxTitleRuneLen (T-038 finding N2).
 		{"over-length title", strings.Repeat("a", 121)},
 	} {
 		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
@@ -862,12 +960,12 @@ func TestTicketNewRejectsInjectionInTitle(t *testing.T) {
 // TestTicketNewAcceptsTitleAtTheCap pins the two halves of T-038 decision 2 that
 // the rejection table cannot reach, because a table of *rejected* titles can only
 // ever prove the cap fires — never that it fires in the right place. Both cases
-// below were confirmed to fail under a deliberate mutation of validateTitle, so
+// below were confirmed to fail under a deliberate mutation of ticket.ValidateTitle, so
 // neither is decorative:
 //
-//   - Exactly maxTitleRuneLen runes must be ACCEPTED. Catches an off-by-one:
+//   - Exactly ticket.MaxTitleRuneLen runes must be ACCEPTED. Catches an off-by-one:
 //     flipping `>` to `>=` rejects this title while every other test stays green.
-//   - maxTitleRuneLen *multi-byte* runes must be ACCEPTED. Catches the rune/byte
+//   - ticket.MaxTitleRuneLen multi-byte runes must be ACCEPTED. Catches the rune/byte
 //     confusion: 120 two-byte runes are 240 bytes, so a len()-based cap rejects
 //     this title — again with every other test still green. This is the case that
 //     makes utf8.RuneCountInString load-bearing rather than stylistic.
@@ -879,12 +977,12 @@ func TestTicketNewAcceptsTitleAtTheCap(t *testing.T) {
 	for _, tc := range []struct {
 		name, title string
 	}{
-		{"exactly at the cap", strings.Repeat("a", maxTitleRuneLen)},
-		{"at the cap in multi-byte runes", strings.Repeat("é", maxTitleRuneLen)},
+		{"exactly at the cap", strings.Repeat("a", ticket.MaxTitleRuneLen)},
+		{"at the cap in multi-byte runes", strings.Repeat("é", ticket.MaxTitleRuneLen)},
 	} {
 		t.Run(tc.name, func(t *testing.T) { // no t.Parallel: newProject chdirs
-			if n := utf8.RuneCountInString(tc.title); n != maxTitleRuneLen {
-				t.Fatalf("test fixture is %d runes, want exactly %d", n, maxTitleRuneLen)
+			if n := utf8.RuneCountInString(tc.title); n != ticket.MaxTitleRuneLen {
+				t.Fatalf("test fixture is %d runes, want exactly %d", n, ticket.MaxTitleRuneLen)
 			}
 			root := newProject(t)
 			if got := Run(nil, "test", []string{"ticket", "new", tc.title, "--project", "demo"}); got != exitOK {
@@ -908,7 +1006,7 @@ func TestTicketNewAcceptsTitleAtTheCap(t *testing.T) {
 // error came back.
 func TestTicketNewOverlongTitleErrorNamesTheContract(t *testing.T) {
 	root := newProject(t) // chdirs; also gives us a path that must not appear
-	title := strings.Repeat("a", maxTitleRuneLen+1)
+	title := strings.Repeat("a", ticket.MaxTitleRuneLen+1)
 
 	var code int
 	stderr := captureStderr(t, func() {

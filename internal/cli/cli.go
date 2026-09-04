@@ -126,6 +126,10 @@ Flow commands:
                           ordering (single id, same child; never gates pickup).
   ticket move T-NNN <status> --reason "<why>"
                           Move a ticket (file + History + board regeneration) atomically.
+  ticket set T-NNN (--impact V|--complexity V|--cost V|--family T-NNN|--title "<title>")
+                          Rewrite exactly one field (or, for --title, the frontmatter title
+                          and the H1 together); refuses unless nothing else in the file
+                          would change. Exactly one flag is required per call.
   board audit             Check the ticket invariants + board freshness (exit non-zero on any error).
   board sync              Regenerate BOARD.md from ticket frontmatter + locations.
   board state --json      Print the whole ticket tree as one versioned JSON document

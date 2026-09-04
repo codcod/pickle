@@ -18,7 +18,9 @@ The single artifact everything flows through. Authored from the skill's
   would lose the record *and* break the `max()+1` rule.
 * *Filename* — `<PREFIX>-NNN-<slug>.md`; the slug derives from the title, so a title
   is a single line of text and reasonably short; `pickle ticket new` enforces both
-  limits — see <<cmd-ticket-new>>.
+  limits — see <<cmd-ticket-new>>. Retitling later is `pickle ticket set --title`
+  (<<cmd-ticket-set>>): it rewrites the frontmatter `title:` and the `# T-NNN — …`
+  heading together, never the filename — a stale slug is legal and "may be tidied".
 
 == Frontmatter
 
@@ -59,6 +61,9 @@ While a ticket is unrefined, a grade may be an adjacent-pair range
 (`low-medium`, `M-L`, …) to encode honest uncertainty; refinement collapses it
 to a single value. Grade every new ticket *against the existing backlog* — the
 board renders TO DO/READY by descending impact within each child's group.
+`pickle ticket set --impact|--complexity|--cost|--family <value>` (<<cmd-ticket-set>>)
+makes a later re-grade or family change a guarded single-line edit instead of a
+hand edit in a markdown file; `depends-on:` alone stays a hand edit.
 
 == Dependencies vs lineage
 

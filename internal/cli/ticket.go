@@ -1,19 +1,18 @@
 package cli
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/codcod/pickle/internal/board"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/move"
 	"github.com/codcod/pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/ticketset"
 )
 
 // Ticket mechanics. `ticket new` lands in P1 (id allocation + template + board
@@ -21,7 +20,7 @@ import (
 
 func runTicket(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: pickle ticket <new|move> ...")
+		fmt.Fprintln(os.Stderr, "usage: pickle ticket <new|move|set> ...")
 		return exitUsage
 	}
 	switch args[0] {
@@ -29,6 +28,8 @@ func runTicket(args []string) int {
 		return runTicketNew(args[1:])
 	case "move":
 		return runTicketMove(args[1:])
+	case "set":
+		return runTicketSet(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "pickle ticket: unknown subcommand %q\n", args[0])
 		return exitUsage
@@ -38,6 +39,7 @@ func runTicket(args []string) int {
 const (
 	ticketNewUsage  = `usage: pickle ticket new "<title>" --project <name> [--impact V --complexity V --cost V] [--spawned-by "T-NNN[,T-MMM]"] [--family T-NNN]`
 	ticketMoveUsage = `usage: pickle ticket move <T-NNN> <status> [--reason "<why>"]`
+	ticketSetUsage  = `usage: pickle ticket set <T-NNN> (--impact V|--complexity V|--cost V|--family T-NNN|--title "<title>")`
 )
 
 func runTicketMove(args []string) int {
@@ -87,6 +89,84 @@ func stageLine(newPath, oldPath string) string {
 	return "git add " + strings.Join(paths, " ")
 }
 
+// runTicketSet implements `pickle ticket set` (T-102): exactly one of
+// --impact/--complexity/--cost/--family/--title must be present on the
+// command line (decision 3) — checked via fs.Visit rather than a zero-value
+// check, since an explicitly empty flag value must still count as "present".
+// Validation is the same per-field validator `ticket new` already uses;
+// the guarded write itself is internal/ticketset.Set.
+func runTicketSet(args []string) int {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		fmt.Fprintln(os.Stderr, ticketSetUsage)
+		return exitUsage
+	}
+	id := args[0]
+
+	fs := flag.NewFlagSet("ticket set", flag.ContinueOnError)
+	impact := fs.String("impact", "", "new impact grade")
+	complexity := fs.String("complexity", "", "new complexity grade")
+	cost := fs.String("cost", "", "new cost grade")
+	family := fs.String("family", "", "new umbrella ticket id")
+	title := fs.String("title", "", "new title")
+	if err := fs.Parse(args[1:]); err != nil {
+		return exitUsage
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintln(os.Stderr, ticketSetUsage)
+		return exitUsage
+	}
+
+	valueByField := map[string]*string{
+		"impact": impact, "complexity": complexity, "cost": cost, "family": family, "title": title,
+	}
+	// fs.Visit walks only flags actually named on the command line — an empty
+	// default (e.g. --title "") would otherwise be indistinguishable from not
+	// passing --title at all, which matters here because "exactly one field"
+	// (T-102 decision 3) has to count what the caller typed, not what parsed.
+	var touched []string
+	fs.Visit(func(f *flag.Flag) {
+		if _, ok := valueByField[f.Name]; ok {
+			touched = append(touched, f.Name)
+		}
+	})
+	if len(touched) != 1 {
+		return errf("exactly one of --impact/--complexity/--cost/--family/--title is required (got %d)", len(touched))
+	}
+	field := touched[0]
+	value := *valueByField[field]
+
+	switch field {
+	case "impact", "complexity", "cost":
+		if !ticket.ValidGrade(field, value) {
+			return errf("illegal %s value %q (legal: single values or adjacent-pair ranges)", field, value)
+		}
+	case "family":
+		if !ticket.ValidID(value) {
+			return errf("--family: %q is not a ticket id (expected <PREFIX>-NNN, e.g. T-001)", value)
+		}
+	case "title":
+		if err := ticket.ValidateTitle(value); err != nil {
+			return errf("%v", err)
+		}
+	}
+
+	cfg, code := loadConfig()
+	if code != exitOK {
+		return code
+	}
+	res, err := ticketset.Set(cfg.Root(), cfg, id, field, value)
+	if err != nil {
+		return errf("%v", err)
+	}
+	if res.Old == res.New {
+		fmt.Printf("%s.%s already %q — nothing to do\n", id, res.Field, res.Old)
+		return exitOK
+	}
+	fmt.Printf("set %s.%s: %q → %q  (%s)\n", id, res.Field, res.Old, res.New, res.Path)
+	fmt.Printf("  stage:   %s\n", stageLine(res.Path, ""))
+	return exitOK
+}
+
 func runTicketNew(args []string) int {
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
 		fmt.Fprintln(os.Stderr, ticketNewUsage)
@@ -116,7 +196,7 @@ func runTicketNew(args []string) int {
 			return errf("illegal %s value %q (legal: single values or adjacent-pair ranges)", g.kind, g.v)
 		}
 	}
-	if err := validateTitle(title); err != nil {
+	if err := ticket.ValidateTitle(title); err != nil {
 		return errf("%v", err)
 	}
 	// Shape-checked and de-duplicated here, before anything is written. Whether the
@@ -203,77 +283,6 @@ func createExclusive(path, content string) error {
 	return closeErr
 }
 
-// maxTitleRuneLen caps a title's length in runes. A title becomes part of a
-// filename (`<PREFIX>-NNN-<slug>.md`), so without a cap the only guard is the
-// OS's own NAME_MAX — which fails late, with a raw `open …: file name too long`
-// naming an absolute path, where every other rejection here names what is wrong
-// with the input (T-038 finding N2).
-//
-// Capping the raw title rather than the derived slug is sufficient to bound the
-// filename, because ticket.Slugify is non-expanding: it lowercases rune-wise,
-// collapses each run of non-[a-z0-9] runes to a single '-', and trims. (Its one
-// growth path is the "untitled" fallback, which fires only when the result is
-// already empty, so it cannot approach any bound.) The slug's alphabet is pure
-// ASCII, so 120 runes is also 120 *bytes* on disk — which is what actually
-// matters, since NAME_MAX is measured in bytes and a rune cap alone would let a
-// CJK title through at three bytes each.
-//
-// 120 matches board.maxCellRunes: not shared code (a hard rejection here, a
-// truncate-with-ellipsis there) but the same number for the same underlying
-// reason — how long a single readable line is.
-const maxTitleRuneLen = 120
-
-// validateTitle rejects titles that cannot be rendered safely. A newline is the
-// load-bearing case: ticket.Scaffold interpolates the title into the frontmatter
-// block, so a newline injects extra keys and leaks the remainder into the
-// document body below the H1. (The board is safe either way — cells are
-// sanitised one-way at render time, T-044 — but the ticket file itself is not.)
-//
-// "Newline" here means all five Unicode line terminators, not just \n and \r.
-// Pickle's own ParseFrontmatter splits on \n alone, so U+0085 (NEL), U+2028
-// (line separator) and U+2029 (paragraph separator) change no pickle behaviour —
-// but YAML 1.1 readers do treat them as line breaks, and a ticket file is read
-// by more than pickle. Measured against Ruby Psych (T-038 finding N1): a title
-// of "a\u0085project: nope" parses as title "a" plus a phantom `project:` key,
-// which is exactly the duplicate-key corruption T-030 exists to prevent, reached
-// through a terminator its check did not enumerate. PyYAML and the static-site
-// tooling built on both behave the same way.
-//
-// Still an explicit blacklist, not unicode.IsControl: that would also reject
-// \t, \v and \f, which are harmless here (the slug collapses them and the
-// frontmatter stays on one physical line) and one of which — \t — appears in a
-// title the test suite deliberately accepts. Enumerating the unsafe runes is
-// what keeps this a boundary tightening instead of a whitelist (T-030
-// decision 1's own precedent).
-//
-// Deliberately a rejection, not a sanitisation like move.sanitizeReason: a
-// --reason is free text, but a title becomes the filename, the H1 and a board
-// cell, so quietly rewriting it hands back a ticket nobody asked for (T-030
-// decision 1).
-//
-// Not a character whitelist, and not a defence against markdown-breaking cells:
-// a '|' is legal in a title — the board renderer sanitises every cell one-way
-// at the render boundary (T-044), so it can never split a table row.
-func validateTitle(title string) error {
-	if strings.TrimSpace(title) == "" {
-		// Otherwise ticket.Slugify's "untitled" fallback names the file after
-		// nothing at all: T-00N-untitled.md. Only whitespace is caught here —
-		// an unsluggable title like "###" still reaches that fallback, by design.
-		return errors.New("title is empty")
-	}
-	if strings.ContainsAny(title, "\n\r\u0085\u2028\u2029") {
-		return errors.New("title may not contain newlines (it is written into the frontmatter, the heading and a board cell)")
-	}
-	if utf8.RuneCountInString(title) > maxTitleRuneLen {
-		return fmt.Errorf("title exceeds %d runes (it becomes part of a filename)", maxTitleRuneLen)
-	}
-	// A "---" title cannot actually truncate the frontmatter — Scaffold writes it
-	// after a literal "title: " prefix, and ParseFrontmatter's terminator needs a
-	// line that trims to exactly "---". It is rejected as a degenerate title, not
-	// as an injection defence. (Reachable only when padded: bare "---" is caught
-	// by the "-" prefix guard in runTicketNew and exits as a usage error.)
-	if strings.TrimSpace(title) == "---" {
-		return errors.New(`title may not be "---"`)
-	}
-	return nil
-}
+// maxTitleRuneLen and validateTitle moved to internal/ticket (T-102 Task 1),
+// exported as ticket.MaxTitleRuneLen / ticket.ValidateTitle, so ticket new
+// and ticket set share one validator instead of each carrying its own copy.
