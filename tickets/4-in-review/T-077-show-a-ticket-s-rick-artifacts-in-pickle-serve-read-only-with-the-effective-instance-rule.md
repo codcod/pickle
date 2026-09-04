@@ -268,3 +268,4 @@ All runnable via `just test` (`go test ./...`) unless noted.
   must carry `{{.BasePath}}`. Scope and grade otherwise unchanged.
 - 2026-09-04 — TO DO → READY: plan complete
 - 2026-09-04 — READY → IN DEVELOPMENT: picked up
+- 2026-09-04 — IN DEVELOPMENT → IN REVIEW: acceptance green
