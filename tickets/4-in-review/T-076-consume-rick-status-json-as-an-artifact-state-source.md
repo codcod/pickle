@@ -286,6 +286,20 @@ plus F9 partially), 4 noted (F2, F6, F8, and F9's remaining half).
 cost: estimated M, actual M — the blocking finding is a small, well-isolated fix (one
 function, one test); it does not change the estimate.
 
+### Rework fix record — round 1 (commit 4b3a406)
+
+Fixed F1: `execFailureReason` (`internal/rickstatus/rickstatus.go`) now detects a real timeout by
+checking `ctx.Err() != nil` after the command fails — `cancel` is deferred until `Query` returns,
+so this is non-nil here iff the deadline actually fired — checked ahead of the `*exec.ExitError`
+case a timed-out process is also (a killed process's error never satisfied
+`errors.Is(err, context.DeadlineExceeded)`, which is why the original branch was dead code).
+`TestQueryTimesOut` now asserts on `Reason` (both that it names a timeout and that it does **not**
+read as a generic `"exited N"`), closing F2 in the same commit — the gap that let F1 ship
+undetected the first time. Full suite, `go vet`, `gofmt`, `just lint`/`docs-check`, and the bonus
+real-`rick`-binary test (`TestQueryAgainstRealRickBinary`) all re-run clean; coverage on this
+package rose from 90.5% to 95.2% (`execFailureReason` 83.3%, the remaining gap being F9's
+noted-not-fixed default-branch case).
+
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
@@ -307,3 +321,4 @@ function, one test); it does not change the estimate.
   populated only from the artifact's own frontmatter) were all confirmed correct as written.
 - 2026-09-04 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-04 — IN REVIEW → REWORK: 1 blocking finding (F1): timeout does not produce a distinct Reason
+- 2026-09-04 — REWORK → IN REVIEW: F1 fixed (commit 4b3a406); findings fixed

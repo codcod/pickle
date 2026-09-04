@@ -20,10 +20,11 @@ Last updated: 2026-09-04
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-076 | consume rick status --json as an artifact-state source | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-09-04
 
 | id | title | open findings |
 |---|---|---|
-| T-076 | consume rick status --json as an artifact-state source | 1 blocking finding (F1): timeout does not produce a distinct Reason |
 
 ## READY (impact order, per child)
 
