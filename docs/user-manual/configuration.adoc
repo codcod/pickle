@@ -71,6 +71,14 @@ Hand-edits are always preserved on load.
 * `wip_in_development` / `wip_in_review` (default 1);
 * optional per-child `review_addendum` — that child's own addendum, applied after the
   overarching one, if any; same guidance, <<lifecycle>>.
+* `rick` (default `false`) — opts this child into rick interop: pickle shells out to
+  `rick status --json` for it, to learn which https://gitlab.com[rick/ai-sdlc] artifacts exist
+  under its `docs/specs/` tree and which are still awaiting approval. Off by default and never
+  auto-detected. A child that has never heard of rick sees no behaviour change at all. A child
+  that turns it on but has no `rick` on `PATH` (or hits any other failure) fails open: no error,
+  no warning, just nothing to show. `pickle doctor -v` reports the result either way.
+* `specs_root` (default `"docs/specs"`) — the child-relative directory rick's artifacts live
+  under; only meaningful once `rick` is `true`.
 
 The shipped {flow} skill (`{skill-dir}/`) states only the
 flow's *defaults* for the ticket-id prefix, the branch prefix, the WIP limits

@@ -213,6 +213,83 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+// TestRickAndSpecsRootRoundTrip (T-076): a project with rick = true and an
+// explicit specs_root renders and reloads byte-stable, and Specs() reflects
+// the configured value rather than the default.
+func TestRickAndSpecsRootRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c.Projects[0].Rick = true
+	c.Projects[0].SpecsRoot = "custom/specs"
+	if err := c.Save(""); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	c2, err := Load(path)
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	p := c2.Projects[0]
+	if !p.Rick {
+		t.Error("rick = true did not round-trip")
+	}
+	if p.SpecsRoot != "custom/specs" || p.Specs() != "custom/specs" {
+		t.Errorf("SpecsRoot = %q, Specs() = %q, want %q", p.SpecsRoot, p.Specs(), "custom/specs")
+	}
+	rendered := c2.Render()
+	if !strings.Contains(rendered, "rick = true") || !strings.Contains(rendered, `specs_root = "custom/specs"`) {
+		t.Errorf("Render() missing rick/specs_root lines:\n%s", rendered)
+	}
+	if c2.Render() != c.Render() {
+		t.Errorf("round-trip not stable:\n--- first ---\n%s\n--- second ---\n%s", c.Render(), c2.Render())
+	}
+}
+
+// TestRickUnsetRendersNeitherLine (T-076 decision 2): the overwhelmingly
+// common non-rick child's pickle.toml gains not one byte, and Specs() still
+// answers the default.
+func TestRickUnsetRendersNeitherLine(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	rendered := c.Render()
+	if strings.Contains(rendered, "rick = true") || strings.Contains(rendered, "specs_root") {
+		t.Errorf("Render() emitted a rick/specs_root line for a project that never opted in:\n%s", rendered)
+	}
+	if got := c.Projects[0].Specs(); got != DefaultSpecsRoot {
+		t.Errorf("Specs() = %q, want default %q", got, DefaultSpecsRoot)
+	}
+}
+
+// TestAddProjectRejectsInvalidUTF8SpecsRoot extends
+// TestAddProjectRejectsInvalidUTF8's table to specs_root (T-076 decision 2:
+// added to invalidUTF8Field's checklist alongside every other per-child
+// string field).
+func TestAddProjectRejectsInvalidUTF8SpecsRoot(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCfg(t, dir, oneProject)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	before := len(c.Projects)
+	badSpecsRoot := "s\xffpecs"
+	if err := c.AddProject(Project{Name: "x", Path: ".", Rick: true, SpecsRoot: badSpecsRoot}); err == nil {
+		t.Fatal("expected AddProject to reject a specs_root that is not valid UTF-8")
+	} else if !strings.Contains(err.Error(), "UTF-8") {
+		t.Errorf("error does not mention UTF-8: %v", err)
+	}
+	if len(c.Projects) != before {
+		t.Errorf("AddProject left a partial append behind: %d projects, want %d", len(c.Projects), before)
+	}
+}
+
 // TestRenderEscaping pins tomlQuote's round-trip table against the exact
 // shapes T-069 measured %q getting wrong: control bytes with a TOML short
 // escape, ones without (BEL, VT), a DEL byte, and ordinary multibyte text.
