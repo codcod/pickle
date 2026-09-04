@@ -264,3 +264,4 @@ All runnable via `just test` (`go test ./...`) unless noted.
   flagged as unverifiable turned out to be checkable after all, and the single field it got
   wrong is now fixed before it ever shipped. `path`/`kind`/`status`/`date` (the last omitempty,
   populated only from the artifact's own frontmatter) were all confirmed correct as written.
+- 2026-09-04 — IN DEVELOPMENT → IN REVIEW: acceptance green
