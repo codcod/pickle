@@ -300,6 +300,46 @@ real-`rick`-binary test (`TestQueryAgainstRealRickBinary`) all re-run clean; cov
 package rose from 90.5% to 95.2% (`execFailureReason` 83.3%, the remaining gap being F9's
 noted-not-fixed default-branch case).
 
+### Scoped re-review — round 1
+
+Again delegated (step 0: the orchestrating reviewer authored the fix commit in this session) to a
+fresh, independent sub-agent, scoped exactly to F1/F2 plus a fresh read of the fix diff for new
+defects — not a re-audit of the whole feature. Re-verified by hand afterward (`go test
+./internal/rickstatus/... -v -race`, `go build`/`go vet`/`gofmt -l .`, full `just test`,
+`just docs-check`, `pickle board audit`, all clean).
+
+**F1: confirmed closed.** The reviewer reproduced the underlying Go semantics independently (not
+just re-running the shipped test): `exec.CommandContext` killing a timed-out process yields a
+plain `*exec.ExitError` (`ExitCode() == -1`) that never satisfies
+`errors.Is(err, context.DeadlineExceeded)`, while `ctx.Err()` correctly reports the deadline at
+that point — confirming the fix's checked-`ctx.Err()` approach is the right fix, not merely one
+that happens to pass. Case ordering in the new switch (`ctx.Err()` checked ahead of
+`*exec.ExitError`) is correct given a timed-out process is also an `*exec.ExitError`.
+
+**F2: confirmed closed, and confirmed non-vacuous.** The reviewer reverted just the
+`execFailureReason` logic to the pre-fix check in a scratch copy, kept the new test, and showed it
+fails exactly as F1 originally shipped (`Reason = "rick status --json exited -1"`) — proof the
+test would have caught the original bug, not a tautology.
+
+**New-defect sweep of the diff:** none found. The other `execFailureReason` branches, `wire.go`
+(untouched by this commit), `Query`'s error-free contract (decision 8), and `doctor`'s
+rick-never-warns contract (decision 9, also untouched by this commit) were all spot-checked and
+intact.
+
+**One informational observation, explicitly not raised as a finding:** `ctx.Err() != nil` is
+checked after `cmd.Output()` returns rather than atomically with the kill, so a process that
+exits with a genuine non-zero code in the exact same instant the deadline independently elapses
+could theoretically be misreported as "timed out" rather than "exited N". This only affects
+diagnostic wording (still `Available: false`, still fail-open), requires sub-millisecond
+coincidence, and is inherent to polling a context flag rather than a defect in this fix — recorded
+here for the record, not dispositioned, since a non-finding has nothing to disposition.
+
+**Verdict: no blocking findings. Ticket proceeds to `tickets/6-done/`.** No new findings from this
+round (F3–F9's round-1 dispositions stand unchanged; none were in this round's scope).
+
+cost: estimated M, actual M — unchanged from round 1's assessment; the fix stayed exactly as
+small as decision 8's fail-open design predicted it would.
+
 ## History
 
 - 2026-08-07 — created (TO DO). source: pickle ticket new
@@ -322,3 +362,4 @@ noted-not-fixed default-branch case).
 - 2026-09-04 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-04 — IN REVIEW → REWORK: 1 blocking finding (F1): timeout does not produce a distinct Reason
 - 2026-09-04 — REWORK → IN REVIEW: F1 fixed (commit 4b3a406); findings fixed
+- 2026-09-04 — IN REVIEW → DONE: review clean; 8 non-blocking dispositioned (4 fixed inline, 4 noted), 1 blocking (F1) fixed in rework round 1, scoped re-review confirmed closed with no new findings
