@@ -70,15 +70,15 @@ feature this repo has no natural corpus for. Nothing else in the Description abo
 `ticket.SplitID`, `config.Project.Prefix()` and the `audit.go` prefix↔project check it leans on
 are all shipped and unchanged since T-058.
 
-**One thing could not be re-verified: rick's actual JSON field names.** `sdlc-cli` is a separate
-GitLab repo this workspace has no checkout of, so `Path`/`Kind`/`Status`/`Date` under
-`Workflow.Tickets[].Artifacts[]` are taken on trust from T-075's Description, and the exact wire
-casing (`schemaVersion` vs `SchemaVersion`, `key` vs `id` for which ticket an artifact list
-belongs to) is not confirmed against source. This is why decision 8 below matters: the whole
-feature is specified to fail open on anything it cannot parse, so a wrong field guess degrades to
-"no artifacts shown" rather than a crash or a wrong answer — low-risk enough to build against the
-documented shape now and correct the struct tags later from a real capture, rather than blocking
-on obtaining one.
+**Update, during implementation: the JSON field names are now confirmed, not guessed.** The dev
+machine picking this ticket up happens to have the real `rick` CLI installed (`ig/uk/rick`
+v0.10.0, the exact `github.com/ig-private/ai-sdlc/sdlc-cli` binary T-075 cites), so the wire
+shape was pinned against a scratch `docs/specs/<ID>/*.md` fixture rather than left on trust. It
+confirmed `Path`/`Kind`/`Status`/`Date` (lowercase on the wire, `Date` present only when the
+artifact's own frontmatter carries one) and corrected the one field this paragraph flagged as
+uncertain: a `workflow.tickets[]` entry's identifying field is `id`, not `key` (see History for
+the full account). Decision 8's fail-open design is still what made the original guess safe to
+ship against — it just turned out not to be needed here.
 
 ## Implementation Plan
 
@@ -145,11 +145,12 @@ plan builds on is already shipped: `config.Project`/`Validate`/`Render` (`intern
    projected into the exported `Report`/`Artifact` shape — never returned to a caller directly,
    the same boundary `internal/state`'s package doc draws between a wire format and a package's
    own types.
-7. **No filtering by `ticket_prefix` in `Query`.** T-058 already makes a pickle id and rick's key
+7. **No filtering by `ticket_prefix` in `Query`.** T-058 already makes a pickle id and rick's id
    the same string when `ticket_prefix` is set correctly, so `Report.Tickets` is keyed verbatim on
-   whatever `wireTicket.Key` rick reports. An entry for a key nobody asks about is inert — `For`
-   simply never returns it — so a defensive prefix filter would add a task and a test for a
-   problem `For`'s own shape already prevents.
+   whatever `wireTicket.ID` rick reports *(amended during implementation — see History: the field
+   is `id`, not `key`)*. An entry nobody asks about is inert — `For` simply never returns it — so
+   a defensive prefix filter would add a task and a test for a problem `For`'s own shape already
+   prevents.
 8. **`Query` never returns an error. Every failure mode collapses to `Report{Available: false,
    Reason: "…"}`** — `rick` not on `PATH`, non-zero exit, context deadline exceeded, malformed
    JSON, and an unrecognised `SchemaVersion` all produce a distinct, human-readable `Reason` and
@@ -255,3 +256,11 @@ All runnable via `just test` (`go test ./...`) unless noted.
   Nothing re-graded
 - 2026-09-04 — TO DO → READY: plan complete
 - 2026-09-04 — READY → IN DEVELOPMENT: picked up
+- 2026-09-04 — plan amended inline: decision 7's `wireTicket.Key` corrected to `wireTicket.ID`
+  (JSON field `id`, not `key`). The dev machine happens to have the real `rick` CLI installed
+  (`ig/uk/rick` v0.10.0, the exact `github.com/ig-private/ai-sdlc/sdlc-cli` binary this ticket
+  cites), so the wire shape was pinned empirically against a scratch `docs/specs/<ID>/*.md`
+  fixture rather than left on trust from this ticket's own prose — the one thing refinement
+  flagged as unverifiable turned out to be checkable after all, and the single field it got
+  wrong is now fixed before it ever shipped. `path`/`kind`/`status`/`date` (the last omitempty,
+  populated only from the artifact's own frontmatter) were all confirmed correct as written.
