@@ -373,3 +373,4 @@ small as decision 8's fail-open design predicted it would.
   substantive change is the middle commit's type prefix; the branch is also now based on the
   later `main`, so its `tickets/` ancestry differs, which is why that path is excluded from the
   comparison rather than included in it.
+- 2026-09-04 — merged to main (PR #84, 8147a63)
