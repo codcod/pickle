@@ -8,6 +8,28 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle ticket set <T-NNN>` changes exactly one field on an existing ticket — `--impact`,
+  `--complexity`, `--cost`, `--family` or `--title` — and refuses unless every other line in the
+  file would stay byte-identical.** Re-grading, retitling or grouping a ticket under an umbrella no
+  longer means hand-editing frontmatter. Exactly one of the five flags is required per call; zero
+  or more than one is refused before anything is read. The write is a targeted line replacement,
+  never a full frontmatter re-render: it rewrites the one line for the named key (inserting a new
+  `family:` line before `impact:` when none exists yet), or — for `--title` — the frontmatter
+  `title:` line and the `# T-NNN — …` heading together, never the filename, so a slug going stale
+  stays the tidiable case it already was. Because only the targeted line is ever touched, a
+  frontmatter key this binary does not recognise survives verbatim with no separate check. Two
+  guards then have to agree before anything is written: the result must re-parse with the named key
+  reading back as intended and no duplicate key, and a literal line diff must show only the line(s)
+  the edit intended. A ticket whose frontmatter already carries *any* duplicate key is refused
+  outright, naming it, rather than silently repaired by picking a winner; a `--title` edit whose
+  heading and frontmatter title already disagree is refused rather than papered over. Setting a
+  field to the value it already has is a no-op — nothing is written and the board is not
+  regenerated. `depends-on:` is deliberately not settable this way: it is list-valued and gates
+  pickup, so it stays a hand edit. Shipped in `internal/ticket` (`SetField`), `internal/ticketset`,
+  and `pickle ticket set` (T-102).
+
 ## [0.15.0] - 2026-09-02
 
 ### Added
