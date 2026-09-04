@@ -39,6 +39,7 @@
   <a class="tid" href="{{.BasePath}}/t/{{.ID}}">{{.ID}}</a>
   <a class="ticket-title" href="{{.BasePath}}/t/{{.ID}}">{{.Title}}</a>
   {{template "grades" .}}
+  {{if .RickPending}}<span class="rick-badge">rick {{.RickPending}} pending</span>{{end}}
   {{if .DependsOn}}<span class="edge">depends on {{template "idlist" (idListOf .BasePath .DependsOn)}}</span>{{end}}
   {{if .SpawnedBy}}<span class="edge muted">from {{template "idlist" (idListOf .BasePath .SpawnedBy)}}</span>{{end}}
   {{if .Family}}<span class="edge muted">family <a href="{{.BasePath}}/t/{{.Family}}">{{.Family}}</a></span>{{end}}

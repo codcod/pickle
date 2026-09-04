@@ -26,6 +26,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -98,6 +99,10 @@ func Handler(opts Options) (http.Handler, error) {
 	mux.HandleFunc("GET /", h.board)
 	mux.HandleFunc("GET /activity", h.activity)
 	mux.HandleFunc("GET /t/{id}", h.ticket)
+	// Registered inside Handler's mux, never MultiHandler's top-level one (T-077
+	// decision 1): that is what makes it inherit "/p/{slug}" automatically under
+	// multi-root, the same way every other route here does.
+	mux.HandleFunc("GET /specs/{key}/{name}", h.artifact)
 	mux.HandleFunc("GET /fragments/board", h.boardFragment)
 	mux.HandleFunc("GET /fragments/activity", h.activityFragment)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -377,8 +382,9 @@ func (h *handler) board(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tickets := h.load()
+	reports := buildRickReports(h.opts.Cfg, h.opts.Root)
 	p := h.newPage("Board", tickets)
-	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg, h.opts.BasePath)
+	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg, h.opts.BasePath, reports)
 	h.render(w, "board.html", p)
 }
 
@@ -396,7 +402,8 @@ func (h *handler) ticket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tickets := h.load()
-	view, ok := buildTicket(flow.ForName(h.opts.Cfg.FlowName()), tickets, id, h.opts.BasePath)
+	reports := buildRickReports(h.opts.Cfg, h.opts.Root)
+	view, ok := buildTicket(flow.ForName(h.opts.Cfg.FlowName()), tickets, id, h.opts.BasePath, reports)
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -406,12 +413,43 @@ func (h *handler) ticket(w http.ResponseWriter, r *http.Request) {
 	h.render(w, "ticket.html", p)
 }
 
+// artifact renders one rick artifact's body, read-only, through the same
+// escaped markdown pipeline as a ticket's own body (decision 8). resolveArtifact
+// is the route's entire security model (decision 2): only a name this same
+// request's fresh rickstatus.Query actually reported is ever servable, so an
+// unknown key shape, a name outside the whitelist, or a whitelisted file
+// deleted underneath since (rick's own [D]iscard, T-075 invariant 3) all 404
+// rather than 500 — no htmx polling here (decision 9), since a stale render on
+// reload is expected, not silently swapped out from under the reader.
+func (h *handler) artifact(w http.ResponseWriter, r *http.Request) {
+	key, name := r.PathValue("key"), r.PathValue("name")
+	path, ok := resolveArtifact(h.opts.Cfg, h.opts.Root, key, name)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	body, err := renderMarkdown(string(data))
+	if err != nil {
+		body = template.HTML("<pre>" + template.HTMLEscapeString(stripFrontmatter(string(data))) + "</pre>")
+	}
+	tickets := h.load()
+	p := h.newPage(name, tickets)
+	p.Artifact = &ArtifactPage{TicketID: key, Name: name, Body: body}
+	h.render(w, "artifact.html", p)
+}
+
 // The fragment routes exist for htmx polling. They execute the very same template
 // blocks the full pages embed, so a poll can never drift from a reload.
 func (h *handler) boardFragment(w http.ResponseWriter, _ *http.Request) {
 	tickets := h.load()
+	reports := buildRickReports(h.opts.Cfg, h.opts.Root)
 	p := h.newPage("Board", tickets)
-	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg, h.opts.BasePath)
+	p.Board = buildBoard(flow.ForName(h.opts.Cfg.FlowName()), tickets, h.opts.Cfg, h.opts.BasePath, reports)
 	h.render(w, "board-fragment", p)
 }
 

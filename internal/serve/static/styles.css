@@ -208,6 +208,21 @@ code { font-family: var(--mono); font-size: 0.9em; }
 .muted { color: var(--muted); }
 .empty { color: var(--muted); font-size: 0.85rem; margin: 0.2rem 0 0.6rem; }
 
+/* ---- rick artifacts (T-077) ---- */
+
+.rick-badge {
+  font-family: var(--mono); font-size: 0.72rem; padding: 0.05rem 0.35rem;
+  border: 1px solid var(--line); border-radius: 3px; color: var(--muted);
+}
+.rick-status-approved { color: var(--accent); border-color: var(--accent); }
+.rick-status-draft, .rick-status-complete { color: var(--warn); border-color: var(--warn); }
+.rick-effective { font-size: 0.72rem; color: var(--accent); }
+.rick-dup, .rick-mismatch { font-size: 0.8rem; color: var(--warn); }
+.rick-mismatch { color: var(--error); }
+.artifacts { list-style: none; margin: 0; padding: 0; }
+.artifact-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; margin-bottom: 0.2rem; }
+.artifact-kind { font-family: var(--mono); font-size: 0.82rem; }
+
 /* ---- ticket page ---- */
 
 .meta {

@@ -17,6 +17,25 @@
     <dt>members</dt><dd>{{if .Members}}{{template "idlist" (idListOf .BasePath .Members)}}{{else}}—{{end}}</dd>
     <dt>file</dt><dd><code>{{.File}}</code></dd>
     {{if .Merged}}<dt>merged</dt><dd>{{linkify .Merged}}</dd>{{end}}
+    {{if .Artifacts}}
+    <dt>artifacts</dt>
+    <dd>
+      <ul class="artifacts">
+        {{range .Artifacts}}
+        <li class="artifact-row">
+          <span class="artifact-kind">{{.Kind}}</span>
+          <span class="rick-badge rick-status-{{.Status | slug}}">{{.Status}}</span>
+          {{if .Effective}}<span class="rick-effective">effective</span>{{end}}
+          <a href="{{.Href}}">{{.Name}}</a>
+          {{if .Effective}}
+            {{if .Mismatch}}<span class="rick-mismatch">effective instance is not approved</span>
+            {{else if .Duplicate}}<span class="rick-dup">duplicate kind</span>{{end}}
+          {{end}}
+        </li>
+        {{end}}
+      </ul>
+    </dd>
+    {{end}}
   </dl>
 
   <article class="body">{{.Body}}</article>
