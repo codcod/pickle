@@ -363,3 +363,13 @@ small as decision 8's fail-open design predicted it would.
 - 2026-09-04 — IN REVIEW → REWORK: 1 blocking finding (F1): timeout does not produce a distinct Reason
 - 2026-09-04 — REWORK → IN REVIEW: F1 fixed (commit 4b3a406); findings fixed
 - 2026-09-04 — IN REVIEW → DONE: review clean; 8 non-blocking dispositioned (4 fixed inline, 4 noted), 1 blocking (F1) fixed in rework round 1, scoped re-review confirmed closed with no new findings
+- 2026-09-04 — branch tidied at publish time (rules §0, root-path child: three atomic commits kept
+  rather than squashed). This rewrote the SHAs, so the Review section's rework fix record now
+  cites a commit that no longer resolves — anticipated by the rules' own fallback, and mapped here
+  rather than left to reconstruction: `0743b1d` → `a2e4542` (feat), `138089f` → `e086a4a` (review
+  fixups, also retyped from the invalid `docs+test:` to `chore:`), `4b3a406` → `8c85c18` (the F1
+  fix the rework record describes). Verified that the tidy changed no code: the branch's own diff
+  excluding `tickets/` is byte-identical before and after (896 lines either side). The only
+  substantive change is the middle commit's type prefix; the branch is also now based on the
+  later `main`, so its `tickets/` ancestry differs, which is why that path is excluded from the
+  comparison rather than included in it.
