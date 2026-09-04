@@ -13,6 +13,13 @@
 // docs/specs/** itself, so it can never fork rick's own kind-detection or
 // status rules.
 //
+// This is a leaf package, not part of internal/serve, because the shell-out
+// has exactly one consumer today (T-076's own doctor check) and at least one
+// more already planned (T-077's ticket-page rendering) — a library either
+// can call, neither owning the other, rather than serve reaching into a
+// doctor-only helper or doctor depending on the web layer for a plain exec
+// call.
+//
 // Fail-open is a type-level guarantee, not a convention callers have to
 // remember (T-076 decision 8): rick not opted in, not on PATH, erroring,
 // timing out, returning malformed JSON, or reporting an unrecognised
