@@ -243,7 +243,48 @@ All runnable via `just test` (`go test ./...`) unless noted.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Checklist
+
+- [x] Reviewer independence settled (step 0): **delegated** — the orchestrating reviewer authored
+  this branch in this session, so steps 2–4a were run by a fresh, independent sub-agent, briefed
+  adversarially with no memory of writing the code. Every delegated finding was re-verified by
+  hand before being recorded below (two reproduced directly: the timeout/`Reason` bug with a
+  standalone repro of `errors.Is(err, context.DeadlineExceeded)` against a real killed process,
+  and the `specs_root`-discarded-when-`rick`-false case with a throwaway test against `Render()`).
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (steps 1, 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass on `docs/user-manual/configuration.adoc` and `cli-reference.adoc` —
+  every suggestion's quoted text verified against the file; none fabricated; 3 applied (all to text
+  this ticket added), the rest correctly left alone as pre-existing, out-of-scope prose (step 4b)
+- [x] Findings recorded with severity, class and disposition; disposition summary + cost line
+  present (step 5)
+- [x] Ticket moved to `tickets/5-rework/`; `## History` appended (step 6a)
+- [x] Other references updated if needed; governing documents reconciled (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [ ] Summary + commit message + next-ticket suggestion presented for approval (step 9) — pending
+  the rework round; nothing to publish until the blocking finding is fixed
+
+### Findings
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | correctness | — | A real `rick status --json` timeout does **not** produce the "distinct, human-readable Reason" decision 8 promises for it — `exec.CommandContext` kills the process with SIGKILL, so `cmd.Output()`'s error is a plain `*exec.ExitError` (`"signal: killed"`, `ExitCode() == -1`), which never satisfies `errors.Is(err, context.DeadlineExceeded)`. The timeout case in `execFailureReason` is dead code; a real timeout instead falls into the generic exit-code branch and reads as `"rick status --json exited -1"`, indistinguishable from an ordinary crash. | `internal/rickstatus/rickstatus.go:129-142`; reproduced standalone (`errors.Is` false, `errors.As(*exec.ExitError)` true, `ExitCode()==-1`) and end-to-end via `Query` with a 20ms `rickTimeout` against a 2s-sleeping stub, giving `Reason = "rick status --json exited -1"`; `go tool cover -func` confirms the `context.DeadlineExceeded` line in `execFailureReason` is never covered | Detect the timeout via `ctx.Err() != nil` (checked after the command fails, not via `errors.Is` on the returned error) rather than trying to match it out of the wrapped exec error; update `TestQueryTimesOut` to assert on `Reason` so this class of regression cannot ship silently again (folds in F2) |
+| F2 | non-blocking | test-gap | noted | `TestQueryTimesOut` only asserts `Available`, never `Reason` — the one test written for this exact scenario could not have caught F1. | `internal/rickstatus/rickstatus_test.go`, `TestQueryTimesOut` | Addressed as part of F1's fix (see F1's suggestion) rather than separately — recorded here so the gap itself is on the record independent of whether F1's fix remembers it |
+| F3 | non-blocking | docs-gap | fixed inline | Package doc omitted the "why `rickstatus`, not `internal/serve`" rationale Task 2 explicitly asked for. | `internal/rickstatus/rickstatus.go` (package doc, pre-fix) | Added a paragraph naming the two-consumers-neither-owns-the-other rationale |
+| F4 | non-blocking | docs-gap | fixed inline | `configuration.adoc` listed `rick`/`specs_root` after `review_addendum`, the opposite of `Render()`'s actual emission order (which the ticket's own decision 2 specifies as directly after `wip_in_review`, before `review_addendum`). | `docs/user-manual/configuration.adoc` (pre-fix) vs `internal/config/config.go:503-511` | Reordered the doc bullets to match |
+| F5 | non-blocking | docs-gap | fixed inline | `specs_root`'s doc bullet didn't say the field is inert until T-077 lands, as Task 5 asked ("pointing at T-077 for what turning it on actually surfaces"). | `docs/user-manual/configuration.adoc` (pre-fix); Task 5 text | Added a sentence stating no code reads it yet and naming T-077 as the first consumer |
+| F6 | non-blocking | design | noted | Setting `specs_root` without `rick = true` is silently discarded the next time `pickle project add\|remove` fully re-renders `pickle.toml` (`Render()` gates both lines on `p.Rick`) — a real, reproduced edge case, but exactly what decision 2 specifies, not a deviation from it. | Reproduced directly: `Project{SpecsRoot: "custom/specs", Rick: false}` renders with no `specs_root` line at all | No change now — changing this means revisiting decision 2, not a review-time call. Now documented explicitly in `configuration.adoc` (see F5's fix) so it isn't a silent trap |
+| F7 | non-blocking | docs-gap | fixed inline | The `rick` bullet linked `https://gitlab.com[rick/ai-sdlc]` — the bare GitLab homepage, not a page for the (private) project, providing no navigation value. | `docs/user-manual/configuration.adoc` (pre-fix), line ~74 | Dropped the link, kept the plain-text mention |
+| F8 | non-blocking | other | noted | Acceptance test item 2 says "extend `TestAddProjectRejectsInvalidUTF8`'s table", but that test is not table-driven and never was — not something this branch made false (rules out `stale-xref`), and no confirmed design decision is at issue (rules out `plan-wrong`). | `internal/config/config_test.go:714-734` (single-case, not a table); the plan's acceptance-test wording | None needed — the implementation reasonably added a sibling test (`TestAddProjectRejectsInvalidUTF8SpecsRoot`) with equivalent coverage instead; harmless plan-wording slip |
+| F9 | non-blocking | test-gap | fixed inline (partial) | Two structural branches were untested: `parse`'s empty-`id` skip, and `execFailureReason`'s `default` case. | `go tool cover -func`: `internal/rickstatus/wire.go:51` (`parse`) at 85.7%, `execFailureReason`'s default branch uncovered | Added `TestParseSkipsTicketsWithEmptyID` (now covered). The `execFailureReason` default-branch test was attempted but found to be **environment-dependent and misleading**: a non-executable stub earlier on `PATH` doesn't produce a permission error, it makes `PATH` resolution fall through to the next entry — on this reviewer's machine, straight to the real installed `rick` binary, which happens to answer with an unrelated schema mismatch that only accidentally satisfies the assertion. Discarded rather than shipped as a passing-but-wrong test; left as `noted` for the default branch specifically (defensive completeness, genuinely hard to trigger deterministically without an injectable command runner, not worth the redesign for one leaf-package branch) |
+
+Disposition summary: 1 blocking (F1, → rework); 8 non-blocking — 4 fixed inline (F3, F4, F5, F7,
+plus F9 partially), 4 noted (F2, F6, F8, and F9's remaining half).
+
+cost: estimated M, actual M — the blocking finding is a small, well-isolated fix (one
+function, one test); it does not change the estimate.
 
 ## History
 
@@ -265,3 +306,4 @@ All runnable via `just test` (`go test ./...`) unless noted.
   wrong is now fixed before it ever shipped. `path`/`kind`/`status`/`date` (the last omitempty,
   populated only from the artifact's own frontmatter) were all confirmed correct as written.
 - 2026-09-04 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-04 — IN REVIEW → REWORK: 1 blocking finding (F1): timeout does not produce a distinct Reason
