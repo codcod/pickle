@@ -267,3 +267,4 @@ All runnable via `just test` (`go test ./...`) unless noted.
   `/p/{slug}/`, on the mux `Handler` builds) rather than top-level, and any template link to it
   must carry `{{.BasePath}}`. Scope and grade otherwise unchanged.
 - 2026-09-04 — TO DO → READY: plan complete
+- 2026-09-04 — READY → IN DEVELOPMENT: picked up
