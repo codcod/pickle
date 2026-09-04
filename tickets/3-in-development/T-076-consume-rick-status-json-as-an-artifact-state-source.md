@@ -254,3 +254,4 @@ All runnable via `just test` (`go test ./...`) unless noted.
   and snake_case keys; a consumer refuses an unrecognised `schema` rather than guessing.
   Nothing re-graded
 - 2026-09-04 — TO DO → READY: plan complete
+- 2026-09-04 — READY → IN DEVELOPMENT: picked up
