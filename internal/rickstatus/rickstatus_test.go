@@ -143,6 +143,11 @@ func TestQueryMissingBinaryFailsOpenWithoutPanic(t *testing.T) {
 	}
 }
 
+// TestQueryTimesOut (review finding F1/F2, T-076 round 1): a real timeout
+// must be reported as a timeout, not folded into the generic non-zero-exit
+// message a killed process also produces (both are *exec.ExitError). This
+// asserts on Reason, not just Available, precisely because the original
+// version of this test did not and so could not catch F1.
 func TestQueryTimesOut(t *testing.T) {
 	orig := rickTimeout
 	rickTimeout = 20 * time.Millisecond
@@ -155,6 +160,12 @@ func TestQueryTimesOut(t *testing.T) {
 	rep := Query(t.TempDir(), rickProject(t))
 	if rep.Available {
 		t.Fatalf("Query() = %+v, want not Available when rick times out", rep)
+	}
+	if !strings.Contains(rep.Reason, "timed out") {
+		t.Errorf("Reason = %q, want it to name a timeout distinctly from an ordinary exit/crash", rep.Reason)
+	}
+	if strings.Contains(rep.Reason, "exited") {
+		t.Errorf("Reason = %q, a timeout must not read as a generic non-zero exit", rep.Reason)
 	}
 }
 

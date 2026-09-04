@@ -113,7 +113,7 @@ func Query(root string, p *config.Project) Report {
 	cmd.Dir = childDir(root, p)
 	out, err := cmd.Output()
 	if err != nil {
-		return unavailable(execFailureReason(err))
+		return unavailable(execFailureReason(err, ctx))
 	}
 
 	report, err := parse(out)
@@ -133,12 +133,22 @@ func childDir(root string, p *config.Project) string {
 // execFailureReason turns an exec error into a human-readable Reason,
 // distinguishing the cases worth naming separately: the binary missing from
 // PATH, the command timing out, and a non-zero exit.
-func execFailureReason(err error) string {
+//
+// Review finding F1 (T-076): a killed-by-timeout process does NOT produce an
+// error satisfying errors.Is(err, context.DeadlineExceeded) — exec.CommandContext
+// sends the process a kill signal when ctx expires, and cmd.Output() then
+// returns a plain *exec.ExitError ("signal: killed", ExitCode() == -1),
+// indistinguishable by inspecting err alone from an ordinary crash. The
+// timeout is detected instead by checking ctx itself: cancel is deferred
+// until Query returns, so ctx.Err() is non-nil here if and only if the
+// deadline actually fired before the command finished. Checked before the
+// *exec.ExitError case, since a timed-out process is also one.
+func execFailureReason(err error, ctx context.Context) string {
 	var exitErr *exec.ExitError
 	switch {
 	case errors.Is(err, exec.ErrNotFound):
 		return fmt.Sprintf("%s not found on PATH", command)
-	case errors.Is(err, context.DeadlineExceeded):
+	case ctx.Err() != nil:
 		return fmt.Sprintf("%s status --json timed out after %s", command, rickTimeout)
 	case errors.As(err, &exitErr):
 		return fmt.Sprintf("%s status --json exited %d", command, exitErr.ExitCode())
