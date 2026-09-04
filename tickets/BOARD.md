@@ -104,7 +104,7 @@ Last updated: 2026-09-04
 | T-073 | introduce brine as the flow's name: flow config key, prose, and a docs attribute | yes — MERGED: feat/T-073-introduce-brine-name (squashed) → main (7b33876, #18), user-approved; branch deleted |
 | T-074 | rename the installed skill directory to brine, with a legacy sweep on upgrade | yes — MERGED: PR #44 (`feat/T-074-rename-skill-dir-to-brine`, kept history, not squashed) → main (21d4906), user-approv… |
 | T-076 | consume rick status --json as an artifact-state source | yes — merged to main (PR #84, 8147a63) |
-| T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | no — publish-gated |
+| T-077 | show a ticket's rick artifacts in pickle serve, read-only, with the effective-instance rule | yes — merged to main (c09a241, PR #85) |
 | T-080 | lifecycle as data: extract states, transitions, and terminal/WIP flags into a flow definition | yes — merged to main (PR #28, e214ee3, https://github.com/codcod/pickle/commit/e214ee3); merge commit, 15 commits kept |
 | T-081 | gate table as data: per-state required-artifact preconditions, audited | yes — merged to main (PR #30, 904e460, https://github.com/codcod/pickle/commit/904e460); merge commit, 8 commits kept |
 | T-082 | pre-push hook: refuse a feature-branch push whose range carries tickets/ paths | yes — merged to main (PR #45, 6d11b4b, https://github.com/codcod/pickle/commit/6d11b4b); merge commit, 2 commits kept |
