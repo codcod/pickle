@@ -327,9 +327,13 @@ policy) — never the in-repo binary path, never against this repo's own tree.
   returned was pre-existing prose outside this ticket's diff, none applied. Not re-run at review
   time since the changed files gained only the two inline prose fixes below (F1, F5) since then.
 - [x] Findings recorded with severity, class, disposition (step 5)
-- [x] Ticket moved (step 6)
-- [x] Other references reconciled (step 7)
-- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Ticket moved (step 6) — **two rework rounds**: round 1 (F0, commit `870d840`), round 2 (G0,
+  found while scoped-re-reviewing round 1's own fix, commit `1c8825d`). Both scoped re-reviews
+  delegated for the same reason as the original audits; each fix independently re-verified by
+  hand (repro commands re-run against both the fixed and the pre-fix commit) before being
+  recorded. No blocking findings remain after round 2.
+- [x] Other references reconciled (step 7) — re-checked after round 2: unaffected, still holds
+- [x] Remaining-tickets impact sweep done (step 8) — re-checked after round 2: unaffected, still holds
 - [x] Summary + commit message & MR attributes presented (step 9)
 
 **Implementation audit.** `just build`, `just test`, `just lint`, `just docs-check` all green.
@@ -460,3 +464,4 @@ cost: estimated M, actual M
 - 2026-09-03 — REWORK → IN REVIEW: findings fixed
 - 2026-09-04 — IN REVIEW → REWORK: G0 blocking: round-1 fix's drift precheck masked a quote-boundary disagreement, contradicts decision 7
 - 2026-09-04 — REWORK → IN REVIEW: findings fixed
+- 2026-09-04 — IN REVIEW → DONE: review PASS after two rework rounds (F0, G0); no blocking findings remain

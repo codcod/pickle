@@ -20,11 +20,10 @@ Last updated: 2026-09-04
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | [] |
 
 ## REWORK
 
@@ -128,6 +127,7 @@ Last updated: 2026-09-04
 | T-099 | guard the payload against speaking to its reader as if the reader were pickle's own repo | yes — merged to `main` via PR #47 (`3640db6`) |
 | T-100 | pre-push guard reads the wrong side of a refspec: decide the branch from the push's destination ref | yes — merged to main (PR #46, 1c55323, https://github.com/codcod/pickle/commit/1c55323); merge commit, 4 commits kept |
 | T-101 | make every pickle write atomic and serialise concurrent writers: tree lock, O_EXCL id allocation, and the BOARD.md trun… | yes — merged to main (dc982ae, PR #49); history kept as six atomic commits rather than squashed (root-path child defaul… |
+| T-102 | surgical ticket frontmatter field writer: single-field edit behind a parse-back guard | no — publish-gated |
 | T-103 | board.Sort: break impact ties by cost lexicographically instead of by id | yes — merged to main (PR #67, 60a715b), user-approved; branch deleted |
 | T-104 | redesign the serve board page: active phases as side-by-side columns per child, with a search filter | yes — merged to main (3104977, PR #48) |
 | T-105 | pickle board decisions: query a child's confirmed design decisions | yes — MERGED: feat/T-105-board-decisions → main (9343299, PR #51), user-approved; history kept (4 commits); branch not … |
