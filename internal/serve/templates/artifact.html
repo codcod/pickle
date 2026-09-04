@@ -1,0 +1,11 @@
+{{define "artifact.html"}}
+{{template "head" .}}
+{{with .Artifact}}
+<main class="page ticket-page">
+  <nav class="crumbs"><a href="{{$.BasePath}}/t/{{.TicketID}}">{{.TicketID}}</a> / <span>{{.Name}}</span></nav>
+  <h1 class="page-title">{{.Name}}</h1>
+  <article class="body">{{.Body}}</article>
+</main>
+{{end}}
+{{template "foot" .}}
+{{end}}

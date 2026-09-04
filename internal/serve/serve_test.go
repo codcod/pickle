@@ -929,6 +929,192 @@ func TestActivityCapReportsTruncation(t *testing.T) {
 	}
 }
 
+// --- rick artifacts (T-077) --------------------------------------------------
+
+// testRickCfg is testCfg with the sole project opted into rick interop.
+func testRickCfg() *config.Config {
+	return &config.Config{Projects: []config.Project{
+		{Name: "demo", Path: ".", WIPInDevelopment: 1, WIPInReview: 1, Rick: true},
+	}}
+}
+
+// newRickTree is newTree's rick-enabled counterpart: same fixture-tree/BOARD.md
+// shape, rendered against testRickCfg() instead of testCfg() so the health
+// banner's own audit (which re-renders BOARD.md from the same cfg it is given)
+// stays agreeing with the tree.
+func newRickTree(t *testing.T, fixtures ...fixture) string {
+	t.Helper()
+	root := t.TempDir()
+	for _, s := range testDef.States() {
+		dir := filepath.Join(root, "tickets", s.Dir)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".gitkeep"), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, f := range fixtures {
+		p := filepath.Join(root, "tickets", f.dir, f.id+"-slug.md")
+		if err := os.WriteFile(p, []byte(f.text()), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tickets, issues := ticket.LoadAll(testDef, root)
+	if len(issues) > 0 {
+		t.Fatalf("fixture load issues: %v", issues)
+	}
+	text := board.Render(testDef, tickets, testRickCfg(), time.Now().Format("2006-01-02"))
+	if err := os.WriteFile(filepath.Join(root, "tickets", "BOARD.md"), []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func newRickHandler(t *testing.T, root string) http.Handler {
+	t.Helper()
+	h, err := Handler(Options{Root: root, Cfg: testRickCfg()})
+	if err != nil {
+		t.Fatalf("Handler: %v", err)
+	}
+	return h
+}
+
+// rickFixtureJSON reports two `solution-design` instances for T-001: an
+// older approved one and a newer draft one — the newer wins the
+// effective-instance tie-break (filename date descending) while not being
+// approved, so it is both Duplicate and Mismatch.
+const rickFixtureJSON = `{
+  "schemaVersion": 2,
+  "workflow": {
+    "tickets": [
+      {
+        "id": "T-001",
+        "artifacts": [
+          {"path": "docs/specs/T-001/solution-design-2026-06-10-x.md", "kind": "solution-design", "status": "approved", "date": "2026-06-10"},
+          {"path": "docs/specs/T-001/solution-design-2026-06-14-x.md", "kind": "solution-design", "status": "draft", "date": "2026-06-14"}
+        ]
+      }
+    ]
+  }
+}`
+
+// stubRickHTTP writes a fake `rick` answering `status --json` with
+// rickFixtureJSON, and puts dir first on PATH (mirrors internal/rickstatus's
+// own test helpers; this package keeps its own copy per that package's
+// convention).
+func stubRickHTTP(t *testing.T, dir string) {
+	t.Helper()
+	body := "#!/bin/sh\ncat <<'RICKEOF'\n" + rickFixtureJSON + "\nRICKEOF\n"
+	if err := os.WriteFile(filepath.Join(dir, "rick"), []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+// rickHTTPTestTree builds a rick-enabled tree with one ticket (T-001) and
+// writes the two artifact files rickFixtureJSON names, the newer one
+// carrying a raw-HTML body — reused by both the ticket-page and the
+// /specs/{key}/{name} route assertions below.
+func rickHTTPTestTree(t *testing.T) string {
+	t.Helper()
+	bin := t.TempDir()
+	stubRickHTTP(t, bin)
+
+	root := newRickTree(t, fixture{dir: "1-to-do", id: "T-001", title: "has artifacts", impact: "low",
+		history: []string{"- 2026-07-20 — created (TO DO). source: test"}})
+
+	specs := filepath.Join(root, "docs", "specs", "T-001")
+	if err := os.MkdirAll(specs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specs, "solution-design-2026-06-10-x.md"), []byte("# approved design\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specs, "solution-design-2026-06-14-x.md"), []byte("<img src=x onerror=alert(1)>\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// TestTicketPageShowsRickArtifactsAndOneMismatchWarning covers item 2 of
+// T-077's acceptance test: both artifacts render with their badges, and the
+// warning appears exactly once — on the effective (newer, non-approved)
+// instance — not once per artifact in the duplicate kind.
+func TestTicketPageShowsRickArtifactsAndOneMismatchWarning(t *testing.T) {
+	root := rickHTTPTestTree(t)
+	body := get(t, newRickHandler(t, root), "/t/T-001").Body.String()
+
+	for _, want := range []string{
+		"solution-design-2026-06-10-x.md", "solution-design-2026-06-14-x.md",
+		"rick-status-approved", "rick-status-draft",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("ticket page missing %q:\n%s", want, body)
+		}
+	}
+	if n := strings.Count(body, "rick-mismatch"); n != 1 {
+		t.Errorf("rick-mismatch warning appears %d times, want exactly 1:\n%s", n, body)
+	}
+	if strings.Contains(body, "rick-dup") {
+		t.Error("both a duplicate and a mismatch warning rendered for the same kind; want only the mismatch")
+	}
+}
+
+// TestArtifactRouteRendersEscapedMarkdown: item 2's GET /specs/{key}/{name}
+// case, reusing TestMarkdownDoesNotRenderRawHTML's escaping assertion
+// against this route too (decision 8).
+func TestArtifactRouteRendersEscapedMarkdown(t *testing.T) {
+	root := rickHTTPTestTree(t)
+	body := get(t, newRickHandler(t, root), "/specs/T-001/solution-design-2026-06-14-x.md").Body.String()
+	if strings.Contains(body, "onerror=alert(1)") && !strings.Contains(body, "&lt;img") {
+		t.Error("goldmark rendered raw HTML from an artifact body (WithUnsafe must stay off)")
+	}
+}
+
+// TestArtifactRouteNonWhitelistedNameIs404: a name rick did not report is
+// never servable, even under a valid ticket id (decision 2).
+func TestArtifactRouteNonWhitelistedNameIs404(t *testing.T) {
+	root := rickHTTPTestTree(t)
+	rec := get(t, newRickHandler(t, root), "/specs/T-001/does-not-exist.md")
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("GET /specs/T-001/does-not-exist.md = %d, want 404", rec.Code)
+	}
+}
+
+// TestTicketPageNonRickProjectShowsNoArtifacts: fail-open passthrough from
+// T-076 — a project that never opted in renders its ticket page with zero
+// artifacts and no error.
+func TestTicketPageNonRickProjectShowsNoArtifacts(t *testing.T) {
+	body := get(t, newHandler(t, standardTree(t)), "/t/T-001").Body.String()
+	if strings.Contains(body, "rick-badge") || strings.Contains(body, "artifacts") {
+		t.Errorf("ticket page for a non-rick project rendered rick chrome:\n%s", body)
+	}
+}
+
+// TestArtifactRouteIsGetOnly mirrors TestMultiHandlerRoutesArePrefixed's
+// shape: the route is registered GET-only in both the classic mux and
+// MultiHandler's per-root mux (decision 1).
+func TestArtifactRouteIsGetOnly(t *testing.T) {
+	root := rickHTTPTestTree(t)
+
+	rec := httptest.NewRecorder()
+	newRickHandler(t, root).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/specs/T-001/solution-design-2026-06-14-x.md", nil))
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST /specs/T-001/... under classic Handler = %d, want 405", rec.Code)
+	}
+
+	mh, err := MultiHandler([]NamedRoot{{Slug: "a", Options: Options{Root: root, Cfg: testRickCfg()}}})
+	if err != nil {
+		t.Fatalf("MultiHandler: %v", err)
+	}
+	recMulti := httptest.NewRecorder()
+	mh.ServeHTTP(recMulti, httptest.NewRequest(http.MethodPost, "/p/a/specs/T-001/solution-design-2026-06-14-x.md", nil))
+	if recMulti.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST /p/a/specs/T-001/... under MultiHandler = %d, want 405", recMulti.Code)
+	}
+}
+
 // --- end to end -------------------------------------------------------------
 
 // TestServeOnRealListener exercises the actual server: bind port 0 (never a fixed

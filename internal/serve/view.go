@@ -13,6 +13,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/lock"
+	"github.com/codcod/pickle/internal/rickstatus"
 	"github.com/codcod/pickle/internal/ticket"
 )
 
@@ -48,6 +49,11 @@ type Entry struct {
 	// field-concatenation logic in the template or client. Matches id/title
 	// only, deliberately (rules out reasons/merge lines/edges as noise).
 	Search string
+	// RickPending is the count of this ticket's rick artifacts not yet
+	// approved (T-077 decision 6) — the board row's compact badge, rendered
+	// only when > 0. The full per-kind detail lives on TicketView.Artifacts
+	// instead; the row deliberately does not grow a second taxonomy.
+	RickPending int
 	// BasePath is "" in classic single-root mode, or "/p/{slug}" under
 	// MultiHandler (T-127). It rides on Entry itself, not just on page, because
 	// board.html's "ticket-item" and layout.html's "idlist" are invoked via
@@ -130,7 +136,7 @@ type BoardView struct {
 // board.Sort-ordered, with its WIP count/limit when the status is WIP-limited
 // — the one grouping rule both the active-state lanes and the remaining
 // sections share (T-104), so it is written once rather than twice.
-func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.State, p config.Project, wip map[string]map[string]int, byID map[string]*ticket.Ticket, basePath string) ChildGroup {
+func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.State, p config.Project, wip map[string]map[string]int, byID map[string]*ticket.Ticket, basePath string, reports map[string]rickstatus.Report) ChildGroup {
 	var group []*ticket.Ticket
 	for _, t := range tickets {
 		if t.Dir == st.Dir && t.Project() == p.Name {
@@ -146,7 +152,7 @@ func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.Sta
 		}
 	}
 	for _, t := range group {
-		cg.Entries = append(cg.Entries, newEntry(def, t, st.Name, basePath))
+		cg.Entries = append(cg.Entries, newEntry(def, t, st.Name, basePath, reports))
 	}
 	return cg
 }
@@ -158,7 +164,7 @@ func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.Sta
 // stateChildGroup for the actual grouping/sorting/WIP lookup, so board.Sort and
 // board.WIPCounts are still each called in exactly one place (decision 3: no
 // ordering rule is reimplemented or changed here).
-func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config, basePath string) BoardView {
+func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Config, basePath string, reports map[string]rickstatus.Report) BoardView {
 	wip := board.WIPCounts(def, tickets)
 	// Whole-tree index for board.Sort's family-umbrella lookup (T-059); a member's
 	// umbrella may live in another status section, so the per-group slice is not
@@ -179,7 +185,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	for _, p := range cfg.Projects {
 		row := ChildRow{Child: p.Name}
 		for _, st := range active {
-			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath)
+			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath, reports)
 			row.Lanes = append(row.Lanes, Lane{
 				Status: st.Name, Entries: cg.Entries, Count: cg.Count, Limit: cg.Limit,
 			})
@@ -195,7 +201,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 		}
 		section := Section{Status: st.Name}
 		for _, p := range cfg.Projects {
-			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath)
+			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath, reports)
 			section.Total += cg.Count
 			section.Children = append(section.Children, cg)
 		}
@@ -217,25 +223,26 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	return view
 }
 
-func newEntry(def *flow.Definition, t *ticket.Ticket, statusName, basePath string) Entry {
+func newEntry(def *flow.Definition, t *ticket.Ticket, statusName, basePath string, reports map[string]rickstatus.Report) Entry {
 	title := t.Front["title"]
 	return Entry{
-		ID:         t.ID,
-		Num:        t.Num,
-		Title:      title,
-		Project:    t.Project(),
-		Status:     statusName,
-		Search:     strings.ToLower(t.ID + " " + title),
-		Impact:     t.Front["impact"],
-		Complexity: t.Front["complexity"],
-		Cost:       t.Front["cost"],
-		DependsOn:  t.DependsOn,
-		SpawnedBy:  t.SpawnedBy,
-		Family:     t.Front["family"],
-		Reason:     ticket.LastHistoryReason(def, t.Text),
-		Merged:     ticket.MergeLine(def, t.Text),
-		File:       filepath.Base(t.Path),
-		BasePath:   basePath,
+		ID:          t.ID,
+		Num:         t.Num,
+		Title:       title,
+		Project:     t.Project(),
+		Status:      statusName,
+		Search:      strings.ToLower(t.ID + " " + title),
+		Impact:      t.Front["impact"],
+		Complexity:  t.Front["complexity"],
+		Cost:        t.Front["cost"],
+		DependsOn:   t.DependsOn,
+		SpawnedBy:   t.SpawnedBy,
+		Family:      t.Front["family"],
+		Reason:      ticket.LastHistoryReason(def, t.Text),
+		Merged:      ticket.MergeLine(def, t.Text),
+		File:        filepath.Base(t.Path),
+		RickPending: rickPendingCount(reports[t.Project()].For(t.ID)),
+		BasePath:    basePath,
 	}
 }
 
@@ -245,16 +252,17 @@ func newEntry(def *flow.Definition, t *ticket.Ticket, statusName, basePath strin
 // depends on and what spawned it, never what depends on *it*.
 type TicketView struct {
 	Entry
-	Body    template.HTML
-	Blocks  []string // tickets whose depends-on names this one
-	Spawned []string // tickets whose spawned-by names this one
-	Members []string // tickets whose family names this one (this ticket is their umbrella)
-	History []ticket.HistoryEntry
+	Body      template.HTML
+	Blocks    []string // tickets whose depends-on names this one
+	Spawned   []string // tickets whose spawned-by names this one
+	Members   []string // tickets whose family names this one (this ticket is their umbrella)
+	History   []ticket.HistoryEntry
+	Artifacts []ArtifactView // this ticket's rick artifacts, grouped/effective-flagged (T-077)
 }
 
 // buildTicket assembles one ticket's page. all is the whole tree, needed for the
 // reverse edges. It returns false when the id is unknown, so the handler can 404.
-func buildTicket(def *flow.Definition, all []*ticket.Ticket, id, basePath string) (TicketView, bool) {
+func buildTicket(def *flow.Definition, all []*ticket.Ticket, id, basePath string, reports map[string]rickstatus.Report) (TicketView, bool) {
 	var found *ticket.Ticket
 	for _, t := range all {
 		if t.ID == id {
@@ -270,7 +278,11 @@ func buildTicket(def *flow.Definition, all []*ticket.Ticket, id, basePath string
 	if st, ok := def.ByDir(found.Dir); ok {
 		statusName = st.Name
 	}
-	view := TicketView{Entry: newEntry(def, found, statusName, basePath), History: ticket.HistoryEntries(def, found.Text)}
+	view := TicketView{
+		Entry:     newEntry(def, found, statusName, basePath, reports),
+		History:   ticket.HistoryEntries(def, found.Text),
+		Artifacts: buildArtifacts(reports[found.Project()], id, basePath),
+	}
 
 	body, err := renderMarkdown(found.Text)
 	if err != nil {
@@ -530,6 +542,16 @@ type page struct {
 	// every per-project page (Health/StaleBoard are per-project and do not
 	// apply to a page that lists several).
 	Index *IndexView
+	// Artifact is set only for the "/specs/{key}/{name}" artifact page (T-077).
+	Artifact *ArtifactPage
+}
+
+// ArtifactPage is one rick artifact's own page (T-077): a rendered body plus
+// enough identity to link back to its ticket.
+type ArtifactPage struct {
+	TicketID string
+	Name     string
+	Body     template.HTML
 }
 
 // PeerLink names one other served project, for the header switcher (T-127).

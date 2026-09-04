@@ -1645,7 +1645,17 @@ What it serves:
 | `/t/T-NNN`
 | One ticket: frontmatter as fields, the body rendered as Markdown, and *both*
   directions of its edges — `depends-on`/`spawned-by` as written, plus the
-  reverse `blocks`/`spawned` edges, which no single ticket file records.
+  reverse `blocks`/`spawned` edges, which no single ticket file records. For a
+  child with `rick` interop enabled (the `rick` field, <<configuration>>),
+  this page also lists the ticket's rick artifacts — kind, status badge,
+  which instance is *effective* under rick's own tie-break rule, and a
+  warning when a kind holds more than one instance or its effective one is
+  not yet approved.
+
+| `/specs/T-NNN/{name}`
+| One rick artifact's body, rendered the same read-only way as a ticket's own.
+  Only a filename this same request's fresh rick query actually reported for
+  that ticket is ever servable — nothing else, even if it exists on disk.
 
 | `/activity`
 | Every dated `## History` line in the project, merged and newest-first — what

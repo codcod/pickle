@@ -74,14 +74,14 @@ Hand-edits are always preserved on load.
   `docs/specs/` tree and which are still awaiting approval. Off by default and never
   auto-detected. A child that has never heard of rick sees no behaviour change at all. A child
   that turns it on but has no `rick` on `PATH` (or hits any other failure) fails open: no error,
-  no warning, just nothing to show. `pickle doctor -v` reports the result either way. Reading
-  what it found is T-077's job — as of this field's introduction (T-076), nothing reads it yet
-  beyond `doctor`'s own summary line.
+  no warning, just nothing to show. `pickle doctor -v` reports the result either way, and
+  <<cmd-serve>>'s ticket page reads it too: turning this on is what makes a ticket's rick
+  artifacts — kind, status, which instance is effective, and any duplicate/mismatch warning —
+  show up there, read-only.
 * `specs_root` (default `"docs/specs"`) — the child-relative directory rick's artifacts live
   under. It is stored and validated once set, but only takes effect when `rick` is also `true`.
   When set with `rick` still `false`, it renders nowhere and is silently dropped by the next
-  `pickle project add|remove` (which rewrites the whole file). No pickle code reads this field
-  yet; T-077 is its first consumer.
+  `pickle project add|remove` (which rewrites the whole file).
 * optional per-child `review_addendum` — that child's own addendum, applied after the
   overarching one, if any; same guidance, <<lifecycle>>.
 
