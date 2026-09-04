@@ -255,7 +255,40 @@ All runnable via `just test` (`go test ./...`) unless noted.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): the implementing agent authored the branch this
+  same session, so audits (steps 2-4a) were **delegated** to a fresh, independent sub-agent,
+  briefed adversarially. Every delegated finding below was re-verified by hand before recording
+  (step 0's "delegation buys independence, not accuracy").
+- [x] Implementation audit — acceptance test re-run (steps 1, 2): all four tasks in the
+  Implementation Plan done as specified; all nine confirmed design decisions honoured; all four
+  acceptance-test items satisfied. `just build`/`just test`/`just lint`/`just docs-check` all
+  green, both before and after this review's two inline fixes.
+- [x] Quality audit (step 3): `resolveArtifact`'s whitelist scrutinised adversarially — no way
+  found to escape it via the user-controlled `name` parameter.
+- [x] Consistency audit (step 4): whole-repo sweep found one stale reference (F1 below).
+- [x] Documentation audit (step 4a): `cli-reference.adoc`/`configuration.adoc` accurate against
+  the shipped code; both new anchors resolve; `just docs-check` clean.
+- [x] Docs-readability pass (step 4b): no docs-readability reviewer available in this host —
+  conscious skip.
+- [x] Findings recorded with severity, class, disposition (step 5).
+- [x] Ticket moved (step 6).
+- [x] Governing documents reconciled (step 7): see F1.
+- [x] Remaining-tickets impact sweep (step 8): T-078 and T-079 both `depends-on: [T-077]` and are
+  still in `1-to-do/` (not yet READY) — neither cites a T-077 implementation shape specific
+  enough to have been invalidated; nothing to patch.
+- [x] Summary + commit message presented for approval (step 9).
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | stale-xref | fixed inline | `config.Project.SpecsRoot`'s doc comment promised "T-077 is the first consumer, for path-containment checks on the artifact it serves" — this ticket instead ships a whitelist-only model against rick's own reported paths (decision 2), never reading `SpecsRoot`/`Specs()` at all | `internal/config/config.go:160-165` (pre-existing, shipped by T-076 on `main`) | corrected the comment to describe what actually ships |
+| F2 | non-blocking | design | noted | `resolveArtifact` trusts `Artifact.Path` from rick's JSON verbatim, with no independent containment check against the child's `specs_root` — a defense-in-depth gap if rick's own `path` field were ever malformed | `internal/serve/rick.go:127-152`; `internal/rickstatus/wire.go:41-46` | matches decision 2's explicit, deliberate choice ("whitelist rick's own report, not a general path-traversal audit"); recorded for visibility, no action — a future rick contract change would be the trigger to revisit |
+| F3 | non-blocking | test-gap | noted | three of decision 2's four named 404 cases (unknown key shape, key prefix matching no rick-enabled child, whitelisted file deleted underneath) are correctly implemented but have no dedicated test; only the whitelist-miss and path-shaped-name cases are covered | `internal/serve/rick_test.go`, `internal/serve/serve_test.go` | minor coverage gap on already-correct code; does not pass the promotion test for a new ticket |
+| F4 | non-blocking | other | fixed inline | the artifact route's markdown-render-error fallback did not strip frontmatter first, unlike the ticket-body fallback it was modeled on — cosmetic (goldmark essentially never errors on valid UTF-8) but an inconsistency this branch itself introduced | `internal/serve/serve.go:438` (pre-fix) vs `internal/serve/view.go:291` | added the missing `stripFrontmatter` call, matching the existing pattern |
+
+Disposition summary: 4 findings — 2 fixed inline (F1, F4), 2 noted (F2, F3). No findings promoted
+to a new ticket; no blocking findings.
+
+cost: estimated M, actual M
 
 ## History
 
@@ -269,3 +302,4 @@ All runnable via `just test` (`go test ./...`) unless noted.
 - 2026-09-04 — TO DO → READY: plan complete
 - 2026-09-04 — READY → IN DEVELOPMENT: picked up
 - 2026-09-04 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-04 — IN REVIEW → DONE: review clean — 2 findings fixed inline, 2 noted, no blocking findings
