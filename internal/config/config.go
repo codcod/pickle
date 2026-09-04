@@ -160,8 +160,11 @@ type Project struct {
 	// SpecsRoot is the child-relative directory rick's artifacts live under.
 	// Stored and validated here; not read by this package's own code (T-076
 	// decision 3) — Query invokes `rick status --json` with the child's
-	// directory as its cwd and lets rick find its own tree. T-077 is the first
-	// consumer, for path-containment checks on the artifact it serves.
+	// directory as its cwd and lets rick find its own tree. Still unread by
+	// any pickle code as of T-077 (review finding F1): that ticket's
+	// `/specs/{key}/{name}` route trusts rick's own reported artifact paths
+	// as its whitelist instead of an independent containment check against
+	// this field (T-077 decision 2's deliberate choice).
 	SpecsRoot string `toml:"specs_root,omitempty"`
 }
 

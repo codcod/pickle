@@ -435,7 +435,7 @@ func (h *handler) artifact(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := renderMarkdown(string(data))
 	if err != nil {
-		body = template.HTML("<pre>" + template.HTMLEscapeString(string(data)) + "</pre>")
+		body = template.HTML("<pre>" + template.HTMLEscapeString(stripFrontmatter(string(data))) + "</pre>")
 	}
 	tickets := h.load()
 	p := h.newPage(name, tickets)
