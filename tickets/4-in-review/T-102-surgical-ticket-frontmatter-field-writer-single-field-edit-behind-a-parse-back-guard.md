@@ -360,7 +360,9 @@ change).
 | F5 | non-blocking | stale-xref | noted | Six other locations phrase `BOARD.md`'s regeneration as "`ticket new`, `ticket move` and `board sync`" without `ticket set` (already omitting `project add`/`project remove` before this branch, so not a new gap in kind, only in degree): `internal/board/board.go:363` (the header rendered into every generated `BOARD.md`), `internal/install/install.go:1399-1400` (the `AGENTS.md` marker-block payload) and `:1411` (the `tickets/README.md` payload), `internal/board/board_test.go:130` (fixture), `skill/SKILL.md:137-138`, and this repo's own hand-mirrored `AGENTS.md:111-112`. | `grep -rn "pickle board sync" internal/board/board.go internal/install/install.go internal/board/board_test.go skill/SKILL.md AGENTS.md` | Multi-file and touches `install.go`'s baked-in payload plus (per this repo's self-modify policy) a hand-mirrored edit to this repo's own `AGENTS.md` marker block — too broad and too sensitive for an inline fix during this review, and six near-identical one-word insertions don't clear the promotion test for a dedicated ticket on their own; noted for whoever next touches the enumeration (e.g. alongside a future ticket that also adds a `BOARD.md` writer). |
 | F6 | non-blocking | docs-gap | noted | `pickle changelog check` flags T-102 as shipped but not named in `CHANGELOG.md`'s "Unreleased" section. | `go run . changelog check` → `1 candidate(s) shipped but not named in "Unreleased": T-102`. | Same precedent as T-038's own review F7: the tool is advisory by design ("the entry may legitimately be written any time before the release"), and `RELEASING.md` opens by running it, so a release catches this — not a review-time gate. |
 
-Disposition summary: 1 blocking (F0, resolved via rework), 2 fixed inline (F1, F4), 4 noted (F2, F3, F5, F6 — F6 citing established precedent from T-038's own review). No folded, no new ticket — nothing here clears the promotion test alone.
+Disposition summary (round 1): 1 blocking (F0, resolved via rework), 2 fixed inline (F1, F4), 4
+noted (F2, F3, F5, F6 — F6 citing established precedent from T-038's own review). No folded, no
+new ticket — nothing here clears the promotion test alone.
 
 ### Rework fix record — round 1 (commit 870d840)
 
@@ -378,6 +380,45 @@ re-confirmed still refusing correctly. Re-ran the acceptance test verbatim plus 
 and its new-padded-title counterpart against a throwaway install — both now succeed; `just build`,
 `just test`, `just lint`, `just docs-check` all green. No other finding touched — F1–F6 stand as
 recorded above.
+
+### Scoped re-review — round 1's fix, reviewer independence
+
+**Delegated again**: the fix commit above was authored by the same session doing this review, so
+the scoped re-review (confirm F0 resolved; read the round-1 fix's own diff for new defects, per
+`resources/review-protocol.md` §1) was run by a fresh, adversarially-briefed sub-agent with no
+memory of writing the fix, given the ticket's `## Review` section, the branch, and the fix commit
+to read. It confirmed F0 resolved (both manifestations, plus the genuine-drift path still
+correctly refusing) and surfaced one new finding, G0, from reading the fix's own diff —
+independently re-verified by hand below (including reproducing the pre-fix-vs-post-fix behaviour
+difference on the actual pre-fix commit) before being recorded. The delegate classed G0
+non-blocking; re-classified **blocking** here, since it contradicts confirmed decision 7
+("must not silently paper over a ticket that has already drifted") rather than merely being a
+quality nit — severity is the orchestrating reviewer's call, not the delegate's, per the
+protocol's step 0 boundary.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| G0 | blocking | correctness | — | Round 1's fix over-widened `setTitleAndHeading`'s H1-vs-frontmatter drift precheck: it compared the H1's raw capture, normalized (whitespace **and** a surrounding quote char stripped), against `parseFrontmatter`'s already quote-stripped `fm["title"]`. A genuine quote-boundary disagreement between the two copies (H1 quoted, frontmatter not — a plausible result of hand-adding YAML-style quoting to only one copy) was silently treated as agreement instead of refusing, contradicting confirmed decision 7's "must not silently paper over drift". | Throwaway install, commit `870d840`: ticket with frontmatter `title: quote drift victim` and hand-edited H1 `# T-001 — "quote drift victim"` (quotes added to H1 only). `ticket set T-001 --title renamed` → `exit=0`, silently rewrites both lines, no refusal. Re-ran the identical repro against the pre-fix commit `7c2e53e` → correctly refused (`heading "\"quote drift victim\"" and frontmatter title "quote drift victim" already disagree`), confirming this is a regression introduced by the round-1 fix, not pre-existing. | Compare the drift precheck's two sides on raw text, whitespace-trimmed only (not quote-stripped) — that is the one ambiguity F0 actually needs neutralised (a frontmatter line cannot tell a value's own leading whitespace from the mandatory separator space); a boundary quote character carries no such ambiguity in either copy and a genuine difference there must still refuse. Keep `verifyFrontmatterEdit`'s own check (confirming a write reads back as intended) on the full `normalizeFrontmatterValue`, since that comparison is against what a real re-parse actually reports, which does fully normalize. |
+
+Disposition summary (round 1 re-review): 1 blocking (G0, resolved via a second rework round). No
+other finding — F1–F6 above are unaffected and still stand as recorded.
+
+### Rework fix record — round 2 (commit 1c8825d)
+
+G0 fixed. `setTitleAndHeading`'s drift precheck no longer routes through `fm["title"]` or the
+full `normalizeFrontmatterValue`: it now reads the frontmatter title's raw capture directly (via
+`fmKeyRE`, the same regex `findFrontmatterKeyLine` already uses to locate the line) and compares
+it against the H1's raw capture with `strings.TrimSpace` only on both sides — symmetric,
+whitespace-only normalization, no quote-stripping. `verifyFrontmatterEdit`'s own check (the
+round-1 fix) is untouched: it still uses the full `normalizeFrontmatterValue`, correctly, since
+it compares against what a real re-parse actually reports. Updated `normalizeFrontmatterValue`'s
+doc comment to state it is deliberately *not* used by the drift precheck anymore, and to fix a
+found wording error ("trim one surrounding quote character" → `strings.Trim` removes every
+matching character in the cutset, not one). New regression test
+`TestSetFieldTitleRefusesOnQuoteBoundaryDrift`; re-ran all four cases end to end against a
+throwaway install — F0's two manifestations still fixed, the genuine-drift (differing words) case
+still refuses, and the new quote-boundary-drift case now refuses too. `just build`, `just test`,
+`just lint`, `just docs-check` all green.
 
 cost: estimated M, actual M
 
@@ -417,3 +458,5 @@ cost: estimated M, actual M
 - 2026-09-03 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-03 — IN REVIEW → REWORK: F0 blocking: --title refuses any padded original title, even undrifted
 - 2026-09-03 — REWORK → IN REVIEW: findings fixed
+- 2026-09-04 — IN REVIEW → REWORK: G0 blocking: round-1 fix's drift precheck masked a quote-boundary disagreement, contradicts decision 7
+- 2026-09-04 — REWORK → IN REVIEW: findings fixed
