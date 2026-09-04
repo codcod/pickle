@@ -18,6 +18,7 @@ import (
 	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/hook"
 	"github.com/codcod/pickle/internal/install"
+	"github.com/codcod/pickle/internal/rickstatus"
 	"github.com/codcod/pickle/internal/vcs"
 )
 
@@ -60,6 +61,7 @@ func Check(root, version string, payload fs.FS) Result {
 	if cfg != nil {
 		checkChildren(root, cfg, &r)
 		checkVersion(cfg, version, selfHost, &r)
+		checkRickInterop(root, cfg, &r)
 	}
 
 	sort.Strings(r.Errors)
@@ -436,4 +438,34 @@ func checkVersion(cfg *config.Config, version string, selfHost bool, r *Result) 
 		return
 	}
 	r.warnf("payload version %q differs from binary %q — run `pickle upgrade`", cfg.PayloadVersion, version)
+}
+
+// checkRickInterop reports each rick-enabled child's artifact-state query
+// (T-076). A child that has not opted in (Rick == false, the default) gets
+// no line at all — matching checkClaudeView's silent-when-absent-and-optional
+// shape, since the overwhelming common case is a project that has never
+// heard of rick. A child that has opted in always gets exactly one Passed
+// line, whether or not the query actually succeeded: never r.warnf/r.errf
+// here, by construction — T-075's "no new errors in doctor… for projects
+// that never heard of rick" extends to projects that *have* heard of it and
+// hit a transient failure (rickstatus.Query itself never returns an error;
+// this is the one place that guarantee is turned into doctor's own
+// vocabulary of ok/warn/err).
+func checkRickInterop(root string, cfg *config.Config, r *Result) {
+	for i := range cfg.Projects {
+		p := &cfg.Projects[i]
+		if !p.Rick {
+			continue
+		}
+		rep := rickstatus.Query(root, p)
+		if !rep.Available {
+			r.ok(fmt.Sprintf("child %q: rick interop enabled but unavailable (%s) — fail-open, no artifacts shown", p.Name, rep.Reason))
+			continue
+		}
+		artifacts := 0
+		for _, a := range rep.Tickets {
+			artifacts += len(a)
+		}
+		r.ok(fmt.Sprintf("child %q: rick status ok (%d ticket(s), %d artifact(s))", p.Name, len(rep.Tickets), artifacts))
+	}
 }

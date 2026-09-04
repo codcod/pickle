@@ -496,6 +496,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   copy), this comparison is skipped entirely — there is nothing to
   compare — and the skip is reported as a passed line under `--verbose`,
   never a warning.
+* each child with `rick = true` (<<configuration>>) gets exactly one *passed* line reporting
+  its rick-artifact query — how many tickets and artifacts it found — or, if the query could
+  not be answered (`rick` not on `PATH`, a non-zero exit, a timeout, or a `rick status --json`
+  schema this build does not recognise), naming why, still as a *passed* line: rick interop is
+  fail-open by design, so this can never become a *warning* or an *error*. A child that has not
+  set `rick` gets no line at all.
 
 `--verbose` (`-v`) also lists the checks that passed.
 

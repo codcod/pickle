@@ -47,6 +47,7 @@ const (
 	DefaultTicketPrefix     = "T"
 	DefaultWIPInDevelopment = 1
 	DefaultWIPInReview      = 1
+	DefaultSpecsRoot        = "docs/specs"
 )
 
 // Overarching commit-policy defaults, applied when the key is absent. Both are
@@ -151,6 +152,17 @@ type Project struct {
 	WIPInDevelopment int    `toml:"wip_in_development"`
 	WIPInReview      int    `toml:"wip_in_review"`
 	ReviewAddendum   string `toml:"review_addendum,omitempty"`
+	// Rick opts this child into rick interop (T-076): pickle will shell out to
+	// `rick status --json` for it. Off by default, and never auto-detected
+	// (DESIGN.md §3 decision 6) — a child that has never heard of rick sees no
+	// behaviour change at all.
+	Rick bool `toml:"rick,omitempty"`
+	// SpecsRoot is the child-relative directory rick's artifacts live under.
+	// Stored and validated here; not read by this package's own code (T-076
+	// decision 3) — Query invokes `rick status --json` with the child's
+	// directory as its cwd and lets rick find its own tree. T-077 is the first
+	// consumer, for path-containment checks on the artifact it serves.
+	SpecsRoot string `toml:"specs_root,omitempty"`
 }
 
 // Prefix is the effective ticket-id prefix for this child: the configured
@@ -163,6 +175,17 @@ func (p *Project) Prefix() string {
 		return DefaultTicketPrefix
 	}
 	return p.TicketPrefix
+}
+
+// Specs is the effective rick specs directory for this child: the configured
+// specs_root, or DefaultSpecsRoot ("docs/specs") when unset — the same
+// fallback shape as Prefix for TicketPrefix, and named differently from its
+// field for the same reason (a method cannot share its field's name).
+func (p *Project) Specs() string {
+	if p.SpecsRoot == "" {
+		return DefaultSpecsRoot
+	}
+	return p.SpecsRoot
 }
 
 // WIPLimitFor resolves a flow state's WIPKey (WIPKeyInDevelopment or
@@ -353,6 +376,7 @@ func invalidUTF8Field(p *Project) string {
 		{"ticket_prefix", p.TicketPrefix},
 		{"branch_prefix", p.BranchPrefix},
 		{"review_addendum", p.ReviewAddendum},
+		{"specs_root", p.SpecsRoot},
 	} {
 		if !utf8.ValidString(f.value) {
 			return f.name
@@ -479,6 +503,10 @@ func (c *Config) Render() string {
 		fmt.Fprintf(&b, "branch_prefix = %s\n", tomlQuote(p.BranchPrefix))
 		fmt.Fprintf(&b, "wip_in_development = %d\n", p.WIPInDevelopment)
 		fmt.Fprintf(&b, "wip_in_review = %d\n", p.WIPInReview)
+		if p.Rick {
+			fmt.Fprintf(&b, "rick = true\n")
+			fmt.Fprintf(&b, "specs_root = %s\n", tomlQuote(p.Specs()))
+		}
 		if p.ReviewAddendum != "" {
 			fmt.Fprintf(&b, "review_addendum = %s\n", tomlQuote(p.ReviewAddendum))
 		}
