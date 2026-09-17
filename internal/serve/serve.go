@@ -27,7 +27,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/codcod/pickle/internal/config"
@@ -338,40 +337,22 @@ func (h *handler) newPage(title string, tickets []*ticket.Ticket) page {
 // call, since no board in that layout can be forked by a code branch to begin
 // with (T-108's whole premise).
 //
-// `git symbolic-ref --short HEAD` is used rather than `rev-parse
-// --abbrev-ref HEAD`: the latter needs HEAD to resolve to a commit, and a
-// repository right after `pickle install --in-tree` — before its first
-// commit — has none yet (an "unborn" branch). symbolic-ref reads the ref
-// HEAD points at without resolving it, so it still names the branch in that
-// state; it fails only when HEAD is genuinely detached, which is exactly the
-// other case this function reports.
+// The git-plumbing mechanics (symbolic-ref vs. rev-parse, the unborn-branch
+// and detached-HEAD cases) live on vcs.FeatureBranchHead (T-128), which this
+// delegates to.
 func staleBoardBranch(root string, cfg *config.Config) string {
 	if cfg.ResolvedLayout() != config.LayoutInTree {
 		return ""
 	}
-	branch, err := vcs.Output(root, "symbolic-ref", "--short", "-q", "HEAD")
-	if err != nil {
-		// symbolic-ref fails both for "not a repository at all" and for a
-		// genuinely detached HEAD; a second, cheap probe tells them apart
-		// without needing a resolvable commit either.
-		if _, repoErr := vcs.Output(root, "rev-parse", "--git-dir"); repoErr != nil {
-			return "" // not a git repository (or git unavailable) — silent
-		}
-		return "HEAD" // a real repository, but HEAD is detached
-	}
-	if branch == "" {
-		return ""
-	}
+	prefixes := make([]string, 0, len(cfg.Projects))
 	for _, p := range cfg.Projects {
 		prefix := p.BranchPrefix
 		if prefix == "" {
 			prefix = config.DefaultBranchPrefix
 		}
-		if strings.HasPrefix(branch, prefix) {
-			return branch
-		}
+		prefixes = append(prefixes, prefix)
 	}
-	return ""
+	return vcs.FeatureBranchHead(root, prefixes)
 }
 
 func (h *handler) board(w http.ResponseWriter, r *http.Request) {
