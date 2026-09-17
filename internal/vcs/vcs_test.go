@@ -219,3 +219,99 @@ func TestIsRepoRoot(t *testing.T) {
 		}
 	}
 }
+
+// gitCheckoutNew creates and switches to a new branch.
+func gitCheckoutNew(t *testing.T, root, branch string) {
+	t.Helper()
+	if out, err := exec.Command("git", "-C", root, "checkout", "-q", "-b", branch).CombinedOutput(); err != nil {
+		t.Fatalf("git checkout -b %s: %v: %s", branch, err, out)
+	}
+}
+
+func TestFeatureBranchHeadNoRepoIsSilent(t *testing.T) {
+	if got := FeatureBranchHead(t.TempDir(), []string{"feat/"}); got != "" {
+		t.Errorf("FeatureBranchHead (no repo) = %q, want \"\"", got)
+	}
+}
+
+func TestFeatureBranchHeadDetachedHead(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	gitInit(t, root)
+	if out, err := exec.Command("git", "-C", root, "commit", "--allow-empty", "-q", "-m", "init").CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v: %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", root, "checkout", "-q", "--detach", "HEAD").CombinedOutput(); err != nil {
+		t.Fatalf("git checkout --detach: %v: %s", err, out)
+	}
+
+	if got := FeatureBranchHead(root, []string{"feat/"}); got != "HEAD" {
+		t.Errorf("FeatureBranchHead (detached) = %q, want %q", got, "HEAD")
+	}
+}
+
+func TestFeatureBranchHeadMatchingPrefix(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	gitInit(t, root)
+	gitCheckoutNew(t, root, "feat/T-1-x")
+
+	if got := FeatureBranchHead(root, []string{"feat/"}); got != "feat/T-1-x" {
+		t.Errorf("FeatureBranchHead (matching prefix) = %q, want %q", got, "feat/T-1-x")
+	}
+}
+
+func TestFeatureBranchHeadNonMatchingPrefix(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	gitInit(t, root)
+
+	if got := FeatureBranchHead(root, []string{"feat/"}); got != "" {
+		t.Errorf("FeatureBranchHead (on main, no match) = %q, want \"\"", got)
+	}
+}
+
+func TestResolveLocalBaseMainExists(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	gitInit(t, root) // gitInit initializes on "main"
+	if out, err := exec.Command("git", "-C", root, "commit", "--allow-empty", "-q", "-m", "init").CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v: %s", err, out)
+	}
+
+	branch, ok := ResolveLocalBase(root)
+	if !ok || branch != "main" {
+		t.Errorf("ResolveLocalBase = (%q, %v), want (\"main\", true)", branch, ok)
+	}
+}
+
+func TestResolveLocalBaseMasterExists(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	if out, err := exec.Command("git", "-C", root, "init", "-q", "-b", "master").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", root, "commit", "--allow-empty", "-q", "-m", "init").CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v: %s", err, out)
+	}
+
+	branch, ok := ResolveLocalBase(root)
+	if !ok || branch != "master" {
+		t.Errorf("ResolveLocalBase = (%q, %v), want (\"master\", true)", branch, ok)
+	}
+}
+
+func TestResolveLocalBaseNeitherExists(t *testing.T) {
+	requireGit(t)
+	root := t.TempDir()
+	if out, err := exec.Command("git", "-C", root, "init", "-q", "-b", "trunk").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", root, "commit", "--allow-empty", "-q", "-m", "init").CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v: %s", err, out)
+	}
+
+	if branch, ok := ResolveLocalBase(root); ok {
+		t.Errorf("ResolveLocalBase (neither main nor master) = (%q, %v), want (\"\", false)", branch, ok)
+	}
+}

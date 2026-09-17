@@ -27,7 +27,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/codcod/pickle/internal/config"
@@ -349,29 +348,15 @@ func staleBoardBranch(root string, cfg *config.Config) string {
 	if cfg.ResolvedLayout() != config.LayoutInTree {
 		return ""
 	}
-	branch, err := vcs.Output(root, "symbolic-ref", "--short", "-q", "HEAD")
-	if err != nil {
-		// symbolic-ref fails both for "not a repository at all" and for a
-		// genuinely detached HEAD; a second, cheap probe tells them apart
-		// without needing a resolvable commit either.
-		if _, repoErr := vcs.Output(root, "rev-parse", "--git-dir"); repoErr != nil {
-			return "" // not a git repository (or git unavailable) — silent
-		}
-		return "HEAD" // a real repository, but HEAD is detached
-	}
-	if branch == "" {
-		return ""
-	}
+	prefixes := make([]string, 0, len(cfg.Projects))
 	for _, p := range cfg.Projects {
 		prefix := p.BranchPrefix
 		if prefix == "" {
 			prefix = config.DefaultBranchPrefix
 		}
-		if strings.HasPrefix(branch, prefix) {
-			return branch
-		}
+		prefixes = append(prefixes, prefix)
 	}
-	return ""
+	return vcs.FeatureBranchHead(root, prefixes)
 }
 
 func (h *handler) board(w http.ResponseWriter, r *http.Request) {

@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/codcod/pickle/internal/hook"
 	"github.com/codcod/pickle/internal/install"
 	"github.com/codcod/pickle/internal/rickstatus"
+	"github.com/codcod/pickle/internal/ticket"
 	"github.com/codcod/pickle/internal/vcs"
 )
 
@@ -348,6 +351,7 @@ func checkHooks(root string, r *Result) {
 // calling checkLayoutInvariant, below.
 func checkChildren(root string, cfg *config.Config, r *Result) {
 	checkLayoutInvariant(cfg, r)
+	checkStaleTicketBranch(root, cfg, r)
 	for _, p := range cfg.Projects {
 		abs := filepath.Join(root, p.Path)
 		if _, err := os.Stat(filepath.Join(abs, ".git")); err != nil {
@@ -401,6 +405,117 @@ func checkLayoutInvariant(cfg *config.Config, r *Result) {
 	default:
 		r.ok(fmt.Sprintf("layout %q is consistent with %d root-path child(ren)", resolved, rootChildren))
 	}
+}
+
+// idFromBranchHead matches a ticket id at the very start of a feature
+// branch's remainder once its registered branch_prefix has been stripped
+// (e.g. "feat/" + "T-128-slug" -> "T-128").
+var idFromBranchHead = regexp.MustCompile("^" + ticket.IDShapePattern)
+
+// checkStaleTicketBranch warns when HEAD is on a registered child's feature
+// branch and that branch's own copy of its ticket disagrees with the base
+// branch's copy — the in-tree "mirror-image hazard" T-108 already warns about
+// on `pickle serve` (via staleBoardBranch), now reachable from `doctor`
+// without a running serve process (T-128).
+//
+// Advisory only, and it fails open at every step: no in-tree child, no
+// matching feature branch, a branch that names no ticket id, no local base
+// ref, or any git/filesystem error along the way all degrade to a silent
+// skip rather than a warning or an error — the same contract
+// vcs.FeatureBranchHead documents, for the same reason (a broken probe must
+// not make a healthy `doctor` run look broken).
+func checkStaleTicketBranch(root string, cfg *config.Config, r *Result) {
+	if cfg.ResolvedLayout() != config.LayoutInTree {
+		return
+	}
+	prefixes := make([]string, 0, len(cfg.Projects))
+	for _, p := range cfg.Projects {
+		prefix := p.BranchPrefix
+		if prefix == "" {
+			prefix = config.DefaultBranchPrefix
+		}
+		prefixes = append(prefixes, prefix)
+	}
+	branch := vcs.FeatureBranchHead(root, prefixes)
+	if branch == "" || branch == "HEAD" {
+		return // no matching feature branch, or a detached HEAD
+	}
+	var id string
+	for _, prefix := range prefixes {
+		if !strings.HasPrefix(branch, prefix) {
+			continue
+		}
+		id = idFromBranchHead.FindString(branch[len(prefix):])
+		break
+	}
+	if id == "" {
+		return // branch encodes no ticket id — e.g. a spike branch
+	}
+	base, ok := vcs.ResolveLocalBase(root)
+	if !ok {
+		return
+	}
+
+	headMatches, err := filepath.Glob(filepath.Join(root, "tickets", "*", id+"-*.md"))
+	if err != nil || len(headMatches) != 1 {
+		return // zero or multiple matches — board audit's finding, not this check's
+	}
+	headText, err := os.ReadFile(headMatches[0])
+	if err != nil {
+		return
+	}
+
+	tree, err := vcs.Output(root, "ls-tree", "-r", "--name-only", base, "--", "tickets")
+	if err != nil {
+		return
+	}
+	var basePath string
+	found := 0
+	for _, line := range strings.Split(tree, "\n") {
+		if strings.HasPrefix(path.Base(line), id+"-") {
+			basePath = line
+			found++
+		}
+	}
+	if found != 1 {
+		return
+	}
+	baseText, err := vcs.Output(root, "show", base+":"+basePath)
+	if err != nil {
+		return
+	}
+
+	headDir := filepath.Base(filepath.Dir(headMatches[0]))
+	baseDir := path.Base(path.Dir(basePath))
+	if headDir != baseDir {
+		r.warnf("ticket %s: this branch has it in %q but %s has it in %q — rebase onto %s to pick up the move",
+			id, headDir, base, baseDir, base)
+		return
+	}
+
+	headHistory, _ := ticket.SectionBody(string(headText), "History")
+	baseHistory, _ := ticket.SectionBody(baseText, "History")
+	if countHistoryBullets(baseHistory) > countHistoryBullets(headHistory) {
+		r.warnf("ticket %s: %s carries newer bookkeeping in its History section than this branch — rebase onto %s to pick it up",
+			id, base, base)
+		return
+	}
+	r.ok(fmt.Sprintf("ticket %s matches its %s copy (status and History)", id, base))
+}
+
+// countHistoryBullets counts body's top-level `## History` entries: the lines
+// whose trimmed form starts with "- ". Deliberately not a full-content diff —
+// a legitimately amended plan on the feature branch would false-positive one
+// (see T-128's Description) — so this only asks whether base recorded *more*
+// bookkeeping than HEAD has seen yet.
+func countHistoryBullets(body string) int {
+	n := 0
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "- ") {
+			n++
+		}
+	}
+	return n
 }
 
 // checkVersion warns when the installed payload version differs from the

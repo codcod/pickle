@@ -477,6 +477,17 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   doctor-clean project must never carry a recorded layout its own config
   contradicts. The resolved layout is otherwise reported as a passed line
   under `--verbose`;
+* under the `in-tree` layout, when `HEAD` is on a registered child's feature
+  branch (its name matching that child's `branch_prefix`), that branch's own
+  copy of the ticket the branch names agrees with the base branch's copy — the
+  same status directory, and no more `## History` entries on the base side.
+  A mismatch is a *warning* naming both status directories, or naming the
+  History drift, and pointing at the fix: `rebase onto <base>` picks up the
+  bookkeeping the base branch already carries. This is advisory and
+  local-only (no network access, no base branch guessed beyond
+  `main`/`master`) and stays silent whenever it cannot answer confidently —
+  a detached `HEAD`, a branch naming no ticket id, or a ticket not yet
+  present on the base branch all produce no finding at all;
 * each registered child's `path` is a git repository;
 * a child registered at a path other than the repository root is either ignored by this
   repository's git or already tracked (a deliberate submodule/gitlink) —

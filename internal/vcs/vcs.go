@@ -201,6 +201,60 @@ func Output(root string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// FeatureBranchHead names the branch HEAD is on, when it matches one of
+// prefixes: "" if root is not a repository (or git is unavailable), "HEAD" if
+// HEAD is genuinely detached, the branch name if it starts with one of
+// prefixes, or "" if it starts with none of them. It is the shared
+// git-plumbing half of T-108's stale-board warning (T-128): callers that also
+// need a base-branch name to diff against use ResolveLocalBase alongside it.
+//
+// `git symbolic-ref --short HEAD` is used rather than `rev-parse
+// --abbrev-ref HEAD`: the latter needs HEAD to resolve to a commit, and a
+// repository right after `pickle install --in-tree` — before its first
+// commit — has none yet (an "unborn" branch). symbolic-ref reads the ref
+// HEAD points at without resolving it, so it still names the branch in that
+// state; it fails only when HEAD is genuinely detached, which is exactly the
+// other case this function reports.
+func FeatureBranchHead(root string, prefixes []string) string {
+	branch, err := Output(root, "symbolic-ref", "--short", "-q", "HEAD")
+	if err != nil {
+		// symbolic-ref fails both for "not a repository at all" and for a
+		// genuinely detached HEAD; a second, cheap probe tells them apart
+		// without needing a resolvable commit either.
+		if _, repoErr := Output(root, "rev-parse", "--git-dir"); repoErr != nil {
+			return "" // not a git repository (or git unavailable) — silent
+		}
+		return "HEAD" // a real repository, but HEAD is detached
+	}
+	if branch == "" {
+		return ""
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(branch, prefix) {
+			return branch
+		}
+	}
+	return ""
+}
+
+// ResolveLocalBase tries local branch refs in order — refs/heads/main, then
+// refs/heads/master — returning the short name of the first that resolves
+// and true, or ("", false) if neither does (or git fails).
+//
+// Local refs only, not remote-tracking ones (contrast
+// internal/hook/prepush.go's resolveBase): this answers the equivalent
+// question for a caller with no guaranteed remote — e.g. a fresh `pickle
+// install --in-tree`, before `git remote add` — so there is nothing to guess
+// a remote's default branch from either.
+func ResolveLocalBase(root string) (branch string, ok bool) {
+	for _, name := range []string{"main", "master"} {
+		if _, err := Output(root, "rev-parse", "--verify", "--quiet", "refs/heads/"+name); err == nil {
+			return name, true
+		}
+	}
+	return "", false
+}
+
 // repoEnv are the variables that pin git to a specific repository, index or
 // prefix — see internal/hook.repoEnv, which this deliberately mirrors.
 var repoEnv = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"}
