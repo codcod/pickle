@@ -201,7 +201,72 @@ severity, and — where one exists — the command it points at). Run `just docs
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): **independent** — fresh session (post-`/clear`),
+  no memory of authoring the branch; treated per the protocol's fresh-session handoff rather
+  than delegated to a spawned sub-agent.
+- [x] Implementation audit — acceptance test re-run, tasks & criteria verified (steps 1, 2)
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a)
+- [x] Docs-readability pass — **conscious skip**: no docs-readability reviewer available in this
+  session (step 4b, optional)
+- [x] Findings recorded with severity, class, disposition; disposition summary + cost line (step 5)
+- [x] Ticket moved (step 6)
+- [x] Other references updated if needed; governing documents reconciled (step 7)
+- [x] Remaining-tickets impact sweep done (step 8)
+- [x] Summary + commit message & MR attributes presented for approval (step 9)
+
+**Implementation audit.** Read the ticket from `main` (in-tree layout, base branch is
+authoritative for ticket/board — protocol intro). All four tasks verified against
+`feat/T-128-doctor-warn-stale-ticket-branch`:
+
+- Task 1 (`vcs.FeatureBranchHead`) — present, `internal/vcs/vcs.go`, carries the git-mechanics
+  doc comment moved from `staleBoardBranch`. Met.
+- Task 2 (`staleBoardBranch` delegates) — present, `internal/serve/serve.go`; behaviour
+  unchanged, `internal/serve/serve_test.go` untouched by the diff. Met.
+- Task 3 (`vcs.ResolveLocalBase`) — present, tries `refs/heads/main` then `refs/heads/master`
+  via `vcs.Output`. Met.
+- Task 4 (`checkStaleTicketBranch`) — present in `internal/doctor/doctor.go`, called from
+  `checkChildren` immediately after `checkLayoutInvariant`, implements decisions 3–6 (id
+  extraction via `ticket.IDShapePattern`, glob + `git ls-tree` lookup on each side, status-dir
+  then History-count comparison, fail-open throughout). Met.
+- Acceptance test — re-ran verbatim: `just build`, `just test` (fresh `-count=1` run of
+  `internal/vcs`, `internal/doctor`, `internal/serve`), `just lint`, `just docs-check`, all
+  clean. `doctor_stale_ticket_branch_test.go` covers exactly the six scenarios the plan names
+  (status-dir mismatch, History drift, identical, umbrella never-runs, detached HEAD, ticket
+  absent from base); `vcs_test.go` covers `FeatureBranchHead`'s four cases and
+  `ResolveLocalBase`'s three. Met.
+- Confirmed design decisions 1–6 — all honoured as written; `ls-tree` output paths compared with
+  `path.Base`/`path.Dir` rather than `filepath`, correctly matching git's always-`/`-separated
+  tree output.
+
+**Quality / consistency audit.** Idiomatic, fail-open throughout as designed. `git grep -n
+"mirror-image hazard\|staleBoardBranch"` outside `tickets/` turned up only
+`docs/user-manual/cli-reference.adoc` (updated by this branch) and `internal/serve/serve.go`'s
+own comment — no other governing document references the mechanism this branch touched.
+`tickets-README.md` §0's mirror-image-hazard prose is still accurate (it never claimed
+exclusivity to `serve`) and needs no edit. No dependent ticket in `1-to-do/`/`2-ready/`
+references T-128 (impact sweep, step 8: clean).
+
+One finding, fixed during this review:
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | design | fixed inline | `staleBoardBranch`'s doc comment still repeated the symbolic-ref-vs-rev-parse rationale verbatim after Task 1 moved that logic (and its rationale) to `vcs.FeatureBranchHead` — duplicated content this branch's own rewrite left behind, contra Task 2's "keeps its own doc comment (... that part is serve-specific, not raw git)". | `internal/serve/serve.go` (pre-fix), duplicating `internal/vcs/vcs.go`'s `FeatureBranchHead` doc comment | Trim the duplicated paragraph, point at `vcs.FeatureBranchHead` instead |
+
+disposition summary: 1 fixed inline (F1); 0 folded; 0 new ticket; 0 noted.
+
+cost: estimated M, actual M
+
+**Documentation audit (4a).** Coverage: the new `doctor` warning is documented in
+`docs/user-manual/cli-reference.adoc`'s `[#cmd-doctor]` section, in the position and style the
+plan specified, verified against the file (not merely the diff). Whole-tree sweep: no other
+`.adoc` page describes `doctor`'s check list or the mirror-image hazard, so nothing else needed
+updating. `just docs-check` clean.
+
+**Fix applied during this review** (F1, `fixed inline`): commit `f6abe5d` on
+`feat/T-128-doctor-warn-stale-ticket-branch`, trimming the duplicated comment; `just build`,
+`go test ./internal/serve/...` (fresh), and `just lint` re-verified clean after the edit.
 
 ## History
 
@@ -214,3 +279,4 @@ severity, and — where one exists — the command it points at). Run `just docs
 - 2026-09-17 — TO DO → READY: plan complete
 - 2026-09-17 — READY → IN DEVELOPMENT: picked up
 - 2026-09-17 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-17 — IN REVIEW → DONE: review clean; F1 fixed inline (duplicated comment)
