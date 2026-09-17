@@ -280,3 +280,9 @@ updating. `just docs-check` clean.
 - 2026-09-17 — READY → IN DEVELOPMENT: picked up
 - 2026-09-17 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-17 — IN REVIEW → DONE: review clean; F1 fixed inline (duplicated comment)
+- 2026-09-17 — CI fix, pre-merge: `TestResolveLocalBaseMasterExists`/`...NeitherExists` called
+  `git init` directly instead of the `gitInit` helper, skipping identity config; passed locally
+  (global git config masks it) but failed on CI's identity-less runners
+  (`Author identity unknown`). Fixed in commit `39ba6a5` (factored identity setup into
+  `gitInitBranch`), re-verified against a simulated no-identity environment.
+- 2026-09-17 — merged (PR #87)

@@ -151,7 +151,7 @@ Last updated: 2026-09-17
 | T-125 | a blocking finding first surfacing after step 6b has no defined route in the protocol | yes — merged to main (PR #80, 7f9d03c, https://github.com/codcod/pickle/commit/7f9d03c) |
 | T-126 | pickle board metrics: backlog dwell, lead time and open-ticket age from dated History lines | yes — merged to main (PR #81, 6ef7f19, https://github.com/codcod/pickle/commit/6ef7f1933eb470a6a172a467623bf9ae637345f6… |
 | T-127 | pickle serve: support multiple project roots in one process | yes — merged to main (PR #82, ef3f387, https://github.com/codcod/pickle/commit/ef3f387). True merge commit, so all thre… |
-| T-128 | doctor: warn when a feature branch's ticket file is stale relative to the base branch | no — publish-gated |
+| T-128 | doctor: warn when a feature branch's ticket file is stale relative to the base branch | yes — merged (PR #87) |
 
 ## DROPPED
 
