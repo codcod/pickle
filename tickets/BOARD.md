@@ -13,10 +13,11 @@ Last updated: 2026-09-17
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-128 | doctor: warn when a feature branch's ticket file is stale relative to the base branch | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-17
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-128 | doctor: warn when a feature branch's ticket file is stale relative to the base branch | medium | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 

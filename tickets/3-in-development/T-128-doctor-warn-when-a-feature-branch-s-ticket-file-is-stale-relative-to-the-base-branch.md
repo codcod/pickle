@@ -212,3 +212,4 @@ severity, and — where one exists — the command it points at). Run `just docs
   confusingly, reported the ticket as not ready for its trigger, with no mechanical signal
   pointing at the fix (rebase onto base).
 - 2026-09-17 — TO DO → READY: plan complete
+- 2026-09-17 — READY → IN DEVELOPMENT: picked up
