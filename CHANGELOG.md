@@ -8,6 +8,23 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-17
+
+### Added
+
+- **`pickle doctor`, under the `in-tree` layout, warns when the checked-out feature branch's own
+  copy of its ticket disagrees with the base branch's copy** — a different status directory, or
+  fewer `## History` entries than base — the same "mirror-image hazard" `pickle serve` already
+  warned about (T-108), now reachable without a running `serve` process. The check applies only
+  when `HEAD` matches a registered child's `branch_prefix` and that branch names a ticket id, and
+  it is advisory and fail-open throughout: no repository, a detached `HEAD`, a branch naming no
+  ticket, no local `main`/`master` to diff against, or any git error all degrade to a silent skip
+  rather than a false positive. The warning names the fix directly (`rebase onto <base>`). The
+  shared git-plumbing (resolving the checked-out feature branch, matching a base branch's local
+  ref) moved into `internal/vcs` so `serve`'s existing warning and this new check share one
+  implementation, with no behaviour change to `serve`. Shipped in `internal/doctor` and
+  `internal/vcs` (T-128).
+
 ## [0.17.0] - 2026-09-04
 
 ### Added
@@ -941,7 +958,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/codcod/pickle/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/codcod/pickle/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/codcod/pickle/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/codcod/pickle/compare/v0.14.0...v0.15.0
