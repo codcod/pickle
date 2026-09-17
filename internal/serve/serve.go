@@ -337,13 +337,9 @@ func (h *handler) newPage(title string, tickets []*ticket.Ticket) page {
 // call, since no board in that layout can be forked by a code branch to begin
 // with (T-108's whole premise).
 //
-// `git symbolic-ref --short HEAD` is used rather than `rev-parse
-// --abbrev-ref HEAD`: the latter needs HEAD to resolve to a commit, and a
-// repository right after `pickle install --in-tree` — before its first
-// commit — has none yet (an "unborn" branch). symbolic-ref reads the ref
-// HEAD points at without resolving it, so it still names the branch in that
-// state; it fails only when HEAD is genuinely detached, which is exactly the
-// other case this function reports.
+// The git-plumbing mechanics (symbolic-ref vs. rev-parse, the unborn-branch
+// and detached-HEAD cases) live on vcs.FeatureBranchHead (T-128), which this
+// delegates to.
 func staleBoardBranch(root string, cfg *config.Config) string {
 	if cfg.ResolvedLayout() != config.LayoutInTree {
 		return ""
