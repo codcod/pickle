@@ -14,7 +14,18 @@ import (
 // rather than a fake.
 func gitInit(t *testing.T, dir string) {
 	t.Helper()
-	if out, err := exec.Command("git", "-C", dir, "init", "-q", "-b", "main").CombinedOutput(); err != nil {
+	gitInitBranch(t, dir, "main")
+}
+
+// gitInitBranch is gitInit with the initial branch name spelled out, for the
+// tests that need a non-"main" initial branch (ResolveLocalBase's
+// master/neither cases) but still need the identity config a bare `git init`
+// leaves unset — CI runners carry no global git identity, unlike a
+// developer's machine, so skipping this makes a later `commit` fail there
+// only.
+func gitInitBranch(t *testing.T, dir, branch string) {
+	t.Helper()
+	if out, err := exec.Command("git", "-C", dir, "init", "-q", "-b", branch).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	// Give the fixture repo an identity so a later `git add`/commit in a test
@@ -288,9 +299,7 @@ func TestResolveLocalBaseMainExists(t *testing.T) {
 func TestResolveLocalBaseMasterExists(t *testing.T) {
 	requireGit(t)
 	root := t.TempDir()
-	if out, err := exec.Command("git", "-C", root, "init", "-q", "-b", "master").CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, out)
-	}
+	gitInitBranch(t, root, "master")
 	if out, err := exec.Command("git", "-C", root, "commit", "--allow-empty", "-q", "-m", "init").CombinedOutput(); err != nil {
 		t.Fatalf("git commit: %v: %s", err, out)
 	}
@@ -304,9 +313,7 @@ func TestResolveLocalBaseMasterExists(t *testing.T) {
 func TestResolveLocalBaseNeitherExists(t *testing.T) {
 	requireGit(t)
 	root := t.TempDir()
-	if out, err := exec.Command("git", "-C", root, "init", "-q", "-b", "trunk").CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, out)
-	}
+	gitInitBranch(t, root, "trunk")
 	if out, err := exec.Command("git", "-C", root, "commit", "--allow-empty", "-q", "-m", "init").CombinedOutput(); err != nil {
 		t.Fatalf("git commit: %v: %s", err, out)
 	}
