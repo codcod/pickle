@@ -227,3 +227,4 @@ this behaviour, and no separate user-manual page restates it.
   instead of resolving it from base.
 - 2026-09-18 — TO DO → READY: plan complete
 - 2026-09-18 — READY → IN DEVELOPMENT: picked up
+- 2026-09-18 — IN DEVELOPMENT → IN REVIEW: acceptance green
