@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 
 ## IN DEVELOPMENT
 
@@ -38,6 +38,7 @@ Last updated: 2026-09-17
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-129 | split brine SKILL.md into per-procedure files to cut per-invocation token cost | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
