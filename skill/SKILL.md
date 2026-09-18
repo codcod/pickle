@@ -181,6 +181,12 @@ When asked to refine ticket T-NNN (or "make it ready"):
 
 When asked to implement ticket T-NNN:
 
+Under `layout = "in-tree"`, before reading the ticket, resolve its current status from the base
+branch rather than trusting the worktree — `git ls-tree -r --name-only <base> -- tickets |
+grep -- "/T-NNN-"`, then `git show <base>:<that path>` — and, once any pre-existing
+`feat/T-NNN-*` branch for this ticket is checked out (a resumed pickup; a fresh one has no branch
+yet), run `pickle doctor` and resolve any stale-ticket-branch warning first.
+
 1. **Read the ticket in full.** It must be in `2-ready/` — if not, stop and tell the user why.
 2. **Validate dependencies:** every `depends-on:` ticket is in `6-done/` **and merged to the
    base of its target child-project's repo** (check the board's `merged` column / the
@@ -229,7 +235,8 @@ Read `resources/procedure-rework.md` and follow it.
 child). Before auditing, settle reviewer independence (the protocol's step 0): delegate the
 audits to an independent reviewer if the reviewing agent authored the branch in this same
 session, and record which happened either way — independent, delegated, or a conscious skip when
-none is available. In short:
+none is available; and, under `layout = "in-tree"`, resolve the ticket from the base branch and
+run `pickle doctor` (the protocol's step 0a) before auditing. In short:
 
 1. The ticket must be in `4-in-review/`. Audit implementation, quality, consistency, and docs
    (running the child's configured commands); classify each finding **blocking** (→
