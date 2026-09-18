@@ -38,6 +38,7 @@ Last updated: 2026-09-18
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -48,7 +49,6 @@ Last updated: 2026-09-18
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
-| T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | medium | low | S | [] |  |
 
 ## DONE
 
