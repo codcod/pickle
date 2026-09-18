@@ -279,3 +279,4 @@ cost: estimated S, actual S
 - 2026-09-18 — READY → IN DEVELOPMENT: picked up
 - 2026-09-18 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-18 — IN REVIEW → DONE: review complete: 1 non-blocking finding, noted and closed
+- 2026-09-18 — MERGED: PR #89, merge commit `3164f3b`

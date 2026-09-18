@@ -153,7 +153,7 @@ Last updated: 2026-09-18
 | T-127 | pickle serve: support multiple project roots in one process | yes — merged to main (PR #82, ef3f387, https://github.com/codcod/pickle/commit/ef3f387). True merge commit, so all thre… |
 | T-128 | doctor: warn when a feature branch's ticket file is stale relative to the base branch | yes — merged (PR #87) |
 | T-129 | split brine SKILL.md into per-procedure files to cut per-invocation token cost | yes — MERGED: PR #88, merge commit `305f995` |
-| T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | no — publish-gated |
+| T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | yes — MERGED: PR #89, merge commit `3164f3b` |
 
 ## DROPPED
 
