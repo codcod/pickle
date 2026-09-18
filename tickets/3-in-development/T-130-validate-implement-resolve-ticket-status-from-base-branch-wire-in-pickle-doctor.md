@@ -226,3 +226,4 @@ this behaviour, and no separate user-manual page restates it.
   procedures invokes it, and `review-protocol.md`'s own step 1 presumes the status directory
   instead of resolving it from base.
 - 2026-09-18 — TO DO → READY: plan complete
+- 2026-09-18 — READY → IN DEVELOPMENT: picked up

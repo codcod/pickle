@@ -13,10 +13,11 @@ Last updated: 2026-09-18
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-18
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
