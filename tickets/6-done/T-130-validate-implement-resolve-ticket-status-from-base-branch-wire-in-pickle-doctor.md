@@ -215,7 +215,57 @@ this behaviour, and no separate user-manual page restates it.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): **independent** — fresh session with no memory of
+  writing the branch, no hand in this ticket's implementation. Audits run directly, no delegation
+  needed.
+- [x] In-tree stale-branch check (step 0a — not yet shipped on `main` at review time, so this is
+  the outgoing protocol's step 1 conditional read; run anyway as a dogfood of what this very
+  ticket ships): `./pickle doctor` on the checked-out feature branch reported
+  `WARNING: ticket T-130: this branch has it in "3-in-development" but main has it in
+  "4-in-review" — rebase onto main to pick up the move` — exactly the mirror-image hazard this
+  ticket documents (the branch was cut mid-development, before the later `in-development →
+  in-review` bookkeeping move landed on `main`). Ticket read from `main` throughout, per protocol
+  step 1; the warning confirms the detection this ticket wires in behaves as described.
+- [x] Implementation audit (steps 1, 2): all 5 tasks done as specified —
+  `skill/resources/review-protocol.md` gained `## 0a.` (between `## 0.` and `## 1.`) and the
+  rewritten directory-agnostic "Locate the ticket" bullet; the checklist template gained the new
+  `0a` line; `skill/SKILL.md` gained the preamble sentence before "Procedure: implement a ticket"'s
+  numbered list and the added clause in "Procedure: validate a ticket"'s short-form paragraph;
+  `.agents/skills/brine/` confirmed a plain symlink, no separate edit needed (`git status`
+  clean on the feature branch). Acceptance test re-run on the feature branch: `just build`,
+  `just test` (including `go test . -run
+  'TestPayloadSpeaksToAForeignReader|TestPayloadLintRule' -v -count=1`, all green, no cache),
+  `just lint`, `just docs-check` all clean. `grep -n "^## "` on
+  `review-protocol.md` lists `0, 0a, 1, 2, 3, 4, 4a, 4b, 5-9` in order; every external
+  cross-reference checked (`docs/user-manual/concepts/lifecycle.adoc`,
+  `docs/user-manual/concepts/agent-session-workflow.adoc`, `CHANGELOG.md`, `skill/SKILL.md`)
+  still resolves to the same step number as before — nothing renumbered.
+- [x] Quality audit (step 3): doc-only change, no Go code touched, matching decision 1. New prose
+  is idiomatic with the file's existing style; no code paths, tests, or error handling affected.
+- [x] Consistency audit (step 4): new `0a` and rewritten step-1 bullet are internally consistent
+  with the unchanged "mirror-image hazard" callout box above them and with each other. One
+  pre-existing, unrelated inconsistency surfaced (see F1) — not introduced by this branch.
+- [x] Documentation audit (step 4a): confirmed no `docs/user-manual/` page restates this
+  procedure's language (grepped for "Load context", "mirror-image", "stale ticket", "Locate the
+  ticket" — no hits), matching decision 6; `just docs-check` clean.
+- [x] Docs-readability pass (step 4b): no docs-readability reviewer configured in this host —
+  conscious skip.
+- [x] Findings recorded below; disposition summary and cost line present (step 5).
+- Ticket moved per step 6 below.
+- [x] Other references / governing documents (step 7): `BOARD.md` needs no hand edit (regenerated
+  by the move). F1 below is a pre-existing governing-document drift, out of this branch's
+  reach to cause and dispositioned rather than fixed inline.
+- [x] Remaining-tickets impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references
+  T-130 in `depends-on:` or Description — nothing to patch.
+- Summary + commit message below, for approval (step 9).
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | stale-xref | note and close | `tickets/README.md` points to `.agents/skills/ticket-flow/resources/*` but the skill was renamed to `brine` (T-074, done) and the real symlink is `.agents/skills/brine/` | `tickets/README.md:8-12`, confirmed pre-existing on `main` before this branch (`git show main:tickets/README.md`) | rename the three `ticket-flow` path segments to `brine`; unrelated to T-130's scope, a one-line fix for whoever picks it up next |
+
+Disposition summary: 1 non-blocking finding (F1), noted and closed — 0 blocking, 0 new tickets, 0 fix-now.
+
+cost: estimated S, actual S
 
 ## History
 
@@ -228,3 +278,4 @@ this behaviour, and no separate user-manual page restates it.
 - 2026-09-18 — TO DO → READY: plan complete
 - 2026-09-18 — READY → IN DEVELOPMENT: picked up
 - 2026-09-18 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-18 — IN REVIEW → DONE: review complete: 1 non-blocking finding, noted and closed
