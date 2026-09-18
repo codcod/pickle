@@ -8,6 +8,23 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-18
+
+### Changed
+
+- **`validate ticket T-NNN` and `implement ticket T-NNN`, under `layout = "in-tree"`, now resolve
+  a ticket's current status from the base branch unconditionally, and mandate a `pickle doctor`
+  pre-flight once the ticket's own feature branch is checked out.** T-128 shipped the mechanical
+  stale-ticket-branch detection (`checkStaleTicketBranch`), but nothing in the trigger procedures
+  invoked it, and `review-protocol.md`'s own lookup was conditional prose gated on the feature
+  branch already being checked out, plus hardcoded to `4-in-review/` — a careful reader following
+  it from a different status directory hit a `git show: path does not exist` dead end. Both gaps
+  are closed doc-only, with no new detection logic: `review-protocol.md` gains a new `## 0a.`
+  step, and its "Locate the ticket" bullet now runs `git ls-tree -r --name-only <base> --
+  tickets | grep -- "/T-NNN-"` unconditionally instead of assuming a directory; `SKILL.md`'s
+  inline implement/validate procedures gain the same preamble. Shipped in `skill/SKILL.md` and
+  `skill/resources/review-protocol.md` (T-130).
+
 ## [0.18.0] - 2026-09-17
 
 ### Added
@@ -958,7 +975,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/codcod/pickle/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/codcod/pickle/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/codcod/pickle/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/codcod/pickle/compare/v0.15.0...v0.16.0
