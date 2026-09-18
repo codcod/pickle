@@ -154,3 +154,4 @@ config key, or user-manual page affected.
   concrete, narrow win before filing.
 - 2026-09-18 — TO DO → READY: plan complete
 - 2026-09-18 — READY → IN DEVELOPMENT: picked up
+- 2026-09-18 — IN DEVELOPMENT → IN REVIEW: acceptance green
