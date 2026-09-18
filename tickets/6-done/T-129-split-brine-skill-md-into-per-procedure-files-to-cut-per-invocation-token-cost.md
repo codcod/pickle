@@ -144,7 +144,63 @@ config key, or user-manual page affected.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+**Reviewer independence (step 0):** independent — this review runs in a fresh session with no
+hand in the branch (single commit `c12e498`, authored earlier, not in this session's history).
+
+**Implementation audit (steps 1–2):** all three tasks verified against the tree on
+`feat/T-129-split-brine-skill-cold-procedures`.
+- Task 1: `skill/resources/procedure-make-ticket.md`, `procedure-rework.md`,
+  `procedure-audit-board.md` created; byte-for-byte diffed (Python comparison, blank-line-trimmed)
+  against the corresponding sections of `main`'s `skill/SKILL.md` — all three **identical**, each
+  keeps a `# Procedure: <name>` top-level heading. Met.
+- Task 2: all three `## Procedure: …` sections in `SKILL.md` replaced with the exact
+  `Read \`resources/procedure-<name>.md\` and follow it.` pointer form; headings kept;
+  `validate`/`implement`/`refine` sections byte-unchanged. Met.
+- Task 3: "Bundled resources" list gained the three new files with the "read only when that
+  procedure applies" note, matching the existing bullet style. Met.
+- Acceptance test: `just test` (fresh, `-count=1` on the two payload-content tests) green,
+  including `TestPayloadLintRule*` (foreign-workspace lint, walks the full embedded payload) and
+  `TestPayloadDispositionVocabulary`/`TestPayloadDefersToProjectConfig`. `just lint` clean.
+  `just docs-check` clean. `wc -c skill/SKILL.md` → 19400 bytes vs 25186 on `main`, a 23.0%
+  reduction — "roughly a quarter" as specified. `grep -c '^## Procedure: ' skill/SKILL.md` → 6,
+  all headings retained. Met.
+- Confirmed design decisions 1–4: only the three cold procedures moved, content relocated
+  verbatim (confirmed above), single-line pointer form used consistently, no Go/embed changes
+  (`assets.go` untouched, diff confirms). Honoured.
+
+**Quality audit (step 3):** no new code, only markdown reorganization; nothing to assess for
+idiom/error-handling/security. N/A.
+
+**Consistency audit (step 4):** searched the repo for stale references to the old structure
+(line counts, "six procedures inline", claims about SKILL.md loading everything) — none found.
+`internal/doctor/doctor.go`'s `SKILL.md`/`resources/tickets-README.md` existence checks,
+`internal/install/install_test.go`'s SKILL.md assertions, and `DESIGN.md`'s generic
+"`SKILL.md` + `resources/`" description are all unaffected by the split. No stale-xref findings.
+
+**Documentation audit (step 4a):** no user-facing docs surface — agent-facing skill payload
+only, as the ticket's Docs step states; `just docs-check` (docs build) green regardless.
+`CHANGELOG.md`'s `[Unreleased]` section left empty — reasonable given this is a content-identical
+internal restructuring with no behavior or policy change for a downstream project's skill
+consumer, consistent with how `resources/TEMPLATE.md`/`tickets-README.md` were split out without
+individual CHANGELOG lines.
+
+**Docs-readability pass (step 4b):** conscious skip — no docs-readability reviewer configured
+in this session.
+
+**Findings:**
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+
+No findings.
+
+disposition summary: 0 findings (0 blocking, 0 non-blocking).
+
+cost: estimated S, actual S
+
+**Impact sweep (step 8):** no ticket in `1-to-do/` or `2-ready/` references T-129 or the old
+SKILL.md structure (`grep -rl "T-129" tickets/1-to-do tickets/2-ready` → empty). Nothing to
+patch.
 
 ## History
 
@@ -155,3 +211,4 @@ config key, or user-manual page affected.
 - 2026-09-18 — TO DO → READY: plan complete
 - 2026-09-18 — READY → IN DEVELOPMENT: picked up
 - 2026-09-18 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-18 — IN REVIEW → DONE: verified: 0 findings, split identical
