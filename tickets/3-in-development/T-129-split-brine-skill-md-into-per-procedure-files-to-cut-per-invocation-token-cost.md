@@ -153,3 +153,4 @@ config key, or user-manual page affected.
   usage; session-log analysis of trigger-phrase frequency and per-call token cost confirmed a
   concrete, narrow win before filing.
 - 2026-09-18 — TO DO → READY: plan complete
+- 2026-09-18 — READY → IN DEVELOPMENT: picked up
