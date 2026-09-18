@@ -212,3 +212,4 @@ patch.
 - 2026-09-18 — READY → IN DEVELOPMENT: picked up
 - 2026-09-18 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-18 — IN REVIEW → DONE: verified: 0 findings, split identical
+- 2026-09-18 — MERGED: PR #88, merge commit `305f995`
