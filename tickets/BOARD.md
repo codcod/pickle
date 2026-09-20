@@ -20,11 +20,10 @@ Last updated: 2026-09-20
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-132 | pickle ticket --help fails with unknown subcommand instead of printing group help | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-09-20
 
 | id | title | open findings |
 |---|---|---|
+| T-132 | pickle ticket --help fails with unknown subcommand instead of printing group help | F1 blocking: CHANGELOG.md entry missing for user-facing CLI change |
 
 ## READY (impact order, per child)
 

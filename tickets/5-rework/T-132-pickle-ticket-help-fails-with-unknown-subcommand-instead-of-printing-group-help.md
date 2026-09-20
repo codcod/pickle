@@ -232,7 +232,42 @@ output text, which is self-documenting. No doc changes needed.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): **delegated** — a fresh sub-agent, briefed
+  adversarially with no memory of writing the branch, ran the audits below; every finding was
+  re-verified by hand before recording.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` on `feat/T-132-group-help` warned
+  `ticket T-132: this branch has it in "3-in-development" but main has it in "4-in-review"` —
+  the branch was cut before this ticket's move to `4-in-review` landed on `main`. Rebased onto
+  `main`; re-ran `pickle doctor` — 0 errors, 0 warnings.
+- [x] Implementation audit (steps 1, 2): acceptance test re-run — `just build`/`just test`/
+  `just lint` all green; manual smoke test (fresh `pickle-test` install) reproduced the ticket's
+  expected output verbatim for all 7 groups' `-h`/`--help`, and `ticket bogus` still errors with
+  exit 2. All 7 tasks verified done in the files they name. All 5 confirmed design decisions
+  verified honoured (grep confirmed no 8th group-shaped dispatcher exists; `hooks run --help`
+  confirmed still out of scope and erroring; leaf-level `--help` confirmed unchanged).
+- [x] Quality audit (step 3): idiomatic, matches the file's existing `switch`/`default` style;
+  `gofmt -l` clean on all changed files; `ticket -h extra` / `ticket --help --bogus` probed —
+  trailing args are silently ignored, consistent with this dispatcher's pre-existing pattern
+  elsewhere (not a new defect).
+- [x] Consistency audit (step 4): whole-repo grep for "unknown subcommand" and `--help` found no
+  other place assuming the old error-on-help behaviour; top-level `pickle --help`
+  (`internal/cli/cli.go`) confirmed unaffected and still correct, matching the ticket's own claim.
+- [x] Documentation audit (step 4a): `just docs-check` green. README/user-manual confirmed to
+  enumerate no per-group `--help` behaviour — the ticket's "no doc changes needed" claim holds
+  for those two. **CHANGELOG.md was not checked by the plan and is the one docs surface this
+  audit found missing** — see F1.
+- [ ] Docs-readability pass (step 4b): skipped — no docs-readability reviewer configured in this
+  session; no `.adoc`/`.md` prose was changed by this branch besides the ticket itself.
+- [x] Findings recorded below with severity, class, and disposition (step 5).
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | docs-gap | — | `CHANGELOG.md`'s `[Unreleased]` section has no entry for this user-facing CLI behaviour/exit-code change (7 commands now succeed on `--help`/`-h` instead of erroring); the ticket's own "Docs update" step considered only README/user-manual, never CHANGELOG.md. | `pickle changelog check`: "1 candidate(s) shipped but not named in \"Unreleased\": T-132 ... (check for a recorded decision before adding an entry)". Precedent: `CHANGELOG.md` carries `### Fixed`/`### Changed` entries for comparably-scoped past CLI fixes (e.g. 0.20.0, 0.19.0). | Add a `### Fixed` entry under `[Unreleased]` naming T-132 before this proceeds to done. |
+| F2 | non-blocking | test-gap | note-and-close | Only `ticket --help` has a content-assertion test (`TestTicketHelpPrintsCombinedUsage`); the other 6 groups (including `board`, which also prints 5 combined lines) are exit-code-checked only — a future edit dropping one `fmt.Println` line from a `-h` case would still pass every test. | `internal/cli/cli_test.go`: exactly one `captureStdout`-based test exists for the new `--help` behaviour (line ~156), covering `ticket` only. | Optional follow-up: add one more content test for `board --help` (the highest-line-count group) using the same pattern. Declined as a promoted ticket — one assertion, batched with nothing else, doesn't clear the promotion bar; noted and closed instead. |
+
+Disposition summary: 1 blocking (F1, routes to rework), 1 non-blocking noted and closed (F2).
+
+cost: estimated S, actual S
 
 ## History
 
@@ -243,3 +278,4 @@ output text, which is self-documenting. No doc changes needed.
 - 2026-09-20 — TO DO → READY: plan complete
 - 2026-09-20 — READY → IN DEVELOPMENT: picked up
 - 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-20 — IN REVIEW → REWORK: F1 blocking: CHANGELOG.md entry missing for user-facing CLI change
