@@ -267,6 +267,13 @@ output text, which is self-documenting. No doc changes needed.
 
 Disposition summary: 1 blocking (F1, routes to rework), 1 non-blocking noted and closed (F2).
 
+### Rework fix record — round 1 (commit 65beec4)
+
+F1 fixed: added a `### Fixed` entry under `CHANGELOG.md`'s `[Unreleased]` section naming T-132
+and summarizing the seven-dispatcher `--help` fix, matching the style of the existing `0.20.0`/
+`0.19.0` entries. `./pickle changelog check` now reports no candidates. `just build`/`just test`/
+`just lint`/`just docs-check` all re-ran green.
+
 cost: estimated S, actual S
 
 ## History
@@ -279,3 +286,4 @@ cost: estimated S, actual S
 - 2026-09-20 — READY → IN DEVELOPMENT: picked up
 - 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-20 — IN REVIEW → REWORK: F1 blocking: CHANGELOG.md entry missing for user-facing CLI change
+- 2026-09-20 — REWORK → IN REVIEW: findings fixed
