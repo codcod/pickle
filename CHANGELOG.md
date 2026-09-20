@@ -8,6 +8,22 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-20
+
+### Changed
+
+- **`rework ticket T-NNN`, under `layout = "in-tree"`, now resolves a ticket's current status
+  from the base branch unconditionally, and mandates a `pickle doctor` pre-flight once the
+  ticket's own feature branch is checked out.** T-130 closed this same mirror-image hazard for
+  `implement` and `validate`; `resources/procedure-rework.md` was the one trigger procedure left
+  reading `5-rework/` from a possibly-stale worktree copy. Confirmed in the field: an in-tree
+  install's review verdict moved a ticket to `5-rework/` via base-branch bookkeeping, and a fresh
+  session told "rework ticket T-NNN" read its stale feature-branch worktree copy and wrongly
+  stopped. Fixed doc-only, copying T-130's preamble verbatim: `procedure-rework.md` gains the same
+  preamble and its step 1 now checks the base-branch status per the same `git ls-tree`/`git show`
+  lookup, gated on the same `pickle doctor` stale-ticket-branch check. Shipped in
+  `skill/resources/procedure-rework.md` (T-131).
+
 ## [0.19.0] - 2026-09-18
 
 ### Changed
@@ -975,7 +991,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/codcod/pickle/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/codcod/pickle/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/codcod/pickle/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/codcod/pickle/compare/v0.16.0...v0.17.0
