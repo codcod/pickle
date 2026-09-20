@@ -304,3 +304,4 @@ No blocking findings remain. Ticket proceeds to `tickets/6-done/`.
 - 2026-09-20 — IN REVIEW → REWORK: F1 blocking: CHANGELOG.md entry missing for user-facing CLI change
 - 2026-09-20 — REWORK → IN REVIEW: findings fixed
 - 2026-09-20 — IN REVIEW → DONE: scoped re-review clean, no blocking findings
+- 2026-09-20 — MERGED: PR #91 merged to main (9b1b71f)
