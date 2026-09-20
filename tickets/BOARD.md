@@ -20,11 +20,10 @@ Last updated: 2026-09-20
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-131 | rework: resolve ticket status from base branch, wire in pickle doctor | [] |
 
 ## REWORK
 
@@ -155,6 +154,7 @@ Last updated: 2026-09-20
 | T-128 | doctor: warn when a feature branch's ticket file is stale relative to the base branch | yes — merged (PR #87) |
 | T-129 | split brine SKILL.md into per-procedure files to cut per-invocation token cost | yes — MERGED: PR #88, merge commit `305f995` |
 | T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | yes — MERGED: PR #89, merge commit `3164f3b` |
+| T-131 | rework: resolve ticket status from base branch, wire in pickle doctor | no — publish-gated |
 
 ## DROPPED
 

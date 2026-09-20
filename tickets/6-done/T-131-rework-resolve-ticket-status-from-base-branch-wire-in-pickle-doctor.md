@@ -180,7 +180,44 @@ hazard without naming a specific procedure's mechanics, and needs no change.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): fresh session with no memory of authoring this
+  branch (post `/clear`) — audits run directly, not delegated; no prior-session bias to
+  de-bias against.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` initially warned
+  `ticket T-131: this branch has it in "3-in-development" but main has it in "4-in-review"` —
+  rebased `feat/T-131-rework-resolve-status-from-base` onto `main`, re-ran `pickle doctor`:
+  clean (0 warnings).
+- [x] Implementation audit (steps 1, 2): both tasks verified against the plan.
+  - Task 1: `skill/resources/procedure-rework.md` preamble + step 1 wording match the plan's
+    text verbatim; steps 2–6 unchanged (`grep -n "^[0-9]\."` before/after: same six numbers).
+  - Task 2: `.agents/skills/brine` and `.claude/skills/brine` remain plain symlinks
+    (`skill/`, `.agents/skills/brine` respectively); `git status` clean, no separate diff
+    needed.
+  - Acceptance test re-run: `just build`, `just test` (including
+    `TestPayloadLintRulesLeaveLegitimateShapesAlone`, `TestPayloadLintRule1LookupShapedReferences`,
+    `TestPayloadLintRule3RepoOnlyPaths`), `just lint`, `just docs-check` all clean.
+- [x] Quality audit (step 3): doc-only change, no code paths touched; prose reuses
+  `T-NNN`/`<base>` placeholders only (foreign-workspace test, CLAUDE.md), confirmed by the
+  passing payload-lint tests above.
+- [x] Consistency audit (step 4): grepped repo-wide for `procedure-rework` — only
+  `SKILL.md`'s unchanged pointer and T-129's historical description of the file split refer to
+  it; no cross-reference names `procedure-rework.md`'s step numbers, so nothing else needed
+  updating.
+- [x] Documentation audit (step 4a): no `docs/user-manual/` surface applies (decision 5); the
+  general stale-worktree hazard prose in `docs/user-manual/concepts/project-structure.adoc`
+  ("check which branch you are on") is procedure-agnostic and remains accurate as-is. `CHANGELOG.md`
+  carries no entry yet, matching the established pattern (T-130's entry landed in its own
+  commit directly on `main` only after that ticket's PR merged) — not a gap at this stage.
+- [ ] Docs-readability pass (step 4b): skipped — no docs-readability reviewer available in
+  this session (conscious skip).
+- [x] Findings: none. Disposition summary: **0 findings** (nothing to disposition).
+
+cost: estimated S, actual S
+
+## Impact sweep (step 8)
+
+Searched `tickets/1-to-do/` and `tickets/2-ready/` for `depends-on:` or Description references
+to T-131: none found. No dependent ticket needs patching.
 
 ## History
 
@@ -192,3 +229,4 @@ hazard without naming a specific procedure's mechanics, and needs no change.
 - 2026-09-20 — TO DO → READY: plan complete
 - 2026-09-20 — READY → IN DEVELOPMENT: picked up
 - 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-20 — IN REVIEW → DONE: review complete, 0 findings
