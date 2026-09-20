@@ -30,6 +30,11 @@ func runTicket(args []string) int {
 		return runTicketMove(args[1:])
 	case "set":
 		return runTicketSet(args[1:])
+	case "-h", "--help":
+		fmt.Println(ticketNewUsage)
+		fmt.Println(ticketMoveUsage)
+		fmt.Println(ticketSetUsage)
+		return exitOK
 	default:
 		fmt.Fprintf(os.Stderr, "pickle ticket: unknown subcommand %q\n", args[0])
 		return exitUsage

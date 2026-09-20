@@ -13,9 +13,11 @@ import (
 // the one thing to report, `list` because exactly one flow exists today
 // (rules for a future second flow belong to whatever introduces it, not
 // here).
+const flowGroupUsage = "usage: pickle flow <show|list>"
+
 func runFlow(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: pickle flow <show|list>")
+		fmt.Fprintln(os.Stderr, flowGroupUsage)
 		return exitUsage
 	}
 	switch args[0] {
@@ -23,6 +25,9 @@ func runFlow(args []string) int {
 		return runFlowShow(args[1:])
 	case "list":
 		return runFlowList(args[1:])
+	case "-h", "--help":
+		fmt.Println(flowGroupUsage)
+		return exitOK
 	default:
 		fmt.Fprintf(os.Stderr, "pickle flow: unknown subcommand %q\n", args[0])
 		return exitUsage

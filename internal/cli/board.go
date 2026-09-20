@@ -44,11 +44,20 @@ func runBoard(args []string) int {
 		return runBoardDecisions(args[1:])
 	case "metrics":
 		return runBoardMetrics(args[1:])
+	case "-h", "--help":
+		fmt.Println(boardAuditUsage)
+		fmt.Println(boardSyncUsage)
+		fmt.Println(boardStateUsage)
+		fmt.Println(boardDecisionsUsage)
+		fmt.Println(boardMetricsUsage)
+		return exitOK
 	default:
 		fmt.Fprintf(os.Stderr, "pickle board: unknown subcommand %q\n", args[0])
 		return exitUsage
 	}
 }
+
+const boardAuditUsage = "usage: pickle board audit"
 
 const boardSyncUsage = "usage: pickle board sync [--dry-run]"
 

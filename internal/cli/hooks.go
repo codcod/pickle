@@ -12,10 +12,12 @@ import (
 
 // Hook commands: pickle hooks install | uninstall | status | run <hook>.
 
+const hooksGroupUsage = "pickle hooks: expected install, uninstall, status or run"
+
 // runHooks dispatches `pickle hooks <subcommand>`.
 func runHooks(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "pickle hooks: expected install, uninstall, status or run")
+		fmt.Fprintln(os.Stderr, hooksGroupUsage)
 		return exitUsage
 	}
 	switch args[0] {
@@ -27,6 +29,9 @@ func runHooks(args []string) int {
 		return runHooksStatus(args[1:])
 	case "run":
 		return runHooksRun(args[1:])
+	case "-h", "--help":
+		fmt.Println(hooksGroupUsage)
+		return exitOK
 	default:
 		fmt.Fprintf(os.Stderr, "pickle hooks: unknown subcommand %q (want install, uninstall, status or run)\n", args[0])
 		return exitUsage
