@@ -1320,3 +1320,34 @@ function of the tree, preserving the byte-identical property `board state --json
 numbers change a decision. If, three months after it ships, no refinement, drop or re-grade cites
 a number it produced, remove the command rather than extending it — and do not re-open the
 time-in-status half on the grounds that "the metrics we have are not the useful ones".
+
+## Field-finding triage (2026-09-20) — messgr dogfooding session review
+
+A coordinator review of ~56 Claude Code session transcripts from a separate project (messgr,
+one week of heavy brine dogfooding) for pickle friction, confirmed against the code before
+acting on any of it. Filed: **T-132** (`pickle ticket --help` dispatch bug) and **T-133**
+(T-092's unfinalized-merge warning bleeding onto unrelated `ticket move` calls, the most
+frequently recurring signal — 6+ sessions). Below is what was *not* filed, and why.
+
+**Noted, not filed — `pickle ticket set` rejecting more than one grade flag per call.** One
+messgr session hit `exactly one of --impact/--complexity/--cost/--family/--title is required
+(got 2)` re-grading a ticket's complexity and cost together. Read as a cheap parsing fix before
+checking the code; it is not one. `internal/ticketset/ticketset.go` + T-102 decision 3
+("Exactly one field per invocation... Batched multi-field edits are a future ticket if ever
+wanted") show this was deliberately scoped down, not missed — the writer is line-based, one key
+replaced per call under its own parse-back guard (T-102 decision 5), which is what makes the
+"nothing else changed" claim a literal line-diff. One occurrence in a week of dogfooding does not
+clear the bar T-102 itself set for revisiting the decision. Re-propose only if the two-call
+workaround shows up as recurring cost, not a one-off.
+
+**Rejected outright — teaching the WIP counter about real PR-merge state.** The same T-092 gap
+behind T-133 also has a sharper edge: a ticket frees its child's `4-in-review/` WIP slot the
+moment it enters `6-done/`, not when its PR actually merges, because `board.WIPCounts`
+(`internal/board/board.go`) counts by ticket directory only and has no notion of GitHub state.
+In one messgr session this let two tickets' PRs be in flight concurrently and caused a real
+rebase conflict needing a force-push. Not filed: there is no `gh`/API integration anywhere in
+pickle's codebase today — doing this properly means adding pickle's first external-service
+dependency (auth, network calls, a new failure mode when the API is unreachable) to fix a gap
+whose only confirmed cost, so far, is one incident. T-133 already removes the noise that made
+this gap easy to ignore; if concurrent-PR conflicts recur after that ships, that is the signal to
+revisit this, not the one incident alone.
