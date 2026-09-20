@@ -23,6 +23,13 @@ type Result struct {
 	NumTickets int
 	Errors     []string
 	Warnings   []string
+	// UnfinalizedMerges holds exactly the DONE-but-unmerged warnings from the
+	// unconditional whole-tree scan below (T-092) — a parallel, filterable
+	// copy of the subset of Warnings that move.go excludes from what a
+	// `ticket move` call surfaces (T-133). Every other Warnings consumer
+	// (board audit, board state --json, the serve dashboard) ignores this
+	// field and keeps seeing the warning in Warnings as before.
+	UnfinalizedMerges []string
 }
 
 var requiredKeys = []string{"id", "title", "project", "depends-on", "spawned-by", "impact", "complexity", "cost"}
@@ -261,11 +268,14 @@ func Audit(root string, cfg *config.Config) Result {
 			continue
 		}
 		ref := t.Dir + "/" + filepath.Base(t.Path)
-		r.warnf("%s: DONE but has no 'MERGED' History line — not merged yet, or the merge line was forgotten (rules §4: append it and run pickle board sync)", ref)
+		msg := fmt.Sprintf("%s: DONE but has no 'MERGED' History line — not merged yet, or the merge line was forgotten (rules §4: append it and run pickle board sync)", ref)
+		r.Warnings = append(r.Warnings, msg)
+		r.UnfinalizedMerges = append(r.UnfinalizedMerges, msg)
 	}
 
 	sort.Strings(r.Errors)
 	sort.Strings(r.Warnings)
+	sort.Strings(r.UnfinalizedMerges)
 	return r
 }
 

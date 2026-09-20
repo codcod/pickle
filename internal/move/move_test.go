@@ -383,3 +383,64 @@ func TestBackToToDoNeverRefused(t *testing.T) {
 	mustMove(t, root, cfg, "T-001", "to-do", "gate no longer holds")
 	assertClean(t, root, cfg)
 }
+
+// TestMoveDoesNotSurfaceUnfinalizedMergeWarningForOtherTicket is the T-133
+// regression: T-092's DONE-but-unmerged warning is a whole-tree scan, so
+// walking T-001 to DONE with no merge line used to reprint on every later
+// move of an unrelated ticket. board audit, run explicitly, must still
+// report it in full.
+func TestMoveDoesNotSurfaceUnfinalizedMergeWarningForOtherTicket(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	mustMove(t, root, cfg, "T-001", "ready", "plan complete")
+	mustMove(t, root, cfg, "T-001", "in-development", "")
+	mustMove(t, root, cfg, "T-001", "in-review", "")
+	mustMove(t, root, cfg, "T-001", "done", "") // no merge line recorded
+
+	newTicket(t, root, cfg, "T-002", "Beta")
+	res := mustMove(t, root, cfg, "T-002", "ready", "")
+	for _, w := range res.Warnings {
+		if strings.Contains(w, "DONE but has no 'MERGED'") {
+			t.Errorf("unrelated move surfaced T-001's unfinalized-merge warning: %q", w)
+		}
+	}
+
+	found := false
+	for _, w := range audit.Audit(root, cfg).Warnings {
+		if strings.Contains(w, "DONE but has no 'MERGED'") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("board audit no longer reports the DONE-but-unmerged warning")
+	}
+}
+
+// TestMoveDoesNotSurfaceUnfinalizedMergeWarningForSelf is the self-referential
+// twin: decision 1 (T-133) drops the warning even for the ticket the move
+// itself just landed in DONE, since it always lacks a merge line at that
+// instant — the human hasn't merged it yet.
+func TestMoveDoesNotSurfaceUnfinalizedMergeWarningForSelf(t *testing.T) {
+	root, cfg := newProject(t)
+	newTicket(t, root, cfg, "T-001", "Alpha")
+	mustMove(t, root, cfg, "T-001", "ready", "plan complete")
+	mustMove(t, root, cfg, "T-001", "in-development", "")
+	mustMove(t, root, cfg, "T-001", "in-review", "")
+	res := mustMove(t, root, cfg, "T-001", "done", "")
+
+	for _, w := range res.Warnings {
+		if strings.Contains(w, "DONE but has no 'MERGED'") {
+			t.Errorf("move into DONE surfaced its own unfinalized-merge warning: %q", w)
+		}
+	}
+
+	found := false
+	for _, w := range audit.Audit(root, cfg).Warnings {
+		if strings.Contains(w, "DONE but has no 'MERGED'") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("board audit no longer reports the DONE-but-unmerged warning")
+	}
+}
