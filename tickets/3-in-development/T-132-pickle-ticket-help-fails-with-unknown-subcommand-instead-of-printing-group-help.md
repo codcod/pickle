@@ -241,3 +241,4 @@ output text, which is self-documenting. No doc changes needed.
   that project's Claude Code session transcripts, then confirmed by reading
   `internal/cli/ticket.go`.
 - 2026-09-20 — TO DO → READY: plan complete
+- 2026-09-20 — READY → IN DEVELOPMENT: picked up
