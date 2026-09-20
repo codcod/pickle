@@ -276,6 +276,22 @@ and summarizing the seven-dispatcher `--help` fix, matching the style of the exi
 
 cost: estimated S, actual S
 
+### Scoped re-review (round 1) — verifying F1's fix
+
+Reviewer independence (step 0): fresh session with no hand in the branch — already independent,
+no delegation needed. In-tree stale-branch check (step 0a): `pickle doctor` on
+`feat/T-132-group-help` — 0 errors, 0 warnings; ticket matches its `main` copy. Scope per step 1:
+F1 (round 1's only finding) plus the diff that closed it (`git show 65beec4`, `CHANGELOG.md`
++10/-0).
+
+F1 verified closed: `CHANGELOG.md`'s `[Unreleased]` section now carries a `### Fixed` entry
+naming T-132, matching the `0.20.0`/`0.19.0` entries' style (bold lead sentence, scope,
+`(T-NNN)` closer). `pickle changelog check` reports no candidates. `just build`/`just test`/
+`just lint`/`just docs-check` all re-ran clean. The fix diff itself (one CHANGELOG addition, no
+code) introduces no new defect — no findings from this round.
+
+No blocking findings remain. Ticket proceeds to `tickets/6-done/`.
+
 ## History
 
 - 2026-09-20 — created (TO DO). source: field-use: reproduced twice dogfooding brine in a
@@ -287,3 +303,4 @@ cost: estimated S, actual S
 - 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-20 — IN REVIEW → REWORK: F1 blocking: CHANGELOG.md entry missing for user-facing CLI change
 - 2026-09-20 — REWORK → IN REVIEW: findings fixed
+- 2026-09-20 — IN REVIEW → DONE: scoped re-review clean, no blocking findings
