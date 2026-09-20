@@ -230,3 +230,4 @@ to T-131: none found. No dependent ticket needs patching.
 - 2026-09-20 — READY → IN DEVELOPMENT: picked up
 - 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-20 — IN REVIEW → DONE: review complete, 0 findings
+- 2026-09-20 — MERGED: PR #90, merge commit `4336d05`
