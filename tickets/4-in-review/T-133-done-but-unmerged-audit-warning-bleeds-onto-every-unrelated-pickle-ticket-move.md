@@ -215,3 +215,4 @@ as discoverable. No doc changes needed.
   `internal/audit/audit.go`.
 - 2026-09-20 — TO DO → READY: plan complete
 - 2026-09-20 — READY → IN DEVELOPMENT: picked up
+- 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
