@@ -190,3 +190,4 @@ hazard without naming a specific procedure's mechanics, and needs no change.
   `procedure-rework.md` step 1's unconditional worktree read, and wrongly stopped — the same
   mirror-image hazard T-130 fixed for *implement* and *validate*, left open on *rework*.
 - 2026-09-20 — TO DO → READY: plan complete
+- 2026-09-20 — READY → IN DEVELOPMENT: picked up
