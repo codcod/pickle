@@ -214,3 +214,4 @@ as discoverable. No doc changes needed.
   for pickle dogfooding friction; root cause confirmed by reading `internal/move/move.go` and
   `internal/audit/audit.go`.
 - 2026-09-20 — TO DO → READY: plan complete
+- 2026-09-20 — READY → IN DEVELOPMENT: picked up

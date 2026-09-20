@@ -13,10 +13,11 @@ Last updated: 2026-09-20
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-20
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
