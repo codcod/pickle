@@ -13,15 +13,20 @@ import (
 // skill, the AGENTS.md marker block), and pickle.toml is neither required
 // nor written.
 
+const scaffoldGroupUsage = "pickle scaffold: expected release"
+
 // runScaffold dispatches `pickle scaffold <subcommand>`.
 func runScaffold(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "pickle scaffold: expected release")
+		fmt.Fprintln(os.Stderr, scaffoldGroupUsage)
 		return exitUsage
 	}
 	switch args[0] {
 	case "release":
 		return runScaffoldRelease(args[1:])
+	case "-h", "--help":
+		fmt.Println(scaffoldGroupUsage)
+		return exitOK
 	default:
 		fmt.Fprintf(os.Stderr, "pickle scaffold: unknown subcommand %q (want release)\n", args[0])
 		return exitUsage

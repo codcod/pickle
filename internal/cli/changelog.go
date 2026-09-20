@@ -33,6 +33,8 @@ import (
 
 const changelogCheckUsage = `usage: pickle changelog check [--since <ref>] [--until <ref>] [--changelog <path>] [--section <name>] [--show-excluded]`
 
+const changelogGroupUsage = "usage: pickle changelog <check> ..."
+
 // defaultChangelogSection is the --section flag's default, and also the
 // value tagNote (T-095 decision 8) compares against: a tagged --until only
 // earns the note when --section is still at this default, since an explicit
@@ -42,12 +44,16 @@ const defaultChangelogSection = "Unreleased"
 
 func runChangelog(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: pickle changelog <check> ...")
+		fmt.Fprintln(os.Stderr, changelogGroupUsage)
 		return exitUsage
 	}
 	switch args[0] {
 	case "check":
 		return runChangelogCheck(args[1:])
+	case "-h", "--help":
+		fmt.Println(changelogGroupUsage)
+		fmt.Println(changelogCheckUsage)
+		return exitOK
 	default:
 		fmt.Fprintf(os.Stderr, "pickle changelog: unknown subcommand %q\n", args[0])
 		return exitUsage

@@ -114,12 +114,18 @@ func TestRunExitCodes(t *testing.T) {
 		{"board metrics bad flag", []string{"board", "metrics", "--bogus"}, exitUsage},
 		{"board no subcommand", []string{"board"}, exitUsage},
 		{"board unknown subcommand", []string{"board", "xyz"}, exitUsage},
+		{"board help flag", []string{"board", "-h"}, exitOK},
+		{"board help flag long", []string{"board", "--help"}, exitOK},
 		{"ticket new missing title", []string{"ticket", "new"}, exitUsage},
 		{"ticket move missing args", []string{"ticket", "move"}, exitUsage},
 		{"ticket move missing status", []string{"ticket", "move", "T-001"}, exitUsage},
+		{"ticket help flag", []string{"ticket", "-h"}, exitOK},
+		{"ticket help flag long", []string{"ticket", "--help"}, exitOK},
 		{"project no subcommand", []string{"project"}, exitUsage},
 		{"project unknown subcommand", []string{"project", "xyz"}, exitUsage},
 		{"project add missing args", []string{"project", "add"}, exitUsage},
+		{"project help flag", []string{"project", "-h"}, exitOK},
+		{"project help flag long", []string{"project", "--help"}, exitOK},
 		// serve is long-running, so only its *rejections* are exercised here: each
 		// of these must fail during argument parsing, before a listener is opened.
 		{"serve bad flag", []string{"serve", "--bogus"}, exitUsage},
@@ -129,6 +135,14 @@ func TestRunExitCodes(t *testing.T) {
 		{"scaffold no subcommand", []string{"scaffold"}, exitUsage},
 		{"scaffold unknown subcommand", []string{"scaffold", "xyz"}, exitUsage},
 		{"scaffold release bad flag", []string{"scaffold", "release", "--bogus"}, exitUsage},
+		{"scaffold help flag", []string{"scaffold", "-h"}, exitOK},
+		{"scaffold help flag long", []string{"scaffold", "--help"}, exitOK},
+		{"changelog help flag", []string{"changelog", "-h"}, exitOK},
+		{"changelog help flag long", []string{"changelog", "--help"}, exitOK},
+		{"flow help flag", []string{"flow", "-h"}, exitOK},
+		{"flow help flag long", []string{"flow", "--help"}, exitOK},
+		{"hooks help flag", []string{"hooks", "-h"}, exitOK},
+		{"hooks help flag long", []string{"hooks", "--help"}, exitOK},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -136,6 +150,23 @@ func TestRunExitCodes(t *testing.T) {
 				t.Fatalf("Run(%v) = %d, want %d", tc.args, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestTicketHelpPrintsCombinedUsage pins the group-level --help content, not
+// just its exit code: it must actually name all three subcommands.
+func TestTicketHelpPrintsCombinedUsage(t *testing.T) {
+	var code int
+	out := captureStdout(t, func() {
+		code = Run(nil, "test", []string{"ticket", "--help"})
+	})
+	if code != exitOK {
+		t.Fatalf("ticket --help = %d, want %d:\n%s", code, exitOK, out)
+	}
+	for _, want := range []string{"ticket new", "ticket move", "ticket set"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("ticket --help output missing %q, got:\n%s", want, out)
+		}
 	}
 }
 

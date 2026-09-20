@@ -8,6 +8,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pickle ticket --help` (and `-h`) now prints the group's usage instead of failing with
+  `unknown subcommand`.** The same fix applies to every other group-level dispatcher sharing this
+  exact bug shape — `board`, `changelog`, `flow`, `hooks`, `scaffold`, `project` — each now prints
+  its own group usage and exits 0 on `-h`/`--help` instead of erroring. Reproduced dogfooding the
+  flow in a separate project (messgr) across pickle 0.19.0 and 0.20.0. Leaf-level `--help` (e.g.
+  `ticket move --help`) was already correct and is unchanged. Shipped in the seven
+  `internal/cli/*.go` group dispatchers (T-132).
+
 ## [0.20.0] - 2026-09-20
 
 ### Changed

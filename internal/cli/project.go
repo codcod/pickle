@@ -21,9 +21,11 @@ import (
 // Child-project registry commands. The [[project]] array in pickle.toml is the
 // source of truth for the connected child-projects.
 
+const projectGroupUsage = "usage: pickle project <add|list|remove> ..."
+
 func runProject(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: pickle project <add|list|remove> ...")
+		fmt.Fprintln(os.Stderr, projectGroupUsage)
 		return exitUsage
 	}
 	switch args[0] {
@@ -33,6 +35,9 @@ func runProject(args []string) int {
 		return runProjectList(args[1:])
 	case "remove":
 		return runProjectRemove(args[1:])
+	case "-h", "--help":
+		fmt.Println(projectGroupUsage)
+		return exitOK
 	default:
 		fmt.Fprintf(os.Stderr, "pickle project: unknown subcommand %q\n", args[0])
 		return exitUsage
