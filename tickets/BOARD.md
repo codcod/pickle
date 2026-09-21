@@ -156,7 +156,7 @@ Last updated: 2026-09-21
 | T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | yes — MERGED: PR #89, merge commit `3164f3b` |
 | T-131 | rework: resolve ticket status from base branch, wire in pickle doctor | yes — MERGED: PR #90, merge commit `4336d05` |
 | T-132 | pickle ticket --help fails with unknown subcommand instead of printing group help | yes — MERGED: PR #91 merged to main (9b1b71f) |
-| T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | no — publish-gated |
+| T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | yes — MERGED: feat/T-133-unfinalized-merge-warning-noise → main (PR #92, 03743ff), user-approved |
 
 ## DROPPED
 

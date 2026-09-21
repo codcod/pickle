@@ -237,3 +237,4 @@ cost: estimated S, actual S.
 - 2026-09-20 — READY → IN DEVELOPMENT: picked up
 - 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-21 — IN REVIEW → DONE: review clean: 2 non-blocking findings (test-gap x2), both note-and-close
+- 2026-09-21 — MERGED: feat/T-133-unfinalized-merge-warning-noise → main (PR #92, 03743ff), user-approved
