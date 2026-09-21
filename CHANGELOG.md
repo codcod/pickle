@@ -8,6 +8,8 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-21
+
 ### Fixed
 
 - **`pickle ticket --help` (and `-h`) now prints the group's usage instead of failing with
@@ -17,6 +19,13 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   flow in a separate project (messgr) across pickle 0.19.0 and 0.20.0. Leaf-level `--help` (e.g.
   `ticket move --help`) was already correct and is unchanged. Shipped in the seven
   `internal/cli/*.go` group dispatchers (T-132).
+- **`pickle ticket move` no longer reprints another ticket's "DONE but has no 'MERGED' History
+  line" warning on every unrelated move made while that ticket's PR is pending.** The
+  unfinalized-merge scan (T-092) is a whole-tree audit, so a single stale merge used to reprint
+  its warning on every `ticket move` call for the rest of the board, not just moves of that
+  ticket — recurring noise confirmed across 6+ dogfooding sessions in a separate project (messgr).
+  The warning still fires in full on an explicit `pickle board audit`. Shipped in
+  `internal/audit/audit.go` and `internal/move/move.go` (T-133).
 
 ## [0.20.0] - 2026-09-20
 
@@ -1001,7 +1010,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/codcod/pickle/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/codcod/pickle/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/codcod/pickle/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/codcod/pickle/compare/v0.17.0...v0.18.0
