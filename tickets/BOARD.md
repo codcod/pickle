@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 
 ## IN DEVELOPMENT
 
@@ -20,11 +20,10 @@ Last updated: 2026-09-20
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | [] |
 
 ## REWORK
 
@@ -157,6 +156,7 @@ Last updated: 2026-09-20
 | T-130 | validate/implement: resolve ticket status from base branch, wire in pickle doctor | yes — MERGED: PR #89, merge commit `3164f3b` |
 | T-131 | rework: resolve ticket status from base branch, wire in pickle doctor | yes — MERGED: PR #90, merge commit `4336d05` |
 | T-132 | pickle ticket --help fails with unknown subcommand instead of printing group help | yes — MERGED: PR #91 merged to main (9b1b71f) |
+| T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | no — publish-gated |
 
 ## DROPPED
 

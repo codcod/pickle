@@ -205,7 +205,27 @@ as discoverable. No doc changes needed.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): fresh post-`/clear` session with no memory of writing this branch, plus a spawned independent sub-agent ran the audits (steps 2–4a) adversarially; every delegated finding re-verified by hand before recording (diff read directly, build/test/lint re-run by the orchestrating reviewer, both new tests' fixtures confirmed by revert).
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` initially flagged the expected stale-ticket-branch warning (worktree had T-133 in `3-in-development` vs `main`'s `4-in-review`); rebased onto `main`, rebuilt, re-ran — `pickle doctor: 0 error(s), 0 warning(s)`.
+- [x] Implementation audit (steps 1, 2): all three tasks match the plan exactly — `audit.Result.UnfinalizedMerges` added and populated in parallel with `Warnings` (`internal/audit/audit.go`), `move.go`'s post-move self-check now filters through `withoutUnfinalizedMerge` (`internal/move/move.go:204,212-230`), `a.Errors` handling untouched. Decision 1 (blanket removal incl. self) verified empirically by the sub-agent reverting the filter line and observing both new tests fail, including the self-referential case. `just build`/`just test`/`just lint` re-run independently by both the sub-agent and the orchestrating reviewer: all green.
+- [x] Quality audit (step 3): idiomatic, small diff; two new tests in `internal/move/move_test.go` confirmed non-tautological (fail when either producer or consumer side of the fix is reverted).
+- [x] Consistency audit (step 4): grepped every `.Warnings`/`.UnfinalizedMerges` reader in the repo — `board state --json` (`internal/state/build.go`), the serve dashboard's `HealthView` (`internal/serve/view.go`), `board audit` (`internal/cli/board.go`), and `install.go` all call `audit.Audit` directly and are unaffected; `internal/cli/ticket.go` is the sole consumer of the filtered `move.Result.Warnings`, as intended.
+- [x] Documentation audit (step 4a): no README/docs page changed by this branch (no `.md`/`.adoc` touched). Ticket's "no docs update needed" claim checked against `docs/user-manual/cli-reference.adoc` and `docs/user-manual/concepts/lifecycle.adoc` — both describe `board audit`'s own (unchanged) warning; neither claims `ticket move` echoes it verbatim, so nothing was made false. `docs/proposals/post-merge-done-move.adoc` is an unrelated future proposal. `just docs-check` green.
+- [x] Docs-readability pass (step 4b): n/a — no `.adoc`/`.md` files changed on this branch.
+- [x] Findings recorded with severity, class, and disposition (step 5): see table below.
+- [x] Ticket moved (step 6): see History.
+- [x] Other references / governing documents (step 7): swept `docs/`, `tickets/NOTES.md`, and `tickets/1-to-do/`, `tickets/2-ready/` for stale references to the old bleed-through behavior — none found; nothing this branch shipped contradicts a governing document.
+- [x] Remaining-tickets impact sweep (step 8): no ticket in `1-to-do/`/`2-ready/` references or depends on T-133 — nothing to patch.
+- [x] Summary + commit message & MR attributes presented for approval (step 9): pending, see hand-back below.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | test-gap | note-and-close | New tests match on the substring `"DONE but has no 'MERGED'"`, which the dependency-scoped warning variant also contains; no dependency fixture exists today so it doesn't cause a false pass, but the assertion isn't scoped to the T-092 own-ref message specifically | `internal/move/move_test.go:403,410,432,439`; dependency-scoped message at `internal/audit/audit.go:248` | Tighten the match (e.g. exclude strings containing `"dependency "`, or assert on a shared exact-message const) so it stays correct if a future fixture adds a dependency edge |
+| F2 | non-blocking | test-gap | note-and-close | No audit-package-level unit test directly asserts `Result.UnfinalizedMerges` gets populated; coverage is transitive only, via `internal/move`'s two new tests | `internal/audit/audit_test.go` (no `UnfinalizedMerges` assertion near the existing DONE-but-unmerged case) | Add one assertion in `audit_test.go`'s existing DONE-but-unmerged case that `UnfinalizedMerges` contains the same message as `Warnings` |
+
+disposition summary: 2 non-blocking (F1, F2), both note-and-close; 0 blocking.
+
+cost: estimated S, actual S.
 
 ## History
 
@@ -216,3 +236,4 @@ as discoverable. No doc changes needed.
 - 2026-09-20 — TO DO → READY: plan complete
 - 2026-09-20 — READY → IN DEVELOPMENT: picked up
 - 2026-09-20 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-21 — IN REVIEW → DONE: review clean: 2 non-blocking findings (test-gap x2), both note-and-close
