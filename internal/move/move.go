@@ -201,12 +201,34 @@ func move(root string, cfg *config.Config, id, token, reason string) (Result, er
 
 	// Post-move self-check: the tree must stay audit-clean.
 	a := audit.Audit(root, cfg)
-	res.Warnings = a.Warnings
+	res.Warnings = withoutUnfinalizedMerge(a.Warnings, a.UnfinalizedMerges)
 	if len(a.Errors) > 0 {
 		return res, fmt.Errorf("move applied but board audit now reports %d error(s): %s",
 			len(a.Errors), strings.Join(a.Errors, "; "))
 	}
 	return res, nil
+}
+
+// withoutUnfinalizedMerge drops audit's own-ticket DONE-but-unmerged warnings
+// (T-092) from what a single `ticket move` call surfaces (T-133): that scan
+// covers the whole tree unconditionally, so left in, a stale merge on any one
+// ticket reprints on every unrelated move for as long as it stays unmerged.
+// `pickle board audit`, run explicitly, still reports it in full.
+func withoutUnfinalizedMerge(warnings, unfinalized []string) []string {
+	if len(unfinalized) == 0 {
+		return warnings
+	}
+	drop := make(map[string]bool, len(unfinalized))
+	for _, w := range unfinalized {
+		drop[w] = true
+	}
+	kept := make([]string, 0, len(warnings))
+	for _, w := range warnings {
+		if !drop[w] {
+			kept = append(kept, w)
+		}
+	}
+	return kept
 }
 
 func checkWIP(tickets []*ticket.Ticket, cfg *config.Config, proj string, target flow.State) error {
