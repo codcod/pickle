@@ -8,6 +8,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-09-22
+
+### Fixed
+
+- **Project links in the board header's switcher nav ran together with no separator**
+  (e.g. `messgrstock-exchangepickle`). The `.switcher` nav had no CSS rule at all;
+  it now spaces its links the same way `.site-nav` does. Shipped in
+  `internal/serve/static/styles.css`.
+
 ## [0.21.0] - 2026-09-21
 
 ### Fixed
@@ -1010,7 +1019,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v0.21.1...HEAD
+[0.21.1]: https://github.com/codcod/pickle/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/codcod/pickle/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/codcod/pickle/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/codcod/pickle/compare/v0.18.0...v0.19.0
