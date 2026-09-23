@@ -8,6 +8,15 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Fixed
+
+- **Switcher project names still ran together in page text after 0.21.1.** Its CSS margin
+  only spaced the links on screen; copy/paste, reader mode and screen readers still read
+  `messgrstock-exchangepickle`. The template now puts a space between the links, both header
+  navs share one `display: flex; gap: 1rem` rule in place of the per-link margins, and the
+  header wraps instead of overflowing on narrow screens. Shipped in
+  `internal/serve/templates/layout.html` and `internal/serve/static/styles.css`.
+
 ## [0.21.1] - 2026-09-22
 
 ### Fixed
