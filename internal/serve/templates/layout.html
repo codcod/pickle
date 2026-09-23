@@ -23,7 +23,7 @@
   {{end}}
   {{if .Roots}}
   <nav class="switcher" aria-label="Switch project">
-    {{range .Roots}}<a href="/p/{{.Slug}}/">{{.Name}}</a> {{end}}
+    {{range $i, $r := .Roots}}{{if $i}} {{end}}<a href="/p/{{$r.Slug}}/">{{$r.Name}}</a>{{end}}
   </nav>
   {{end}}
 </header>
