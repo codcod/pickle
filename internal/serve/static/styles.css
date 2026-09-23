@@ -55,15 +55,14 @@ code { font-family: var(--mono); font-size: 0.9em; }
 /* ---- header / nav ---- */
 
 .site-header {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
   padding: 0.85rem 1.25rem;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
 .brand-name { font-weight: 600; font-size: 1.05rem; color: var(--fg); }
 .brand-sub { margin-left: 0.6rem; color: var(--muted); font-size: 0.85rem; }
-.site-nav a { margin-left: 1rem; }
-.switcher a { margin-left: 1rem; }
+.site-nav, .switcher { display: flex; flex-wrap: wrap; gap: 1rem; }
 
 /* ---- health banner ---- */
 

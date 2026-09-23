@@ -1254,6 +1254,26 @@ func TestMultiHandlerRoutesArePrefixed(t *testing.T) {
 	}
 }
 
+// TestSwitcherLinksAreSeparated: switcher names must not run together as page
+// text ("bc") — CSS spacing alone leaves copy/paste and screen readers broken.
+func TestSwitcherLinksAreSeparated(t *testing.T) {
+	var roots []NamedRoot
+	for _, slug := range []string{"a", "b", "c"} {
+		roots = append(roots, NamedRoot{Slug: slug, Options: Options{Root: standardTree(t), Cfg: testCfg()}})
+	}
+	h, err := MultiHandler(roots)
+	if err != nil {
+		t.Fatalf("MultiHandler: %v", err)
+	}
+	body := get(t, h, "/p/a/").Body.String()
+	if !strings.Contains(body, `href="/p/c/"`) {
+		t.Fatal("switcher missing link to /p/c/")
+	}
+	if strings.Contains(body, "</a><a") {
+		t.Error("adjacent links with no whitespace between them")
+	}
+}
+
 // TestMultiHandlerIndexListsEveryRoot: "/" in named-roots mode is the index,
 // not any one project's board.
 func TestMultiHandlerIndexListsEveryRoot(t *testing.T) {
