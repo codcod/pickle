@@ -45,9 +45,15 @@ Last updated: 2026-09-29
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-137 | review hunts for correctness bugs: a multi-angle bug hunt with reproduction before the findings table | high | medium | M | [T-135] |  |
+| T-138 | chain rework and scoped re-review in one session, stopping at the publish gate | high | medium | M | [T-135] |  |
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-136 | pickle ticket show: print a ticket as recorded on the base branch, from any checkout | medium | low | S | [] |  |
+| T-139 | applicability gate continues without asking when it finds nothing blocking | medium | low | S | [T-135] |  |
+| T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | medium | medium | M | [] |  |
+| T-135 | state each brine payload rule once: cut repetition, move rationale out, calibrate emphasis | medium | medium | L | [] |  |
 
 ## DONE
 
