@@ -140,7 +140,9 @@ none — T-127 (multi-root serve) and T-108 (`staleBoardBranch`) are both merged
 3. **`key` matches slug, child name or prefix, case-insensitively.** Each served root is checked on
    its slug (multi-root: the `--dir` slug; single-root: `projectName(root)`), and each registered
    child on `Name` and `Prefix()`. One match entry per matching (root, child); a slug match yields
-   one entry per child of that root. Order: served-root order, then `pickle.toml` child order.
+   one entry per child of that root — or, for a root with no registered child (a plain
+   `pickle install`), one child-less entry with `child`, `child_path` and `prefix` empty, since it
+   is served and so discoverable. Order: served-root order, then `pickle.toml` child order.
 4. **Every match is returned; nothing is guessed.** `200` with `{"matches":[…]}` whenever at least
    one entry matches, however many. The client reports ambiguity to the user.
 5. **The match entry is exactly these fields:** `root` (absolute), `slug`, `child`, `child_path`
@@ -202,7 +204,8 @@ New file `internal/serve/where.go`:
 - `MultiHandler(roots []NamedRoot, local bool, log io.Writer)`: register `GET /where/{key}` on the
   top-level mux over all roots. The per-root `Options` built in its loop keep `BasePath` set, so
   `Handler` does not register a second copy (decision 10). Update every caller of `MultiHandler`
-  (`ServeMulti`, tests).
+  (`ServeMulti`, and the five test callers in `serve_test.go`) and of `ServeMulti` (its test
+  caller in `TestServeMultiOnRealListener`).
 - `Serve` sets `opts.Local = isLoopbackListener(ln)`; `ServeMulti` passes the same to
   `MultiHandler`. `isLoopbackListener` is a small helper in `serve.go`.
 
@@ -233,7 +236,9 @@ New `internal/serve/where_test.go`, using the existing `newTree`/`testCfg` helpe
 - miss: 404, and the notice appears once in the sink for a repeated (from, key) and again for a
   new `from`;
 - `from` with a control character or an ANSI escape → printed as `someone`;
-- invalid `key` (`..`, 65 characters, `a/b`) → 400, nothing in the sink;
+- invalid `key` (`%2E%2E`, 65 characters, `a%2Fb`, `-x`) → 400, nothing in the sink — the
+  escaped forms, because a literal `/where/..` is redirected and a literal `/where/a/b` is
+  404'd by the mux before `{key}` ever sees them;
 - `Local: false` → 404 on a key that would match, nothing in the sink;
 - non-GET on `/where/x` → 405.
 
@@ -291,3 +296,5 @@ handler.
 
 - 2026-09-29 — created (TO DO). source: chat: cross-project discovery for agent sessions via pickle serve, design converged and challenged in conversation
 - 2026-09-29 — TO DO → READY: plan complete
+- 2026-09-29 — plan amended inline: applicability gate (independent sub-agent, 0 blocking / 3 non-blocking). F1 invalid-key test inputs switched to escaped forms the mux actually routes to `{key}`; F2 decision 3 now answers a child-less served root with one child-less entry (user decision); F3 Task 2 names the `ServeMulti` and five `MultiHandler` test callers
+- 2026-09-29 — READY → IN DEVELOPMENT: picked up

@@ -13,10 +13,11 @@ Last updated: 2026-09-29
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-134 | pickle serve: answer where a served project lives, so an agent in another project can find and read it | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-29
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-134 | pickle serve: answer where a served project lives, so an agent in another project can find and read it | medium | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 
