@@ -45,3 +45,4 @@ the user never overrode it.
 ## History
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: the applicability gate asked for approval after nearly every run, including clean ones, and was always waved through
+- 2026-09-29 — TO DO → DROPPED: baseline measured before refinement: only 7 of 42 clean gate runs (17%) stopped for the human in 2026-09-21..29, 4 with a bare go; the premise was wrong — see tickets/retros/2026-09-29-self-improvement-loop.md

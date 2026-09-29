@@ -50,8 +50,8 @@ Last updated: 2026-09-29
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
-| T-139 | applicability gate continues without asking when it finds nothing blocking | medium | low | S | [] |  |
 | T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | medium | medium | M | [] |  |
+| T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | medium | medium | M | [] |  |
 | T-135 | calibrate the brine payload's emphasis and cut its decision-defence prose | low | low | M | [] |  |
 
 ## DONE
@@ -199,3 +199,4 @@ Last updated: 2026-09-29
 | T-107 | print the checked-out branch at pickle serve and CLI startup, to flag a stale worktree | superseded by T-108, which derives the same warning from a recorded layout instead of the main/master guess |
 | T-116 | pickle scaffold docs produces a snowball pipeline that fails check/build out of the box | superseded by T-117 (removal); findings transplanted into unity/SNOW-003 |
 | T-136 | pickle ticket show: print a ticket as recorded on the base branch, from any checkout | challenged before refinement: the base-branch read recipe works, appears 3 times, and pickle doctor already flags stale… |
+| T-139 | applicability gate continues without asking when it finds nothing blocking | baseline measured before refinement: only 7 of 42 clean gate runs (17%) stopped for the human in 2026-09-21..29, 4 with… |
