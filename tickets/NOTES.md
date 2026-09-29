@@ -1380,3 +1380,26 @@ publish and merge stops are unchanged.
 repositories despite the user's global instructions. The fix is a personal git config-based
 `commit-msg` hook, not a pickle feature: some teams want co-author lines, and a global
 `core.hooksPath` would silently disable the hooks `pickle hooks install` writes.
+
+**Challenged the same day, before any refinement — the plan above is superseded.** Each ticket's
+claims were re-checked against the payload and the child repos:
+
+- **T-135 shrunk and moved last.** Cross-file de-duplication works against T-129's
+  one-procedure-at-a-time loading, and moving each rule's *why* into `DESIGN.md` would delete it
+  for foreign workspaces rather than move it. What is left — emphasis, decision-defence prose, the
+  skill description, the tier advice — has no field failure behind it, so it no longer gates
+  anything. The "don't write into text that is restructured later" argument for trimming first
+  held only while T-135 was an L-sized rewrite.
+- **T-136 dropped.** The recipe works, `pickle doctor` already flags stale branches, and one
+  failed glob does not justify permanent CLI surface under the 1.0 stability promise.
+- **T-137's evidence was overstated** at filing ("correctness bugs in 29 of 31 PRs"; what was
+  counted is 2 of 31 runs explicitly reporting none). Corrected in the ticket. Reshaped to run the
+  host's code-review tool first and hunt by angle only without one, with a replay of known bugs as
+  its acceptance test. CI parity dropped from it: one project, already fixed there.
+- **T-138** gains two rules: the spawn prompt is the trigger phrase and id only, and the
+  reviewer returns findings while the parent makes every ticket move (in-tree branch safety).
+- **T-140** gains its payload half — fetch and record merges at the start of every trigger —
+  since an audit that never fetches cannot see a merge made minutes ago.
+
+Revised plan: **1.1.0 = T-139 + T-140**, **1.2.0 = T-137 then T-138**, T-135 whenever convenient
+after that.
