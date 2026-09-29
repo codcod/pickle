@@ -1623,9 +1623,9 @@ namespace without returning to `/`. Passing exactly one `--dir` still moves to
 this prefixed mode; it is an accepted, opt-in URL change, never something you
 hit by omission.
 
-Static assets and the `/healthz` probe are shared, unprefixed, across every
-served project — same bytes, same liveness check, regardless of which project a
-request is for.
+Static assets, the `/healthz` probe and the `/where/{key}` lookup are shared,
+unprefixed, across every served project — same bytes, same liveness check,
+regardless of which project a request is for.
 
 *It never writes.* No route creates, moves, rewrites or regenerates anything —
 not even a stale `BOARD.md`. `pickle ticket new`, `pickle ticket move`,
@@ -1674,6 +1674,11 @@ What it serves:
 
 | `/healthz`
 | `ok`, for scripts.
+
+| `/where/{key}`
+| Where a served project lives on disk, as JSON — see _Cross-project discovery_
+  below. With `--dir` it is served once, at the top level, over every served
+  project, and never under `/p/{slug}/`.
 |===
 
 Every request re-reads the ticket files, so a reload always shows the tree as it
@@ -1703,6 +1708,29 @@ under the `umbrella` layout: no board in that layout can be forked by a code
 branch in the first place. `serve` never guesses which branch is the *base* —
 it checks the shape of a *feature* branch instead, which every registered
 child already names.
+
+*Cross-project discovery.* An agent working in one project can ask a running
+`serve` where another project lives, so it can go and read that project's board
+and code directly: `GET /where/{key}`, where `key` is a served project's slug,
+a registered child's name, or a child's ticket prefix, matched without regard
+to case. A hit is `200` with `{"matches":[…]}`, one entry per matching
+(project, child) — every match, never a guess, so two projects that both use
+prefix `T` both come back. Each entry carries `root` and `child_path`
+(absolute), `slug`, `child`, `prefix`, `matched` (`slug`, `child` or `prefix`:
+what the key hit), `layout`, and `checked_out_branch`, which is non-empty when
+the stale-branch banner above would show. A project with no registered child
+still answers to its slug, with the child fields empty. The route returns a
+location only, never ticket data, and needs no configuration on either side:
+being served is the opt-in. A miss is a `404`, and `serve` prints
+`pickle serve: <from> wants to learn about <key> (not served here)` on its
+standard output, once per asker and key, where `<from>` is the caller's
+self-reported `?from=` label (`someone` when absent or malformed). A key that
+is not letters, digits, `.`, `_` or `-` (at most 64, starting with a letter or
+digit) is a `400`. The route answers only when `serve` is bound to loopback;
+on any other address it is a `404` for every key, because an absolute path
+means nothing on another machine. The installed skill's
+`resources/other-projects.md` tells agents when to ask, and how to behave in
+the project they then read.
 
 [WARNING]
 ====

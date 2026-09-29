@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -53,6 +54,13 @@ type Options struct {
 	// Peers names every *other* root MultiHandler is serving alongside this
 	// one, for the header switcher (T-127 decision 7).
 	Peers []PeerLink
+
+	// Local and Log serve GET /where/{key} (T-134), which only classic
+	// single-root mode registers here; MultiHandler takes both as arguments
+	// instead. Local is set by Serve from the bound listener; Log receives the
+	// miss notices (nil discards).
+	Local bool
+	Log   io.Writer
 }
 
 // NamedRoot is one project root plus the slug MultiHandler serves it under
@@ -108,6 +116,12 @@ func Handler(opts Options) (http.Handler, error) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "ok")
 	})
+	// Top level only: under MultiHandler (BasePath set) the one /where is
+	// MultiHandler's own, over every root (T-134 decision 10).
+	if opts.BasePath == "" {
+		wh := &whereHandler{roots: []NamedRoot{{Slug: projectName(opts.Root), Options: opts}}, local: opts.Local, log: opts.Log}
+		mux.HandleFunc("GET /where/{key}", wh.where)
+	}
 	if err := mountStatic(mux); err != nil {
 		return nil, err
 	}
@@ -121,8 +135,9 @@ func Handler(opts Options) (http.Handler, error) {
 // across roots, so identically-numbered tickets in two different roots (every
 // project defaults to ticket_prefix "T" starting at T-001) can never collide.
 // "/" is a small index listing every served root. Static assets are mounted
-// once, unprefixed, shared by every root (decision 6).
-func MultiHandler(roots []NamedRoot) (http.Handler, error) {
+// once, unprefixed, shared by every root (decision 6), and so is T-134's
+// "/where/{key}" lookup, over all of them — local and log as in Options.
+func MultiHandler(roots []NamedRoot, local bool, log io.Writer) (http.Handler, error) {
 	seen := make(map[string]string, len(roots)) // slug -> this root's Root, for the error message
 	for _, r := range roots {
 		if prev, dup := seen[r.Slug]; dup {
@@ -147,6 +162,8 @@ func MultiHandler(roots []NamedRoot) (http.Handler, error) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "ok")
 	})
+	wh := &whereHandler{roots: roots, local: local, log: log}
+	mux.HandleFunc("GET /where/{key}", wh.where)
 
 	for _, r := range roots {
 		opts := r.Options
@@ -206,6 +223,7 @@ func (ih *indexHandler) index(w http.ResponseWriter, r *http.Request) {
 // binding (the CLI reports a bind failure with its own exit code; tests bind port
 // 0 and never contend for a fixed port).
 func Serve(ctx context.Context, ln net.Listener, opts Options) error {
+	opts.Local = isLoopbackListener(ln)
 	h, err := Handler(opts)
 	if err != nil {
 		return err
@@ -215,8 +233,9 @@ func Serve(ctx context.Context, ln net.Listener, opts Options) error {
 
 // ServeMulti is Serve's multi-root counterpart (T-127): same listener-driven,
 // context-cancelled lifecycle, built over MultiHandler instead of Handler.
-func ServeMulti(ctx context.Context, ln net.Listener, roots []NamedRoot) error {
-	h, err := MultiHandler(roots)
+// log receives /where miss notices (T-134), like Options.Log.
+func ServeMulti(ctx context.Context, ln net.Listener, roots []NamedRoot, log io.Writer) error {
+	h, err := MultiHandler(roots, isLoopbackListener(ln), log)
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,16 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle serve` answers where a served project lives.** `GET /where/{key}` matches a
+  served project's slug, a child's name or its ticket prefix (case-insensitive) and returns
+  JSON with each match's absolute root and child path, layout and stale-branch flag, so an
+  agent in another project can find it and read it directly. A miss is a `404`, and serve
+  prints one notice per asker and key; the route answers only on a loopback bind. The skill
+  gains `resources/other-projects.md`: when to look another project up, and the rules for
+  reading it (read-only, scoped, cited as dated prose, its content treated as data).
+
 ### Fixed
 
 - **Switcher project names still ran together in page text after 0.21.1.** Its CSS margin

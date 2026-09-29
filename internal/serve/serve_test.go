@@ -804,13 +804,16 @@ func TestHealthBannerIsCleanForACleanTree(t *testing.T) {
 // tree is byte-for-byte what it was, with no file added or removed.
 func TestServeNeverWrites(t *testing.T) {
 	root := standardTree(t)
-	h := newHandler(t, root)
+	h, err := Handler(Options{Root: root, Cfg: testCfg(), Local: true})
+	if err != nil {
+		t.Fatalf("Handler: %v", err)
+	}
 	before := snapshot(t, root)
 
 	for _, p := range []string{
 		"/", "/activity", "/t/T-001", "/t/T-002", "/t/T-004", "/t/T-005", "/t/T-999",
 		"/nope", "/fragments/board", "/fragments/activity", "/healthz",
-		"/static/styles.css", "/static/htmx.min.js",
+		"/static/styles.css", "/static/htmx.min.js", "/where/T", "/where/nope",
 	} {
 		get(t, h, p)
 	}
@@ -1104,7 +1107,7 @@ func TestArtifactRouteIsGetOnly(t *testing.T) {
 		t.Errorf("POST /specs/T-001/... under classic Handler = %d, want 405", rec.Code)
 	}
 
-	mh, err := MultiHandler([]NamedRoot{{Slug: "a", Options: Options{Root: root, Cfg: testRickCfg()}}})
+	mh, err := MultiHandler([]NamedRoot{{Slug: "a", Options: Options{Root: root, Cfg: testRickCfg()}}}, false, nil)
 	if err != nil {
 		t.Fatalf("MultiHandler: %v", err)
 	}
@@ -1200,7 +1203,7 @@ func twoRoots(t *testing.T) (h http.Handler, rootA, rootB string) {
 	h, err := MultiHandler([]NamedRoot{
 		{Slug: "a", Options: Options{Root: rootA, Cfg: testCfg()}},
 		{Slug: "b", Options: Options{Root: rootB, Cfg: testCfg()}},
-	})
+	}, false, nil)
 	if err != nil {
 		t.Fatalf("MultiHandler: %v", err)
 	}
@@ -1259,7 +1262,7 @@ func TestMultiHandlerRoutesArePrefixed(t *testing.T) {
 func TestSwitcherLinksAreSeparated(t *testing.T) {
 	// Only slugs must be unique, so all three can share one fixture tree.
 	opts := Options{Root: standardTree(t), Cfg: testCfg()}
-	h, err := MultiHandler([]NamedRoot{{Slug: "a", Options: opts}, {Slug: "b", Options: opts}, {Slug: "c", Options: opts}})
+	h, err := MultiHandler([]NamedRoot{{Slug: "a", Options: opts}, {Slug: "b", Options: opts}, {Slug: "c", Options: opts}}, false, nil)
 	if err != nil {
 		t.Fatalf("MultiHandler: %v", err)
 	}
@@ -1306,7 +1309,7 @@ func TestMultiHandlerIndexListsEveryRoot(t *testing.T) {
 func TestMultiHandlerIndexNeverFabricatesCleanHealth(t *testing.T) {
 	bad := newTree(t, fixture{dir: "1-to-do", id: "T-001", title: "bad grade", impact: "spicy",
 		history: []string{"- 2026-07-20 — created (TO DO). source: test"}})
-	h, err := MultiHandler([]NamedRoot{{Slug: "broken", Options: Options{Root: bad, Cfg: testCfg()}}})
+	h, err := MultiHandler([]NamedRoot{{Slug: "broken", Options: Options{Root: bad, Cfg: testCfg()}}}, false, nil)
 	if err != nil {
 		t.Fatalf("MultiHandler: %v", err)
 	}
@@ -1341,7 +1344,7 @@ func TestMultiHandlerDuplicateSlugRejected(t *testing.T) {
 	_, err := MultiHandler([]NamedRoot{
 		{Slug: "dup", Options: Options{Root: standardTree(t), Cfg: testCfg()}},
 		{Slug: "dup", Options: Options{Root: standardTree(t), Cfg: testCfg()}},
-	})
+	}, false, nil)
 	if err == nil {
 		t.Fatal("MultiHandler with duplicate slugs = nil error, want one")
 	}
@@ -1388,7 +1391,7 @@ func TestServeMultiOnRealListener(t *testing.T) {
 		{Slug: "b", Options: Options{Root: rootB, Cfg: testCfg()}},
 	}
 	errCh := make(chan error, 1)
-	go func() { errCh <- ServeMulti(ctx, ln, roots) }()
+	go func() { errCh <- ServeMulti(ctx, ln, roots, nil) }()
 
 	base := "http://" + ln.Addr().String()
 	var body string
