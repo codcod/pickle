@@ -1351,3 +1351,32 @@ dependency (auth, network calls, a new failure mode when the API is unreachable)
 whose only confirmed cost, so far, is one incident. T-133 already removes the noise that made
 this gap easy to ignore; if concurrent-PR conflicts recur after that ships, that is the signal to
 revisit this, not the one incident alone.
+
+## Session review and the 1.x release plan (2026-09-29)
+
+A review of ~200 Claude Code sessions from 2026-09-21..29 (166 using brine; smppai, porth,
+messgr, unity, monolith and pickle itself), plus a read of the payload for how it suits frontier
+models — every phase has run on Opus 5.5 since 2026-09-23. Filed: **T-135** (state each payload
+rule once), **T-136** (`pickle ticket show`), **T-137** (review hunts for correctness bugs),
+**T-138** (chain rework and re-review), **T-139** (gate stops only when blocking), **T-140**
+(audit finds merges in git history). Released as 1.0.0 first, with no behaviour change; then
+**1.1.0 = T-135 + T-136** (behaviour-neutral trim plus one additive command) and **1.2.0 = T-137
+.. T-140** (the flow changes). The trim lands first so the behaviour changes are written into
+the text they will live in, not into text that is restructured a release later.
+
+**Revised — the applicability gate's field record.** § Model-tier exploration recorded "0
+negative verdicts in ~15 runs". This week: 44 runs, about 4–5 blocking. The gate stays; T-139
+only removes its approval stop when nothing is blocking.
+
+**Not a re-proposal of a rejected item.** T-138 and T-139 remove human round trips inside a
+ticket's phases. § "Rejected outright, so they are not re-proposed" rules out ordering, ranking,
+scoring or gating *of tickets* (T-045 / T-063 / T-064); neither ticket touches that. The READY,
+publish and merge stops are unchanged.
+
+**Not filed — a merge report authorising only bookkeeping.** One incident (a tag pushed after
+"pr merged", in monolith). One occurrence does not clear the bar; re-propose if it recurs.
+
+**Not filed — stripping AI attribution trailers.** They leaked into commits in four
+repositories despite the user's global instructions. The fix is a personal git config-based
+`commit-msg` hook, not a pickle feature: some teams want co-author lines, and a global
+`core.hooksPath` would silently disable the hooks `pickle hooks install` writes.
