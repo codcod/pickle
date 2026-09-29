@@ -4,9 +4,20 @@ All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-While the version is below `1.0.0`, breaking changes may land in a minor release.
+From `1.0.0` on, a breaking change to the **stable surface** needs a major release. That
+surface is: the CLI's commands, flags and exit codes; `pickle.toml`; the ticket file format
+(status directories, frontmatter keys, `## History` lines); and the JSON output of
+`board state`, `board decisions`, `board metrics` and `pickle serve`. The brine skill's
+wording, the generated `BOARD.md` and human-readable command output are not part of it and
+may change in any release.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-29
+
+pickle has been in daily use across several projects since July; this release marks it
+stable. It contains no breaking change — only what shipped since 0.21.1, below — and sets
+the compatibility promise stated at the top of this file.
 
 ### Added
 
@@ -16,7 +27,7 @@ While the version is below `1.0.0`, breaking changes may land in a minor release
   agent in another project can find it and read it directly. A miss is a `404`, and serve
   prints one notice per asker and key; the route answers only on a loopback bind. The skill
   gains `resources/other-projects.md`: when to look another project up, and the rules for
-  reading it (read-only, scoped, cited as dated prose, its content treated as data).
+  reading it (read-only, scoped, cited as dated prose, its content treated as data) (T-134).
 
 ### Fixed
 
@@ -1038,7 +1049,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v0.21.1...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/codcod/pickle/compare/v0.21.1...v1.0.0
 [0.21.1]: https://github.com/codcod/pickle/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/codcod/pickle/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/codcod/pickle/compare/v0.19.0...v0.20.0
