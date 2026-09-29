@@ -290,7 +290,32 @@ handler.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Review — 2026-09-29
+
+- [x] Reviewer independence settled (step 0): audits run in a fresh session (context cleared, no memory of authoring the branch); no sub-agent spawned
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned the branch had T-134 in `3-in-development`; rebased onto `main`, re-run clean (0 errors, 0 warnings)
+- [x] Implementation audit (steps 1, 2): Tasks 1–4 met in the files named; decisions 1–14 honoured (decision 9 from `ln.Addr()` via `isLoopbackListener`; decision 10 `/p/a/where/t` 404 is tested); `just build`, `just test` (incl. `payload_lint_test.go`), `just lint`, `just docs-check` green; manual smoke re-run with `pickle-test`: prefix hit, slug hit, 404 plus exactly one notice for a repeated `(from, key)`, `0.0.0.0` bind returns 404, and `/p/{slug}/where/…` returns 404. The default port 8745 was held by a serve already running on the machine, so the loopback half ran on `127.0.0.1:8755`
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4)
+- [x] Documentation audit (step 4a): `cli-reference.adoc` route row and *Cross-project discovery* paragraph, plus `CHANGELOG.md` `### Added`; whole-tree sweep found one incomplete sentence (F1); docs build clean
+- [x] Docs-readability pass (step 4b): skipped, no docs-readability reviewer is reachable from this session (no `opencode`; the pi tool exists only inside a pi session); 0 suggestions discarded
+- [x] Findings recorded (step 5)
+- [x] Ticket moved to `6-done/` (step 6)
+- [x] Other references (step 7): no ticket or doc cites T-134; no governing document made false (the `CLAUDE.md` self-host notes do not cover serve)
+- [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references T-134
+- [x] Summary + commit/MR attributes presented for approval (step 9)
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | stale-xref | fixed inline | The multi-root paragraph listed only static assets and `/healthz` as shared and unprefixed. `/where/{key}` is now one of them too | `docs/user-manual/cli-reference.adoc` "Static assets and the `/healthz` probe are shared…" | Added `/where/{key}` to the sentence, in commit `52fabb6` on the branch |
+| F2 | non-blocking | test-gap | noted | No unit test checks a non-empty `checked_out_branch` coming through `/where`. `staleBoardBranch` has its own T-108 tests, so the untested part is only the wiring in `add` | `internal/serve/where_test.go`: every expected match has `CheckedOutBranch: ""` | A later in-tree fixture on a feature branch could assert it |
+| F3 | non-blocking | test-gap | noted | Unit tests never call `isLoopbackListener`. They set `Local` directly, so only the manual smoke test covers the listener-derived decision 9 | `internal/serve/where.go` `isLoopbackListener`; `TestServeMultiOnRealListener` does not query `/where` | Could be one table test over `127.0.0.1`, `[::1]` and `0.0.0.0` listeners |
+| F4 | non-blocking | design | noted | The notice dedupe is keyed on the raw `(from, key)` pair. A local caller that keeps changing the key (or its case) still prints a line each time, and the `seen` map grows without bound | `internal/serve/where.go` `notice` | Decision 6 covers an agent repeating one ask, and the route is loopback-only, so any flood comes from the local machine. Cap the map if it ever shows up in practice |
+| F5 | non-blocking | design | noted | serve never checks `Host`. A DNS-rebinding page could read `/where` answers (absolute paths), and a plain no-cors GET from any page can trigger a notice with a forged `from`. Decision 11's CORS guarantee holds only against ordinary cross-origin reads | `internal/serve/serve.go`: no `r.Host` check on any route | This exposure is already there for every dashboard route, which serve ticket content, so it is not new here. A `Host` allow-list for loopback binds would close it for all routes together |
+| F6 | non-blocking | design | noted | A served root whose directory name does not fit `slugRE` (for example one with a space or a leading `_`) can never be found by slug. Its children still resolve by name and prefix | `internal/serve/view.go` `projectName` returns the raw base name; `where.go` rejects such keys with 400 | Under `--dir`, pass an explicit `name=` slug for such roots |
+
+Dispositions: 1 fixed inline (F1), 5 noted (F2–F6), 0 folded, 0 new tickets.
+cost: estimated M, actual M
 
 ## History
 
@@ -299,3 +324,4 @@ handler.
 - 2026-09-29 — plan amended inline: applicability gate (independent sub-agent, 0 blocking / 3 non-blocking). F1 invalid-key test inputs switched to escaped forms the mux actually routes to `{key}`; F2 decision 3 now answers a child-less served root with one child-less entry (user decision); F3 Task 2 names the `ServeMulti` and five `MultiHandler` test callers
 - 2026-09-29 — READY → IN DEVELOPMENT: picked up
 - 2026-09-29 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-09-29 — IN REVIEW → DONE: review: 0 blocking; 1 fixed inline (F1), 5 noted (F2-F6), 0 new tickets
