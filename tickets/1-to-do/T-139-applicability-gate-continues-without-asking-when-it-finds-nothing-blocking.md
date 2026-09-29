@@ -2,7 +2,7 @@
 id: T-139
 title: applicability gate continues without asking when it finds nothing blocking
 project: pickle
-depends-on: [T-135]
+depends-on: []
 spawned-by: []
 impact: medium
 complexity: low
@@ -29,7 +29,10 @@ Change to the implement procedure's gate step: no findings, or only non-blocking
 by the default disposition (note-and-close), → record them and proceed. A blocking finding, a
 proposed drop, or an amendment that touches a confirmed design decision → stop and ask, as
 today. An amendment within the plan's decisions is recorded with the usual `plan amended inline`
-History line and does not stop. Depends on T-135 (same text).
+History line and does not stop.
+
+Accepted risk: the gate's own blocking/non-blocking call goes unsupervised. In the week reviewed
+the user never overrode it.
 
 ## Implementation Plan
 

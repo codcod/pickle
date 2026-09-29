@@ -2,7 +2,7 @@
 id: T-138
 title: chain rework and scoped re-review in one session, stopping at the publish gate
 project: pickle
-depends-on: [T-135]
+depends-on: [T-137]
 spawned-by: []
 impact: high
 complexity: medium
@@ -36,9 +36,19 @@ accepts a delegated reviewer sub-agent with its own context as meeting that bar.
 - Human stops that remain: READY approval, publish approval, merge. A host without sub-agents
   keeps today's behaviour (stop, ask for a fresh session).
 
+Two rules make the delegated reviewer as independent as a fresh session and safe in-tree:
+
+1. **The spawn prompt is the trigger phrase and the ticket id, nothing else.** A fresh session
+   receives only "validate ticket T-NNN"; an implementer writing "confirm F1 is fixed" steers the
+   reviewer toward the implementer's own framing.
+2. **The reviewer returns findings; the parent makes every ticket move.** The review's
+   bookkeeping is committed on the base branch while the parent sits on the feature branch in the
+   same working tree (under `in-tree`); a sub-agent switching branches under the parent is a
+   hazard. The parent does the moves exactly as a validate session does today.
+
 This removes a human round trip, not a gate: NOTES.md § "Rejected outright, so they are not
 re-proposed" rules out ordering, ranking, scoring or gating of *tickets*, which this does not
-touch. Depends on T-135 (same text); soft coupling with T-137, whose hunt the re-review runs.
+touch. Depends on T-137: the re-review runs its hunt.
 
 ## Implementation Plan
 

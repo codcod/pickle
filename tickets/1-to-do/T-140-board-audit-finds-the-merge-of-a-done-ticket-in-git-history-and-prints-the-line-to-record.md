@@ -13,15 +13,19 @@ cost: M
 
 ## Outcome
 
-After this ships, `pickle board audit` looks for the merge of a DONE ticket that has no merge
-line in its child's base-branch history and prints the exact `merged to <base>` History line to
-add, so recording a merge no longer depends on the human reporting it.
+After this ships, a brine trigger fetches the base branch and records the merge of any DONE
+ticket it finds in git history, and `pickle board audit` prints the `merged to <base>` History
+line for any it finds — so recording a merge no longer waits for the human to report it.
 
 ## Description
 
 Evidence, 2026-09-21..29: about 25 "pr N merged" / "record it" prompts, and 17 "DONE but has no
 MERGED" audit warnings. T-092 detects the missing line and T-133 scoped its noise; neither finds
 the merge.
+
+Checked against the child repos: porth and smppai merge with "Merge pull request #N" subjects
+over commits ending `(POR-012)` / `(SMP-026)`; unity has no remote (local base); bookkeeping
+commits use `board: <ID> …`, never the trailing form, so they cannot match.
 
 Detection is local git only: commits reachable from `origin/<base>` (local `<base>` when the
 child has no remote) in the child's repository whose subject carries the ticket id in the
@@ -35,6 +39,12 @@ because it needed pickle's first GitHub/API dependency; this reads only git. Reu
 check`'s id scan (T-093, T-097) rather than a second parser. Whether a writer follows
 (`audit --fix` or a `ticket` subcommand) is for refinement; the default is the printed
 suggestion. Under `umbrella` the child's repository comes from `pickle.toml`.
+
+**The audit alone does not remove the "pr N merged" prompt**: it runs only when asked and never
+fetches, so right after a merge the local `origin/<base>` does not have it yet. The payload side
+is what removes the prompt: at the start of every brine trigger, fetch the child's base branch
+and record any merge the audit now finds (a `board:` commit, as today). A fetch failure is
+reported and the trigger continues.
 
 ## Implementation Plan
 

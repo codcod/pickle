@@ -47,3 +47,4 @@ T-135 trims the same files — sequence after it.
 ## History
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: the base-branch read recipe is repeated three times in the payload and agents improvised around it with failing globs
+- 2026-09-29 — TO DO → DROPPED: challenged before refinement: the base-branch read recipe works, appears 3 times, and pickle doctor already flags stale branches; one failed glob does not justify permanent CLI surface under the 1.0 promise
