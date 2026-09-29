@@ -133,7 +133,7 @@ func runServeSingle(addr string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := serve.Serve(ctx, ln, serve.Options{Root: cfg.Root(), Cfg: cfg}); err != nil {
+	if err := serve.Serve(ctx, ln, serve.Options{Root: cfg.Root(), Cfg: cfg, Log: os.Stdout}); err != nil {
 		return errf("%v", err)
 	}
 	return exitOK
@@ -165,7 +165,7 @@ func runServeMulti(addr string, dirs []dirArg) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := serve.ServeMulti(ctx, ln, roots); err != nil {
+	if err := serve.ServeMulti(ctx, ln, roots, os.Stdout); err != nil {
 		return errf("%v", err)
 	}
 	return exitOK
