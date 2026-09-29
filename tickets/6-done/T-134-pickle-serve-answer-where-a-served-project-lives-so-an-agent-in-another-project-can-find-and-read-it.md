@@ -325,3 +325,4 @@ cost: estimated M, actual M
 - 2026-09-29 — READY → IN DEVELOPMENT: picked up
 - 2026-09-29 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-09-29 — IN REVIEW → DONE: review: 0 blocking; 1 fixed inline (F1), 5 noted (F2-F6), 0 new tickets
+- 2026-09-29 — merged to main (PR #95, 2daf1f1 https://github.com/codcod/pickle/commit/2daf1f1)
