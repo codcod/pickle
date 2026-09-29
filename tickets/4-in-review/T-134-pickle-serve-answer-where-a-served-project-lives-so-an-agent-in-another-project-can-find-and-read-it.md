@@ -298,3 +298,4 @@ handler.
 - 2026-09-29 — TO DO → READY: plan complete
 - 2026-09-29 — plan amended inline: applicability gate (independent sub-agent, 0 blocking / 3 non-blocking). F1 invalid-key test inputs switched to escaped forms the mux actually routes to `{key}`; F2 decision 3 now answers a child-less served root with one child-less entry (user decision); F3 Task 2 names the `ServeMulti` and five `MultiHandler` test callers
 - 2026-09-29 — READY → IN DEVELOPMENT: picked up
+- 2026-09-29 — IN DEVELOPMENT → IN REVIEW: acceptance green
