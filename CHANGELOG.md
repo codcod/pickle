@@ -13,6 +13,16 @@ may change in any release.
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle board audit` finds a DONE ticket's merge in git history** and prints the
+  `merged to <base> (…)` History line to record, directly under that ticket's
+  "DONE but has no 'MERGED'" warning (T-140). It matches a merge commit naming the ticket's
+  branch, or else the newest commit ending in `(<ID>)`, on the child's `origin` base (or local
+  `main`/`master`). It is read-only and offline. The brine skill now fetches each child's base
+  at the start of every trigger and records those lines on the base branch, so a merge no
+  longer waits for you to report it.
+
 ## [1.0.0] - 2026-09-29
 
 pickle has been in daily use across several projects since July; this release marks it

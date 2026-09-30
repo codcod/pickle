@@ -954,12 +954,31 @@ the human's and may lag) and never changes the exit code:
 * every ticket in `6-done/` carries a `merged to <base>` History line — a
   *warning*, never an error, since a done ticket legitimately sits unmerged
   for as long as the human takes: `DONE but has no 'MERGED' History line —
-  not merged yet, or the merge line was forgotten (rules §4: append it and
+  not merged yet, or the merge line was forgotten (rules §3: append it and
   run pickle board sync)`. This is the same check as the dependency-scoped
   bullet above, generalized to *every* done ticket rather than only those
   named in some other ticket's `depends-on:` — the common case (nobody
   depends on it) was otherwise never checked. `7-dropped/` is out of scope:
-  a dropped ticket has nothing to merge;
+  a dropped ticket has nothing to merge.
++
+When the merge is in the child's git history, the audit prints the line to
+record directly under the warning:
++
+----
+WARNING: 6-done/T-134-….md: DONE but has no 'MERGED' History line — …
+  → found in git, record: 2026-09-29 — merged to main (PR #95, 2daf1f1, https://github.com/codcod/pickle/commit/2daf1f1)
+----
++
+It looks at the commits reachable from `origin/HEAD`, else `origin/main`, else
+`origin/master`, else a local `main`/`master` (a child with no remote). A merge
+commit whose subject names the ticket's branch (`<branch_prefix><ID>-…`, never
+a longer id such as `T-50` for `T-5`) wins, citing its `#N`/`!N`. Otherwise the
+newest commit whose subject ends in `(<ID>)`, with an optional `(#N)` squash
+suffix, is used. `board:` commits never match. The newest match wins. A
+commit link is added for `github.com` and `gitlab.com` origins only. The
+lookup never fetches and never writes: until you fetch, a merge made on the
+remote is not visible, and the warning stands alone as before. The warning
+count and exit code are unchanged;
 * all seven status directories (`1-to-do/` … `7-dropped/`) exist — a missing
   one is an error, since `pickle install` promises all seven on every clone;
   one that exists but is empty and carries no `.gitkeep` is only a *warning*
