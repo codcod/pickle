@@ -301,9 +301,10 @@ All other transitions are forward-only, as diagrammed.
   branch merged to the base of _its own_ child-project's repo**. DONE records the review
   verdict; **merging is the human's and may lag** — a dependency is satisfied only once its code
   is actually on the base a new `feat/` branch would fork from **in the child it targets**. When
-  the human reports a merge, append a dated `merged to <base>` History line (ideally with a
-  commit reference alongside the MR ref, per §1) to the done ticket — the board's `merged` cell
-  renders from that line — and run `pickle board sync`. Soft couplings (nice-to-know, not blocking) are
+  the human reports a merge, or `pickle board audit` prints the line it found in git history,
+  append a dated `merged to <base>` History line (ideally with a commit reference alongside the
+  MR ref, per §1) to the done ticket — the board's `merged` cell renders from that line — and run
+  `pickle board sync`. Soft couplings (nice-to-know, not blocking) are
   narrative cross-references in the Description — never `depends-on`. Creating a genuine new hard
   dependency between two independent tickets requires asking the human first.
 - **Lineage (`spawned-by`).** Provenance goes in `spawned-by:` frontmatter — the ticket(s) this

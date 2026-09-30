@@ -52,6 +52,15 @@ hand-written planning prose lives in `tickets/NOTES.md` (created by `pickle inst
 - **"Compare with / look at / use <project> as a template"**, or a ticket citing a prefix no local
   child owns → read `resources/other-projects.md`.
 
+## Before every procedure: record merges
+
+At the start of every trigger, fetch each child's base (`git -C <child> fetch origin <base>`;
+skip a child with no remote; on failure, say so and continue), then run `pickle board audit`.
+On the base branch of the repository holding `tickets/`, append each `→ found in git, record:`
+line under its ticket's `## History`, run `pickle board sync`, and commit
+`board: <ID>[, <ID> …] record merge` with explicit pathspecs. On any other branch, name the
+merges found and record nothing — bookkeeping never goes on a feature branch (rules §0).
+
 ## Install & register
 
 `pickle install` (run once in the overarching project) creates `tickets/` with the seven

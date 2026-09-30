@@ -255,6 +255,26 @@ func ResolveLocalBase(root string) (branch string, ok bool) {
 	return "", false
 }
 
+// ResolveBase names the ref a child's merges are looked up on (T-140 decision
+// 5): origin/HEAD, then origin/main, then origin/master, then a local
+// main/master (ResolveLocalBase) for a child with no remote. ref is what to
+// pass to `git log`; name is the short branch name a merge line cites
+// ("main"). ok is false when nothing resolves or root is not a repository.
+func ResolveBase(root string) (ref, name string, ok bool) {
+	if head, err := Output(root, "symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"); err == nil && head != "" {
+		return head, strings.TrimPrefix(head, "origin/"), true
+	}
+	for _, n := range []string{"main", "master"} {
+		if _, err := Output(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+n); err == nil {
+			return "origin/" + n, n, true
+		}
+	}
+	if n, ok := ResolveLocalBase(root); ok {
+		return n, n, true
+	}
+	return "", "", false
+}
+
 // repoEnv are the variables that pin git to a specific repository, index or
 // prefix — see internal/hook.repoEnv, which this deliberately mirrors.
 var repoEnv = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"}

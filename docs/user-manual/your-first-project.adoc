@@ -115,6 +115,11 @@ dependent tickets become pickable. Add a commit reference alongside the MR ref (
 and a full commit link where the remote resolves to a known hosting URL) so the line traces
 straight to what shipped.
 
+You rarely write that line by hand. At the start of every brine trigger on the base branch, the
+agent fetches, runs `pickle board audit`, and records each merge the audit found in git history
+(see `pickle board audit` in the CLI reference). Write it by hand when the merge left no trace git
+can match, such as a commit whose subject does not end in the ticket id.
+
 == The rhythm
 
 File → refine → implement → review → done, one artifact per feature, the board
