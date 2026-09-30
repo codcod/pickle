@@ -65,6 +65,8 @@ func Run(payload fs.FS, version string, args []string) int {
 		return runBoard(args[1:])
 	case "changelog":
 		return runChangelog(args[1:])
+	case "retro":
+		return runRetro(args[1:])
 	case "serve":
 		return runServe(args[1:])
 	case "scaffold":
@@ -151,6 +153,10 @@ Flow commands:
                           in the changelog's named section (default "Unreleased").
                           Excluded board: bookkeeping commits summarize to one line unless
                           --show-excluded. Read-only and advisory — always exits 0.
+  retro [--since YYYY-MM-DD] [--sessions DIR]... ["question"]
+                          Print a retrospective prompt for an agent: where this project's
+                          sessions and reports are, and the method. Computes nothing and
+                          writes nothing; run it as claude "$(pickle retro)".
 
 Other scaffolding (unrelated to brine):
   scaffold release [--project-name <name>] [--force] [--dry-run]
