@@ -9,14 +9,15 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-09-29
+Last updated: 2026-09-30
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-29
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | medium | medium | M | [] |  |
 | T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | medium | low | M | [] |  |
 
 ## TO DO (impact order, per child)
