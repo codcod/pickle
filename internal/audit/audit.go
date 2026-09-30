@@ -268,7 +268,7 @@ func Audit(root string, cfg *config.Config) Result {
 			continue
 		}
 		ref := t.Dir + "/" + filepath.Base(t.Path)
-		msg := fmt.Sprintf("%s: DONE but has no 'MERGED' History line — not merged yet, or the merge line was forgotten (rules §4: append it and run pickle board sync)", ref)
+		msg := fmt.Sprintf("%s: DONE but has no 'MERGED' History line — not merged yet, or the merge line was forgotten (rules §3: append it and run pickle board sync)", ref)
 		r.Warnings = append(r.Warnings, msg)
 		r.UnfinalizedMerges = append(r.UnfinalizedMerges, msg)
 	}

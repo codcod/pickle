@@ -5,17 +5,23 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/codcod/pickle/internal/audit"
+	"github.com/codcod/pickle/internal/changelog"
+	"github.com/codcod/pickle/internal/config"
 	"github.com/codcod/pickle/internal/decisions"
 	"github.com/codcod/pickle/internal/flow"
 	"github.com/codcod/pickle/internal/lock"
 	"github.com/codcod/pickle/internal/metrics"
 	"github.com/codcod/pickle/internal/state"
 	"github.com/codcod/pickle/internal/sync"
+	"github.com/codcod/pickle/internal/ticket"
+	"github.com/codcod/pickle/internal/vcs"
 )
 
 // Board mechanics. `board audit` is the keystone (P1): a pure check over tickets/
@@ -420,8 +426,16 @@ func runBoardAudit(_ []string) int {
 		return code
 	}
 	res := audit.Audit(cfg.Root(), cfg)
+	var found map[string]string
+	if len(res.UnfinalizedMerges) > 0 {
+		found = foundMerges(cfg)
+	}
 	for _, w := range res.Warnings {
 		fmt.Printf("WARNING: %s\n", w)
+		ref, rest, _ := strings.Cut(w, ": ")
+		if line, ok := found[ref]; ok && strings.HasPrefix(rest, "DONE but has no 'MERGED'") {
+			fmt.Printf("  → found in git, record: %s\n", line)
+		}
 	}
 	for _, e := range res.Errors {
 		fmt.Printf("ERROR: %s\n", e)
@@ -432,4 +446,46 @@ func runBoardAudit(_ []string) int {
 		return exitError
 	}
 	return exitOK
+}
+
+// foundMerges looks each DONE ticket with no merge line up in its child's git
+// history (T-140) and returns the History line to record, keyed by the ref
+// audit's DONE-unmerged warning starts with. Read-only and offline: it never
+// fetches, and any git failure just means no suggestion for that child. It
+// lives here, not in audit.Audit, so the audit's other callers stay git-free.
+func foundMerges(cfg *config.Config) map[string]string {
+	def := flow.ForName(cfg.FlowName())
+	tickets, _ := ticket.LoadAll(def, cfg.Root())
+	byChild := map[string][]*ticket.Ticket{}
+	for _, t := range tickets {
+		if t.Dir == def.DependencySatisfied().Dir && !ticket.HasMergeLine(def, t.Text) {
+			byChild[t.Project()] = append(byChild[t.Project()], t)
+		}
+	}
+	prefixes := ticketPrefixes(cfg)
+	found := map[string]string{}
+	for name, ts := range byChild {
+		p, ok := cfg.Project(name)
+		if !ok {
+			continue
+		}
+		repo := filepath.Join(cfg.Root(), p.Path)
+		ref, base, ok := vcs.ResolveBase(repo)
+		if !ok {
+			continue
+		}
+		out, err := vcs.Output(repo, "log", "--format=%H%x09%P%x09%cs%x09%s", ref)
+		if err != nil {
+			continue
+		}
+		log := changelog.ParseLog(out)
+		remote, _ := vcs.Output(repo, "remote", "get-url", "origin")
+		for _, t := range ts {
+			if c, mr, ok := changelog.FindMerge(log, t.ID, p.BranchPrefix, prefixes); ok {
+				url := changelog.CommitURL(remote, changelog.ShortSHA(c.SHA))
+				found[t.Dir+"/"+filepath.Base(t.Path)] = changelog.MergeLine(c, base, mr, url)
+			}
+		}
+	}
+	return found
 }
