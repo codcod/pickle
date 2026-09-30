@@ -264,3 +264,4 @@ cost: estimated M, actual M
 - 2026-09-30 — READY → IN DEVELOPMENT: picked up
 - 2026-09-30 — IN DEVELOPMENT → IN REVIEW: acceptance green; real-history check needs 'git remote set-head origin main' in a clone of a checkout not on main (clone's origin/HEAD follows the source's branch)
 - 2026-09-30 — IN REVIEW → DONE: review clean: 0 blocking; 1 fixed inline (F6), 5 noted (F1–F5), 0 new tickets
+- 2026-09-30 — merged to main (PR #96, 36d4e74, https://github.com/codcod/pickle/commit/36d4e74)
