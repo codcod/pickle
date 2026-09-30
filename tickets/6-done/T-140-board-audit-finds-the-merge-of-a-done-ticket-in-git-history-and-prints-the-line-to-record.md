@@ -229,7 +229,32 @@ Plus `board audit: … 2 warning(s)`, exit 0.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Review — 2026-09-30
+
+- [x] Reviewer independence settled (step 0): independent. The audits ran in a fresh session with no memory of writing the branch, so there was nothing to delegate
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned the branch had T-140 in `3-in-development`. Rebased onto `main` (never pushed), and the re-run was clean (0 errors, 0 warnings)
+- [x] Implementation audit (steps 1, 2): Tasks 1–5 met in the files named. Decisions 1–7 honoured: no writer or flag; `audit.Audit` untouched except the §4→§3 fix; merge commit wins over the newest `(<ID>)` commit; `branchPrefix+id` must be followed by `-`, `'`, whitespace or end; base order is `origin/HEAD`, `origin/main`, `origin/master`, then `ResolveLocalBase`; the URL uses the short SHA for github/gitlab only; the payload records only on base. `just build && just test && just lint && just docs-check` green (actionlint and shellcheck not installed locally, so CI still runs them). Real-history check re-run with `pickle-test` in a throwaway clone printed exactly the two expected lines (T-134 `PR #95, 2daf1f1`, T-093 `PR #32, 052510d`, both with links) and `2 warning(s)`, exit 0. It printed the same lines with `origin/HEAD` removed too, falling back to `origin/main`
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4): no other `rules §4: append` outside archived tickets
+- [x] Documentation audit (step 4a): `cli-reference.adoc` (`board audit` bullet with a sample line), `your-first-project.adoc` § 7, and `CHANGELOG.md` `### Added` all cover it. The whole-tree sweep found F5. Docs build clean
+- [x] Docs-readability pass (step 4b): skipped, since no docs-readability reviewer is reachable from this session (no `opencode`, not a pi session). 0 suggestions discarded
+- [x] Findings recorded (step 5)
+- [x] Ticket moved to `6-done/` (step 6)
+- [x] Other references (step 7): T-141 names `vcs.ResolveBase`, which shipped with that name and signature. NOTES.md's "1.1.0 = T-140 + T-141" still holds. No governing document made false
+- [x] Impact sweep (step 8): T-141 (2-ready) soft coupling holds, no patch needed. T-135 (1-to-do) mentions T-140 only as a sequencing note, which is unaffected
+- [x] Summary + commit/MR attributes presented for approval (step 9)
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | correctness | noted | Pass 1 also matches a sync merge *into* the branch ("Merge branch 'main' into feat/T-5-x"). When the branch later lands by fast-forward or rebase (so no merge commit names it), that sync merge is cited, with its own SHA and an earlier date, instead of the newest `(T-5)` commit | Scratch test: log `[fix "feat: y (T-5)" 09-30, 2-parent "Merge branch 'main' into feat/T-5-x" 09-20]` → `FindMerge` returns the sync merge. `internal/changelog/merge.go` `branchRE` | Decision 3/4 as written allow it, and every merge in this repo's history is a PR merge or `Merge feat/T-NNN-… into main`, both newer than any sync. If it ever bites, reject a match preceded by `into ` |
+| F2 | non-blocking | test-gap | noted | `vcs.ResolveBase`'s remote branches (`origin/HEAD`, `origin/main`/`master`) have no automated test. The CLI test only covers the local-`main` fallback, so only the manual real-history check exercises them | `internal/vcs/vcs.go` `ResolveBase`; `internal/cli/board_audit_merge_test.go` has no remote | A fixture with a bare `origin` and `git remote set-head` would cover both |
+| F3 | non-blocking | design | noted | The full-history `git log` runs under `vcs.Output`'s 3 s `probeTimeout`. On a very large repository it could time out, and then no suggestion appears, silently | `internal/vcs/vcs.go:70` `probeTimeout = 3 * time.Second`. This repo: 1126 commits in 0.02 s | Bound the log (`--since`, or stop at the oldest unmerged ticket's creation date) if a child ever hits it |
+| F4 | non-blocking | spec-unclear | noted | The plan's real-history acceptance block cannot be run verbatim from a feature-branch checkout: the clone's `origin/HEAD` follows the source's checked-out branch, so `<base>` prints as that branch name. It needs `git remote set-head origin main` (the implementer's History line already records this) | Ticket § Acceptance test; History 2026-09-30 IN REVIEW line | The history is archived with the ticket, so there is nothing to fix going forward |
+| F5 | non-blocking | docs-gap | noted | `concepts/lifecycle.adoc` § *Done ≠ merged* still says only "When you merge, append … Forget it and `pickle board audit` says so". It does not mention that the audit now finds the line, or that the skill records it. Nothing there is false, and the CLI reference and *Your first project* cover it | `docs/user-manual/concepts/lifecycle.adoc` § Done ≠ merged | A one-line cross-reference, when the page is next touched |
+| F6 | non-blocking | design | fixed inline | The widened §3 sentence in `tickets-README.md` ran to 156 columns, while the paragraph around it wraps at about 100 | `skill/resources/tickets-README.md` §3 "When the human reports a merge, or …" | Rewrapped, with no change to the wording, and folded into the branch's `feat(skill)` commit (`64fb23c`) |
+
+Dispositions: 1 fixed inline (F6), 5 noted (F1–F5), 0 folded, 0 new tickets.
+cost: estimated M, actual M
 
 ## History
 
@@ -238,3 +263,4 @@ Plus `board audit: … 2 warning(s)`, exit 0.
 - 2026-09-30 — applicability gate (fresh sub-agent), routing approved by the user. Blocking, fixed in the acceptance block while still READY: T-093's branch was merged twice, so newest-wins cites `PR #32, 052510d`, not #31; the `sed` leaves BOARD.md stale, so run `board sync` before the audit or it exits 1. Non-blocking, amended inline: the commit URL uses the short SHA (decision 6); Task 4 corrects the existing warning's "rules §4" to §3. Non-blocking, noted and closed: GitLab's `!N` is in the merge body and not the subject, so GitLab merges get an empty ref (no registered child uses GitLab); `gitInit` lives in `hooks_test.go`; NOTES' "1.1.0 = T-139 + T-140" is stale since T-139 was dropped (recorded in NOTES.md).
 - 2026-09-30 — READY → IN DEVELOPMENT: picked up
 - 2026-09-30 — IN DEVELOPMENT → IN REVIEW: acceptance green; real-history check needs 'git remote set-head origin main' in a clone of a checkout not on main (clone's origin/HEAD follows the source's branch)
+- 2026-09-30 — IN REVIEW → DONE: review clean: 0 blocking; 1 fixed inline (F6), 5 noted (F1–F5), 0 new tickets

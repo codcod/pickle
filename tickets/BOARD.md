@@ -20,11 +20,10 @@ Last updated: 2026-09-30
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | [] |
 
 ## REWORK
 
@@ -163,6 +162,7 @@ Last updated: 2026-09-30
 | T-132 | pickle ticket --help fails with unknown subcommand instead of printing group help | yes — MERGED: PR #91 merged to main (9b1b71f) |
 | T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | yes — MERGED: feat/T-133-unfinalized-merge-warning-noise → main (PR #92, 03743ff), user-approved |
 | T-134 | pickle serve: answer where a served project lives, so an agent in another project can find and read it | yes — merged to main (PR #95, 2daf1f1 https://github.com/codcod/pickle/commit/2daf1f1) |
+| T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | no — publish-gated |
 
 ## DROPPED
 
