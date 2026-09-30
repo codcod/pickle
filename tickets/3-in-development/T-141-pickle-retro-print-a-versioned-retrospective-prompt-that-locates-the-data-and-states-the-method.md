@@ -128,7 +128,9 @@ helper if it is already on `main`.
 6. **Sessions:** derive slugs from `cfg.Root()` and every child's absolute path, deduplicated,
    per host (the Description's rules). List every existing directory in the host root whose name
    starts with a slug, as `path — N sessions, YYYY-MM-DD..YYYY-MM-DD`. When nothing matches, say
-   `none found under <root>`. `--sessions DIR` is repeatable and **adds** directories, listed the
+   `none found under <root>`. Count only top-level `*.jsonl` files in each directory: Claude Code
+   nests sub-agent transcripts under `<uuid>/subagents/`, and those are not sessions.
+   `--sessions DIR` is repeatable and **adds** directories, listed the
    same way under "given with --sessions"; derived ones are still listed.
 7. **Flags before the question.** `pickle retro [--since D] [--sessions DIR]... ["question"]`.
    Go's `flag` stops at the first positional, and more than one positional is exit usage. Exit 0
@@ -167,12 +169,15 @@ Write it for a strong reader, plainly, in this order:
   Summarise the report's findings and hand back.
 
 It must pass `payload_lint_test.go`: no ticket ids to look up and no pickle-repo paths. It is
-read in other projects.
+read in other projects. So step 5 states the rule without the exploration's anecdote (the "three
+script versions" figures are evidence a foreign reader does not have), and the text avoids the
+words the lint flags ("pre-registered", a bare `docs/` path).
 
 #### Task 2 — embed it, `assets.go`
 
 - `//go:embed all:skill all:agents all:scaffold all:prompts`, and add a `prompts/` bullet to the
-  doc comment. It is printed by `pickle retro` and never installed.
+  doc comment. It is printed by `pickle retro` and never installed. Update the root counts that go
+  stale: "all three" in `assets.go`, and the two-roots comments in `payload_lint_test.go`.
 
 #### Task 3 — the command, `internal/cli/retro.go` (new) + `internal/cli/cli.go`
 
@@ -182,7 +187,8 @@ read in other projects.
   without `pickle.toml`.
 - Facts block (`## This project`): root; layout (`cfg.ResolvedLayout()`); per child its name,
   absolute path, base branch (decision in the Description; `unknown` when none resolves), ticket
-  prefix, and the build/test/lint/docs commands that are set; the window (decision 4); open
+  prefix, and the build/test/lint/docs commands that are set (base from
+  `vcs.ResolveBase(childAbsPath)`, printing `name`, or `unknown` when `!ok` — T-140 has merged); the window (decision 4); open
   targets (decision 5); sessions per host (decision 6). The host roots are
   `os.Getenv("CLAUDE_CONFIG_DIR")` falling back to `~/.claude`, then `/projects`, and
   `~/.pi/agent/sessions`.
@@ -274,3 +280,5 @@ writes, `./pickle retro | grep -A3 'Claude Code'` lists this checkout's
 
 - 2026-09-29 — created (TO DO). source: chat: self-improvement loop exploration 2026-09-29 — the user asked for a snowball docs-prompt-style retro command, overriding the rejected-outright retro command by direction
 - 2026-09-29 — TO DO → READY: plan complete
+- 2026-09-30 — plan amended inline: applicability gate (independent sub-agent) found no blocking findings; four non-blocking ones amended inline, with the user's approval: use `vcs.ResolveBase` now that T-140 has merged; count only top-level `*.jsonl` (sub-agent transcripts are nested); drop step 5's anecdote and the lint-flagged words from the prompt; update the stale embed-root comments. One note-and-close: slug prefix matching can also catch a sibling repo or miss a `/tmp`↔`/private/tmp` or truncated slug — the agent reads the list and judges
+- 2026-09-30 — READY → IN DEVELOPMENT: picked up

@@ -13,10 +13,11 @@ Last updated: 2026-09-30
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-09-30
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | medium | low | M | [] |  |
 
 ## TO DO (impact order, per child)
 
