@@ -282,3 +282,4 @@ writes, `./pickle retro | grep -A3 'Claude Code'` lists this checkout's
 - 2026-09-29 — TO DO → READY: plan complete
 - 2026-09-30 — plan amended inline: applicability gate (independent sub-agent) found no blocking findings; four non-blocking ones amended inline, with the user's approval: use `vcs.ResolveBase` now that T-140 has merged; count only top-level `*.jsonl` (sub-agent transcripts are nested); drop step 5's anecdote and the lint-flagged words from the prompt; update the stale embed-root comments. One note-and-close: slug prefix matching can also catch a sibling repo or miss a `/tmp`↔`/private/tmp` or truncated slug — the agent reads the list and judges
 - 2026-09-30 — READY → IN DEVELOPMENT: picked up
+- 2026-09-30 — IN DEVELOPMENT → IN REVIEW: acceptance green

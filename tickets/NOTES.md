@@ -1406,3 +1406,13 @@ after that.
 
 **Release plan correction (2026-09-30).** T-139 was dropped (see its History), so 1.1.0 is
 **T-140 + T-141**; 1.2.0 and T-135 are unchanged.
+
+## pickle retro overrides the rejected retro command (2026-09-30)
+
+T-141 adds `pickle retro`. It is the third override of § *"Rejected outright, so they are not
+re-proposed"*, after T-105 and T-126, and like them it was made by human direction: that section
+lists "a metrics command, a retro command, or a dashboard". The override keeps the entry's
+reasoning, "let the queries be ad-hoc". pickle only prints a prompt and locates the session
+directories. It computes nothing, and the agent runs every query. The removal criterion is
+T-141's own: if three months after it ships no ticket filing, drop or re-grade cites a retro
+report, remove the command rather than extending it.
