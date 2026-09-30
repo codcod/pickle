@@ -94,8 +94,8 @@ None.
 5. **Base ref order:** `refs/remotes/origin/HEAD` → `origin/main` → `origin/master` → local
    `main`/`master`. `<base>` in the line is the short branch name (`main`). No base resolves, or
    the child is not a git repository: no suggestion, no error.
-6. **Commit URL only for `github.com` / `gitlab.com` origins** (`https://…/commit/<sha>`,
-   GitLab `…/-/commit/<sha>`, from `https://` or `git@host:owner/repo(.git)` remotes). Any
+6. **Commit URL only for `github.com` / `gitlab.com` origins** (`https://…/commit/<short sha>`,
+   GitLab `…/-/commit/<short sha>`, the same 7-character SHA the line cites; from `https://` or `git@host:owner/repo(.git)` remotes). Any
    other host gets SHA only, and the rules make the link optional anyway.
 7. **Payload: record only on base.** At the start of every trigger, fetch, audit and record. Off
    the base branch, the agent reports what it found and records nothing. A fetch failure is
@@ -151,6 +151,8 @@ None.
 - `tickets-README.md` §3, "When the human reports a merge, append …": widen it to "when the
   human reports a merge, or `pickle board audit` prints the line it found in git history". Keep
   the rest of the sentence.
+- The DONE-unmerged warning in `internal/audit/audit.go` (and its quote in
+  `cli-reference.adoc`) cites "rules §4" for the merge line; it lives in §3. Correct it to §3.
 - Both must pass `payload_lint_test.go`: no ticket-lookup shapes and no repo-only paths.
 
 #### Task 5 — tests
@@ -162,7 +164,7 @@ None.
   `(T-50)` give no match for T-5; merge commit and ticket commit both present gives the merge
   commit; two ticket commits give the newest; an unregistered prefix gives no match. `CommitURL`:
   github https, github ssh, gitlab, another host gives "".
-- `internal/cli` test, using the `gitInit`/`writeAndCommit` helpers from `changelog_test.go`:
+- `internal/cli` test, using the `gitInit` (`hooks_test.go`) / `writeAndCommit` (`changelog_test.go`) helpers:
   an in-tree fixture with a DONE ticket T-1 with no merge line, one DONE ticket T-2 not in git,
   and a commit `feat: x (T-1)` on local `main` with no remote. `board audit` prints
   `→ found in git, record: <date> — merged to main (<sha7>)` under T-1's warning and nothing
@@ -183,13 +185,15 @@ D=$(mktemp -d) && git clone -q . "$D/repo" && cp pickle "$D/pickle-test" && cd "
   && git remote set-url origin https://github.com/codcod/pickle.git \
   && sed -i '' '/merged to main (PR #95/d' tickets/6-done/T-134-*.md \
   && sed -i '' '/merged to main (PR #31/d' tickets/6-done/T-093-*.md \
-  && ../pickle-test board audit
+  && ../pickle-test board sync && ../pickle-test board audit
 ```
 
 Expected, each under its ticket's DONE-but-unmerged warning:
 
 - T-134: `2026-09-29 — merged to main (PR #95, 2daf1f1, https://github.com/codcod/pickle/commit/2daf1f1)`
-- T-093: `merged to main (PR #31, 212730c, https://github.com/codcod/pickle/commit/212730c)`
+- T-093: `2026-08-12 — merged to main (PR #32, 052510d, https://github.com/codcod/pickle/commit/052510d)`.
+  Its branch was merged twice (#31 `212730c`, then #32 `052510d`), so this checks decision 3's
+  "newest wins" against real history. `board sync` first, because the `sed` leaves BOARD.md stale.
 
 Plus `board audit: … 2 warning(s)`, exit 0.
 
@@ -231,3 +235,4 @@ Plus `board audit: … 2 warning(s)`, exit 0.
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: merges were recorded only when the human reported them, ~25 times in a week
 - 2026-09-29 — TO DO → READY: plan complete
+- 2026-09-30 — applicability gate (fresh sub-agent), routing approved by the user. Blocking, fixed in the acceptance block while still READY: T-093's branch was merged twice, so newest-wins cites `PR #32, 052510d`, not #31; the `sed` leaves BOARD.md stale, so run `board sync` before the audit or it exits 1. Non-blocking, amended inline: the commit URL uses the short SHA (decision 6); Task 4 corrects the existing warning's "rules §4" to §3. Non-blocking, noted and closed: GitLab's `!N` is in the merge body and not the subject, so GitLab merges get an empty ref (no registered child uses GitLab); `gitInit` lives in `hooks_test.go`; NOTES' "1.1.0 = T-139 + T-140" is stale since T-139 was dropped (recorded in NOTES.md).

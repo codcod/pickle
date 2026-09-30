@@ -1403,3 +1403,6 @@ claims were re-checked against the payload and the child repos:
 
 Revised plan: **1.1.0 = T-139 + T-140**, **1.2.0 = T-137 then T-138**, T-135 whenever convenient
 after that.
+
+**Release plan correction (2026-09-30).** T-139 was dropped (see its History), so 1.1.0 is
+**T-140 + T-141**; 1.2.0 and T-135 are unchanged.
