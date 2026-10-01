@@ -149,7 +149,23 @@ measured by a script saved here:
   10 of 11 classified runs, the one hand-sampled unclassified run, and the original session read
   (2 of 31 runs explicitly reported no correctness bug) — is far above it. Proceeded on the
   user's decision.
-- **T-138:** rework → validate cycles relaunched by the human in a fresh session.
+- **T-138:** formal since 2026-10-01, measured at pickup. Script:
+  [`2026-10-01-review-relaunches.py`](2026-10-01-review-relaunches.py) —
+  `python3 2026-10-01-review-relaunches.py SINCE UNTIL [--show SID8]`.
+
+  | Part | Definition |
+  |---|---|
+  | Claim | a review after implement or rework no longer needs the human to type its trigger in a fresh session |
+  | Unit | one concluded review — a `pickle ticket move <ID> done\|rework` tool call — of a ticket handed to review (`move … in-review`) within the previous 2 hours; one per hand-off |
+  | Relaunched | that review's session is not the hand-off's and opened with the human's validate/review trigger for the ticket as its first non-noise message |
+  | Metric | relaunched reviews ÷ reviews |
+  | Baseline (2026-09-21..29) | 72 reviews. **60 relaunched (83%)**, 11 already chained in one session, 1 other |
+  | Validation | 3 cycles read by hand (`--show`): SMP-001 and SMP-015 (rework) and T-058 (done) each opened a new session with the bare trigger, 6–40 minutes after the hand-off |
+  | Threshold | ≤ 20% over ≥ 10 reviews |
+  | Guard | delegated-reviewer sub-agents (first prompt carries the spawn template's role clause) that ran `pickle ticket move`, `git commit`, `git checkout` or `git switch` = 0. Baseline 0 (the template did not exist yet) |
+  | Decision rule | met → keep; missed → find where chains stop; < 10 reviews within six weeks → inconclusive, re-measure at the next retro; guard > 0 → blocking bug against the reviewer boundary |
+
+  Premise check at pickup (stop below 8 relaunches): 60, held.
 - **T-141:** its own pre-registered criterion. If three months after it ships no filing, drop
   or re-grade cites a retro report, remove the command.
 
