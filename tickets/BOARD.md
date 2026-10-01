@@ -162,7 +162,7 @@ Last updated: 2026-10-01
 | T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | yes — MERGED: feat/T-133-unfinalized-merge-warning-noise → main (PR #92, 03743ff), user-approved |
 | T-134 | pickle serve: answer where a served project lives, so an agent in another project can find and read it | yes — merged to main (PR #95, 2daf1f1 https://github.com/codcod/pickle/commit/2daf1f1) |
 | T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | yes — merged to main (PR #96, 36d4e74, https://github.com/codcod/pickle/commit/36d4e74) |
-| T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | no — publish-gated |
+| T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | yes — merged to main (PR #97, b8afb70, https://github.com/codcod/pickle/commit/b8afb70) |
 
 ## DROPPED
 
