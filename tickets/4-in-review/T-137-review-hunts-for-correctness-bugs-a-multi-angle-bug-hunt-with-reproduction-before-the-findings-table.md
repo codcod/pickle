@@ -318,3 +318,4 @@ re-runs the commands above verbatim and reads the two tables; re-running a repla
 - 2026-10-01 — READY → IN DEVELOPMENT: picked up; applicability gate clean (11 non-blocking, G1–G9 fixed inline)
 - 2026-10-01 — Task 1 baseline: 34 code-review runs after validate, regex floor 26% (9/34), 10 of 11 classifiable runs had ≥ 1 bug; premise check settled as holding by the user (floor below 30%, direct readings far above); target recorded in tickets/retros/2026-09-29-self-improvement-loop.md
 - 2026-10-01 — Task 6 replay: pass bar met on both. smppai found R3 (as design, deferring to the plan), R5, R6; porth found POR-013 items 1, 3 (one row blocking) and 4, plus PR 7 finding 8; tables in tickets/retros/2026-10-01-t137-replay-*.md
+- 2026-10-01 — IN DEVELOPMENT → IN REVIEW: acceptance green; replay pass bar met on smppai and porth
