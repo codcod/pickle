@@ -435,3 +435,4 @@ cost: estimated M, actual M
 - 2026-10-01 — REWORK → IN REVIEW: findings fixed
 - 2026-10-01 — plan amended inline: decision 1 excepts angle 7 (security) when the host tool does not review for it — review F2's fix had already shipped this
 - 2026-10-01 — IN REVIEW → DONE: scoped re-review: F1–F4 closed; 0 blocking, 2 fixed inline (R1, R2)
+- 2026-10-01 — merged to main (PR #98, 88e3651, https://github.com/codcod/pickle/commit/88e3651)
