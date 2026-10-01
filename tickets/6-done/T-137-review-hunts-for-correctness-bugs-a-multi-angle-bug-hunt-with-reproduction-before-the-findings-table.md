@@ -103,8 +103,10 @@ Ticket and board bookkeeping goes on `main`, never on this branch (hooks enforce
 
 ### Confirmed design decisions (do not deviate without asking)
 
-1. **A host code-review tool replaces the angle hunt; it does not run alongside it.** One
-   correctness path per review, cheapest first. User decision at refinement (2026-10-01).
+1. **A host code-review tool replaces the angle hunt; it does not run alongside it** — except
+   angle 7 (security), which still runs whenever the tool does not review for security (amended
+   after review F2). One correctness path per review, cheapest first. User decision at refinement
+   (2026-10-01).
 2. **The payload never names a host-specific command.** It says "a code-review tool or command
    the host provides that audits a diff for bugs", the same register as step 4b's
    docs-readability reviewer. `/code-review` appearing anywhere under `skill/` is a defect.
@@ -378,6 +380,47 @@ fix `e4f4c46`.
 Acceptance test re-run verbatim: green. `just build`, `just test`, `just lint` (actionlint and
 shellcheck not installed, skipped) and `just docs-check` clean.
 
+### Scoped re-review — round 1
+
+Re-reviewed 2026-10-01 on `feat/T-137-review-correctness-hunt` @ `7234ff3`. Scope: F1–F4 plus the
+fix diff `7234ff3` (`git show 7234ff3`).
+
+- [x] Reviewer independence settled (step 0): **independent**. This conversation started after a
+  context clear and holds no memory of writing the branch or the fix; the audits ran here.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` clean on the branch.
+- [x] Implementation audit (steps 1, 2): F1–F4 closed (below). Acceptance test re-run verbatim:
+  green; `just build`, `just test`, `just lint` (actionlint, shellcheck not installed) and
+  `just docs-check` clean. The retro script and both replay tables are on `main`.
+- [x] Correctness hunt (step 3): **angle hunt**, one pass, no sub-agents, run by this session. The
+  host's code-review tool takes a branch, PR or path, not a commit range, so per step 1 it fell
+  back to the hunt. Findings: R1 (angle 8, the class rule against rules §1), R2 (angle 8,
+  decision 1). No `correctness` rows.
+- [x] Consistency audit (step 4): `plan-wrong`, "steps 2 through 4a", "Who runs what" and the
+  checklist line swept across the payload; T-138 Task 2 already defers to step 3 on `main`.
+- [x] Documentation audit (step 4a): the `lifecycle.adoc` clause matches F2's fix; docs build clean.
+- [x] Docs-readability pass (step 4b): conscious skip. No reviewer is configured in this session.
+- [x] Findings recorded (step 5)
+- [x] Ticket moved to `6-done/` (step 6b)
+- [x] Other references and governing docs (step 7): rules §1 reconciled (R1); decision 1 amended
+  (R2).
+- [x] Impact sweep (step 8): T-138 unaffected; its note already says to re-read step 0 and step 3
+  on `main`.
+- [ ] Summary + commit/MR for approval (step 9)
+
+F1 — closed: *Who runs what* gives the one-pass hunt, angle 7 on the tool path and the rest of the
+quality audit to the reviewer of steps 2, 4 and 4a, and step 0 names the two exceptions. F2 —
+closed: angle 7 runs when the tool does not review for security, and the checklist asks for it.
+F3 — closed: the tool runs only if it takes the range, otherwise one-pass hunt, recorded. F4 —
+closed: *A decision does not excuse a bug*.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | non-blocking | spec-unclear | fixed inline | F4's fix classes a bug that a decision mandated as `correctness` "rather than `plan-wrong`". Rules §1 classes the finding behind a retracted decision `plan-wrong`. Both rules claim the same row, and F2 is one: decision 1 mandated it and is now amended. | `review-protocol.md:205-212` vs `tickets-README.md:200-202` | Fixed in `7169b7a`, per the user's choice: §1 names the exception, and the row stays `correctness`. |
+| R2 | non-blocking | plan-wrong | fixed inline | F2's fix runs angle 7 alongside the host tool. Decision 1 said the tool "does not run alongside" the hunt, and no `plan amended inline` line recorded the deviation. | decision 1 vs `review-protocol.md:185-187` | Decision 1 amended here, History line added. |
+
+Disposition summary: 0 blocking; 2 fixed inline (R1 `7169b7a`, R2 plan amendment), 0 noted, 0 folded, 0 new tickets. Hunt fell back from the host tool (range unsupported).
+cost: estimated M, actual M
+
 ## History
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: a separate code-review pass was run after brine validate on 31 PRs, typically returning 7–10 findings, only 2 with no correctness bug
@@ -390,3 +433,5 @@ shellcheck not installed, skipped) and `just docs-check` clean.
 - 2026-10-01 — IN DEVELOPMENT → IN REVIEW: acceptance green; replay pass bar met on smppai and porth
 - 2026-10-01 — IN REVIEW → REWORK: 4 blocking (F1–F4: step 3 ownership, security on the host-tool path, re-review fix range, plan-mandated bugs); 4 fixed inline, 2 noted
 - 2026-10-01 — REWORK → IN REVIEW: findings fixed
+- 2026-10-01 — plan amended inline: decision 1 excepts angle 7 (security) when the host tool does not review for it — review F2's fix had already shipped this
+- 2026-10-01 — IN REVIEW → DONE: scoped re-review: F1–F4 closed; 0 blocking, 2 fixed inline (R1, R2)
