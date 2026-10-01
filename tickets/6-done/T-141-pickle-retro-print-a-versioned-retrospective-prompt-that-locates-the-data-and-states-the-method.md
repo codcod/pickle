@@ -274,7 +274,29 @@ writes, `./pickle retro | grep -A3 'Claude Code'` lists this checkout's
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+Reviewed 2026-10-01 on `feat/T-141-pickle-retro` (rebased onto `main` first; the tip after the inline fix is `6c3873c`).
+
+- [x] Reviewer independence settled (step 0): **independent**. The reviewing session did not author the branch, so it ran the audits itself.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned that the branch had T-141 in `3-in-development`. Rebased onto `main` (nothing was pushed), and a re-run came back clean.
+- [x] Implementation audit (steps 1, 2): `just build && just test && just lint && just docs-check` all pass, including `retro_test.go` and `payload_lint_test.go` over `prompts/`. Real run in a throwaway clone: window since 2026-09-29, all four open-target bullets quoted, both `.py` scripts listed, `none found under …` for both hosts, `--help` prints the usage line. From the repo root it lists `-Users-nka-Projects-codcod-pickle — 22 sessions`. Tasks 1–4 met. Decisions 1–8 honoured: pickle never opens a transcript, the method is printed verbatim, the order is question → facts → method, the window follows `--since` / newest report / none, open targets are quoted rather than parsed, only top-level `*.jsonl` is counted, more than one positional exits 2, and the prompt forbids filing tickets and committing. With no `pickle.toml` it exits 1.
+- [x] Quality audit (step 3)
+- [x] Consistency audit (step 4): `vcs.ResolveBase` is used as the amended plan says. Both the `assets.go` root count and the lint comments are updated. `board decisions` and `board metrics`, which the prompt cites, both exist.
+- [x] Documentation audit (step 4a): `cli-reference.adoc` has a section and an Overview row, `CHANGELOG.md [Unreleased]` has its entry, the NOTES override is on `main`, and `just docs-check` is clean.
+- [x] Docs-readability pass (step 4b): skipped. No docs-readability reviewer is configured in this Claude Code session. 0 suggestions discarded.
+- [x] Findings recorded (step 5)
+- [x] Ticket moved to `6-done/` (step 6)
+- [x] Other references: none to update. NOTES § *pickle retro overrides the rejected retro command (2026-09-30)* already records the override, and no governing document is falsified (step 7).
+- [x] Impact sweep: no ticket in `1-to-do/` or `2-ready/` depends on T-141 or cites it (step 8).
+- [ ] Summary + commit messages & PR attributes presented for approval (step 9)
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | spec-unclear | fixed inline | The prompt asks for carried-over targets to stay in `## Open targets`, but the next run lists only the scripts that share the newest report's date prefix. A carried-over target's script, saved under an older date, would drop out of the facts. | `internal/cli/retro.go:176-182`; `prompts/retro.md` § The report | Fixed in `6c3873c`: one sentence telling the agent to copy a carried-over target's script beside the new report under today's date. |
+| F2 | non-blocking | correctness | noted | Report parsing is naive at the edges. With two reports on the same date, the newer one by name wins and the other `.md` is listed as one of "its scripts". A `## ` line inside a fenced block in `## Open targets` ends the quoted section early. | `retro.go:139-147`, `retro.go:156-167` | Neither happens with the report shape the prompt prescribes. The agent sees the list and the file path, and can judge. |
+| F3 | non-blocking | other | noted | In the acceptance clone, the base branch prints as `feat/T-141-pickle-retro`. A clone of a local checkout sets `origin/HEAD` to whatever branch the source had checked out, and `vcs.ResolveBase` (T-140) reports that faithfully. In the real repo it prints `main`. | throwaway-clone run vs repo-root run | This is not a T-141 defect, and the facts are only advisory. |
+
+Disposition summary: 1 fixed inline (F1), 0 folded, 0 new ticket, 2 noted (F2, F3). No blocking findings.
+cost: estimated M, actual M
 
 ## History
 
@@ -283,3 +305,4 @@ writes, `./pickle retro | grep -A3 'Claude Code'` lists this checkout's
 - 2026-09-30 — plan amended inline: applicability gate (independent sub-agent) found no blocking findings; four non-blocking ones amended inline, with the user's approval: use `vcs.ResolveBase` now that T-140 has merged; count only top-level `*.jsonl` (sub-agent transcripts are nested); drop step 5's anecdote and the lint-flagged words from the prompt; update the stale embed-root comments. One note-and-close: slug prefix matching can also catch a sibling repo or miss a `/tmp`↔`/private/tmp` or truncated slug — the agent reads the list and judges
 - 2026-09-30 — READY → IN DEVELOPMENT: picked up
 - 2026-09-30 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-10-01 — IN REVIEW → DONE: validated: 0 blocking; 1 fixed inline (F1), 2 noted (F2, F3)
