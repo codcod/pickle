@@ -67,14 +67,24 @@ cheap.
   refinement did its job.
 
 | *Validate / review a ticket* (<<lifecycle>>)
-| New session
-| Heavier
-| Severity-and-disposition calls benefit from both independence from the
-  implementer and stronger judgement. The independence half is a rule, not
-  only a scheduling suggestion: the skill's `resources/review-protocol.md`
-  step 0 requires the audits to be delegated whenever the reviewing agent
-  wrote the branch it is auditing. The session and tier split below stays a
-  suggestion.
+| Same session as the implement, if your agent can spawn sub-agents;
+  otherwise new
+| Heavier on the spawned reviewers; the orchestrating session keeps the
+  implement tier, switching up for severity calls where it can
+| On an agent with sub-agents, implement continues straight into review: the
+  session orchestrates and spawns independent reviewers for the audits with
+  a fixed prompt. The skill's `resources/review-protocol.md` step 0 requires
+  that delegation whenever the reviewing agent wrote the branch, so
+  independence is a rule. Without sub-agents, start a new session at the
+  heavier tier instead.
+
+| *Rework a ticket* (<<lifecycle>>)
+| New session, or the same one when a review chained into it; chains into
+  its own re-review
+| Lighter for the fix; the re-review as above
+| The fix is scoped to the blocking findings. On an agent with sub-agents,
+  the session then runs the scoped re-review the same way, for at most two
+  rework rounds per invocation, and stops at publish approval or at the cap.
 
 | Commit / push / open the MR
 | Same session as the review, switch tier
@@ -95,6 +105,9 @@ cheap.
 
 == Notes
 
+* A chain never passes a human gate. Implement, review and rework run in one
+  session, but it still stops at the review's publish approval, and after
+  two rework rounds with blocking findings left. Merging stays yours.
 * The pickup applicability gate (<<lifecycle>>) already asks for a *fresh
   sub-agent* to audit the plan's assumptions, free of the implementer's
   sunk-cost bias. That sub-agent is a good place to pin a lighter tier

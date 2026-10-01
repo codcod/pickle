@@ -96,7 +96,11 @@ A review gives every finding a *severity*:
   reads the diff that closed them, since a fix's own replacement text is the one
   part of the branch nothing has audited yet. The fix pass records the commits it
   made in the ticket's `## Review` so that diff is unambiguous; the review
-  protocol's step 1 states the mechanics.
+  protocol's step 1 states the mechanics. On an agent that can spawn
+  sub-agents, implement, review, rework and re-review chain in one session,
+  with independent reviewers spawned for the audits. The chain stops at publish
+  approval, or after two rework rounds that still leave blocking findings
+  (<<agent-session-workflow>>).
 * *Non-blocking* — the ticket proceeds to `6-done/`, and each finding takes
   exactly one of four *dispositions*, recorded in the ticket's `## Review`
   table:

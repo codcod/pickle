@@ -21,6 +21,13 @@ may change in any release.
   sub-agents for a `medium` ticket and up to 5 for a `high` one. A `correctness` finding
   carries a reproduction, or an `unreproduced:` reason with the traced code path. The scoped
   re-review runs the same hunt over its fix diff.
+- **Implement, review and rework chain in one session** (T-138). On an agent host that can
+  spawn sub-agents, "implement ticket" carries on into the review and "rework ticket" into
+  its scoped re-review, and neither stops for a fresh session. The audits go to independent
+  reviewers spawned with one fixed prompt, and those reviewers never move tickets, commit or
+  switch branches. The chain stops at publish approval, or after two rework rounds per
+  invocation that still leave blocking findings. A host without sub-agents keeps the old
+  hand-back.
 
 ## [1.1.0] - 2026-10-01
 
