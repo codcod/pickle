@@ -129,8 +129,26 @@ measured by a script saved here:
 
 - **T-140:** "pr N merged" messages per recorded merge. Starting point: the `pr-merge` column
   above, which needs validating.
-- **T-137:** correctness findings per PR from an out-of-band code-review run after brine
-  validate. Starting point: the `code-rev` column plus the findings in those runs.
+- **T-137:** formal since 2026-10-01, measured at pickup. Script:
+  [`2026-10-01-code-review-after-validate.py`](2026-10-01-code-review-after-validate.py) —
+  `python3 2026-10-01-code-review-after-validate.py SINCE UNTIL [--show SID8]`.
+
+  | Part | Definition |
+  |---|---|
+  | Claim | brine's review finds the correctness bugs a separate code-review pass was finding after it |
+  | Unit | one out-of-band code-review run, in a project folder that saw a validate/review trigger in the 48 hours before it |
+  | Counted | the run reports ≥ 1 finding it itself labels a bug (correctness, real or possible); refactors and consistency items do not count |
+  | Metric | counted runs ÷ runs |
+  | Baseline (2026-09-21..29) | 34 runs. **Regex floor 26% (9/34).** The parser classified 11 runs and 10 of them reported ≥ 1 bug; 23 replies matched no pattern |
+  | Validation | 3 runs read by hand: SMP-007 (4 bugs) and SMP-009 (2) matched, POR-008 missed (4 "possibly real bugs" in a nested bullet). Free-text replies vary too much for a regex |
+  | Threshold | ≤ 25% over ≥ 10 runs, **classified by reading each reply** (`--show`); the regex count is only a floor |
+  | Guard | median token use of validate/review sessions ≤ 2× baseline. Baseline: 73 sessions, median 4.19M tokens (cache reads included) |
+  | Decision rule | met → keep; missed → re-examine the angles against the escaped bugs; < 10 runs within six weeks of release → inconclusive, re-measure at the next retro |
+
+  Premise check at pickup (stop below 30%): the floor is under it, but every direct reading —
+  10 of 11 classified runs, the one hand-sampled unclassified run, and the original session read
+  (2 of 31 runs explicitly reported no correctness bug) — is far above it. Proceeded on the
+  user's decision.
 - **T-138:** rework → validate cycles relaunched by the human in a fresh session.
 - **T-141:** its own pre-registered criterion. If three months after it ships no filing, drop
   or re-grade cites a retro report, remove the command.
