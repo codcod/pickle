@@ -13,6 +13,8 @@ may change in any release.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-01
+
 ### Added
 
 - **`pickle board audit` finds a DONE ticket's merge in git history** and prints the
@@ -1064,7 +1066,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/codcod/pickle/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/codcod/pickle/compare/v0.21.1...v1.0.0
 [0.21.1]: https://github.com/codcod/pickle/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/codcod/pickle/compare/v0.20.0...v0.21.0
