@@ -73,6 +73,9 @@ touch. Depends on T-137: the re-review runs its correctness path, and both edit
 
 ### 0. Feature branch (mandatory)
 
+Task 1 is bookkeeping and runs on `main` **before** this step; cut the branch after its target
+and script are committed there.
+
 ```
 cd .
 git checkout main
@@ -101,19 +104,25 @@ Ticket and board bookkeeping (the retro target and script under `tickets/`) goes
    the ticket to `5-rework/` as usual and stops. The next "rework ticket T-NNN" starts a fresh
    count. User decision at refinement.
 3. **The spawn prompt is a fixed template, written verbatim into `review-protocol.md` step 0**:
-   trigger phrase, ticket id, ticket path from the base branch, branch to audit, fixed role
-   clause, and the angle group when T-137's hunt fans out. No implementer-written prose. User
-   decision at refinement.
-4. **The role clause forbids ticket moves, commits, branch switches and edits outside a scratch
-   directory**, and asks for findings rows plus the checklist lines for the delegated steps. The
-   parent does classification, dispositions, moves, commits and step 9, as step 0 already says.
+   trigger phrase, ticket id, ticket path from the base branch, branch to audit, a `hunt:` field
+   (`one pass` | `angle 7 only` | `none`, read off step 3's *Who runs what*), the angle group
+   when T-137's hunt fans out, and the fixed role clause. Every field is from a closed set; no
+   implementer-written prose. User decision at refinement; fields amended at the gate (G1).
+4. **The role clause forbids ticket moves, commits, branch switches and edits to tracked files**
+   (build and test outputs of the configured commands excepted; scratch files go in a scratch
+   directory), and asks for findings rows plus the checklist lines for what it ran. The parent
+   does classification, dispositions, moves, commits and step 9, as step 0 already says, and
+   **stays on the feature branch until every delegated reviewer has returned** — no bookkeeping
+   commit on `<base>` while a reviewer audits the same tree. The parent records each delegated
+   finding it discards on the checklist with a one-line reason.
 5. **The chain always stops at step 9's approval presentation.** Publishing and merging are
    unchanged.
 6. **No sub-agents on the host → today's behaviour.** Stop after `move … in-review` and ask for a
    fresh session; record nothing new.
 7. **Step 0's "fresh session at a heavier tier" advice becomes the fallback, not the default.**
    On a host with sub-agents, the tier advice moves to the spawned reviewer (pin the heavier tier
-   on it where the host allows); the post-verdict drop-back advice stays.
+   on it where the host allows), and step 5's severity calls get the heavier tier where the host
+   can switch mid-session; the post-verdict drop-back advice stays.
 8. **Rework procedure steps 1–5 are unchanged**, including recording SHAs untidied: the chained
    re-review reads the fix record exactly as a fresh session would.
 
@@ -127,17 +136,22 @@ Write the target into `tickets/retros/2026-09-29-self-improvement-loop.md` § "O
 | Part | Definition |
 |---|---|
 | Claim | a review after implement or rework no longer needs the human to type its trigger in a fresh session |
-| Unit | one review (validate/review trigger) of a ticket whose implement or rework session ended within the previous 2 hours |
-| Relaunched | the review began as the human's first non-noise message of a new session |
+| Unit | one concluded review — a `pickle ticket move <ID> done\|rework` tool call (or the move's History line) — of a ticket whose implement or rework session ended within the previous 2 hours |
+| Relaunched | that review's session opened with the human's validate/review trigger as its first non-noise message |
 | Metric | relaunched reviews ÷ reviews |
 | Baseline | measured now over 2026-09-21..29 with the script below |
 | Threshold | ≤ 20% over ≥ 10 reviews |
-| Guard | sub-agent (sidechain) transcripts that ran `pickle ticket move`, `git commit`, `git checkout` or `git switch` = 0 |
+| Guard | sub-agent (sidechain) transcripts whose first prompt contains the spawn template's fixed role clause and that ran `pickle ticket move`, `git commit`, `git checkout` or `git switch` = 0 |
 | Decision rule | met → keep; missed → find where chains stop; < 10 reviews within six weeks → inconclusive, re-measure at the next retro; guard > 0 → blocking bug against this ticket's rule 2 |
 
 Save the script as `tickets/retros/<today>-review-relaunches.py`, modelled on
 `2026-09-29-gate-stops.py` (same `CLAUDE_CONFIG_DIR` handling, NOISE filter, `SINCE UNTIL` args).
 **Validate by hand on three cycles before quoting a number.** Record the baseline.
+
+**Who runs it.** As with T-137, transcript reads are likely denied to the agent: the agent writes
+the script (with a `--show SID8` option that prints one session's matched cycle for hand
+validation), the user runs `! python3 tickets/retros/<file> 2026-09-21 2026-09-29` and the
+`--show` checks, and the History line records who ran it.
 
 **Premise check:** fewer than 8 relaunches in the window → stop, record it in History, and ask
 the user whether to drop or re-grade (T-139's route).
@@ -150,18 +164,23 @@ the user whether to drop or re-grade (T-139's route).
 
   ```
   validate ticket <ID>
-  ticket: <path, resolved from <base>> · branch: <feat/…> [· angles: <group>]
-  You are a delegated reviewer: run the audits only (steps 1–4a of this skill's
-  resources/review-protocol.md). Return findings rows (severity, class, evidence, suggestion)
-  and the checklist lines for those steps. Do not move tickets, commit, switch branches, or edit
-  outside a scratch directory.
+  ticket: <path, resolved from <base>> · branch: <feat/…> · hunt: <one pass | angle 7 only | none>[ · angles: <group>]
+  You are a delegated reviewer (step 0 of this skill's resources/review-protocol.md). If
+  `angles:` is set, run only step 3's hunt for those angles. Otherwise run steps 1 to 4a, with
+  step 3's hunt limited to what `hunt:` says and the rest of step 3's quality audit in full.
+  Return findings rows (severity, class, evidence, suggestion) and the checklist lines for what
+  you ran. Do not move tickets, commit, switch branches, or edit tracked files (build and test
+  outputs of the configured commands excepted); put scratch files in a scratch directory.
   ```
 
-  and one sentence on why nothing else goes in (decision 3's rationale, without naming a ticket).
-- **Align the role clause with step 3's ownership rule as T-137's rework (F1) settles it**: the
-  template's "steps 1–4a" must match who runs step 3 (the host tool stays with the top-level
-  session; without fan-out the delegated reviewer runs the hunt and the rest of the quality audit).
-  Re-read step 0 and step 3 on `main` before writing the template.
+  with the `hunt:` values defined against step 3's *Who runs what* (`one pass`: a `low` ticket,
+  a scoped re-review, or no host tool and no fan-out; `angle 7 only`: the host-tool path when
+  the tool does not review for security; `none`: the tool covers security, or the hunt fans
+  out), and one sentence on why nothing else goes in (decision 3's rationale, without naming a
+  ticket). Step 0's *Trigger* says "steps 2 through 4a": note that step 1 here only loads
+  context, or match the wording.
+- State decision 4's parent duties in the *Boundary* paragraph: stay on the feature branch until
+  every reviewer returns; record each discarded delegated finding with a reason.
 - Reconcile the *Trigger* paragraph's "Hand it the ticket as step 1 reads it, the branch to
   audit, and the child's configured commands" with the template (the template carries the path
   and branch; the reviewer reads commands from `AGENTS.md`).
@@ -185,37 +204,51 @@ findings.
 
 - `skill/resources/tickets-README.md` §2 status list, IN REVIEW: "built, acceptance test green,
   handed back; awaiting review" → drop "handed back".
-- `skill/resources/TEMPLATE.md` Finish step 6, "Hand back to the user." → "Move the ticket to
-  `4-in-review/`; the implement procedure says whether the session continues into review."
-- `grep -rn -i "hand back\|handed back\|fresh session" skill/` afterwards: every remaining hit is
-  either the no-sub-agent fallback or unrelated (rework step 5's "when you hand back" SHA note
-  stays — it now means "when you hand to the re-review").
+- `skill/resources/TEMPLATE.md` Finish step 6: rewrite the whole step (its publish-approval
+  sentence would stop the chain before review) as "Commit locally on the ticket branch; do not
+  push or open a merge request — approval and publishing happen at the end of the review (the
+  review protocol's step 9). Move the ticket to `4-in-review/`; the implement procedure says
+  whether the session continues into review." Keep the in-tree base check where step 9 already
+  carries it.
+- `skill/resources/procedure-rework.md` step 5: "before handing back" → "before the re-review".
+- `grep -rn -i "hand back\|handed back\|handing back\|fresh session" skill/` afterwards: every
+  remaining hit is either the no-sub-agent fallback or unrelated.
 
 ### Acceptance test
 
 ```
 just build && just test && just lint && just docs-check
 grep -n 'Do not move tickets, commit, switch branches' skill/resources/review-protocol.md   # template present
-grep -n -i 'two rework rounds\|at most two' skill/SKILL.md skill/resources/procedure-rework.md   # cap in both
+for f in skill/SKILL.md skill/resources/procedure-rework.md; do grep -qi 'two rework rounds\|at most two' "$f" || { echo "missing: $f"; false; }; done   # cap in both
 grep -n 'handed back' skill/resources/tickets-README.md ; test $? -eq 1
 grep -n 'Hand back to the user' skill/resources/TEMPLATE.md ; test $? -eq 1
-ls tickets/retros/*review-relaunches.py
+git ls-tree --name-only main tickets/retros/ | grep -q review-relaunches   # Task 1 landed on main
 ```
 
-Plus one live chain, recorded under `## Review` by the implementer: in a throwaway install
-(`D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" && git init -q && ./pickle-test install
---in-tree`, after `just build`), file a one-task ticket whose plan plants an obvious bug, run
-"implement ticket T-1", and confirm from the transcript that (a) the review ran as a spawned
-sub-agent whose prompt matches the template exactly, (b) the sub-agent made no move, commit or
-branch switch, (c) the parent moved the ticket to `5-rework/`, fixed it, re-reviewed, and
-stopped at step 9 with the ticket in `6-done/`.
+Plus live chains, recorded under `## Review` by the implementer. Setup, after `just build`:
+`D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" && git init -q -b main &&
+./pickle-test install --in-tree --test '<cmd>'`, an initial commit, then `./pickle-test ticket
+new` and a move to READY. Drive a **top-level headless session** in `$D` (`claude -p
+--output-format stream-json --verbose`; its stream carries each Agent call's prompt and the
+sub-agent's tool calls, so no transcript-store read is needed), answering the applicability
+gate's routing with `--resume`; ask the user before granting the session any permissions. Two
+chains:
+
+1. "implement ticket T-1" on a correct one-task plan: confirm (a) the review ran as a spawned
+   sub-agent whose prompt matches the template exactly, (b) the sub-agent made no move, commit or
+   branch switch, (c) the session stopped at step 9.
+2. "rework ticket T-1" on a seeded `5-rework/` ticket with a recorded blocking finding and a
+   seeded buggy branch: confirm (a) and (b) again, and that the parent fixed, re-reviewed and
+   ended either in `6-done/` stopped at step 9, or at the two-round cap in `5-rework/` with a
+   stop.
 
 ### Docs update (mandatory when user-facing)
 
 - `docs/user-manual/concepts/agent-session-workflow.adoc`: the *Implement* and *Validate* rows
   (session column "New session") → implement continues into review on hosts with sub-agents;
-  a new session remains the fallback. Add the rework row's behaviour and the two-round cap to
-  the Notes.
+  a new session remains the fallback. Update the tier column per decision 7 (the heavier tier
+  goes on the spawned reviewer). Add a *Rework a ticket* row with its chaining and the two-round
+  cap.
 - `docs/user-manual/concepts/lifecycle.adoc` § "Reviews: severity, then disposition": one
   sentence that rework and re-review chain in one session, stopping at publish approval.
 - `CHANGELOG.md` `## [Unreleased]` → `### Changed` (T-138).
@@ -243,3 +276,6 @@ stopped at step 9 with the ticket in `6-done/`.
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: ~16 rework/validate cycles where the human only typed the next trigger in a fresh session
 - 2026-10-01 — TO DO → READY: plan complete; fixed spawn template, 2-round cap, automatic chaining, host fallback
 - 2026-10-01 — impact note from T-137 review: Task 2's spawn template must follow step 3's ownership rule as T-137 rework F1 settles it (note added under Task 2)
+- 2026-10-01 — applicability gate (fresh sub-agent, vs main e55df59): clean, 12 non-blocking. G1–G11 and G12's grep fixed inline (user-approved); G12's pre-existing "nothing else audits it" claim noted
+- 2026-10-01 — plan amended inline: spawn template gains closed-set `hunt:` field and follows step 3's *Who runs what* (G1); Task 1 counts concluded reviews (G2), is run by the user (G3), lands on main before the branch (G4), guard keyed on the role clause (G5); cap grep checks each file (G6); live chain driven headless as two chains (G7); TEMPLATE Finish step 6 rewritten whole (G8); session-workflow gains a rework row and tier update (G9); parent records discards, step 5 at heavier tier (G10); build outputs excepted, parent stays on branch until reviewers return (G11); sweep covers "handing back" (G12)
+- 2026-10-01 — READY → IN DEVELOPMENT: picked up; applicability gate clean (12 non-blocking, G1–G11 + G12 grep fixed inline)

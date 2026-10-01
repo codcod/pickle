@@ -13,10 +13,11 @@ Last updated: 2026-10-01
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-138 | chain rework and scoped re-review in one session, stopping at the publish gate | [T-137] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-10-01
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-138 | chain rework and scoped re-review in one session, stopping at the publish gate | high | medium | M | [T-137] |  |
 
 ## TO DO (impact order, per child)
 
