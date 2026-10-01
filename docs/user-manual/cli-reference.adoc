@@ -76,6 +76,10 @@ the same tree. Wait for it to finish, then try again.
 | `pickle board metrics [--project …] [--as-of …] [--json]`
 | Report backlog dwell, lead time and open-ticket age, mined from `## History`.
 
+| `pickle retro [--since …] [--sessions …] ["question"]`
+| Print a retrospective prompt for an agent: where this project's sessions and
+  earlier reports are, and the method. Computes nothing and writes nothing.
+
 | `pickle changelog check [--since …] [--until …] [--changelog …] [--section …] [--show-excluded]`
 | Report tickets that shipped since the last release but aren't named in the
   changelog. Read-only and advisory — always exits `0`.
@@ -1477,6 +1481,74 @@ error (exit `1`). An unknown flag or a stray positional argument is a usage
 error (exit `2`). An empty tree, or a filter combination that matches
 nothing, is exit `0` — the summary line prints `0 ticket(s), 0 open` rather
 than failing.
+
+[#cmd-retro]
+== `pickle retro`
+
+----
+pickle retro [--since YYYY-MM-DD] [--sessions DIR]... ["question"]
+----
+
+*Prints a retrospective prompt for an agent to run* (T-141). The binary
+prints; the agent does the work:
+
+----
+claude "$(pickle retro)"
+claude "$(pickle retro "why do reworks keep coming back?")"
+----
+
+The output has up to three parts, in this order:
+
+. `## Question`, only when a question is given. The agent then answers that
+  question instead of running the general retrospective, and still validates,
+  challenges and writes a report.
+. `## This project`: the facts pickle can find cheaply. These are the root, the
+  layout, and each child's path, base branch, ticket prefix and configured
+  commands. They also include the window, the open targets and the session
+  directories, described below.
+. The method, printed verbatim from a prompt embedded in the binary, so it is
+  versioned and released with pickle. It covers evaluating open targets with
+  their own scripts, finding what the human keeps typing by hand, the
+  dominant-model timeline, a cross-check against `board state`, `board metrics`
+  and `board decisions`, validating every metric by hand on a sample, an
+  independent challenge, and the report's shape.
+
+=== Where it looks
+
+Reports:: `tickets/retros/YYYY-MM-DD-<slug>.md`. The newest report's date
+  starts the window, unless `--since` gives one; with no report the agent uses
+  everything the session stores still hold. The newest report's
+  `## Open targets` section is quoted verbatim, and the files sharing its date
+  prefix are listed as its scripts.
+Sessions:: Claude Code's `projects/` directory under `$CLAUDE_CONFIG_DIR` (else
+  `~/.claude`), and pi's `~/.pi/agent/sessions/`. Every directory whose name
+  starts with the slug of the root or of a child's path is listed, so a
+  worktree's directory is found too. Each is shown with its count of top-level
+  `*.jsonl` files and their date range. `--sessions DIR` (repeatable) adds
+  more. Other hosts, and a checkout that used to live elsewhere, are left to
+  the agent, and the prompt says so.
+
+pickle computes nothing about the sessions: it never opens a transcript, runs
+a script or scores anything. It writes nothing either. The prompt tells the
+agent to write the report and its scripts under `tickets/retros/` and stop.
+The agent does not commit, file tickets or edit the skill, because you read
+the report first.
+
+=== Headless runs
+
+`pickle retro | claude -p` refuses any tool call that needs approval, such as
+running a script or reading a session directory outside the project. The
+prompt tells the agent to stop at the first refusal and say so. Run it
+interactively instead: `claude "$(pickle retro)"`.
+
+=== Exit codes
+
+`0` whenever it prints. A malformed `--since`, an unknown flag or more than one
+positional argument is a usage error (exit `2`). No `pickle.toml` is an error
+(exit `1`).
+
+If no ticket filing, drop or re-grade cites a retro report within three months
+of this command shipping, it will be removed rather than extended.
 
 [#cmd-changelog-check]
 == `pickle changelog check`

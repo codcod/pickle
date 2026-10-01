@@ -22,6 +22,11 @@ may change in any release.
   `main`/`master`). It is read-only and offline. The brine skill now fetches each child's base
   at the start of every trigger and records those lines on the base branch, so a merge no
   longer waits for you to report it.
+- **`pickle retro`** prints a retrospective prompt for an agent: `claude "$(pickle retro)"`
+  (T-141). It fills in where this project's agent sessions (Claude Code, pi) and earlier
+  `tickets/retros/` reports are, the window, and the previous report's open targets, then
+  states the method. pickle computes nothing and writes nothing. The agent writes a dated
+  report for you to review, and never commits or files tickets itself.
 
 ## [1.0.0] - 2026-09-29
 

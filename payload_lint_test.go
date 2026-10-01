@@ -9,8 +9,8 @@ package main
 // escapes that reached review afterwards) with something that cannot forget
 // to run.
 //
-// This file is itself repo-local, not payload: `agents/` and `skill/` are the
-// two embedded roots under lint; AGENTS.md, docs/, tickets/ and this file are
+// This file is itself repo-local, not payload: every embedded root (`skill/`,
+// `agents/`, `scaffold/`, `prompts/`) is under lint; AGENTS.md, docs/, tickets/ and this file are
 // not, because naming pickle's own paths here is correct — the whole point is
 // the payload cannot do the same.
 
@@ -219,8 +219,8 @@ func lintFile(path, content string, rules []payloadLintRule) []payloadLintFindin
 	return findings
 }
 
-// lintPayload walks both embedded payload roots (skill/, agents/ — assets.go
-// documents why both ship) and lints every file it finds, extension-agnostic:
+// lintPayload walks every embedded payload root (assets.go documents why each
+// ships) and lints every file it finds, extension-agnostic:
 // .md, .jsonc and .ts are all prose or prose-carrying, and skipping by
 // extension is exactly the kind of exception that lets the next one through.
 func lintPayload(t *testing.T) []payloadLintFinding {
