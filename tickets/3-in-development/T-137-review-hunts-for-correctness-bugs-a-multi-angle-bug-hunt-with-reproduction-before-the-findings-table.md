@@ -123,6 +123,10 @@ Ticket and board bookkeeping goes on `main`, never on this branch (hooks enforce
    spawns the angle reviewers directly instead of one delegated reviewer that would fan out; each
    angle reviewer is independent by construction, so this satisfies step 0 for step 3. Briefing
    per step 0 (ticket as step 1 reads it, branch, configured commands) plus its angle group.
+   **Angle reviewers run only step 3 for their group**; steps 2, 4 and 4a go to one delegated
+   reviewer (or to the orchestrator itself when it is already independent). **The host tool is
+   run by the top-level session**, since a sub-agent may be unable to invoke a host command; its
+   output then goes through decision 3's triage.
 7. **A `correctness` finding's evidence is a reproduction, or `unreproduced: <why>` plus the
    traced code path.** A reproduction is a failing test, a script, or a command transcript with
    its observed output. The review does not commit it to the branch; it goes in the evidence cell,
@@ -154,11 +158,19 @@ Write the target into `tickets/retros/2026-09-29-self-improvement-loop.md` § "O
 | Decision rule | met → keep; missed → re-examine the angles against the escaped bugs; < 10 runs within six weeks of release → inconclusive, re-measure at the next retro |
 
 Save the script as `tickets/retros/<today>-code-review-after-validate.py`, modelled on
-`2026-09-29-gate-stops.py` (same `CLAUDE_CONFIG_DIR` handling, same NOISE filter, `SINCE UNTIL`
-args). Where the host's code-review run reports through a structured findings tool with a
-category field, count `category == "correctness"`; otherwise fall back to the run's final text.
+`2026-09-29-gate-stops.py` (same `CLAUDE_CONFIG_DIR` handling, `SINCE UNTIL` args). Detect a
+run the way `2026-09-29-weekly.py` does (`<command-name>/code-review`) — gate-stops' NOISE filter
+drops every `<command-name>` message, so it must not be applied to the run detector. Where the
+run reports through a structured findings tool with a category field, count
+`category == "correctness"`; otherwise fall back to the run's final text. The same script also
+prints the guard's baseline: median token use of brine validate/review sessions in the window.
 **Validate by hand on three runs before quoting a number** (the retro's rule). Record the
 baseline in the target table.
+
+**Who runs it:** the agent's reads of the transcript store are denied by the host's classifier,
+so the agent writes the script and the user runs it (`! python3 tickets/retros/<file> 2026-09-21
+2026-09-29`) and spot-checks three runs. Task 1 and Task 7 are `main` bookkeeping: do both on
+`main` before cutting the feature branch.
 
 **Premise check:** if the baseline shows fewer than 30% of runs with a correctness finding, stop,
 record the result in the ticket's History, and ask the user whether to drop or re-grade — T-139's
@@ -200,16 +212,22 @@ Keep the step number (addenda in `pickle.toml` key to step numbers).
 
 #### Task 5 — Guard the generic wording
 
-`payload_lint_test.go`: extend `TestPayloadSpeaksToAForeignReader`'s rule set, or add a
-one-pattern test, so `/code-review` (any slash-command name for a host review tool) under
-`skill/` fails `just test`. Add the escape it catches to
-`TestPayloadLintRulesCatchTheEscapesTheySawInReview`.
+`payload_lint_test.go`: add a fifth rule matching the literal `/code-review` with rule 3's
+leading boundary `(^|[^\w./-])`, so `resources/review-protocol.md` does not match (a generic
+"any slash command" pattern would hit it across the payload). No fence exemption. Give the
+escape its own test case rather than filing it under
+`TestPayloadLintRulesCatchTheEscapesTheySawInReview` (it was never seen in review), and add
+`resources/review-protocol.md` to `TestPayloadLintRulesLeaveLegitimateShapesAlone`. Update every
+"four" that counts the rules: `payload_lint_test.go` (~:118, :173, :288, :326 — check each, :173
+may refer to rule 4 alone) and the root `AGENTS.md` paragraph above the marker block ("one of its
+four rules").
 
 #### Task 6 — Replay (the acceptance evidence)
 
 Run the new step 3 **angle hunt path** (not the host tool — decision 1's rationale is that the tool
 already found these) on each pre-fix commit, in a fresh agent session per replay with no memory
-of this ticket, using throwaway worktrees:
+of this ticket, confined to its worktree (it must not read the umbrella's `tickets/`, where
+SMP-007's post-review table and POR-013 hold the answers), using throwaway worktrees:
 
 ```
 S=$(mktemp -d)
@@ -217,11 +235,15 @@ git -C ~/Projects/codcod/smppai worktree add "$S/smppai" 1ef5588
 git -C ~/Projects/umbrella-org/porth-umbrella/projects/porth worktree add "$S/porth" 8c214c8
 ```
 
-Brief each replay with: the new step 3 text from this branch, the ticket as it stood at review
-(`git -C ~/Projects/umbrella-org/porth-umbrella log --diff-filter=A --format=%h -- 'tickets/4-in-review/SMP-007-*'`
-then `git show <that>:<path>`; same for POR-002), the diff `1ef5588~1..1ef5588` /
-`8c214c8~1..8c214c8`, and the child's commands. Complexity as each ticket was graded. Save each
-findings table to `tickets/retros/<today>-t137-replay-{smppai,porth}.md`.
+Brief each replay with: the new step 3 text from this branch, the ticket as it stood at its
+round-1 review — `git -C ~/Projects/umbrella-org/porth-umbrella show a8379fd:<SMP-007 path>` and
+`b5ee3aa:<POR-002 path>` (SMP-007 has a second `4-in-review` add, `7a745f3`, the rework round —
+not that one) — the diff `1ef5588~1..1ef5588` / `8c214c8~1..8c214c8` (both single-commit
+branches), and the child's commands. Complexity as each ticket was graded (SMP-007 `low`: one
+pass; POR-002 `medium`: ≤ 3 angle sub-agents, spawned directly by this implementing session,
+which knows the answers). **So judge the pass bar on the angle reviewers' raw output, before any
+re-verification by this session**, and brief them with nothing beyond the list above. Save each raw findings table to
+`tickets/retros/<today>-t137-replay-{smppai,porth}.md` (`main` bookkeeping).
 
 **Pass bar:** smppai — at least one of R1–R3 (an inbound `data_sm` acked `ESME_ROK` with no
 handler set, on client, high-level client or server); porth — at least one of POR-013 items 1, 3,
@@ -236,8 +258,9 @@ Remove the worktrees afterwards (`git worktree remove`).
 
 Append to `tickets/NOTES.md` § "T-085's pre-registered criterion — recorded so the 8th review
 after it ships can find it" a dated paragraph: reviews whose `IN REVIEW →` History line is dated
-on or after T-137's merge are counted separately; the recipe filters on that date. **This is
-bookkeeping: commit it on `main`, not on the feature branch.**
+on or after the date of T-137's `merged to main` History line are counted separately; filter the
+recipe on that date once the line exists (the merge has not happened when this is written).
+**This is bookkeeping: commit it on `main`, not on the feature branch.**
 
 ### Acceptance test
 
@@ -246,8 +269,9 @@ just build && just test && just lint && just docs-check
 grep -rn '/code-review' skill/ ; test $? -eq 1                   # decision 2: no host command name
 grep -c 'angle' skill/resources/review-protocol.md               # > 0
 for a in 'caller contracts' 'cancellation' 'concurrency' 'boundary inputs' \
-         'resource lifetimes' 'wire format' 'trust boundaries' 'confirmed decisions'; do
-  grep -q "$a" skill/resources/review-protocol.md || echo "missing angle: $a"
+         'resource lifetimes' 'wire format' 'trust boundaries' \
+         "conformance to the ticket's confirmed decisions"; do
+  grep -qi "$a" skill/resources/review-protocol.md || echo "missing angle: $a"
 done                                                             # prints nothing
 grep -n 'unreproduced:' skill/resources/review-protocol.md       # ≥ 1 hit (decision 7)
 grep -n 'Correctness hunt (step 3)' skill/resources/review-protocol.md   # the checklist line
@@ -289,3 +313,6 @@ re-runs the commands above verbatim and reads the two tables; re-running a repla
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: a separate code-review pass was run after brine validate on 31 PRs, typically returning 7–10 findings, only 2 with no correctness bug
 - 2026-10-01 — TO DO → READY: plan complete; host tool else 8-angle hunt, sub-agent budget, repro rule, replay acceptance
+- 2026-10-01 — applicability gate (fresh sub-agent, vs main 18e3e7f): clean, 11 non-blocking. G1–G9 fixed inline (user-approved), G10–G11 noted
+- 2026-10-01 — plan amended inline: decision 6 says angle reviewers run only step 3 and the top-level session runs the host tool; Task 1 detects runs as weekly.py does, adds a token baseline for the guard, is run by the user (transcript reads denied to the agent) and lands on main before the branch; Task 5 matches literal `/code-review` with its own test and updates the "four rules" counts; Task 6 pins a8379fd/b5ee3aa, confines replays to their worktree, judges raw output; Task 7 keys on the merge line; acceptance greps case-insensitive and specific
+- 2026-10-01 — READY → IN DEVELOPMENT: picked up; applicability gate clean (11 non-blocking, G1–G9 fixed inline)
