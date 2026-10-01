@@ -75,20 +75,51 @@ auditing work it just wrote rather than work it merely inherited.
 **Trigger.** When the agent about to run this review authored the branch under review in this
 same session, delegate the audits (steps 2 through 4a) to an independent reviewer: spawned
 fresh, with no memory of writing the code, briefed adversarially and instructed to find defects
-rather than confirm the work. Hand it the ticket as step 1 reads it, the branch to audit, and
-the child's configured commands — an independent reviewer starts with no context, and one left
-to find its own can audit a stale ticket or the wrong branch. Two parts of step 3 are the
+rather than confirm the work. Spawn it with the prompt below, which carries the ticket path as
+step 1 resolves it and the branch to audit; the reviewer reads the child's configured commands
+itself, from `AGENTS.md`. An independent reviewer starts with no context, and one left to find
+its own can audit a stale ticket or the wrong branch. Two parts of step 3 are the
 exception: a host code-review tool, and a hunt that fans out to angle reviewers, are both run by
 the top-level session itself — step 3's *Who runs what* says how. A reviewer with no hand in the
 branch is already independent — nothing needs delegating.
 
+**Spawn prompt.** Every delegated reviewer, angle reviewers included, gets exactly this prompt,
+with each `<…>` filled from a closed set:
+
+```
+validate ticket <ID>
+ticket: <path, resolved from the base branch> · branch: <feat/…> · hunt: <one pass | angle 7 only | none>[ · angles: <group>]
+You are a delegated reviewer (step 0 of this skill's resources/review-protocol.md). If
+`angles:` is set, run only step 3's hunt for those angles. Otherwise run steps 1 to 4a, with
+step 3's hunt limited to what `hunt:` says and the rest of step 3's quality audit in full.
+Return findings rows (severity, class, evidence, suggestion) and the checklist lines for what
+you ran. Do not move tickets, commit, switch branches, or edit tracked files (build and test
+outputs of the configured commands excepted); put scratch files in a scratch directory.
+```
+
+Read `hunt:` off step 3's *Who runs what*: `one pass` for a `low` ticket, a scoped re-review, or
+a hunt with neither a host tool nor a fan-out; `angle 7 only` on the host tool path when the tool
+does not review for security; `none` when the tool covers security or the hunt fans out (the
+angle reviewers then carry it). Step 1 only loads the reviewer's context; the audits it runs are
+still steps 2 through 4a. Nothing else goes in — no summary of the change, no list of what to
+check. A fresh session receives only the trigger, and a note from the author such as "confirm the
+fix holds" hands the reviewer the author's framing, which is the bias this step exists to remove.
+
 **Boundary.** Delegation covers the audits only. Classification and severity, the four
 dispositions, moving the ticket, and the approval gate (step 9) stay with the orchestrating
-reviewer — delegating those would replace the reviewer rather than de-bias it.
+reviewer — delegating those would replace the reviewer rather than de-bias it. A delegated
+reviewer never moves a ticket, commits or switches branches, so the orchestrator spawns it with
+the ticket's feature branch already checked out (step 0a's checkout), and neither switches
+branches nor commits while any delegated reviewer is still running: under `layout =
+"in-tree"` the review's bookkeeping is committed on `<base>` in the same working tree the
+reviewer is auditing, and a branch switch under a running reviewer changes the files it is
+reading.
 
 **Verify before recording.** An independent reviewer has no stake in the outcome, but equally no
 context, so expect it to report things that are wrong. Re-verify every delegated finding by hand
-before it enters the findings table (step 5) — delegation buys independence, not accuracy.
+before it enters the findings table (step 5) — delegation buys independence, not accuracy. Write
+each delegated finding you discard on the checklist with a one-line reason: when the orchestrator
+also wrote the branch, a discard is the one place its own bias can re-enter, so it stays visible.
 
 **Record which happened, every time.** Independent, delegated, or skipped — the review's
 checklist says which. This is not only a degradation notice: a review that ran its own audits
@@ -100,9 +131,13 @@ with no memory of writing the branch (see below). When neither is available, thi
 to a recorded conscious skip, the same shape as step 4b's below: it never blocks the review, but
 the skip is written into the checklist rather than left silent.
 
-**Session and tier.** Entering review is a natural point to start a fresh session at a heavier
-reasoning tier — the judgement calls in step 5 benefit from both independence from whoever
-implemented the ticket and stronger reasoning. Once the verdict is reached, the remaining steps
+**Session and tier.** On a host that can spawn sub-agents, a review usually runs in the session
+that implemented or reworked the ticket, chained after it (this skill's implement and rework
+procedures), with the audits delegated as above. Give the spawned reviewers the heavier reasoning
+tier where the host lets you pin one, and switch to it for step 5's severity calls where the host
+can switch mid-session — those judgement calls benefit from stronger reasoning. Without
+sub-agents, entering review is the point to start a fresh session at that heavier tier, for
+independence and reasoning both. Once the verdict is reached, the remaining steps
 (record, move, publish) are mechanical and do not need that tier — offer to drop back down rather
 than carrying the heavier session through the publish steps by default.
 
@@ -503,7 +538,7 @@ filed per step 6c instead of taking a disposition.
 
 ### Checklist (paste into the ticket's `## Review` section)
 
-- [ ] Reviewer independence settled (step 0): audits run independently, delegated, or a recorded conscious skip — name which
+- [ ] Reviewer independence settled (step 0): audits run independently, delegated, or a recorded conscious skip — name which; each discarded delegated finding listed with its reason
 - [ ] In-tree stale-branch check (step 0a, in-tree layout only): pickle doctor run, no unresolved stale-ticket-branch warning — or n/a under umbrella
 - [ ] Implementation audit — acceptance test re-run, tasks & criteria verified; on a scoped re-review, the diff that closed the findings also read for new defects (steps 1, 2)
 - [ ] Correctness hunt (step 3), with the rest of its quality audit: host tool or angle hunt — name which, who ran it, sub-agents used, tool findings discarded on re-verification, and whether angle 7 ran separately; every correctness row reproduced or marked unreproduced

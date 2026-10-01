@@ -210,7 +210,7 @@ exception: when the retracted decision made the code ship wrong behaviour, the f
    up as-is.
 3. **IN DEVELOPMENT** — picked up; being built on a `feat/T-NNN-<slug>` branch (in the target
    child's repo).
-4. **IN REVIEW** — built, acceptance test green, handed back; awaiting review.
+4. **IN REVIEW** — built, acceptance test green; awaiting review.
 5. **REWORK** — review found **blocking** findings (§5); back for a scoped fix.
 6. **DONE** — built, reviewed, all blocking findings resolved.
 7. **DROPPED** — abandoned or obsoleted by a decision; terminal, kept with a reason.
