@@ -921,6 +921,16 @@ awk -F'|' '
 Divide each count by the total non-blocking-row count (`disposition` column not `—`) to get the
 percentage the criterion above tests against.
 
+**Count the correctness-hunt reviews separately (2026-10-01, T-137).** T-137 turns the review's
+quality audit into a correctness hunt, which shifts findings toward `correctness`. So reviews
+whose `IN REVIEW →` History line is dated on or after the date of T-137's `merged to main`
+History line are counted apart from those before it: run the recipe twice, once over the tickets
+reviewed before that date and once over those reviewed after it. Comparing them is a measure of
+the hunt; pooling them would make the class shift look like a property of the column. (Also
+recorded at T-137's refinement: the criterion was due after 8 reviews, and 50 carry the column
+now. Neither threshold fires — `design` is ~23% of non-blocking rows — which is a decision of its
+own, not T-137's.)
+
 ### T-098's payload sweep, and the guard test deliberately not built
 
 Run 2026-08-13 (T-098) across all five payload files — `skill/SKILL.md` and the four under
