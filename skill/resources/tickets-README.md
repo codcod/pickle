@@ -199,7 +199,9 @@ carries no `OLD → NEW`, so the over-long-line warning above (scoped to transit
 lines only) does not apply to it. This line is **mandatory** whenever the plan is amended after
 leaving `2-ready/` — not merely a convention. When the amendment retracts a *confirmed design
 decision* the READY gate had certified, the matching review finding is classed `plan-wrong`
-(§5) — the join that makes this line and that finding class one measurement, not two.
+(§5) — the join that makes this line and that finding class one measurement, not two. One
+exception: when the retracted decision made the code ship wrong behaviour, the finding stays
+`correctness` (the review protocol's step 3), and this History line alone records the gate's miss.
 
 ## 2. Statuses
 
@@ -397,8 +399,8 @@ concrete, the acceptance test real) stays the agent's call, exactly as before; o
 Trigger: **"validate ticket T-NNN"** (or **"review ticket T-NNN"** — synonyms). Runs the
 skill's `resources/review-protocol.md` (plus the project's layered review addenda, if any —
 overarching + the ticket's child; see the protocol's intro), which audits implementation,
-quality, consistency, and docs, then gives every finding a **severity** and — if it is
-non-blocking — a **disposition**.
+hunts for correctness bugs, audits quality, consistency, and docs, then gives every finding a
+**severity** and — if it is non-blocking — a **disposition**.
 
 **Severity** decides whether the ticket can ship:
 

@@ -77,7 +77,9 @@ same session, delegate the audits (steps 2 through 4a) to an independent reviewe
 fresh, with no memory of writing the code, briefed adversarially and instructed to find defects
 rather than confirm the work. Hand it the ticket as step 1 reads it, the branch to audit, and
 the child's configured commands — an independent reviewer starts with no context, and one left
-to find its own can audit a stale ticket or the wrong branch. A reviewer with no hand in the
+to find its own can audit a stale ticket or the wrong branch. Two parts of step 3 are the
+exception: a host code-review tool, and a hunt that fans out to angle reviewers, are both run by
+the top-level session itself — step 3's *Who runs what* says how. A reviewer with no hand in the
 branch is already independent — nothing needs delegating.
 
 **Boundary.** Delegation covers the audits only. Classification and severity, the four
@@ -146,6 +148,10 @@ not apply (`checkStaleTicketBranch` is a no-op outside `in-tree`) — skip strai
   - **The bound.** This is **this round's** fix diff, not every rework diff since the first
     review — each round reads its predecessor's new text, so nothing goes unread and no round
     re-reads the whole branch.
+  - **The hunt.** Run step 3's correctness path over that diff only — the host tool if it can
+    take that range, otherwise the angle hunt as one pass with no sub-agents — and record which
+    ran. A tool that only takes a branch, a merge request or the working tree cannot be held to
+    this round's diff, so it falls back to the hunt.
 - Read any project-wide decisions and the configured build/validate commands from the project's
   `AGENTS.md` and the ticket's target `[[project]]` block in `pickle.toml`.
 - Check `depends-on:` frontmatter — every listed ticket must be in `tickets/6-done/` **with
@@ -166,11 +172,72 @@ Verify against the **actual project tree** (the ticket's target child-project), 
 Record each item as **met / partially met / not met**, with evidence (path, command output,
 line reference).
 
-## 3. Quality audit — *was it done to industry best practice?*
+## 3. Correctness hunt and quality audit — *does it ship wrong behaviour, and was it done well?*
 
-- Idiomatic, correct code for the language and framework.
-- Test coverage adequate for the change; tests actually assert behaviour.
-- Error handling, edge cases, security (input validation, secret handling, injection).
+The defect a review most needs to catch is a correctness bug: behaviour that is wrong on a path
+the acceptance test does not exercise. Hunt for those first, by exactly one of the two paths below,
+and record on the checklist which one ran (T-137).
+
+**Host tool path.** When the host provides a code-review tool or command that audits a diff for
+bugs, the top-level session runs it on the branch diff (`<base>...<branch>`) — a sub-agent may be
+unable to invoke a host command. Triage its output like a delegated audit (step 0): re-verify each
+finding against the code before it enters the findings table, discard what does not hold, and
+record how many were discarded on the checklist. The tool replaces the angle hunt; it does not run
+alongside it — except angle 7 (security), which still runs over the diff whenever the tool does
+not itself review for security.
+
+**Angle hunt path**, when the host has no such tool. Hunt over these eight angles:
+
+1. **Caller contracts and cross-module effects** — every caller of a changed function, type or
+   config key still gets what it relies on, including modules the diff does not touch.
+2. **Error, cancellation and shutdown paths** — what happens when a call fails, times out, is
+   cancelled, or the process stops mid-operation; nothing is acknowledged and then lost.
+3. **Ordering and concurrency** — races, interleavings, an event arriving before the state it
+   needs, shared state without a guard.
+4. **Boundary inputs** — empty, maximum, oversized, malformed and wrong-typed values, and the
+   value one past each limit.
+5. **Resource lifetimes** — whatever is opened, started, queued or cached is closed, stopped,
+   drained or bounded on every path.
+6. **Breaking changes to API, wire format or config** — a renamed field, a changed default, a
+   different reply to the same request.
+7. **Security at trust boundaries** — input from outside is validated, secrets stay out of logs
+   and output, nothing is injectable.
+8. **Conformance to the ticket's confirmed decisions** — each one holds in the code, not only in
+   the prose.
+
+**A decision does not excuse a bug.** Wrong behaviour stays a `correctness` finding, with its
+severity set on the behaviour, even when a confirmed decision mandates it — conformance (angle 8)
+is no defence. Cite the decision as `<ID> decision <N>` in the evidence, so the rework pass knows
+the fix needs the user's sign-off. The class records what ships, so it stays `correctness` rather
+than `plan-wrong`.
+
+Scale the hunt by the ticket's `complexity`. The sub-agent count is a ceiling, not a quota:
+
+| complexity | hunt |
+|---|---|
+| `low` | one pass over all eight angles, no sub-agents |
+| `medium` | at most 3 sub-agents, the angles grouped between them |
+| `high` | at most 5 sub-agents |
+
+**Who runs what.** The top-level session runs the host tool (above) and, when the hunt fans out,
+spawns the angle reviewers itself, each briefed as step 0 describes plus its angle group and
+running only the hunt for that group. Everything else in this step — a one-pass hunt (a `low`
+ticket, a scoped re-review, or a host that cannot spawn sub-agents), angle 7 on the host tool
+path, and the rest of the quality audit below — goes to whoever runs steps 2, 4 and 4a: the
+independent reviewer step 0 delegates to, or the orchestrator itself when it is already
+independent.
+
+**Reproduce before recording.** A `correctness` finding's evidence is a reproduction — a failing
+test, a script, or a command transcript with its observed output — or, where one is impractical
+(a race, an external system), `unreproduced: <why>` plus the code path traced from input to wrong
+outcome. Either kind may be blocking. The review does not commit a reproduction to the branch: it
+goes in the evidence cell, or in an `F<n> reproduction:` block under the findings table when it
+does not fit, where the rework pass can turn it into a regression test.
+
+**The rest of the quality audit:**
+
+- Tests actually assert behaviour, and coverage is adequate for the change.
+- Idiomatic code for the language and framework.
 - Docs accurate, complete, and registered.
 - Prompt/config content (if applicable) unambiguous and internally consistent.
 
@@ -283,6 +350,9 @@ Two worked examples. A byte-widened `unicode.IsSpace` scan that emits invalid UT
 `correctness`, even if the surrounding code and its comments read as correct. A scope rule that is
 satisfied by both of its own branches is `spec-unclear`, not `docs-gap` — the documentation
 exists, it just cannot be executed against.
+
+A `correctness` row's evidence follows step 3's reproduction rule: a reproduction, or
+`unreproduced: <why>` with the traced code path.
 
 - **Blocking** — breaks the golden path, ships wrong behaviour, contradicts a locked decision
   (cite it as `<ID> decision <N>` — rules §7), or is missing required docs coverage
@@ -436,7 +506,7 @@ filed per step 6c instead of taking a disposition.
 - [ ] Reviewer independence settled (step 0): audits run independently, delegated, or a recorded conscious skip — name which
 - [ ] In-tree stale-branch check (step 0a, in-tree layout only): pickle doctor run, no unresolved stale-ticket-branch warning — or n/a under umbrella
 - [ ] Implementation audit — acceptance test re-run, tasks & criteria verified; on a scoped re-review, the diff that closed the findings also read for new defects (steps 1, 2)
-- [ ] Quality audit (step 3)
+- [ ] Correctness hunt (step 3), with the rest of its quality audit: host tool or angle hunt — name which, who ran it, sub-agents used, tool findings discarded on re-verification, and whether angle 7 ran separately; every correctness row reproduced or marked unreproduced
 - [ ] Consistency audit (step 4)
 - [ ] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a, if the project ships docs)
 - [ ] Docs-readability pass on the ticket's changed `.adoc`/`.md` files — every suggestion's quoted text verified against the file, any fabricated ones discarded and counted — or a conscious skip recorded (step 4b, optional)

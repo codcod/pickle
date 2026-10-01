@@ -52,7 +52,9 @@ therefore live out here where `pickle upgrade` will not overwrite them:
   the payload, is the very defect it warns against. `payload_lint_test.go` (T-099) now enforces
   the mechanical part of this paragraph: a ticket-lookup shape, a repo-only path, and the
   first-person and invisible-evidence phrasings all fail `just test` before they reach review.
-  But the test cannot judge what a sentence *means* — it can only match one of its four rules — so
+  It also rejects one shape this paragraph does not list, an agent host's own review command name
+  (T-137): a foreign project may run another host.
+  But the test cannot judge what a sentence *means* — it can only match one of its five rules — so
   this paragraph stays the authority for the judgement call the test cannot make.
 - **Cite `tickets/NOTES.md` by heading, never by line number** — `NOTES.md § "Rejected outright, so
   they are not re-proposed"`, not `NOTES.md:869-874`. That file is append-only, so line-pinned refs

@@ -251,9 +251,10 @@ session, and record which happened either way — independent, delegated, or a c
 none is available; and, under `layout = "in-tree"`, resolve the ticket from the base branch and
 run `pickle doctor` (the protocol's step 0a) before auditing. In short:
 
-1. The ticket must be in `4-in-review/`. Audit implementation, quality, consistency, and docs
-   (running the child's configured commands); classify each finding **blocking** (→
-   `5-rework/`, scoped re-review of the findings *and the diff that fixed them*) vs
+1. The ticket must be in `4-in-review/`. Audit implementation, correctness (the host's
+   code-review tool if it has one, else a hunt over named angles, each bug reproduced or
+   traced), quality, consistency, and docs (running the child's configured commands); classify
+   each finding **blocking** (→ `5-rework/`, scoped re-review of the findings *and the diff that fixed them*) vs
    **non-blocking** (→ one of the four
    dispositions in the rules §5, whose default is to note and close; the original proceeds to
    `6-done/`), and give every finding — blocking ones included — a **class** from the closed

@@ -13,6 +13,15 @@ may change in any release.
 
 ## [Unreleased]
 
+### Changed
+
+- **A brine review now hunts for correctness bugs** (T-137). Its quality audit runs the agent
+  host's own code-review tool on the branch diff when there is one, re-checking each finding
+  against the code, and otherwise hunts over eight named angles, split between up to 3
+  sub-agents for a `medium` ticket and up to 5 for a `high` one. A `correctness` finding
+  carries a reproduction, or an `unreproduced:` reason with the traced code path. The scoped
+  re-review runs the same hunt over its fix diff.
+
 ## [1.1.0] - 2026-10-01
 
 ### Added

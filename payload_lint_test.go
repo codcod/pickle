@@ -23,7 +23,7 @@ import (
 )
 
 // payloadLintRule is one mechanical check standing in for a piece of
-// AGENTS.md's foreign-workspace-test judgement. Four ship, all of them
+// AGENTS.md's foreign-workspace-test judgement. Five ship, all of them
 // failing (never warning) — a regression guard that degrades to advisory is
 // the very hand sweep this file exists to replace.
 type payloadLintRule struct {
@@ -115,7 +115,7 @@ func isEscapeHatched(line string) bool {
 	return false
 }
 
-// payloadLintRules returns the four checks, freshly built per call so tests
+// payloadLintRules returns the five checks, freshly built per call so tests
 // that only want a subset (or want to add a scratch escapeHatch entry) never
 // share mutable state with each other.
 func payloadLintRules() []payloadLintRule {
@@ -170,7 +170,7 @@ func payloadLintRules() []payloadLintRule {
 		},
 		{
 			name: "invisible-evidence",
-			// The fuzziest of the four, kept deliberately narrow (decision
+			// The fuzziest of the five, kept deliberately narrow (decision
 			// 8): a short keyword list plus one shape (a bare count next to
 			// an evidence noun), grown only when a real escape happens, never
 			// broadened by guessing. This is the honest 80%, not a proof —
@@ -180,6 +180,19 @@ func payloadLintRules() []payloadLintRule {
 			why: "a definite-article appeal to evidence the reader does not have (\"the " +
 				"pre-registered criterion\", \"the corpus\", \"the 13 variants\"): whose? State " +
 				"the claim so it stands on its own, or drop it.",
+		},
+		{
+			name: "host-command",
+			// One agent host's own slash command (T-137). The literal only, not
+			// "any slash command": a generic pattern would flag agents/pi/,
+			// whose extensions ship only to pi and name pi's own commands
+			// (/login, /reload, /docs-readability) legitimately. The same
+			// lookbehind-free leading boundary as repo-only-path, and no fence
+			// or backtick exemption — the name is wrong in a code span too.
+			pattern: regexp.MustCompile(`(^|[^\w./-])/code-review\b`),
+			why: "a command one agent host ships; a project reading this payload may run another " +
+				"host, or none. Describe the tool by what it does (\"a code-review tool or command " +
+				"the host provides\") instead of naming it.",
 		},
 	}
 }
@@ -273,8 +286,8 @@ func TestPayloadSpeaksToAForeignReader(t *testing.T) {
 		return
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "payload lint found %d line(s) that speak to the reader as if the reader "+
-		"were standing in pickle's own repo:\n\n", len(findings))
+	fmt.Fprintf(&b, "payload lint found %d line(s) that assume a context a foreign reader "+
+		"does not share (pickle's own repo, or one agent host):\n\n", len(findings))
 	for _, f := range findings {
 		b.WriteString(f.String())
 		b.WriteString("\n\n")
@@ -323,7 +336,8 @@ func TestPayloadLintRulesCatchTheEscapesTheySawInReview(t *testing.T) {
 // than no check. Every line here is a real shape drawn from the live payload
 // today (SKILL.md's (T-083) tag, tickets-README.md's grammar examples, the
 // installed TEMPLATE.md path, an ordinary tickets/ path, and the metasyntactic
-// placeholder id) and must produce zero findings across all four rules.
+// placeholder id, and the generic wording for a host review tool) and must
+// produce zero findings across all five rules.
 func TestPayloadLintRulesLeaveLegitimateShapesAlone(t *testing.T) {
 	rules := payloadLintRules()
 	lines := []string{
@@ -334,6 +348,8 @@ func TestPayloadLintRulesLeaveLegitimateShapesAlone(t *testing.T) {
 		"T-NNN",
 		"resources/TEMPLATE.md",
 		"tickets/README.md",
+		"resources/review-protocol.md",
+		"provides a code-review tool or command that audits a diff for",
 	}
 	for _, line := range lines {
 		t.Run(line, func(t *testing.T) {
@@ -443,4 +459,25 @@ func TestPayloadLintRule3RepoOnlyPaths(t *testing.T) {
 			t.Fatalf("expected %q to pass, got %+v", line, findings)
 		}
 	})
+}
+
+// TestPayloadLintRuleHostCommand exercises the host-command rule: a host's own
+// review command is flagged wherever it sits, code spans included, while the
+// skill's own review-protocol path is not.
+func TestPayloadLintRuleHostCommand(t *testing.T) {
+	rule := payloadLintRuleNamed(t, "host-command")
+	for _, line := range []string{
+		"run /code-review on the branch diff",
+		"run `/code-review high` on the PR",
+		"```\n/code-review\n```", // no fence exemption either
+	} {
+		if findings := lintFile("s.md", line, []payloadLintRule{rule}); len(findings) == 0 {
+			t.Errorf("expected %q to be flagged", line)
+		}
+	}
+	for _, line := range []string{"resources/review-protocol.md", "a code-review tool"} {
+		if findings := lintFile("s.md", line, []payloadLintRule{rule}); len(findings) != 0 {
+			t.Errorf("expected %q to pass, got %+v", line, findings)
+		}
+	}
 }

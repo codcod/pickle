@@ -76,6 +76,18 @@ Before a READY ticket enters development, three checks run:
 
 == Reviews: severity, then disposition
 
+Before it grades anything, a review hunts for correctness bugs: behaviour that
+is wrong on a path the acceptance test does not exercise. If your agent host
+has its own code-review tool, the review runs it on the branch diff and
+re-checks each finding against the code, and still checks security itself when
+the tool does not. Otherwise the review hunts over eight
+named angles, among them error and shutdown paths, concurrency, boundary inputs
+and resource lifetimes. It splits them between up to 3 sub-agents for a
+`medium` ticket and up to 5 for a `high` one. A `correctness` finding carries a
+reproduction (a failing test, a script, a command transcript), or says why one
+was impractical and traces the code path instead. The skill's
+`resources/review-protocol.md` step 3 has the full procedure.
+
 A review gives every finding a *severity*:
 
 * *Blocking* — breaks the golden path, ships wrong behaviour, or contradicts a
