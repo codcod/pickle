@@ -112,8 +112,9 @@ Ticket and board bookkeeping (the retro target and script under `tickets/`) goes
    (build and test outputs of the configured commands excepted; scratch files go in a scratch
    directory), and asks for findings rows plus the checklist lines for what it ran. The parent
    does classification, dispositions, moves, commits and step 9, as step 0 already says, and
-   **stays on the feature branch until every delegated reviewer has returned** — no bookkeeping
-   commit on `<base>` while a reviewer audits the same tree. The parent records each delegated
+   **neither switches branches nor commits while any delegated reviewer is running** — no
+   bookkeeping commit on `<base>` while a reviewer audits the same tree. (The parent is already on
+   `<base>` when it spawns, having committed the `in-review` move there.) The parent records each delegated
    finding it discards on the checklist with a one-line reason.
 5. **The chain always stops at step 9's approval presentation.** Publishing and merging are
    unchanged.
@@ -269,7 +270,33 @@ chains:
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Implementer notes — live chains (2026-10-01)
+
+Throwaway in-tree installs (`pickle-test`, branch build), a one-task shell project, top-level
+headless `claude -p --output-format stream-json` sessions (Opus 5.5) with a scoped tool allowlist
+the user approved. Each stream was parsed for Agent prompts and for sub-agent Bash calls matching
+`pickle ticket move|git commit|git checkout|git switch`.
+
+| run | chain | (a) spawn prompt = template | (b) sub-agent moves/commits/switches | (c) end state |
+|---|---|---|---|---|
+| 1 | implement, correct plan | yes, plus one appended line of its own ("Repo root: …") | 0 (11 Bash calls) | `6-done/`, stopped at step 9 |
+| 2 | rework, seeded F1 on a buggy branch | **no**: free-form prompt with the author's framing ("is F1 actually fixed — `triple 4` must print 12") | 0 (4) | `6-done/`, stopped at step 9 |
+| 1b | implement, after the fix below | yes, verbatim; `hunt: angle 7 only` (host tool ran) | 0 (9) | `6-done/`, stopped at step 9 |
+| 2b | rework, after the fix below | yes, verbatim; `hunt: one pass` (host tool cannot take the fix range) | 0 (6) | `6-done/`, stopped at step 9 |
+
+Run 2's parent read `procedure-rework.md`, then grepped `review-protocol.md` and read from step 5
+on, never seeing step 0's *Spawn prompt*: "delegated per step 0" did not send it there. Fixed on
+the branch: `SKILL.md` implement step 9 and rework step 6 now say to read the *Spawn prompt* in
+step 0 and copy it verbatim, filling only its `<…>` fields and adding nothing. Run 2 also showed
+decision 4's "stays on the feature branch until every reviewer returns" cannot hold, since the
+parent commits the `in-review` move on `<base>` before it spawns; reworded to "neither switches
+branches nor commits while a reviewer runs" (plan amended, History line). The two-round cap's stop
+path was not exercised (both rework chains closed in one round), as the plan's either-end-state
+rule allows.
+
+Also seen: the payload lint's "our own" rule (`payload_lint_test.go`, first-person and
+invisible-evidence patterns) has no leading word boundary, so it flags "your own"; the branch
+rephrased around it ("add nothing to it"). Not fixed here.
 
 ## History
 
@@ -280,3 +307,5 @@ chains:
 - 2026-10-01 — plan amended inline: spawn template gains closed-set `hunt:` field and follows step 3's *Who runs what* (G1); Task 1 counts concluded reviews (G2), is run by the user (G3), lands on main before the branch (G4), guard keyed on the role clause (G5); cap grep checks each file (G6); live chain driven headless as two chains (G7); TEMPLATE Finish step 6 rewritten whole (G8); session-workflow gains a rework row and tier update (G9); parent records discards, step 5 at heavier tier (G10); build outputs excepted, parent stays on branch until reviewers return (G11); sweep covers "handing back" (G12)
 - 2026-10-01 — READY → IN DEVELOPMENT: picked up; applicability gate clean (12 non-blocking, G1–G11 + G12 grep fixed inline)
 - 2026-10-01 — Task 1 baseline: 72 reviews within 2h of a hand-off, 60 relaunched (83%), 11 chained, guard 0; 3 cycles validated by hand; script run by the user; premise check held (60 ≥ 8); target recorded in tickets/retros/2026-09-29-self-improvement-loop.md
+- 2026-10-01 — plan amended inline: decision 4's parent rule is "neither switches branches nor commits while a delegated reviewer runs" — the live chain showed the parent is on `<base>` (having committed the in-review move) when it spawns, so "stays on the feature branch" could not hold
+- 2026-10-01 — IN DEVELOPMENT → IN REVIEW: acceptance green; live chains: template verbatim after fix, 0 sub-agent moves/commits/switches, stopped at step 9
