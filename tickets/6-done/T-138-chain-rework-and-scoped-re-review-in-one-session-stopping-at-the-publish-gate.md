@@ -341,3 +341,4 @@ cost: estimated M, actual M
 - 2026-10-01 — plan amended inline: decision 4's parent rule is "neither switches branches nor commits while a delegated reviewer runs" — the live chain showed the parent is on `<base>` (having committed the in-review move) when it spawns, so "stays on the feature branch" could not hold
 - 2026-10-01 — IN DEVELOPMENT → IN REVIEW: acceptance green; live chains: template verbatim after fix, 0 sub-agent moves/commits/switches, stopped at step 9
 - 2026-10-01 — IN REVIEW → DONE: review approved: 0 blocking; 5 fixed inline (F1–F5), 2 noted (F6, F7)
+- 2026-10-01 — published: user approved; main pushed, branch pushed (2 commits, history kept), PR #99 opened; awaiting human merge
