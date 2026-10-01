@@ -158,6 +158,10 @@ the user whether to drop or re-grade (T-139's route).
   ```
 
   and one sentence on why nothing else goes in (decision 3's rationale, without naming a ticket).
+- **Align the role clause with step 3's ownership rule as T-137's rework (F1) settles it**: the
+  template's "steps 1–4a" must match who runs step 3 (the host tool stays with the top-level
+  session; without fan-out the delegated reviewer runs the hunt and the rest of the quality audit).
+  Re-read step 0 and step 3 on `main` before writing the template.
 - Reconcile the *Trigger* paragraph's "Hand it the ticket as step 1 reads it, the branch to
   audit, and the child's configured commands" with the template (the template carries the path
   and branch; the reviewer reads commands from `AGENTS.md`).
@@ -238,3 +242,4 @@ stopped at step 9 with the ticket in `6-done/`.
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: ~16 rework/validate cycles where the human only typed the next trigger in a fresh session
 - 2026-10-01 — TO DO → READY: plan complete; fixed spawn template, 2-round cap, automatic chaining, host fallback
+- 2026-10-01 — impact note from T-137 review: Task 2's spawn template must follow step 3's ownership rule as T-137 rework F1 settles it (note added under Task 2)

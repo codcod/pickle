@@ -20,11 +20,10 @@ Last updated: 2026-10-01
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-137 | review hunts for correctness bugs: a multi-angle bug hunt with reproduction before the findings table | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-10-01
 
 | id | title | open findings |
 |---|---|---|
+| T-137 | review hunts for correctness bugs: a multi-angle bug hunt with reproduction before the findings table | 4 blocking (F1–F4: step 3 ownership, security on the host-tool path, re-review fix range, plan-mandated bugs); 4 fixed … |
 
 ## READY (impact order, per child)
 

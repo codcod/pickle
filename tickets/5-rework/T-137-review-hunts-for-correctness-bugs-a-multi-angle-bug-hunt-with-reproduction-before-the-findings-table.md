@@ -307,7 +307,52 @@ re-runs the commands above verbatim and reads the two tables; re-running a repla
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+Reviewed 2026-10-01 on `feat/T-137-review-correctness-hunt` @ `73ed673` (rebased onto `main` @
+`1d61a44`), under the step 3 this branch ships.
+
+- [x] Reviewer independence settled (step 0): **delegated**. This session wrote the branch, so
+  steps 2, 4 and 4a went to a fresh, adversarial sub-agent (findings D1–D7). Step 3 took the host
+  tool path and was run by the top-level session.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned that the branch had the ticket in
+  `3-in-development`; rebased onto `main`, re-run clean.
+- [x] Implementation audit (steps 1, 2): all of Tasks 0–7 and decisions 1–10 met. Decision 6 is met
+  but under-specified (F1). The acceptance test re-ran verbatim and passed; `just build`, `just
+  test`, `just lint` and `just docs-check` passed (lint skipped actionlint and shellcheck, which are
+  not installed). Task 6 replay: pass bar met on both repos (`tickets/retros/2026-10-01-t137-replay-*.md`).
+- [x] Correctness hunt (step 3): **host tool** (`code-review high` on `main...HEAD`), no sub-agents.
+  9 findings (H1–H9); 1 discarded on re-verification (H5: range grades are collapsed at refinement,
+  `tickets-README.md` §3), the other 8 confirmed and merged with the delegated findings below. No
+  `correctness` row needs a reproduction: the branch is protocol prose plus one lint rule, whose
+  behaviour the test suite exercises.
+- [x] Consistency audit (step 4): the delegated sweep of "quality audit", "step 3" and "steps 2
+  through 4a" across the payload, docs and `pickle.toml` found nothing stale beyond F1–F4 and D3–D6.
+- [x] Documentation audit (step 4a): `lifecycle.adoc` and `CHANGELOG.md` cover the change; whole-tree
+  sweep clean; docs build clean.
+- [x] Docs-readability pass (step 4b): conscious skip. No docs-readability reviewer is configured
+  in this Claude Code session.
+- [x] Findings recorded (step 5)
+- [x] Ticket moved to `5-rework/` (step 6a)
+- [x] Other references and governing docs (step 7): the root `AGENTS.md` lint paragraph reconciled in
+  the branch (F9).
+- [x] Impact sweep (step 8): T-138 Task 2's spawn template must take step 3's ownership from F1's
+  fix; patched with a note in T-138 (History line there).
+- [ ] Summary + commit/MR for approval (after the re-review)
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | spec-unclear | — | Ownership of step 3's parts is unstated when step 0 delegates. Step 0 delegates "steps 2 through 4a", while step 3 gives the host tool to the top-level session and the angles to angle reviewers, and says "steps 2, 4 and 4a go to one delegated reviewer". Three parts have no owner: the `low` one-pass hunt, the scoped re-review's one pass, and the rest of the quality audit. The checklist line now covers only the hunt, so the remaining quality checks have no line either. Read literally, an author-reviewer runs the one-pass hunt on its own diff, which is the self-review step 0 forbids. That is the common path once rework and re-review chain in one session (T-138). (H1, H3, H4, D1) | `review-protocol.md:76-82` vs `:213-216` and `:151-152`; checklist `:497` | Say once in step 3: without fan-out, step 3 (hunt and rest of the quality audit) goes to the step 0 reviewer; with fan-out, the rest of the quality audit goes to the reviewer of steps 2, 4 and 4a. Narrow step 0's "steps 2 through 4a" to point at it. The checklist line names the quality audit as well as the hunt. |
+| F2 | blocking | correctness | — | The host tool path drops the security audit. The old step 3 bullet "Error handling, edge cases, security (input validation, secret handling, injection)" is gone, and the tool replaces the angle hunt, including angle 7. A host whose tool reviews for correctness only (some hosts ship a separate security review) leaves no step that looks for an injectable input or a logged secret. Before this branch, every review checked them. (H2) | `review-protocol.md:182-183` ("does not run alongside it"), `:225-230` (the rest of the quality audit has no security bullet); `git show main:skill/resources/review-protocol.md` step 3 | Keep angle 7 in the rest of the quality audit, run on either path, or require it whenever the host tool does not cover security. |
+| F3 | blocking | spec-unclear | — | A scoped re-review is told to run "the host tool" over this round's fix diff only. The tool path is written for `<base>...<branch>`, and host tools commonly take a branch, a PR or the working tree, not a commit or a two-dot range. The text gives no fallback, so a reviewer either re-audits the whole branch (breaking "The bound") or skips the hunt without recording why. (H8, D7) | `review-protocol.md:151-152` vs `:181-182` | If the tool cannot take the fix range, run the angle hunt over it as one pass, and record which path ran. |
+| F4 | blocking | spec-unclear | — | Step 3 does not say how to class a bug that a confirmed decision mandates. Both replays found such bugs and deferred to the plan: smppai F3 (R3, ack-and-drop) was classed `design` because Task 5 asked for it; porth A2 and C1 note "the defect is in the plan" and "the gate accepted it". This is how SMP-007's R1–R3 shipped, so leaving it unaddressed defeats this ticket's Outcome. Angle 8 (conformance) pushes the reviewer toward deferring. (D2) | `tickets/retros/2026-10-01-t137-replay-smppai.md` F3; `…-replay-porth.md` A2, C1 | One line under the angles: wrong behaviour stays `correctness` and is classed on its merits even when a decision mandates it; cite `<ID> decision <N>`, and when the decision is the cause, say so (the reserved `plan-wrong` class). |
+| F5 | non-blocking | design | noted | Angle 1 (caller contracts) overlaps step 4's "caller ↔ callee contract drift", and angle 8 overlaps step 2's "confirmed decisions honoured". Under fan-out, different agents run each copy. The overlap is deliberate: step 3 reads for behaviour, steps 2 and 4 for presence and consistency. (D3, and the gate's G11) | `review-protocol.md:189-190`, `:203-204` vs step 2 and `:236` | Revisit if reviews record the same finding twice. |
+| F6 | non-blocking | spec-unclear | fixed inline | The `SKILL.md` summary said "each bug reproduced", dropping the `unreproduced:` alternative of decision 7. The edited lines in `SKILL.md` and `tickets-README.md` ran to 116 and 123 columns against the files' ~100. (D4) | `skill/SKILL.md:255-256`; `tickets-README.md:400` | Fixed in `709aa11`: "reproduced or traced", both rewrapped. |
+| F7 | non-blocking | stale-xref | fixed inline | The host-command rule's comment said a generic pattern would match `resources/review-protocol.md`. It would not, since that slash follows a word character. The real reason for the literal is that a generic pattern flags 11 legitimate lines in `agents/pi/`, which ship only to pi and name pi's commands. (H7) | generic `(^|[^\w./-])/[a-z][\w-]*\b` over the payload: 11 hits, all `agents/pi/extensions/*.ts` | Fixed in `709aa11`. |
+| F8 | non-blocking | test-gap | fixed inline | `TestPayloadLintRulesLeaveLegitimateShapesAlone` claims every line is drawn from the live payload, but the new line was invented wording. `TestPayloadLintRuleHostCommand` checked a code span but not a fenced block, so a fence exemption could be added unnoticed. (H9, D6) | `payload_lint_test.go:351`, `:463-481` | Fixed in `709aa11`: pins "provides a code-review tool or command that audits a diff for", adds a fenced case. |
+| F9 | non-blocking | stale-xref | fixed inline | `AGENTS.md` said the lint enforces "the mechanical part of this paragraph" and listed the host command name among it, but the paragraph's shapes do not include one. The lint's failure header ("as if the reader were standing in pickle's own repo") misdescribed a host-command hit. (D5) | `AGENTS.md:53-56`; `payload_lint_test.go:288-289` | Fixed in `709aa11`: the shape is named as one the paragraph does not list, and the header is rule-neutral. |
+| F10 | non-blocking | design | noted | The host-command rule matches only the literal `/code-review`; `/security-review`, `/review` and path-shaped mentions pass. Deliberate (decision 2, G1): a generic pattern flags `agents/pi/` (F7). (H6) | `payload_lint_test.go:191` | Add another literal when one reaches the payload. |
+
+Disposition summary: 4 blocking (F1–F4 → rework); 4 fixed inline (F6–F9, commit `709aa11`), 2 noted (F5, F10), 0 folded, 0 new tickets. Host tool: 9 findings, 1 discarded on re-verification.
+cost: estimated M, actual M
 
 ## History
 
@@ -319,3 +364,4 @@ re-runs the commands above verbatim and reads the two tables; re-running a repla
 - 2026-10-01 — Task 1 baseline: 34 code-review runs after validate, regex floor 26% (9/34), 10 of 11 classifiable runs had ≥ 1 bug; premise check settled as holding by the user (floor below 30%, direct readings far above); target recorded in tickets/retros/2026-09-29-self-improvement-loop.md
 - 2026-10-01 — Task 6 replay: pass bar met on both. smppai found R3 (as design, deferring to the plan), R5, R6; porth found POR-013 items 1, 3 (one row blocking) and 4, plus PR 7 finding 8; tables in tickets/retros/2026-10-01-t137-replay-*.md
 - 2026-10-01 — IN DEVELOPMENT → IN REVIEW: acceptance green; replay pass bar met on smppai and porth
+- 2026-10-01 — IN REVIEW → REWORK: 4 blocking (F1–F4: step 3 ownership, security on the host-tool path, re-review fix range, plan-mandated bugs); 4 fixed inline, 2 noted
