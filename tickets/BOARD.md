@@ -38,6 +38,7 @@ Last updated: 2026-10-01
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-137 | review hunts for correctness bugs: a multi-angle bug hunt with reproduction before the findings table | high | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -45,7 +46,6 @@ Last updated: 2026-10-01
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-137 | review hunts for correctness bugs: a multi-angle bug hunt with reproduction before the findings table | high | medium | M | [] |  |
 | T-138 | chain rework and scoped re-review in one session, stopping at the publish gate | high | medium | M | [T-137] |  |
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
