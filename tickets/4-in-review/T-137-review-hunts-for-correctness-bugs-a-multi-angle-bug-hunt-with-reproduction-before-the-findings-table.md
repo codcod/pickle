@@ -354,6 +354,30 @@ Reviewed 2026-10-01 on `feat/T-137-review-correctness-hunt` @ `73ed673` (rebased
 Disposition summary: 4 blocking (F1–F4 → rework); 4 fixed inline (F6–F9, commit `709aa11`), 2 noted (F5, F10), 0 folded, 0 new tickets. Host tool: 9 findings, 1 discarded on re-verification.
 cost: estimated M, actual M
 
+### Rework fix record — round 1 (commit 7db1401)
+
+Branch rebased onto `main` @ `0d36687` first (`pickle doctor` stale-ticket warning); tip before the
+fix `62d4051`.
+
+- **F1** — step 3 gains *Who runs what*: the top-level session runs the host tool and spawns
+  fanned-out angle reviewers; everything else in step 3 (a one-pass hunt for `low`, a scoped
+  re-review or a host that cannot spawn, angle 7 on the tool path, the rest of the quality audit)
+  goes to whoever runs steps 2, 4 and 4a. Step 0's *Trigger* names the two exceptions and points
+  there. The checklist line now reads `Correctness hunt (step 3), with the rest of its quality
+  audit:` and asks who ran it (the acceptance grep for `Correctness hunt (step 3)` still matches).
+- **F2** — the host tool path keeps angle 7 (security) whenever the tool does not review for
+  security; the checklist asks whether it ran separately; `lifecycle.adoc` says so in one clause.
+- **F3** — step 1's *The hunt*: the host tool only if it can take this round's range, otherwise the
+  angle hunt as one pass; record which ran.
+- **F4** — new paragraph after the angles, *A decision does not excuse a bug*: plan-mandated wrong
+  behaviour stays `correctness`, severity on the behaviour, decision cited as `<ID> decision <N>`
+  so the rework knows it needs the user's sign-off; not `plan-wrong`, because the class records
+  what ships. (The finding's suggestion offered `plan-wrong` for this case; one class per row, so I
+  picked `correctness` to avoid two classes competing for the same bug.)
+
+Acceptance test re-run verbatim: green. `just build`, `just test`, `just lint` (actionlint and
+shellcheck not installed, skipped) and `just docs-check` clean.
+
 ## History
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: a separate code-review pass was run after brine validate on 31 PRs, typically returning 7–10 findings, only 2 with no correctness bug
@@ -365,3 +389,4 @@ cost: estimated M, actual M
 - 2026-10-01 — Task 6 replay: pass bar met on both. smppai found R3 (as design, deferring to the plan), R5, R6; porth found POR-013 items 1, 3 (one row blocking) and 4, plus PR 7 finding 8; tables in tickets/retros/2026-10-01-t137-replay-*.md
 - 2026-10-01 — IN DEVELOPMENT → IN REVIEW: acceptance green; replay pass bar met on smppai and porth
 - 2026-10-01 — IN REVIEW → REWORK: 4 blocking (F1–F4: step 3 ownership, security on the host-tool path, re-review fix range, plan-mandated bugs); 4 fixed inline, 2 noted
+- 2026-10-01 — REWORK → IN REVIEW: findings fixed
