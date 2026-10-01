@@ -298,6 +298,37 @@ Also seen: the payload lint's "our own" rule (`payload_lint_test.go`, first-pers
 invisible-evidence patterns) has no leading word boundary, so it flags "your own"; the branch
 rephrased around it ("add nothing to it"). Not fixed here.
 
+### Review — 2026-10-01
+
+Reviewed on `feat/T-138-chain-rework-review` @ `6cc4848` against `main` @ `026c166`; inline fixes
+in `dc27146`.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | spec-unclear | fixed inline | Step 0 *Boundary* forbids the delegated reviewer to switch branches but never says the orchestrator must spawn it with the feature branch checked out; a parent left on `<base>` after its bookkeeping commit would have the reviewer audit and test `<base>` | `review-protocol.md` § 0 *Boundary*; decision 4 says "the parent is already on `<base>` when it spawns"; live streams `chain1b`/`chain2b` show the parent did check out the branch (step 0a) before each spawn, so no wrong audit was observed | Fixed in `dc27146`: "spawns it with the ticket's feature branch already checked out (step 0a's checkout)" |
+| F2 | non-blocking | spec-unclear | fixed inline | Spawn prompt nests one placeholder in another, `<path, resolved from <base>>`, while the instruction is to fill only the `<…>` fields | host code-review tool; live fills read `tickets/4-in-review/T-001-….md (resolved from main)`, correct both times, so the truncation the tool predicted did not reproduce | Fixed in `dc27146`: `<path, resolved from the base branch>` |
+| F3 | non-blocking | stale-xref | fixed inline | The getting-started tour still says the implement session "hands back" and has the user type `review ticket T-1`, which this branch made false on a host with sub-agents | `docs/user-manual/your-first-project.adoc` § 5–6 (found in the 4a whole-tree sweep) | Fixed in `dc27146`: hand-back is now the no-sub-agent case; § 6 says when the trigger is still typed |
+| F4 | non-blocking | spec-unclear | fixed inline | Session table's *Rework* row says "New session", but a rework reached from an implement chain runs in that same session (`SKILL.md` implement step 9) | `agent-session-workflow.adoc` *Rework a ticket* row | Fixed in `dc27146`: "New session, or the same one when a review chained into it" |
+| F5 | non-blocking | design | fixed inline | `procedure-rework.md` step 5 left a 153-column unwrapped line after the edit | `awk 'length>100'` on the file | Reflowed in `dc27146` |
+| F6 | non-blocking | stale-xref | noted | Decision 4's parenthetical and the 2026-10-01 "plan amended inline" History line say the parent is on `<base>` when it spawns; the live streams show it on the feature branch at each spawn (it returns to `<base>` only after the reviewer finishes) | `chain2b`: `git checkout -q main && … commit … && git checkout -q feat/T-001-triple && pickle doctor`, then the Agent call | Plan prose and append-only History; the shipped payload (F1) now states the correct order |
+| F7 | non-blocking | design | noted | The payload lint's `our own\b` pattern has no leading word boundary, so it also flags "your own" (implementer's observation, confirmed) | `payload_lint_test.go:139`, `:179` | Pre-existing, not this branch; noted for whoever next touches the lint |
+
+Disposition summary: 5 fixed inline (F1–F5), 2 noted (F6, F7), 0 folded, 0 new tickets.
+cost: estimated M, actual M
+
+- [x] Reviewer independence settled (step 0): **independent**. The reviewing session started from a cleared context with no memory of writing the branch, so it ran the audits itself; nothing delegated, no discards
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` on the feature branch, 0 errors, 0 warnings
+- [x] Implementation audit (steps 1, 2): acceptance test re-run verbatim, all green (build, test, lint, docs-check; template grep; cap in both files; no "handed back"/"Hand back to the user"; `review-relaunches` on `main`). Tasks 1–5 met: target and baseline in `tickets/retros/2026-09-29-self-improvement-loop.md` with script `2026-10-01-review-relaunches.py` on `main`; spawn template, *Boundary*, *Trigger* and *Session and tier* rewritten (`review-protocol.md` § 0); implement step 9 (`SKILL.md`); rework step 6 (`procedure-rework.md`); Task 5 wording (`tickets-README.md` §2, TEMPLATE Finish 6, rework step 5). Decisions 1–8 hold in the payload. Task 5's sweep: the remaining hits are the no-sub-agent fallback or unrelated. Live chains: implementer's table above, re-read from the `chain1b`/`chain2b` stream files
+- [x] Correctness hunt (step 3): **host tool path**. The top-level session ran `/code-review low main...feat/T-138-chain-rework-review`, which reported 1 finding, kept as F2 and reclassed from correctness to spec-unclear after it failed to reproduce; 0 discarded. The tool does not review for security, so the orchestrator ran angle 7 separately: the payload is prose, every spawn field comes from a closed set, and there is no trust boundary, so nothing was found. No sub-agents. Quality: tests unchanged (prose-only diff; `payload_lint_test.go` and `TestDocs` green)
+- [x] Consistency audit (step 4): `grep -rn -i "hand back|handed back|hands back|fresh session|new session"` over `skill/`, `docs/`, `README.md`, `AGENTS.md`, `CLAUDE.md` turned up F3 and F4; `releasing.adoc` hits are unrelated (release steps)
+- [x] Documentation audit (step 4a): coverage met (session-workflow table, lifecycle, CHANGELOG `[Unreleased]`); the whole-tree sweep found F3; `just docs-check` clean before and after `dc27146`
+- [x] Docs-readability pass (step 4b): skipped, because no docs-readability reviewer is configured on this host (no `opencode`); 0 suggestions, 0 discarded
+- [x] Findings recorded with severity, class and disposition; summary and cost lines present (step 5)
+- [x] Ticket moved to `6-done/`, History appended (step 6)
+- [x] Other references (step 7): no ticket or doc cites T-138 outside the retro report, which is already current. Governing documents (`AGENTS.md`, `CLAUDE.md`, `NOTES.md`) make no hand-back claim, so there is nothing to reconcile
+- [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` depends on or cites T-138
+- [ ] Summary, commit messages and MR attributes presented for approval; in-tree base check before any push; bookkeeping committed; next ticket suggested (step 9)
+
 ## History
 
 - 2026-09-29 — created (TO DO). source: self-host: session review 2026-09-21..29: ~16 rework/validate cycles where the human only typed the next trigger in a fresh session
@@ -309,3 +340,4 @@ rephrased around it ("add nothing to it"). Not fixed here.
 - 2026-10-01 — Task 1 baseline: 72 reviews within 2h of a hand-off, 60 relaunched (83%), 11 chained, guard 0; 3 cycles validated by hand; script run by the user; premise check held (60 ≥ 8); target recorded in tickets/retros/2026-09-29-self-improvement-loop.md
 - 2026-10-01 — plan amended inline: decision 4's parent rule is "neither switches branches nor commits while a delegated reviewer runs" — the live chain showed the parent is on `<base>` (having committed the in-review move) when it spawns, so "stays on the feature branch" could not hold
 - 2026-10-01 — IN DEVELOPMENT → IN REVIEW: acceptance green; live chains: template verbatim after fix, 0 sub-agent moves/commits/switches, stopped at step 9
+- 2026-10-01 — IN REVIEW → DONE: review approved: 0 blocking; 5 fixed inline (F1–F5), 2 noted (F6, F7)
