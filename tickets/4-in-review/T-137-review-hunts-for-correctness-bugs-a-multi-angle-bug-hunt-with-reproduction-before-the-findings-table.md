@@ -354,10 +354,10 @@ Reviewed 2026-10-01 on `feat/T-137-review-correctness-hunt` @ `73ed673` (rebased
 Disposition summary: 4 blocking (F1–F4 → rework); 4 fixed inline (F6–F9, commit `709aa11`), 2 noted (F5, F10), 0 folded, 0 new tickets. Host tool: 9 findings, 1 discarded on re-verification.
 cost: estimated M, actual M
 
-### Rework fix record — round 1 (commit 7db1401)
+### Rework fix record — round 1 (commit 7234ff3)
 
-Branch rebased onto `main` @ `0d36687` first (`pickle doctor` stale-ticket warning); tip before the
-fix `62d4051`.
+Branch rebased onto `main` @ `c9a3bba` (`pickle doctor` stale-ticket warning); tip before the
+fix `e4f4c46`.
 
 - **F1** — step 3 gains *Who runs what*: the top-level session runs the host tool and spawns
   fanned-out angle reviewers; everything else in step 3 (a one-pass hunt for `low`, a scoped
