@@ -45,7 +45,7 @@ gate (tickets/README.md §4) before the ticket moves to `2-ready/`. Structure:>
 
 ### 0. Feature branch (mandatory)
 
-Before any change, create a feature branch **inside the target child-project's repo**
+Before any change, create a feature branch inside the target child-project's repo
 (the `project:` frontmatter names it; its path is in pickle.toml):
 
 ```
@@ -72,8 +72,8 @@ merge request — **merging is always the human's.**
 > (`feat/`, `T`); the commit policy stated is also a default. The project's `AGENTS.md` /
 > `pickle.toml` states what is actually configured — it wins on any disagreement.
 
-> If this ticket depends on an un-merged branch (in any child-project), **stop and tell the
-> human** rather than building on top of it.
+> If this ticket depends on an un-merged branch (in any child-project), stop and tell the
+> human rather than building on top of it.
 
 ### Prerequisite gate (hard)
 
@@ -115,8 +115,8 @@ non-empty body, so deleting it fails that check instead of satisfying it.>
 
 1. Acceptance test green; the child-project's build/validate commands clean.
 2. Docs updated and registered.
-3. Write a **summary** of everything done (files touched, decisions made, anything deferred).
-4. Suggest a **Conventional Commit message** for the human: `<type>(<scope>): <description>`
+3. Write a summary of everything done (files touched, decisions made, anything deferred).
+4. Suggest a Conventional Commit message for the human: `<type>(<scope>): <description>`
    (Conventional Commits; `<scope>` is optional — per spec, omit the parens entirely rather
    than filling them with a placeholder like `all` when the change is genuinely broad and
    has no single scope. `<scope>` must never be the ticket id itself; the ticket id is

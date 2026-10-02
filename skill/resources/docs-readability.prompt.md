@@ -18,7 +18,7 @@ Return a plain list, one row per suggestion, in this shape:
 
   file · anchor/section · current text · proposed text · why
 
-`current text` must be an exact, **verbatim** quote from the file — the same words and
+`current text` must be an exact, verbatim quote from the file — the same words and
 punctuation, in the same order — and long enough to locate unambiguously. Quote the words, not the
 layout: drop line breaks, indentation, and any per-line prefix the format adds (a blockquote marker
 or list bullet carried onto a wrapped line) so the quote reads as one continuous run of text. If

@@ -1,24 +1,24 @@
 ---
 name: brine
-description: Operate a ticket-based, board-driven feature flow (installed by the `pickle` CLI) across one or more connected child-projects. Use when asked to "make it a ticket", "refine ticket T-NNN" (make it ready), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses. One markdown ticket per feature; a ticket's status is the directory it lives in; each ticket targets one registered child-project via `project:` frontmatter; a generated BOARD.md is the live index (never hand-edited; prose goes in tickets/NOTES.md); reviews classify findings by severity (blocking vs non-blocking) and then disposition each non-blocking one, defaulting to note-and-close; publishing a child-project follows the project's configured commit policy (defaulting to explicit user approval).
+description: Operate the brine ticket flow installed by the `pickle` CLI — one markdown ticket per feature, its status the directory it sits in, a generated BOARD.md index. Use when asked to "make it a ticket" (or "file a ticket"), "refine ticket T-NNN" (or "make it ready"), "implement ticket T-NNN", "rework ticket T-NNN", "validate ticket T-NNN" (or "review ticket T-NNN"), "audit the board", or move a ticket between statuses.
 ---
 
 # Brine
 
-**Brine** is a lightweight, repo-native feature flow. Every change to a project flows through
-**one artifact: a ticket** — a markdown file whose **status is the directory it lives in**, that
-**targets one child-project** (`project:` frontmatter), carrying an append-only history. A
-**generated** `BOARD.md` is the live index — rendered from the ticket files, never edited by
+Brine is a lightweight, repo-native feature flow. Every change to a project flows through
+one artifact: a ticket — a markdown file whose status is the directory it lives in, that
+targets one child-project (`project:` frontmatter), carrying an append-only history. A
+generated `BOARD.md` is the live index — rendered from the ticket files, never edited by
 hand; hand-written planning notes live in `tickets/NOTES.md`.
 
-This flow is installed and operated with the **`pickle` CLI**: `pickle install` scaffolds it,
+This flow is installed and operated with the `pickle` CLI: `pickle install` scaffolds it,
 `pickle project add` registers connected child-projects, and `pickle ticket`/`pickle board`
 perform the deterministic mechanics (id allocation, atomic moves, invariant audit). This skill
 defines how an agent *operates* the flow — the judgement `pickle` deliberately does not
 automate.
 
-Bundled resources (this skill's own directory, embedded in and installed by `pickle`). **They
-are the single source of truth — do not copy them into projects.**
+Bundled resources (this skill's own directory, embedded in and installed by `pickle`). They
+are the single source of truth — do not copy them into projects.
 
 - `resources/tickets-README.md` — the authoritative rules (§0–§8); projects keep only a
   short pointer `tickets/README.md` that resolves `§N` references here
@@ -46,7 +46,7 @@ hand-written planning prose lives in `tickets/NOTES.md` (created by `pickle inst
 - **"Refine ticket T-NNN" / "make it ready"** → *Procedure: refine a ticket*.
 - **"Implement ticket T-NNN"** → *Procedure: implement a ticket*.
 - **"Rework ticket T-NNN"** → *Procedure: rework a ticket*.
-- **"Validate ticket T-NNN"** (or **"review ticket T-NNN"** — synonyms) → *Procedure:
+- **"Validate ticket T-NNN"** (or "review ticket T-NNN" — synonyms) → *Procedure:
   validate a ticket*.
 - **"Audit the board"** → *Procedure: audit the board*.
 - **"Compare with / look at / use <project> as a template"**, or a ticket citing a prefix no local
@@ -67,24 +67,24 @@ merges found and record nothing — bookkeeping never goes on a feature branch (
 ordered status directories (`1-to-do/` … `7-dropped/`), renders a fresh `tickets/BOARD.md`,
 scaffolds `tickets/NOTES.md`, writes the `tickets/README.md` pointer, installs this skill into
 `.agents/skills/brine/`, injects the `AGENTS.md` marker block, and writes `pickle.toml` —
-recording the **layout** there (`umbrella` by default, or `in-tree` with `--in-tree`; rules §0).
-Which coding agents it wires up is exactly the set `--agent` names (default `claude`) — **there
-is no autodetection**; naming `claude` is what adds the `.claude/skills/brine` symlink and
-`CLAUDE.md`. A plain `install` registers **no** child, and `pickle project add <name> <path>`
+recording the layout there (`umbrella` by default, or `in-tree` with `--in-tree`; rules §0).
+Which coding agents it wires up is exactly the set `--agent` names (default `claude`) — there
+is no autodetection; naming `claude` is what adds the `.claude/skills/brine` symlink and
+`CLAUDE.md`. A plain `install` registers no child, and `pickle project add <name> <path>`
 registers the first one and every one after it; `--path <dir>` registers that first child
-immediately, and `--in-tree` registers the sole child at `.`. Install scope is **per-project** —
+immediately, and `--in-tree` registers the sole child at `.`. Install scope is per-project —
 nothing is written to `~/`.
 
 ## Project configuration (in `pickle.toml` + the `AGENTS.md` marker block)
 
-The flow is generic; each project plugs in specifics. **Overarching** config: the commit
-policy and the optional overarching review addendum. **Per child-project** (`[[project]]` in
+The flow is generic; each project plugs in specifics. Overarching config: the commit
+policy and the optional overarching review addendum. Per child-project (`[[project]]` in
 `pickle.toml`): name + path, build/validate commands, branch & commit conventions, per-child
 WIP limits, and an optional per-child review addendum. Defaults:
 
 - **Build target** — every ticket targets exactly one registered child (`project:`
-  frontmatter); its requirements, tasks, paths, and acceptance tests describe **that child's
-  repo**.
+  frontmatter); its requirements, tasks, paths, and acceptance tests describe that child's
+  repo.
 - **Branch & commit** — `feat/T-NNN-<slug>` cut inside the target child's repo; Conventional
   Commits with the ticket id appended in brackets at the end of the subject, for child-project
   code. Ticket/board bookkeeping uses its own `board: T-NNN <verb phrase>` form instead (rules
@@ -98,14 +98,14 @@ WIP limits, and an optional per-child review addendum. Defaults:
   would fold or drop the bookkeeping and leave the board disagreeing with the tickets.
   `pickle hooks install` enforces that locally, per clone, in that repository. Under `layout =
   "in-tree"` that repository is the child's own, so the rule governs every commit on its
-  `feat/T-NNN-<slug>` branches. Under the default `umbrella` layout no **child**'s feature branch
+  `feat/T-NNN-<slug>` branches. Under the default `umbrella` layout no child's feature branch
   can fork the board — it lives in the overarching project instead — but the overarching
   repository is still the one the rule binds: a feature branch cut there carries the identical
   hazard. Whether the hooks catch it depends on that branch matching a registered child's
   `branch_prefix`, which is guaranteed in-tree (the child's own branches) but not under `umbrella`
   (no registered prefix names the overarching project's own branches) — there the discipline
   still applies, the hooks just cannot always see a lapse.
-- **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced **per child**.
+- **WIP limits** — `3-in-development/` ≤ 1, `4-in-review/` ≤ 1, enforced per child.
 
 > **Project configuration wins.** The bullets above state the flow's defaults, once.
 > Where this skill names a branch prefix, a ticket-id prefix, a WIP limit or a commit policy
@@ -114,12 +114,12 @@ WIP limits, and an optional per-child review addendum. Defaults:
 
 ## The rules (summary — full text in `resources/tickets-README.md`)
 
-- **Status = directory.** A ticket's status *is* the folder it sits in. There is **no `status:`
-  field**; record every transition as a dated line in the ticket's `## History`.
+- **Status = directory.** A ticket's status *is* the folder it sits in. There is no `status:`
+  field; record every transition as a dated line in the ticket's `## History`.
 - **Child-project target.** Every ticket has a `project:` frontmatter naming one registered
   child; its feature branch is cut in that child's repo.
 - **IDs (`<PREFIX>-NNN`, per-child counters).** A child's `ticket_prefix` (default `T`) followed
-  by a number, monotonically increasing **within that prefix**, **never reused**
+  by a number, monotonically increasing within that prefix, never reused
   (`max(existing ids sharing that prefix across all status dirs) + 1`). Children that leave the
   prefix unset share the one legacy global `T` counter; numbers are unique only within a prefix,
   so an id is always qualified across children. Filename `<PREFIX>-NNN-<slug>.md`.
@@ -127,30 +127,30 @@ WIP limits, and an optional per-child review addendum. Defaults:
   TO DO/READY group deterministically from it (impact descending, ties by cost ascending, then
   by id).
 - **Dependencies (may cross children).** `depends-on:` frontmatter. A ticket may not enter
-  `3-in-development/` while any dependency is not in `6-done/` **and its feature branch merged
-  to the base of the dependency's target child-project's repo** (done ≠ merged; the human
+  `3-in-development/` while any dependency is not in `6-done/` and its feature branch merged
+  to the base of the dependency's target child-project's repo (done ≠ merged; the human
   merges, and may lag — see rules §3).
 - **Lineage (may cross children).** `spawned-by:` frontmatter — the ticket(s) this one was born
   from (review finding, board audit, refinement split). Same wire format as `depends-on:` and
-  the exact opposite in behaviour: **provenance only, it gates nothing**, so never overload
+  the exact opposite in behaviour: provenance only, it gates nothing, so never overload
   `depends-on:` to express it.
 - **READY gate.** A ticket is READY only when its `## Implementation Plan` is a complete,
   self-contained prompt: feature branch (in the child), prerequisites, confirmed decisions,
-  concrete tasks, a runnable acceptance test, a docs step, and a finish step. **All seven are
-  mechanically checked**, as a required `### ` heading inside the plan with a non-empty body:
+  concrete tasks, a runnable acceptance test, a docs step, and a finish step. All seven are
+  mechanically checked, as a required `### ` heading inside the plan with a non-empty body:
   `pickle ticket move T-NNN ready` refuses the move when one is missing, and `board audit`
   errors on a ticket already past the gate with one still missing. The check is structural
   only — it proves a step is present, never that it is *good* — so the plan's actual soundness
   is still the agent's call.
 - **Findings — severity, then class, then disposition.** A review gives every finding a severity
-  (blocking → `5-rework/` for a scoped fix; non-blocking → the ticket proceeds), a **class**
+  (blocking → `5-rework/` for a scoped fix; non-blocking → the ticket proceeds), a class
   naming what kind of defect it was (a closed vocabulary defined once in
   `resources/review-protocol.md` §5, carried by blocking findings too), and — for every
-  non-blocking finding — exactly one of **four dispositions** defined in rules §5, all recorded
+  non-blocking finding — exactly one of four dispositions defined in rules §5, all recorded
   in the ticket's `## Review` table. The default is to note and close; a follow-up ticket must
-  pass §5's promotion test and is **batched by theme**, never one per finding. The same four
+  pass §5's promotion test and is batched by theme, never one per finding. The same four
   apply at the pickup applicability gate and to refinement splits.
-- **Board rule.** `BOARD.md` is **generated** — regenerated wholesale from the ticket files by
+- **Board rule.** `BOARD.md` is generated — regenerated wholesale from the ticket files by
   `pickle ticket new`, `pickle ticket move` and `pickle board sync`. Never edit it by hand;
   hand-written planning notes go in `tickets/NOTES.md`.
 - **WIP limits per child.** `3-in-development/` ≤ 1, `4-in-review/` ≤ 1 by default, counted
@@ -177,10 +177,8 @@ When asked to refine ticket T-NNN (or "make it ready"):
 4. **Write the Implementation Plan** against the READY gate (rules §4): feature branch (in the
    child's repo), prerequisite gate, confirmed decisions, concrete tasks with exact paths,
    runnable acceptance test, docs step, finish step. Use the `### ` headings
-   `resources/TEMPLATE.md` prescribes for each — `pickle ticket move … ready` now refuses the
-   move outright if one is missing or empty (rules §4), so expect the refusal to work *for*
-   refinement, not around it, and treat it as the signal a step still needs writing rather than
-   something to route around.
+   `resources/TEMPLATE.md` prescribes for each — `pickle ticket move … ready` refuses the move if
+   one is missing or empty (rules §4); treat a refusal as the signal a step still needs writing.
 5. **Split only what is independently schedulable** (rules §3). Refinement is a spawn gate like
    any other: a part becomes its own ticket only if it could be picked up, built and reviewed
    alone *and* someone would choose to. Otherwise it stays a task in this plan — six tasks are
@@ -201,19 +199,19 @@ grep -- "/T-NNN-"`, then `git show <base>:<that path>` — and, once any pre-exi
 yet), run `pickle doctor` and resolve any stale-ticket-branch warning first.
 
 1. **Read the ticket in full.** It must be in `2-ready/` — if not, stop and tell the user why.
-2. **Validate dependencies:** every `depends-on:` ticket is in `6-done/` **and merged to the
-   base of its target child-project's repo** (check the board's `merged` column / the
-   dependency's History; if unmerged, stop and ask the human to merge first). **Validate WIP**
+2. **Validate dependencies:** every `depends-on:` ticket is in `6-done/` and merged to the
+   base of its target child-project's repo (check the board's `merged` column / the
+   dependency's History; if unmerged, stop and ask the human to merge first). Validate WIP
    for the target child. Stop and report if not satisfied.
 3. **Applicability gate — re-verify the plan is still worth executing, before any move or
-   branch.** Run on every pickup, unconditionally:
+   branch.** Run on every pickup:
    - **Spawn a fresh sub-agent** for the audit — free of the implementer's sunk-cost bias.
      Brief it with everything (the ticket, `BOARD.md`, soft couplings, the target child's
      locked-decision docs).
    - **Scope the mandate to the ticket's own assumptions plus the board delta since it went
-     READY.** For each assumption, confirm it is still **true**, **required**, and **worth it**.
-   - The agent returns a **findings list classified like a review** — severity *and* disposition
-     per the rules §5. **Present it and get approval on the routing**, taking the first case
+     READY.** For each assumption, confirm it is still true, required, and worth it.
+   - The agent returns a findings list classified like a review — severity *and* disposition
+     per the rules §5. Present it and get approval on the routing, taking the first case
      below that applies:
      1. No findings → proceed to step 4.
      2. A blocking finding invalidates the plan → stay in `2-ready/` and re-refine it, or move
@@ -228,7 +226,7 @@ yet), run `pickle doctor` and resolve any stale-ticket-branch warning first.
      mandatory whenever `## Implementation Plan` is edited after the ticket left `2-ready/`.
      Adjacent work earns a ticket only by passing §5's promotion test, batched by theme.
 4. **Move** the ticket: `pickle ticket move T-NNN in-development --reason "picked up"`.
-5. **Create the feature branch** `feat/T-NNN-<slug>` **inside the target child-project's repo**
+5. **Create the feature branch** `feat/T-NNN-<slug>` inside the target child-project's repo
    (from the agreed base, default `main`).
 6. **Execute the Implementation Plan top-to-bottom** — it is the executable prompt.
 7. **Run the acceptance test** and the child's build/validate commands until green.
@@ -240,7 +238,7 @@ yet), run `pickle doctor` and resolve any stale-ticket-branch warning first.
    ticket* in this session as its orchestrator. Spawn each reviewer with the *Spawn prompt* in
    `resources/review-protocol.md` step 0 — read it there and copy it verbatim, filling only its
    `<…>` fields, and add nothing to it. Blocking findings carry on into *Procedure: rework a
-   ticket*, which chains its own re-review — **at most two rework rounds per invocation**, counted
+   ticket*, which chains its own re-review — at most two rework rounds per invocation, counted
    across the whole chain. The session stops at the review's approval presentation (its step 9),
    or at the cap with the ticket in `5-rework/`. Without sub-agents, hand back and ask for the
    review in a fresh session.
@@ -262,26 +260,26 @@ run `pickle doctor` (the protocol's step 0a) before auditing. In short:
 1. The ticket must be in `4-in-review/`. Audit implementation, correctness (the host's
    code-review tool if it has one, else a hunt over named angles, each bug reproduced or
    traced), quality, consistency, and docs (running the child's configured commands); classify
-   each finding **blocking** (→ `5-rework/`, scoped re-review of the findings *and the diff that fixed them*) vs
-   **non-blocking** (→ one of the four
+   each finding blocking (→ `5-rework/`, scoped re-review of the findings *and the diff that fixed them*) vs
+   non-blocking (→ one of the four
    dispositions in the rules §5, whose default is to note and close; the original proceeds to
-   `6-done/`), and give every finding — blocking ones included — a **class** from the closed
+   `6-done/`), and give every finding — blocking ones included — a class from the closed
    vocabulary in `resources/review-protocol.md` §5. A follow-up ticket is the exception, is
    batched by theme, and is filed with `--spawned-by "<reviewed ticket id>"`.
 2. Findings go into the ticket's own `## Review` section — no separate file.
-3. On a concluding verdict, **move the ticket** (`pickle ticket move …`).
+3. On a concluding verdict, move the ticket (`pickle ticket move …`).
 4. **Present the child-project commit message** (and merge-request attributes) **to the user
    for approval**. If the user requests changes to the commit message or MR attributes,
    incorporate them and re-present for approval before proceeding; if the user declines to
-   approve without providing changes, the ticket **stays wherever step 3 already moved it**
+   approve without providing changes, the ticket stays wherever step 3 already moved it
    (`6-done/` or `5-rework/`) — do not move it back to `4-in-review/` — and you record the
    pending-publish state in its `## History` instead. For a root-path child (rules §0), tidy the
    WIP commits into atomic ones before presenting them. Only after approval: finalize the branch
    (squash, or — the root-path default — keep the tidied history), and under
    `layout = "in-tree"` verify the remote base is not behind (`origin/<base>...HEAD` must
    carry no `tickets/` path — rules §0; under `umbrella` there is no `tickets/` path in the
-   child's repository to leak, so the check is skipped), push, and **create the merge
-   request** in that child's repo, per
+   child's repository to leak, so the check is skipped), push, and create the merge
+   request in that child's repo, per
    the project's configured commit policy (default: never push a child or open an MR without
    approval); **merging is always the human's**.
 5. Overarching-repo bookkeeping (ticket edits, moves, board) is committed per the project's
@@ -293,7 +291,7 @@ Read `resources/procedure-audit-board.md` and follow it.
 
 ## Notes
 
-`pickle` installs this skill **per project** (into `.agents/skills/brine/`, with the
+`pickle` installs this skill per project (into `.agents/skills/brine/`, with the
 `.claude/skills/` symlink when `--agent` includes `claude`); it does not install globally, and
 each project pins its own payload version.
 `pickle upgrade` refreshes the installed skill + marker block from the binary without touching
