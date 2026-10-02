@@ -158,7 +158,7 @@ Last updated: 2026-10-02
 | T-132 | pickle ticket --help fails with unknown subcommand instead of printing group help | yes — MERGED: PR #91 merged to main (9b1b71f) |
 | T-133 | DONE-but-unmerged audit warning bleeds onto every unrelated pickle ticket move | yes — MERGED: feat/T-133-unfinalized-merge-warning-noise → main (PR #92, 03743ff), user-approved |
 | T-134 | pickle serve: answer where a served project lives, so an agent in another project can find and read it | yes — merged to main (PR #95, 2daf1f1 https://github.com/codcod/pickle/commit/2daf1f1) |
-| T-135 | calibrate the brine payload's emphasis and cut its decision-defence prose | no — publish-gated |
+| T-135 | calibrate the brine payload's emphasis and cut its decision-defence prose | yes — merged to main (PR #100, 920bc6f, https://github.com/codcod/pickle/commit/920bc6f) |
 | T-137 | review hunts for correctness bugs: a multi-angle bug hunt with reproduction before the findings table | yes — merged to main (PR #98, 88e3651, https://github.com/codcod/pickle/commit/88e3651) |
 | T-138 | chain rework and scoped re-review in one session, stopping at the publish gate | yes — merged to main (PR #99, 61a450a, https://github.com/codcod/pickle/commit/61a450a) |
 | T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | yes — merged to main (PR #96, 36d4e74, https://github.com/codcod/pickle/commit/36d4e74) |

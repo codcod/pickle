@@ -241,3 +241,4 @@ survivor was checked against decision 2's categories).
 - 2026-10-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-10-02 — IN REVIEW → DONE: review clean: 0 blocking; 1 fixed inline (F1), 1 noted (F2)
 - 2026-10-02 — published: user approved; main pushed, branch pushed (2 commits, history kept), PR #100 opened; awaiting human merge
+- 2026-10-02 — merged to main (PR #100, 920bc6f, https://github.com/codcod/pickle/commit/920bc6f)
