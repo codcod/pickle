@@ -28,6 +28,9 @@ may change in any release.
   switch branches. The chain stops at publish approval, or after two rework rounds per
   invocation that still leave blocking findings. A host without sub-agents keeps the old
   hand-back.
+- **The brine skill's text is plainer** (T-135). Bold is kept for the flow's hard rules and
+  for paragraph labels. Passages that defended a decision rather than explained it are gone,
+  and the skill's one-line listing shrinks to its trigger phrases. No rule changed.
 
 ## [1.1.0] - 2026-10-01
 
