@@ -208,3 +208,4 @@ keeps, and it already holds the session-and-tier advice step 0 drops.
 - 2026-10-02 — TO DO → READY: plan complete
 - 2026-10-02 — plan amended inline: applicability gate, 8 non-blocking findings, all approved for inline amendment — description keeps "make it ready" and adds "file a ticket"; tier line keeps the step-5 switch and drop-back; step 7 wording keeps "non-blocking" unhedged; decision 7 adds the spawn prompt, the lines internal/state parses and the manual's quotes and citations; numbered lead-ins count as labels and the bold threshold becomes a guide; decision 3 keeps meaning-bearing "unconditionally"
 - 2026-10-02 — READY → IN DEVELOPMENT: picked up
+- 2026-10-02 — IN DEVELOPMENT → IN REVIEW: acceptance green
