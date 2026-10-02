@@ -133,15 +133,10 @@ non-empty body, so deleting it fails that check instead of satisfying it.>
    typed/scoped commits before presenting them: this is what replaces squash-on-merge as the
    default for that case. A child at a nested path can skip this step (squash still applies
    there).
-6. Commit locally on the ticket branch. Publish only per the project's commit policy
-   (default: do **not** push or open a merge request without user approval). Present the
-   commit message; only after approval finalize the branch (squash, or — the root-path default
-   above — keep the tidied history; the user chooses at approval time). Under `layout =
-   "in-tree"` only, before pushing verify
-   the remote base is not behind your local base — `git fetch
-   origin <base> && git diff --name-only origin/<base>...HEAD | grep '^tickets/'` must print
-   nothing, or push `origin <base>` first (rules §0) — then push and open the merge request
-   (merging is always the human's). Hand back to the user.
+6. Commit locally on the ticket branch; do **not** push or open a merge request — approval and
+   publishing happen at the end of the review (the review protocol's step 9), which finalizes
+   the branch, runs the in-tree base check and pushes. Move the ticket to `4-in-review/`; the
+   implement procedure says whether the session continues into review.
 
 ## Review
 

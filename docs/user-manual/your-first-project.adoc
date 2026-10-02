@@ -89,7 +89,8 @@ gate), then `pickle ticket move T-1 in-development` — the CLI *enforces* the
 state machine, per-child WIP limits, and the dependency merge gate before
 anything is written. Work happens on a `feat/T-1-<slug>` branch inside the
 target child's repo. When the acceptance test is green the ticket moves to
-`in-review` and the agent hands back.
+`in-review`. An agent that can spawn sub-agents carries straight on into the
+review below; any other agent hands back.
 
 By default child-projects are *publish-gated*: the agent commits locally but
 never pushes or opens a merge request without your explicit approval.
@@ -100,6 +101,8 @@ never pushes or opens a merge request without your explicit approval.
 review ticket T-1
 ----
 
+You type this only when the implement session handed back; otherwise the
+review is already running, with independent reviewers spawned for the audits.
 The agent follows the skill's review protocol: every finding gets a severity
 (blocking findings send the ticket to `5-rework/` for a scoped fix;
 non-blocking ones are dispositioned and recorded in the ticket's `## Review`

@@ -234,8 +234,16 @@ yet), run `pickle doctor` and resolve any stale-ticket-branch warning first.
 7. **Run the acceptance test** and the child's build/validate commands until green.
 8. **Finish:** write the summary, prepare the suggested commit message (ticket id in brackets).
    Commit locally on the ticket branch; publish only per the project's configured commit policy
-   (default: do not push or open a merge request without user approval).
-   `pickle ticket move T-NNN in-review --reason "acceptance green"` and hand back.
+   (default: do not push or open a merge request without user approval — the review's approval
+   gate asks for it). `pickle ticket move T-NNN in-review --reason "acceptance green"`.
+9. **Continue into review** on a host that can spawn sub-agents: run *Procedure: validate a
+   ticket* in this session as its orchestrator. Spawn each reviewer with the *Spawn prompt* in
+   `resources/review-protocol.md` step 0 — read it there and copy it verbatim, filling only its
+   `<…>` fields, and add nothing to it. Blocking findings carry on into *Procedure: rework a
+   ticket*, which chains its own re-review — **at most two rework rounds per invocation**, counted
+   across the whole chain. The session stops at the review's approval presentation (its step 9),
+   or at the cap with the ticket in `5-rework/`. Without sub-agents, hand back and ask for the
+   review in a fresh session.
 
 ## Procedure: rework a ticket
 
