@@ -433,11 +433,11 @@ func (h *handler) artifact(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	body, err := renderMarkdown(string(data))
+	tickets := h.load()
+	body, err := renderMarkdown(string(data), buildIDStates(flow.ForName(h.opts.Cfg.FlowName()), tickets))
 	if err != nil {
 		body = template.HTML("<pre>" + template.HTMLEscapeString(stripFrontmatter(string(data))) + "</pre>")
 	}
-	tickets := h.load()
 	p := h.newPage(name, tickets)
 	p.Artifact = &ArtifactPage{TicketID: key, Name: name, Body: body}
 	h.render(w, "artifact.html", p)

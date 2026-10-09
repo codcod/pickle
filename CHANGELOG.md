@@ -13,6 +13,13 @@ may change in any release.
 
 ## [Unreleased]
 
+### Added
+
+- **`pickle serve` shows each cited ticket's state** (T-142). Wherever the dashboard mentions
+  a DONE ticket's id it is struck through, and a DROPPED one is dimmed, with a tooltip naming
+  the state. This covers dependency lists, the ticket page, History and merge text, and rendered
+  ticket and rick-artifact bodies. Code spans and http(s) URLs are left alone.
+
 ## [1.2.0] - 2026-10-02
 
 ### Changed

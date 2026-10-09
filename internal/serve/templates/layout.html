@@ -84,4 +84,4 @@
   ><span class="grade">{{.Cost}}</span
 ></span>{{end}}
 
-{{define "idlist"}}{{range $i, $id := .IDs}}{{if $i}}, {{end}}<a class="tid" href="{{$.BasePath}}/t/{{$id}}">{{$id}}</a>{{end}}{{end}}
+{{define "idlist"}}{{range $i, $id := .IDs}}{{if $i}}, {{end}}{{$s := $.States.Of $id}}<a class="tid{{with $s}} is-{{.}}{{end}}"{{with $s}} title="{{.}}"{{end}} href="{{$.BasePath}}/t/{{$id}}">{{$id}}</a>{{end}}{{end}}

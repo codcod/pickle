@@ -18,15 +18,12 @@ var funcs = template.FuncMap{
 		}
 		return s
 	},
-	// linkify wraps a bare http(s) URL in s in a clickable anchor; the logic lives
-	// in view.go's linkifyURLs (T-089), tested there without a template.
-	"linkify": linkifyURLs,
-	// idListOf pairs a BasePath (read off whatever struct "idlist" is called
-	// from — Entry or TicketView, both of which carry one) with the id slice
-	// being linked, so the "idlist" template block always has both, regardless
-	// of how deep the enclosing {{template}} calls nest (T-127; see
-	// Entry.BasePath's doc comment in view.go).
-	"idListOf": func(basePath string, ids []string) IDList {
-		return IDList{BasePath: basePath, IDs: ids}
+	// idListOf pairs a BasePath and IDStates (read off whatever struct "idlist"
+	// is called from — Entry or TicketView, both of which carry them) with the
+	// id slice being linked, so the "idlist" template block always has all
+	// three, regardless of how deep the enclosing {{template}} calls nest
+	// (T-127, T-142; see Entry.BasePath's doc comment in view.go).
+	"idListOf": func(basePath string, ids []string, states IDStates) IDList {
+		return IDList{BasePath: basePath, IDs: ids, States: states}
 	},
 }

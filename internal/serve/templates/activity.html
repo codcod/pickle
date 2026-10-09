@@ -23,8 +23,8 @@
   {{range .Events}}
   <li class="event">
     <time>{{.Date}}</time>
-    <a class="tid" href="{{.BasePath}}/t/{{.ID}}">{{.ID}}</a>
-    <span class="event-text">{{linkify .Text}}</span>
+    <a class="tid{{with .State}} is-{{.}}{{end}}"{{with .State}} title="{{.}}"{{end}} href="{{.BasePath}}/t/{{.ID}}">{{.ID}}</a>
+    <span class="event-text">{{.TextHTML}}</span>
     <span class="event-meta">{{.Title}} · {{.Project}}</span>
   </li>
   {{end}}
