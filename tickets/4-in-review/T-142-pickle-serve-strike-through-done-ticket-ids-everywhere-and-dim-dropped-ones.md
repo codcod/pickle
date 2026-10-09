@@ -271,6 +271,12 @@ and in `depends on`. The activity page shows the done id struck through in Histo
 Dispositions: 4 fixed inline (F4–F7), 4 noted (F8–F11), 0 folded, 0 new tickets; 3 blocking (F1–F3) → rework.
 cost: estimated M, actual M
 
+### Rework fix record — round 1 (commits 4f9cd3e..fafda75)
+
+- F1–F3 (`44499c1`): `idRefHits` in `view.go` is now the one hit rule for both paths. It skips an id inside a whitespace-delimited run that holds a URL scheme, and an id followed by `-` + alphanumeric. The markdown transformer computes hits once over the whole stripped source, and only splits a Text node at a match that is one of them, so `\b` and the URL check see the same context `linkifyWith` does. Regression cases added to `TestDoneAndDroppedIDsAreMarked`: a dotless bare URL, `feat/T-001-slug` and `snake_T-001` stay plain in the body, and `linkifyWith` agrees. A mutation that dropped the whole-source filter failed the test.
+- F4–F7 (`fafda75`, fixed inline): `TestArtifactPageMarksDoneIDs`; `TextHTML` built after the activity cap from an unexported `text` field (the exported `Event.Text` is gone); linkify's rationale moved onto `linkifyWith`, with `linkifyURLs` documented as the test-pinned no-marking form.
+- `just build`, `just test`, `just lint` and `just docs-check` are green.
+
 ## History
 
 - 2026-10-09 — created (TO DO). source: chat: user asked to explore, then file, strikethrough for done ticket ids across `pickle serve` (board, ticket page, activity, bodies); decisions taken in chat: done-only strikethrough, dropped dimmed, activity text included, DONE-section rows not struck, BOARD.md out of scope
@@ -280,3 +286,4 @@ cost: estimated M, actual M
 - 2026-10-09 — applicability gate (fresh sub-agent): 0 blocking, 8 non-blocking. 7 (board `reason` cell now linkifies bare URLs too, harmless and consistent with merged/activity) noted. plan amended inline: skip `Text` under images and carry line-break flags onto the last split piece (Task 4); id states built inside the existing builders, signatures unchanged (Task 1); h1 id gets its own span (Task 2); unqualified `.is-*` selectors so family links are covered (Task 5); done/dropped fixtures get History lines, a line-break case, `page-title`-specific h1 check (Task 6); docs sentence goes after the serve table, not under a row.
 - 2026-10-09 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-10-09 — IN REVIEW → REWORK: 3 blocking findings (F1–F3): id hits inside bare URLs, mid-token and per-Text-node boundaries
+- 2026-10-09 — REWORK → IN REVIEW: findings fixed

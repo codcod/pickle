@@ -20,10 +20,11 @@ Last updated: 2026-10-09
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-10-09
 
 | id | title | open findings |
 |---|---|---|
-| T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | 3 blocking findings (F1–F3): id hits inside bare URLs, mid-token and per-Text-node boundaries |
 
 ## READY (impact order, per child)
 
