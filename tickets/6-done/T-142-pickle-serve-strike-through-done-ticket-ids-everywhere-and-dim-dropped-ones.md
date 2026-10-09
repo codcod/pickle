@@ -316,3 +316,4 @@ cost: estimated M, actual M
 - 2026-10-09 — IN REVIEW → REWORK: 3 blocking findings (F1–F3): id hits inside bare URLs, mid-token and per-Text-node boundaries
 - 2026-10-09 — REWORK → IN REVIEW: findings fixed
 - 2026-10-09 — IN REVIEW → DONE: review clean after 1 rework round; round 1: 3 blocking fixed, 4 fixed inline, 4 noted; round 2: 4 fixed inline, 1 noted, 0 new tickets
+- 2026-10-09 — merged to main (PR #101, 4c2e4e2, https://github.com/codcod/pickle/commit/4c2e4e2)
