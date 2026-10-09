@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-10-02
+Last updated: 2026-10-09
 
 ## IN DEVELOPMENT
 
@@ -48,6 +48,7 @@ Last updated: 2026-10-02
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | low | medium | S | [] |  |
 
 ## DONE
 
