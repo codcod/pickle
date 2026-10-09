@@ -251,3 +251,4 @@ and in `depends on`. The activity page shows the done id struck through in Histo
 - 2026-10-09 — TO DO → READY: plan complete
 - 2026-10-09 — READY → IN DEVELOPMENT: picked up
 - 2026-10-09 — applicability gate (fresh sub-agent): 0 blocking, 8 non-blocking. 7 (board `reason` cell now linkifies bare URLs too, harmless and consistent with merged/activity) noted. plan amended inline: skip `Text` under images and carry line-break flags onto the last split piece (Task 4); id states built inside the existing builders, signatures unchanged (Task 1); h1 id gets its own span (Task 2); unqualified `.is-*` selectors so family links are covered (Task 5); done/dropped fixtures get History lines, a line-break case, `page-title`-specific h1 check (Task 6); docs sentence goes after the serve table, not under a row.
+- 2026-10-09 — IN DEVELOPMENT → IN REVIEW: acceptance green

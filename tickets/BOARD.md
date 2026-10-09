@@ -13,18 +13,18 @@ Last updated: 2026-10-09
 
 ## IN DEVELOPMENT
 
+### pickle (0/1)
+
+| id | title | depends-on |
+|---|---|---|
+
+## IN REVIEW
+
 ### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
 | T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | [] |
-
-## IN REVIEW
-
-### pickle (0/1)
-
-| id | title | depends-on |
-|---|---|---|
 
 ## REWORK
 
