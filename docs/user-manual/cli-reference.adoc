@@ -1772,6 +1772,12 @@ What it serves:
   project, and never under `/p/{slug}/`.
 |===
 
+Every mention of a DONE ticket's id renders struck through, and every DROPPED one
+dimmed, with a tooltip naming the state: in dependency and lineage lists, on a
+ticket's own page, in History and merge text, and inside rendered ticket and
+artifact bodies alike. Ids inside code spans and http(s) URLs are left untouched, and
+a row in the board's own DONE or DROPPED section is not styled.
+
 Every request re-reads the ticket files, so a reload always shows the tree as it
 is now; the board and activity views additionally refresh themselves every five
 seconds, which makes the dashboard usable as an ambient window while tickets move.
