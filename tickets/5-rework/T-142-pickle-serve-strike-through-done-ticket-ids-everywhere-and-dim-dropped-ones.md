@@ -242,7 +242,34 @@ and in `depends on`. The activity page shows the done id struck through in Histo
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Round 1 — 2026-10-09
+
+- [x] Reviewer independence (step 0): delegated. The orchestrator wrote the branch; a fresh reviewer ran steps 1–4a (hunt: angle 7 only). Its findings were re-verified by hand (F1 reproduced; none discarded).
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned (branch had T-142 in 3-in-development); rebased onto main, re-run clean.
+- [x] Implementation audit (steps 1, 2): Tasks 1–6 met in the named files, decisions 1–9 honoured; `just build && just test && just lint && just docs-check` green (actionlint/shellcheck absent locally, CI runs them); the named `-run` subset green.
+- [x] Correctness hunt (step 3): host tool path, `code-review` (high) run by the orchestrator on `main...feat/T-142-serve-done-id-strikethrough`, 8 findings, 0 discarded on re-verification (the mid-token match reproduced); angle 7 run separately by the delegated reviewer over 30 hostile inputs, no finding.
+- [x] Consistency audit (step 4)
+- [x] Documentation audit (step 4a): cli-reference sentence after the serve table + CHANGELOG bullet; `just docs-check` green; F1 makes the docs' "URLs are left untouched" claim false.
+- [x] Docs-readability pass (step 4b): skipped — no docs-readability reviewer configured in this session.
+- [x] Findings recorded (step 5)
+- [x] Ticket moved to `5-rework/` (step 6)
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | correctness | — | In a ticket or artifact body, an id inside a bare URL that GFM linkify does not autolink (dotless host) is styled, contradicting the shipped docs ("Ids inside … URLs are left untouched"); the free-text path leaves the same URL alone. | `renderMarkdown("http://localhost:8080/t/T-001", {T-001: done})` → `<p>http://localhost:8080/t/<span class="tid-ref is-done" …>T-001</span></p>` (overlay probe) | Exclude hits inside a whitespace-delimited run that holds a URL scheme, with one hit rule shared by both paths. |
+| F2 | blocking | correctness | — | An id heading a longer hyphenated token (branch name, ticket filename) has just its id part styled, mid-word, in both paths. | `linkifyWith("merged feat/T-001-config-registry", …)` → `feat/<span …>T-001</span>-config-registry`; markdown `see T-001-config-registry.md` likewise (overlay probe) | Reject a hit followed by `-` + alphanumeric. |
+| F3 | blocking | correctness | — | The markdown transformer applies `\b` per goldmark Text node, which goldmark splits at delimiters such as `_`, so `snake_T-001` is styled on the ticket page but not in /activity. | code-review probe: `snake_T-001` → `snake_<span …>T-001</span>` via renderMarkdown, plain via linkifyWith | Compute hits once over the whole stripped source, and accept a Text-node match only if it is one of them. |
+| F4 | non-blocking | test-gap | fixed inline | The artifact page's id styling is untested; passing nil states there would keep every test green. | `TestDoneAndDroppedIDsAreMarked` covers `/t/`, `/`, `/activity` only | Assert a styled id on an artifact page. |
+| F5 | non-blocking | design | fixed inline | `buildActivity` builds `TextHTML` for every History line before truncating to `activityCap`. | `view.go` `buildActivity` | Fill `TextHTML` after the cap. |
+| F6 | non-blocking | stale-xref | fixed inline | `linkifyURLs`'s doc comment still calls it the shared path the three views use; production now calls `linkifyWith`, and the wrapper is test-only. | `view.go` `linkifyURLs` | Move the rationale to `linkifyWith`; mark the wrapper test-only. |
+| F7 | non-blocking | design | fixed inline | `Event.Text` is now dead: `activity.html` reads `TextHTML`. | grep over `internal/serve` | Delete it. |
+| F8 | non-blocking | design | noted | `Entry.Merged`/`Reason` survive only as `{{if}}` guards beside their HTML twins. | `board.html`, `ticket.html` | — (the raw fields are the readable values; cheap to keep) |
+| F9 | non-blocking | design | noted | The `{{with $s}} class="is-…" title="…"{{end}}` snippet is repeated in six template places plus `idRefSpan`. | `templates/{layout,board,ticket,activity}.html` | — (a shared block is awkward in attribute context; small) |
+| F10 | non-blocking | design | noted | `.is-dropped` opacity stacks on the already-muted `.edge.muted` spans, and `title` is not reliably announced by screen readers, so decision 8's cue is weaker than its intent. | `styles.css` | — (T-142 decision 8 chose `title`; revisit with a contrast pass if it reads poorly) |
+| F11 | non-blocking | design | noted | A styled id inside a markdown link puts the span's `title="done"` over the link's own title on hover. | `markdown.go` renderer | — |
+
+Dispositions: 4 fixed inline (F4–F7), 4 noted (F8–F11), 0 folded, 0 new tickets; 3 blocking (F1–F3) → rework.
+cost: estimated M, actual M
 
 ## History
 
@@ -252,3 +279,4 @@ and in `depends on`. The activity page shows the done id struck through in Histo
 - 2026-10-09 — READY → IN DEVELOPMENT: picked up
 - 2026-10-09 — applicability gate (fresh sub-agent): 0 blocking, 8 non-blocking. 7 (board `reason` cell now linkifies bare URLs too, harmless and consistent with merged/activity) noted. plan amended inline: skip `Text` under images and carry line-break flags onto the last split piece (Task 4); id states built inside the existing builders, signatures unchanged (Task 1); h1 id gets its own span (Task 2); unqualified `.is-*` selectors so family links are covered (Task 5); done/dropped fixtures get History lines, a line-break case, `page-title`-specific h1 check (Task 6); docs sentence goes after the serve table, not under a row.
 - 2026-10-09 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-10-09 — IN REVIEW → REWORK: 3 blocking findings (F1–F3): id hits inside bare URLs, mid-token and per-Text-node boundaries
