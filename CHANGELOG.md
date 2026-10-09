@@ -13,6 +13,8 @@ may change in any release.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-09
+
 ### Added
 
 - **`pickle serve` shows each cited ticket's state** (T-142). Wherever the dashboard mentions
@@ -1094,7 +1096,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/codcod/pickle/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/codcod/pickle/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/codcod/pickle/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/codcod/pickle/compare/v0.21.1...v1.0.0
