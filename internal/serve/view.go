@@ -64,6 +64,42 @@ type Entry struct {
 	// plain "{{.BasePath}}/...", regardless of how deep the {{template}} calls
 	// nest.
 	BasePath string
+	// States is the per-request done/dropped map (T-142), riding here beside
+	// BasePath for the same reason: a {{template}} block can only style the
+	// ids it links if the lookup travels with the struct it was handed.
+	States IDStates
+	// MergedHTML and ReasonHTML are Merged and Reason already escaped,
+	// URL-linkified and id-marked (linkifyWith), so the template prints them
+	// as-is.
+	MergedHTML template.HTML
+	ReasonHTML template.HTML
+}
+
+// IDStates maps a ticket id to "done" or "dropped" (T-142), read off the flow's
+// column profiles rather than directory names so a custom flow is honoured.
+// Every other id is absent, and so renders unstyled.
+type IDStates map[string]string
+
+// Of returns id's state class, "" when it is neither done nor dropped. Safe on a
+// nil map.
+func (s IDStates) Of(id string) string { return s[id] }
+
+// buildIDStates is built once per request from the already-loaded tree.
+func buildIDStates(def *flow.Definition, tickets []*ticket.Ticket) IDStates {
+	states := IDStates{}
+	for _, t := range tickets {
+		st, ok := def.ByDir(t.Dir)
+		if !ok {
+			continue
+		}
+		switch st.Columns {
+		case flow.ColumnsDone:
+			states[t.ID] = "done"
+		case flow.ColumnsDropped:
+			states[t.ID] = "dropped"
+		}
+	}
+	return states
 }
 
 // IDList pairs a list of ticket ids with the BasePath to link them from — the
@@ -74,6 +110,7 @@ type Entry struct {
 type IDList struct {
 	BasePath string
 	IDs      []string
+	States   IDStates
 }
 
 // ChildGroup is one child-project's tickets within one status section.
@@ -136,7 +173,7 @@ type BoardView struct {
 // board.Sort-ordered, with its WIP count/limit when the status is WIP-limited
 // — the one grouping rule both the active-state lanes and the remaining
 // sections share (T-104), so it is written once rather than twice.
-func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.State, p config.Project, wip map[string]map[string]int, byID map[string]*ticket.Ticket, basePath string, reports map[string]rickstatus.Report) ChildGroup {
+func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.State, p config.Project, wip map[string]map[string]int, byID map[string]*ticket.Ticket, basePath string, reports map[string]rickstatus.Report, states IDStates) ChildGroup {
 	var group []*ticket.Ticket
 	for _, t := range tickets {
 		if t.Dir == st.Dir && t.Project() == p.Name {
@@ -152,7 +189,7 @@ func stateChildGroup(def *flow.Definition, tickets []*ticket.Ticket, st flow.Sta
 		}
 	}
 	for _, t := range group {
-		cg.Entries = append(cg.Entries, newEntry(def, t, st.Name, basePath, reports))
+		cg.Entries = append(cg.Entries, newEntry(def, t, st.Name, basePath, reports, states))
 	}
 	return cg
 }
@@ -173,6 +210,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	for _, t := range tickets {
 		byID[t.ID] = t
 	}
+	states := buildIDStates(def, tickets)
 	view := BoardView{Total: len(tickets)}
 
 	active := def.ActiveStates()
@@ -185,7 +223,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	for _, p := range cfg.Projects {
 		row := ChildRow{Child: p.Name}
 		for _, st := range active {
-			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath, reports)
+			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath, reports, states)
 			row.Lanes = append(row.Lanes, Lane{
 				Status: st.Name, Entries: cg.Entries, Count: cg.Count, Limit: cg.Limit,
 			})
@@ -201,7 +239,7 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 		}
 		section := Section{Status: st.Name}
 		for _, p := range cfg.Projects {
-			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath, reports)
+			cg := stateChildGroup(def, tickets, st, p, wip, byID, basePath, reports, states)
 			section.Total += cg.Count
 			section.Children = append(section.Children, cg)
 		}
@@ -223,8 +261,9 @@ func buildBoard(def *flow.Definition, tickets []*ticket.Ticket, cfg *config.Conf
 	return view
 }
 
-func newEntry(def *flow.Definition, t *ticket.Ticket, statusName, basePath string, reports map[string]rickstatus.Report) Entry {
+func newEntry(def *flow.Definition, t *ticket.Ticket, statusName, basePath string, reports map[string]rickstatus.Report, states IDStates) Entry {
 	title := t.Front["title"]
+	reason, merged := ticket.LastHistoryReason(def, t.Text), ticket.MergeLine(def, t.Text)
 	return Entry{
 		ID:          t.ID,
 		Num:         t.Num,
@@ -238,11 +277,14 @@ func newEntry(def *flow.Definition, t *ticket.Ticket, statusName, basePath strin
 		DependsOn:   t.DependsOn,
 		SpawnedBy:   t.SpawnedBy,
 		Family:      t.Front["family"],
-		Reason:      ticket.LastHistoryReason(def, t.Text),
-		Merged:      ticket.MergeLine(def, t.Text),
+		Reason:      reason,
+		Merged:      merged,
+		ReasonHTML:  linkifyWith(reason, states),
+		MergedHTML:  linkifyWith(merged, states),
 		File:        filepath.Base(t.Path),
 		RickPending: rickPendingCount(reports[t.Project()].For(t.ID)),
 		BasePath:    basePath,
+		States:      states,
 	}
 }
 
@@ -278,13 +320,14 @@ func buildTicket(def *flow.Definition, all []*ticket.Ticket, id, basePath string
 	if st, ok := def.ByDir(found.Dir); ok {
 		statusName = st.Name
 	}
+	states := buildIDStates(def, all)
 	view := TicketView{
-		Entry:     newEntry(def, found, statusName, basePath, reports),
+		Entry:     newEntry(def, found, statusName, basePath, reports, states),
 		History:   ticket.HistoryEntries(def, found.Text),
 		Artifacts: buildArtifacts(reports[found.Project()], id, basePath),
 	}
 
-	body, err := renderMarkdown(found.Text)
+	body, err := renderMarkdown(found.Text, states)
 	if err != nil {
 		// A render failure must not lose the ticket: fall back to the raw body,
 		// escaped by the template as ordinary text.
@@ -318,7 +361,7 @@ func contains(ids []string, id string) bool {
 	return false
 }
 
-// urlSchemeRE marks where a candidate URL run begins; linkifyURLs measures each
+// urlSchemeRE marks where a candidate URL run begins; linkifyWith measures each
 // run's extent itself (see below) rather than trying to teach one regexp every
 // edge case a lookahead-free engine (Go's RE2) can't express directly.
 var urlSchemeRE = regexp.MustCompile(`https?://`)
@@ -328,7 +371,7 @@ var urlSchemeRE = regexp.MustCompile(`https?://`)
 // pasted URL (a MR ref's closing paren, a trailing comma or full stop).
 const urlTrailingPunct = ")].,;:"
 
-// linkifyURLs wraps any bare http(s) URL in s in a clickable anchor and
+// linkifyWith wraps any bare http(s) URL in s in a clickable anchor and
 // HTML-escapes everything else (and the URL itself) with
 // template.HTMLEscapeString. It exists because the merge History line's own
 // convention (T-089) is free text rendered as a plain, auto-escaped string in
@@ -345,10 +388,14 @@ const urlTrailingPunct = ")].,;:"
 // the trim set below swallow the leading `;` of a genuine HTML entity in a
 // URL's tail, corrupting it; matching raw removes that failure mode entirely
 // (T-090).
-func linkifyURLs(s string) template.HTML {
+//
+// T-142 adds id marking: every piece *between* URL runs goes through
+// escapeMarkIDs, so a done/dropped id in free text is styled while one inside
+// a URL is never touched.
+func linkifyWith(s string, states IDStates) template.HTML {
 	starts := urlSchemeRE.FindAllStringIndex(s, -1)
 	if starts == nil {
-		return template.HTML(template.HTMLEscapeString(s))
+		return template.HTML(escapeMarkIDs(s, states)) //nolint:gosec // escapeMarkIDs escapes everything it does not wrap in literal span markup.
 	}
 
 	var b strings.Builder
@@ -378,30 +425,108 @@ func linkifyURLs(s string) template.HTML {
 		if host == "" {
 			// Nothing survived trimming but the scheme itself (e.g.
 			// "https://)."): not a real link, leave it as plain text.
-			b.WriteString(template.HTMLEscapeString(s[cursor:end]))
+			b.WriteString(escapeMarkIDs(s[cursor:end], states))
 			cursor = end
 			continue
 		}
 
-		b.WriteString(template.HTMLEscapeString(s[cursor:start]))
+		b.WriteString(escapeMarkIDs(s[cursor:start], states))
 		escaped := template.HTMLEscapeString(trimmed)
 		b.WriteString(`<a href="` + escaped + `" rel="noopener noreferrer" target="_blank">` + escaped + `</a>`)
-		b.WriteString(template.HTMLEscapeString(s[start+len(trimmed) : end]))
+		b.WriteString(escapeMarkIDs(s[start+len(trimmed):end], states))
 		cursor = end
 	}
-	b.WriteString(template.HTMLEscapeString(s[cursor:]))
+	b.WriteString(escapeMarkIDs(s[cursor:], states))
 
 	return template.HTML(b.String()) //nolint:gosec // every byte is HTMLEscapeString output plus literal anchor markup; href and text share one escaped source, so a decoded quote can't reopen attribute parsing, and matching runs on the raw string (see doc comment) before any escaping happens.
 }
 
+// linkifyURLs is linkifyWith with no id marking — the URL-only behaviour the
+// T-089/T-090 tests pin. Production views call linkifyWith.
+func linkifyURLs(s string) template.HTML { return linkifyWith(s, nil) }
+
+// idRefRE finds ticket-id-shaped words. The shape alone also matches UTF-8 or
+// SHA-256; only a hit present in the IDStates map is ever styled, which is
+// what rules those out.
+var idRefRE = regexp.MustCompile(`\b` + ticket.IDShapePattern + `\b`)
+
+// idRefHits returns the [start, stop) of every id in s that reads as a
+// citation — the one rule free text and markdown bodies share, so a mention is
+// styled the same on every page. It skips an id inside a whitespace-delimited
+// run holding a URL scheme (part of a link, even one GFM does not autolink)
+// and one heading a longer hyphenated token (a branch name, a ticket filename:
+// feat/T-001-slug).
+func idRefHits(s string) [][]int {
+	// URL spans, each from a scheme to the next whitespace, found once up front
+	// so the scan below stays linear on a long whitespace-free run.
+	var urls [][2]int
+	for _, m := range urlSchemeRE.FindAllStringIndex(s, -1) {
+		if n := len(urls); n > 0 && m[0] < urls[n-1][1] {
+			continue // inside the previous span already
+		}
+		end := len(s)
+		if i := strings.IndexFunc(s[m[0]:], unicode.IsSpace); i >= 0 {
+			end = m[0] + i
+		}
+		urls = append(urls, [2]int{m[0], end})
+	}
+	var hits [][]int
+	u := 0
+	for _, m := range idRefRE.FindAllStringIndex(s, -1) {
+		if rest := s[m[1]:]; len(rest) > 1 && rest[0] == '-' && isAlnum(rest[1]) {
+			continue
+		}
+		for u < len(urls) && urls[u][1] <= m[0] {
+			u++
+		}
+		if u < len(urls) && urls[u][0] <= m[0] {
+			continue
+		}
+		hits = append(hits, m)
+	}
+	return hits
+}
+
+func isAlnum(c byte) bool {
+	return c >= '0' && c <= '9' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
+}
+
+// escapeMarkIDs HTML-escapes s and wraps each done/dropped id idRefHits finds
+// in it in a classed span.
+func escapeMarkIDs(s string, states IDStates) string {
+	if len(states) == 0 {
+		return template.HTMLEscapeString(s)
+	}
+	var b strings.Builder
+	cursor := 0
+	for _, m := range idRefHits(s) {
+		if st := states.Of(s[m[0]:m[1]]); st != "" {
+			b.WriteString(template.HTMLEscapeString(s[cursor:m[0]]))
+			b.WriteString(idRefSpan(s[m[0]:m[1]], st))
+			cursor = m[1]
+		}
+	}
+	b.WriteString(template.HTMLEscapeString(s[cursor:]))
+	return b.String()
+}
+
+// idRefSpan is the one markup every free-text and markdown id mention shares,
+// so the same .is-done/.is-dropped rules style both. id is [A-Z0-9-] by shape
+// and st is "done" or "dropped", so neither needs escaping.
+func idRefSpan(id, st string) string {
+	return `<span class="tid-ref is-` + st + `" title="` + st + `">` + id + `</span>`
+}
+
 // Event is one dated History line, tagged with the ticket it came from.
 type Event struct {
-	Date    string
-	Text    string
-	ID      string
-	Num     int
-	Title   string
-	Project string
+	Date     string
+	TextHTML template.HTML // the History text via linkifyWith (T-142)
+	State    string        // the event's own ticket's IDStates entry
+	text     string        // raw History text; TextHTML is built from it after the cap
+	ID       string
+	Num      int
+	Title    string
+	Project  string
 	// BasePath mirrors Entry.BasePath (see its doc comment): activity.html's
 	// per-event ticket link needs it, and "activity-body" is itself reached
 	// via {{template}}, so it must ride on Event rather than be read off page.
@@ -421,12 +546,14 @@ type ActivityView struct {
 // day's entries read as "latest ticket first"; within one ticket, file order is
 // preserved (History is append-only, so that is chronological).
 func buildActivity(def *flow.Definition, tickets []*ticket.Ticket, basePath string) ActivityView {
+	states := buildIDStates(def, tickets)
 	var events []Event
 	for _, t := range tickets {
 		for _, h := range ticket.HistoryEntries(def, t.Text) {
 			events = append(events, Event{
 				Date:     h.Date,
-				Text:     h.Text,
+				text:     h.Text,
+				State:    states.Of(t.ID),
 				ID:       t.ID,
 				Num:      t.Num,
 				Title:    t.Front["title"],
@@ -447,6 +574,10 @@ func buildActivity(def *flow.Definition, tickets []*ticket.Ticket, basePath stri
 		view.Events, view.Truncated = events[:activityCap], true
 	} else {
 		view.Events = events
+	}
+	// Only the events that render pay for escaping and id marking.
+	for i := range view.Events {
+		view.Events[i].TextHTML = linkifyWith(view.Events[i].text, states)
 	}
 	return view
 }

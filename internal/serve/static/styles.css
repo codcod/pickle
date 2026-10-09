@@ -195,6 +195,11 @@ code { font-family: var(--mono); font-size: 0.9em; }
   background: var(--panel); margin-bottom: 0.3rem;
 }
 .tid { font-family: var(--mono); font-size: 0.85rem; }
+/* T-142: a DONE ticket's id is struck through, a DROPPED one dimmed, wherever it
+   is mentioned (.tid links, .tid-ref spans in text, family links). The title
+   attribute carries the same state for assistive tech. */
+.is-done { text-decoration: line-through; }
+.is-dropped { opacity: 0.55; }
 .ticket-title { color: var(--fg); flex: 1 1 24rem; }
 .grades { display: inline-flex; gap: 0.3rem; }
 .grade {

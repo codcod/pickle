@@ -1434,3 +1434,91 @@ func indexOrder(body string, subs ...string) bool {
 	}
 	return true
 }
+
+// TestDoneAndDroppedIDsAreMarked: T-142. Every mention of a DONE ticket's id is
+// struck through and a DROPPED one dimmed — idlist links, the ticket page's own
+// id, activity text and rendered bodies — while open ids, shape-alikes (UTF-8)
+// and code spans stay plain, and a DONE-section row's own id is not styled.
+func TestDoneAndDroppedIDsAreMarked(t *testing.T) {
+	root := newTree(t,
+		fixture{dir: "6-done", id: "T-001", title: "shipped", impact: "low",
+			history: []string{"- 2026-07-20 — created (TO DO). source: test"}},
+		fixture{dir: "7-dropped", id: "T-002", title: "abandoned", impact: "low",
+			history: []string{"- 2026-07-20 — created (TO DO). source: test"}},
+		fixture{dir: "1-to-do", id: "T-003", title: "citer", impact: "low",
+			depends: "[T-001, T-002]", family: "T-001",
+			body: "see T-001, T-002, T-003 and UTF-8; `T-001` in code\nnext line T-001\nafter\n\n" +
+				"not cited: http://localhost:8080/t/T-001 feat/T-001-slug snake_T-001",
+			history: []string{"- 2026-07-21 — created (TO DO). source: superseded by T-001"}},
+	)
+	h := newHandler(t, root)
+	done := `<span class="tid-ref is-done" title="done">T-001</span>`
+	dropped := `<span class="tid-ref is-dropped" title="dropped">T-002</span>`
+
+	page := get(t, h, "/t/T-003").Body.String()
+	for _, want := range []string{
+		`<a class="tid is-done" title="done" href="/t/T-001">T-001</a>`,
+		`<a class="tid is-dropped" title="dropped" href="/t/T-002">T-002</a>`,
+		`<a class="is-done" title="done" href="/t/T-001">T-001</a>`, // family link
+		"see " + done + ", " + dropped + ", T-003 and UTF-8;",
+		"<code>T-001</code>",
+		"next line " + done + "\nafter", // the soft line break after a split survives
+		// A bare URL GFM does not autolink, a hyphenated token headed by an id,
+		// and an id glued on by `_` are not citations (T-142 review F1–F3).
+		"not cited: http://localhost:8080/t/T-001 feat/T-001-slug snake_T-001",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("/t/T-003 missing %q:\n%s", want, page)
+		}
+	}
+
+	if own := get(t, h, "/t/T-001").Body.String(); !strings.Contains(own, `<h1 class="page-title"><span class="is-done" title="done">T-001</span> — shipped</h1>`) {
+		t.Errorf("/t/T-001 page-title id is not marked done:\n%s", own)
+	}
+
+	board := get(t, h, "/").Body.String()
+	if !strings.Contains(board, `<a class="tid" href="/t/T-001">T-001</a>`) {
+		t.Error("the DONE-section row's own id must stay unstyled")
+	}
+	if !strings.Contains(board, `depends on <a class="tid is-done" title="done" href="/t/T-001">T-001</a>, <a class="tid is-dropped"`) {
+		t.Errorf("T-003's board row does not mark its depends-on ids:\n%s", board)
+	}
+
+	activity := get(t, h, "/activity").Body.String()
+	if !strings.Contains(activity, "superseded by "+done) {
+		t.Error("activity text does not mark the cited done id")
+	}
+	if !strings.Contains(activity, `<a class="tid is-done" title="done" href="/t/T-001">T-001</a>`) {
+		t.Error("the done ticket's own activity event id is not marked")
+	}
+
+	// An id inside a URL is never touched; only the free-standing one is wrapped.
+	got := string(linkifyWith("https://x/T-001 T-001", IDStates{"T-001": "done"}))
+	want := `<a href="https://x/T-001" rel="noopener noreferrer" target="_blank">https://x/T-001</a> ` + done
+	if got != want {
+		t.Errorf("linkifyWith = %s, want %s", got, want)
+	}
+	// Free text agrees with the markdown path on the non-citations above.
+	plain := "merged feat/T-001-slug snake_T-001"
+	if got := string(linkifyWith(plain, IDStates{"T-001": "done"})); got != plain {
+		t.Errorf("linkifyWith(%q) = %s, want it unchanged", plain, got)
+	}
+}
+
+// TestArtifactPageMarksDoneIDs: the rick artifact page renders its body
+// through the same id-marking markdown path as a ticket body (T-142 review F4).
+func TestArtifactPageMarksDoneIDs(t *testing.T) {
+	root := rickHTTPTestTree(t)
+	done := fixture{dir: "6-done", id: "T-002", title: "shipped", impact: "low",
+		history: []string{"- 2026-07-20 — created (TO DO). source: test"}}
+	if err := os.WriteFile(filepath.Join(root, "tickets", "6-done", "T-002-slug.md"), []byte(done.text()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "docs", "specs", "T-001", "solution-design-2026-06-10-x.md"), []byte("builds on T-002\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, newRickHandler(t, root), "/specs/T-001/solution-design-2026-06-10-x.md").Body.String()
+	if want := `builds on <span class="tid-ref is-done" title="done">T-002</span>`; !strings.Contains(body, want) {
+		t.Errorf("artifact page missing %q:\n%s", want, body)
+	}
+}
