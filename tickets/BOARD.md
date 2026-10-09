@@ -13,10 +13,11 @@ Last updated: 2026-10-09
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-10-09
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | low | medium | M | [] |  |
 
 ## TO DO (impact order, per child)
 

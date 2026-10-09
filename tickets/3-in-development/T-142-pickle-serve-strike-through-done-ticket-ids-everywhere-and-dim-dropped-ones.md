@@ -131,9 +131,10 @@ are all in `6-done/` and merged, and this plan builds on their shipped shape.
   ticket's `def.ByDir(t.Dir)` and map `Columns` per decision 1. Other states are omitted.
 - Add `States IDStates` to `Entry` and `IDList`, and `State string` to `Event` (the event's
   own id).
-- Thread `states` through `newEntry`, `buildBoard` (and `stateChildGroup`), `buildTicket` and
-  `buildActivity`. Each handler in `serve.go` that calls them builds it once from the tickets
-  it already loaded (`board`, `boardFragment`, `ticket`, `activity`, `activityFragment`).
+- `buildBoard`, `buildTicket` and `buildActivity` each call `buildIDStates` once from the
+  `def` and whole-tree tickets they already receive, and thread it into `newEntry` (and
+  `stateChildGroup`). Their signatures and the handlers stay unchanged; only the `artifact`
+  handler builds states itself (Task 4).
 
 #### Task 2 — templates and `idListOf` (`funcs.go`, `templates/*.html`)
 - `idListOf(basePath, ids, states)` is the third argument. Update every call site in
@@ -141,8 +142,8 @@ are all in `6-done/` and merged, and this plan builds on their shipped shape.
 - `layout.html` `idlist`: `{{$s := $.States.Of $id}}<a class="tid{{with $s}} is-{{.}}{{end}}"{{with $s}} title="{{.}}"{{end}} …>`.
 - `board.html` "ticket-item" family link uses `.States.Of .Family` the same way. The row's own
   `.tid` and title are left unchanged (decision 3).
-- `ticket.html`: h1 id and breadcrumb `<span>` get the class and title from `.States.Of .ID`.
-  So does the family link.
+- `ticket.html`: the breadcrumb `<span>` and a new `<span>` wrapping only the h1's id (so the
+  title is not struck) get the class and title from `.States.Of .ID`. So does the family link.
 - `activity.html`: the event `.tid` gets the class and title from `.State`.
 
 #### Task 3 — free-text ids (`view.go`)
@@ -166,7 +167,9 @@ are all in `6-done/` and merged, and this plan builds on their shipped shape.
   each `*ast.Text` not under an `*ast.CodeSpan`, run the id regex over
   `n.Segment.Value(source)` and split the node: plain `Text` sub-segments plus a `ticketRef`
   node (custom `ast.NodeKind`, holds the id and state) for each hit with a non-empty state. Walk
-  first and mutate after, so the walk never sees nodes it inserted.
+  first and mutate after, so the walk never sees nodes it inserted. The original node's
+  soft/hard line-break flags move to the last piece. `Text` under an `*ast.Image` is skipped
+  too: goldmark builds `alt` from `Text` leaves only, so a `ticketRef` there would vanish.
 - Register a `renderer.NodeRenderer` for the kind (`renderer.WithNodeRenderers`). It writes
   the span from decision 6, with the id escaped via `util.EscapeHTML`.
 - Callers: `buildTicket` passes its states. `serve.go`'s `artifact` handler moves `h.load()`
@@ -176,19 +179,21 @@ are all in `6-done/` and merged, and this plan builds on their shipped shape.
 
 #### Task 5 — CSS (`internal/serve/static/styles.css`)
 - `.is-done { text-decoration: line-through; }` and `.is-dropped { opacity: 0.55; }`, next to
-  `.tid`. Both selectors cover `.tid.is-*` and `.tid-ref.is-*`. Check the result in both light
-  and dark themes.
+  `.tid`. Unqualified, so they cover `.tid`, `.tid-ref` and the family links (which carry no
+  `.tid`) alike. Check the result in both light and dark themes.
 
 #### Task 6 — tests (`internal/serve/serve_test.go`)
-Add `TestDoneAndDroppedIDsAreMarked` on a `newTree` with: T-001 in `6-done`, T-002 in
-`7-dropped`, and T-003 in `1-to-do` with `depends: "[T-001, T-002]"`, `family: T-001`, a body
+Add `TestDoneAndDroppedIDsAreMarked` on a `newTree` with: T-001 in `6-done` and T-002 in
+`7-dropped` (each with its own History line, so each has an activity event), and T-003 in `1-to-do` with `depends: "[T-001, T-002]"`, `family: T-001`, a body
 of `see T-001, T-002, T-003 and UTF-8; ` + "`T-001`" + ` in code`, and a history line
 `… superseded by T-001`. Assert:
 - `/t/T-003`: depends-on links carry `class="tid is-done"` / `class="tid is-dropped"` with
   matching `title`. The body contains `<span class="tid-ref is-done" title="done">T-001</span>`
   and the dropped equivalent. T-003 and `UTF-8` stay unwrapped. `<code>T-001</code>` stays
   unwrapped.
-- `/t/T-001`: the h1 id carries `is-done`.
+- A body line break right after a wrapped id survives (multi-line body case).
+- `/t/T-001`: the `page-title` h1's id span carries `is-done` (match `page-title` itself — the
+  fixture body's own `# T-001 — …` heading is also wrapped).
 - `/`: the DONE-section row for T-001 has no `is-done` on its own `.tid` (decision 3). T-003's
   row's depends-on links do.
 - `/activity`: the event text `superseded by T-001` wraps T-001. The T-001 event's own `.tid`
@@ -211,7 +216,7 @@ and in `depends on`. The activity page shows the done id struck through in Histo
 ### Docs update (mandatory when user-facing)
 
 - `docs/user-manual/cli-reference.adoc` § `pickle serve`, "What it serves": add one sentence
-  under the `/` and `/t/T-NNN` rows. Every mention of a DONE ticket's id renders struck through
+  after the table (it spans `/`, `/t/T-NNN`, `/activity` and the artifact pages). Every mention of a DONE ticket's id renders struck through
   and every DROPPED one dimmed, in lists, History text and rendered bodies alike. Code spans
   are left untouched.
 - `CHANGELOG.md` `## [Unreleased]` → `### Added`: one bullet, ending `(T-142)`.
@@ -244,3 +249,5 @@ and in `depends on`. The activity page shows the done id struck through in Histo
 - 2026-10-09 — created (TO DO). source: chat: user asked to explore, then file, strikethrough for done ticket ids across `pickle serve` (board, ticket page, activity, bodies); decisions taken in chat: done-only strikethrough, dropped dimmed, activity text included, DONE-section rows not struck, BOARD.md out of scope
 - 2026-10-09 — refinement: Description re-verified against `internal/serve`. T-090 coupling corrected (it is done and merged, not in rework). Body markup changed from `<del>` to a classed `<span>`. `merged`/`reason` cells added to the free-text scope. The ticket page's own id is styled.
 - 2026-10-09 — TO DO → READY: plan complete
+- 2026-10-09 — READY → IN DEVELOPMENT: picked up
+- 2026-10-09 — applicability gate (fresh sub-agent): 0 blocking, 8 non-blocking. 7 (board `reason` cell now linkifies bare URLs too, harmless and consistent with merged/activity) noted. plan amended inline: skip `Text` under images and carry line-break flags onto the last split piece (Task 4); id states built inside the existing builders, signatures unchanged (Task 1); h1 id gets its own span (Task 2); unqualified `.is-*` selectors so family links are covered (Task 5); done/dropped fixtures get History lines, a line-break case, `page-title`-specific h1 check (Task 6); docs sentence goes after the serve table, not under a row.
