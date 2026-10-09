@@ -20,11 +20,10 @@ Last updated: 2026-10-09
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | [] |
 
 ## REWORK
 
@@ -164,6 +163,7 @@ Last updated: 2026-10-09
 | T-138 | chain rework and scoped re-review in one session, stopping at the publish gate | yes — merged to main (PR #99, 61a450a, https://github.com/codcod/pickle/commit/61a450a) |
 | T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | yes — merged to main (PR #96, 36d4e74, https://github.com/codcod/pickle/commit/36d4e74) |
 | T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | yes — merged to main (PR #97, b8afb70, https://github.com/codcod/pickle/commit/b8afb70) |
+| T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | no — publish-gated |
 
 ## DROPPED
 
