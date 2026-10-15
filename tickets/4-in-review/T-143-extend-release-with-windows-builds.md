@@ -385,7 +385,15 @@ cost: estimated L, actual L
 - [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references T-143.
 - [ ] Approval gate (step 9): not reached. The verdict is rework.
 
-### Rework fix record — round 1 (commits 6aaaf56..88fc316)
+### Rework fix record — round 1 (commits b5d023b..d9469a9)
+
+The SHAs are as of the branch's rebase onto `main` on 2026-10-15. A bookkeeping commit on `main`
+rewrites them on each rebase, so the commit subjects are the stable reference. The round is the
+three commits after `docs: finish the tap-name fix and record windows support (T-143)`:
+- `fix(install): mark and guard the claude view copy (T-143)`, which is `2730bfc` below;
+- `ci(smoke): require the guard's refusal text, not any failed commit (T-143)`, which is
+  `71dbfc7`;
+- `docs(cli): describe the sentinel-marked claude view copy (T-143)`, which is `88fc316`.
 
 The commits rest on decision 4 as amended on 2026-10-15, with user sign-off.
 
