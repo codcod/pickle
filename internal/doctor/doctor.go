@@ -144,7 +144,8 @@ func checkSkill(root string, selfHost bool, r *Result) {
 
 // checkClaudeView verifies the Claude view. The Claude artifacts are optional
 // (install can run with --no-claude): an absent link is not a finding, but a
-// present one must be a symlink that resolves.
+// present one must be a symlink that resolves, or the copy install writes
+// where symlinks are unavailable (T-143).
 func checkClaudeView(root string, r *Result) {
 	link := filepath.Join(root, filepath.FromSlash(install.ClaudeSkillLink))
 	fi, err := os.Lstat(link)
@@ -152,7 +153,14 @@ func checkClaudeView(root string, r *Result) {
 		return // absent — Claude view not installed
 	}
 	if fi.Mode()&os.ModeSymlink == 0 {
-		r.errf("claude: %s exists but is not a symlink", install.ClaudeSkillLink)
+		switch {
+		case install.IsClaudeViewCopy(root):
+			r.ok(fmt.Sprintf("claude view present (%s, copy)", install.ClaudeSkillLink))
+		case install.IsLinkPlaceholder(link, install.ClaudeSkillTarget):
+			r.errf("claude: %s is a symlink placeholder (checked out without core.symlinks) — `pickle upgrade` replaces it with a copy", install.ClaudeSkillLink)
+		default:
+			r.errf("claude: %s exists but is not a symlink", install.ClaudeSkillLink)
+		}
 		return
 	}
 	if _, err := os.Stat(link); err != nil { // resolve the target
@@ -191,6 +199,10 @@ func checkMarkers(root string, cfg *config.Config, r *Result) {
 			return
 		}
 		r.ok("CLAUDE.md symlink resolves")
+		return
+	}
+	if install.IsLinkPlaceholder(claude, install.ClaudeMDTarget) {
+		r.warnf("markers: CLAUDE.md is a symlink placeholder (checked out without core.symlinks) — enable Developer Mode, `git config core.symlinks true`, and check it out again")
 		return
 	}
 	body, ok = install.InstalledMarkerBody(claude)
