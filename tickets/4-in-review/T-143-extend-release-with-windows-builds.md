@@ -140,7 +140,8 @@ None. No `depends-on:`. The working tree must be clean on `main` before you bran
    - **What counts as pickle's copy.** Only a real directory carrying `.pickle-copy` is pickle's
      copy. A real directory without it is refused, as it is today.
    - **On every `install` and `upgrade`.** An existing copy is first renamed aside to
-     `<view>.pickle-old`, then the symlink is tried. A copy is written only when the symlink
+     `.claude/.brine.pickle-old`, then the symlink is tried. It sits outside `.claude/skills/`, so
+     a leftover is never read as a second skill. A copy is written only when the symlink
      fails. *(Amended again after re-review round 1, D2.)* The aside copy is removed once a link
      or a new copy is in place. If neither lands, it is renamed back, so a failure never loses
      the view or leaves it without its sentinel.
@@ -206,7 +207,7 @@ In `internal/install/install.go`:
     it aside, then go on as for an absent path. Report a fresh copy as `(copy refreshed — symlink
     unavailable: …)`.
   - **Any other real directory:** keep today's refusal error.
-  - **Nothing there:** try `symlink`. On error, build the copy in `<view>.pickle-tmp` with
+  - **Nothing there:** try `symlink`. On error, build the copy in `.claude/.brine.pickle-tmp` with
     `os.CopyFS` from `SkillDir`, write the sentinel last, rename it into place, and report the
     fallback (decision 6).
 - `Run`'s `--claude-symlink` branch, implementing decision 5:
@@ -466,6 +467,39 @@ cost: estimated L, actual L
 - [x] Ticket moved to `5-rework/` (step 6a).
 - [ ] Approval gate: not reached.
 
+### Rework fix record — round 2 (commits pinned by subject)
+
+The round is the two commits after `test(install): drop a closure that implied scoping it did not
+have (T-143)`:
+- `fix(install): park the old claude view copy instead of deleting it first (T-143)` (*fix*);
+- `docs(cli): say a refreshed copy is moved aside and restored on failure (T-143)` (*docs*).
+
+- **D2** (*fix*):
+  - **Moving the old copy aside.** `ensureClaudeView` renames an existing copy to
+    `claudeViewScratch(root, "old")` (`.claude/.brine.pickle-old`) instead of calling
+    `RemoveAll`. A rename moves the whole copy or fails cleanly, so a Windows file lock can no
+    longer strip the sentinel.
+  - **Putting it back.** A deferred restore renames the copy back when the call fails and no
+    view landed. A second deferred step removes the parked copy once a view is in place.
+  - **Staging.** `writeClaudeViewCopy` now stages in `.claude/.brine.pickle-tmp`.
+  - **A killed refresh.** `Upgrade` re-enters `ensureClaudeView` when a parked copy exists with
+    no view, so a killed refresh recovers. `Uninstall` removes both leftovers when the parent
+    resolves inside the root.
+  - **Regression tests:**
+    - `TestClaudeViewRefreshFailureKeepsOldCopy`: the payload is made unreadable, the refresh
+      fails, and the old copy survives with its sentinel and its extra file, leaving no scratch
+      behind.
+    - `TestClaudeViewKilledRefreshRecovers`.
+    - `TestClaudeViewCopyFallback` now also asserts that no scratch is left after a successful
+      refresh.
+- **Prose the fix changed** (*docs*): the `upgrade` paragraph in `cli-reference.adoc` now says
+  that a copy is moved aside and restored on failure.
+- **Acceptance re-run:**
+  - Green: AT1, AT2, AT3, AT4 (`just build`, `just test`, `just lint`, `just docs-check`) and AT6.
+    The local smoke run prints `smoke: ok`.
+  - AT5 was not re-run (`.goreleaser.yaml` is unchanged).
+  - AT7 waits for push approval.
+
 ## History
 
 - 2026-10-15 — created (TO DO). source: chat: user asked to extend the release with Windows builds; filing found `GOOS=windows` does not compile (`internal/lock` uses `syscall.Flock`)
@@ -479,3 +513,5 @@ cost: estimated L, actual L
 - 2026-10-15 — REWORK → IN REVIEW: findings fixed (round 1)
 - 2026-10-15 — plan amended inline: decision 4 again (re-review D2, user chose rework) — an existing copy is moved aside and restored on failure; the guard wording narrowed to copies and placeholder replacement (D1 noted); Task 3 prose brought in line with the amendment (D5)
 - 2026-10-15 — IN REVIEW → REWORK: re-review round 1: 1 blocking (D2); 3 fixed inline, 3 noted
+- 2026-10-15 — plan amended inline: decision 4's parked/staging paths moved to `.claude/.brine.pickle-{old,tmp}` (rework round 2), so a leftover is never read as a second skill
+- 2026-10-15 — REWORK → IN REVIEW: findings fixed (round 2)
