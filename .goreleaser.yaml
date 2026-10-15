@@ -19,6 +19,7 @@ builds:
     goos:
       - darwin
       - linux
+      - windows
     goarch:
       - amd64
       - arm64
@@ -29,6 +30,12 @@ archives:
   - id: pickle
     formats:
       - tar.gz
+    # Windows users expect a zip; the brews pipe below only consumes the
+    # darwin/linux tarballs, so it is unaffected.
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 # Pin the release forge to GitHub explicitly. goreleaser otherwise infers it and

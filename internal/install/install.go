@@ -10,6 +10,7 @@ package install
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -54,6 +55,11 @@ const (
 	// relative symlink target it points at (SkillDir, from inside .claude/skills/).
 	ClaudeSkillLink   = ".claude/skills/brine"
 	ClaudeSkillTarget = "../../.agents/skills/brine"
+	// ClaudeMDTarget is what CLAUDE.md points at under --claude-symlink.
+	ClaudeMDTarget = "AGENTS.md"
+	// ClaudeViewSentinel marks a Claude view directory as pickle's copy, written
+	// where symlinks are unavailable (T-143 decision 4).
+	ClaudeViewSentinel = ".pickle-copy"
 
 	// OpencodeConfigFile is the opencode config `--agent opencode` scaffolds
 	// (whole-file, only when absent — pickle never parses or merges JSONC);
@@ -242,17 +248,33 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 		return res, err
 	}
 	if opts.Agents.Claude {
-		if err := ensureSymlink(
-			filepath.Join(root, filepath.FromSlash(ClaudeSkillLink)),
-			ClaudeSkillTarget, &res); err != nil {
+		if err := ensureClaudeView(root, &res); err != nil {
 			return res, err
 		}
-		if opts.ClaudeLink {
-			if err := ensureSymlink(filepath.Join(root, "CLAUDE.md"), "AGENTS.md", &res); err != nil {
+		claudeMD := filepath.Join(root, "CLAUDE.md")
+		writeMarker := func() error { return injectMarker(claudeMD, MarkerTitle, MarkerBlock(cfg), &res) }
+		switch {
+		case IsLinkPlaceholder(claudeMD, ClaudeMDTarget):
+			res.skipped("CLAUDE.md (symlink placeholder — left alone)")
+		case opts.ClaudeLink && regularWithMarker(claudeMD):
+			res.note("CLAUDE.md is already a regular file with a marker block; refreshed it rather than linking (delete it and re-run for a symlink)")
+			if err := writeMarker(); err != nil {
 				return res, err
 			}
-		} else if err := injectMarker(filepath.Join(root, "CLAUDE.md"), MarkerTitle, MarkerBlock(cfg), &res); err != nil {
-			return res, err
+		case opts.ClaudeLink:
+			// The marker form is the fallback, not a copy of AGENTS.md: doctor,
+			// RefreshMarkers and uninstall already handle a marker-carrying
+			// CLAUDE.md, so a refused symlink costs nothing downstream (T-143).
+			if err := ensureSymlink(claudeMD, ClaudeMDTarget, &res, func(err error) error {
+				res.note("CLAUDE.md: symlink unavailable (" + linkErr(err) + "); wrote a marker block instead")
+				return writeMarker()
+			}); err != nil {
+				return res, err
+			}
+		default:
+			if err := writeMarker(); err != nil {
+				return res, err
+			}
 		}
 	}
 	if opts.Agents.Opencode {
@@ -335,7 +357,11 @@ func RefreshMarkers(root string, cfg *config.Config) (Result, error) {
 		return res, err
 	}
 	claude := filepath.Join(root, "CLAUDE.md")
-	if fi, err := os.Lstat(claude); err == nil && fi.Mode()&os.ModeSymlink == 0 {
+	if IsLinkPlaceholder(claude, ClaudeMDTarget) {
+		// Writing a marker into a checked-out placeholder would turn a tracked
+		// symlink into a modified regular file (T-143).
+		res.skipped("CLAUDE.md (symlink placeholder — left alone)")
+	} else if fi, err := os.Lstat(claude); err == nil && fi.Mode()&os.ModeSymlink == 0 {
 		if err := injectMarker(claude, MarkerTitle, MarkerBlock(cfg), &res); err != nil {
 			return res, err
 		}
@@ -463,7 +489,7 @@ func Upgrade(payload fs.FS, root, payloadVersion string, opts ...UpgradeOptions)
 	dst := filepath.Join(root, filepath.FromSlash(SkillDir))
 	switch {
 	case swept.LinkTarget != "":
-		if err := ensureSymlink(dst, swept.LinkTarget, &res); err != nil {
+		if err := ensureSymlink(dst, swept.LinkTarget, &res, nil); err != nil {
 			return res, err
 		}
 		if err := copyPayload(payload, root, &res); err != nil { // now a symlink: reports "(existing symlink)"
@@ -490,8 +516,10 @@ func Upgrade(payload fs.FS, root, payloadVersion string, opts ...UpgradeOptions)
 	// name, or when the legacy Claude view just got swept away — an upgraded
 	// legacy install must not lose its Claude view entirely.
 	claudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
-	if _, err := os.Lstat(claudeLink); err == nil || swept.ClaudeLink {
-		if err := ensureSymlink(claudeLink, ClaudeSkillTarget, &res); err != nil {
+	// A parked copy with no view beside it is a refresh that was killed
+	// mid-way: the view existed, so it is re-created (re-review D2).
+	if _, err := os.Lstat(claudeLink); err == nil || swept.ClaudeLink || exists(claudeViewScratch(root, "old")) {
+		if err := ensureClaudeView(root, &res); err != nil {
 			return res, err
 		}
 	}
@@ -649,13 +677,33 @@ func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error
 
 	claudeLink := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
 	if _, err := os.Lstat(claudeLink); err == nil {
-		if opts.DryRun {
+		isCopy := IsClaudeViewCopy(root)
+		switch {
+		case opts.DryRun && isCopy:
+			res.removed(ClaudeSkillLink + " (dry-run, copy)")
+		case opts.DryRun:
 			res.removed(ClaudeSkillLink + " (dry-run)")
-		} else {
+		case isCopy:
+			if err := os.RemoveAll(claudeLink); err != nil {
+				return res, fmt.Errorf("remove claude skill copy: %w", err)
+			}
+			res.removed(ClaudeSkillLink + " (copy)")
+		default: // a symlink, or a checked-out placeholder file
 			if err := os.Remove(claudeLink); err != nil {
 				return res, fmt.Errorf("remove claude skill symlink: %w", err)
 			}
 			res.removed(ClaudeSkillLink)
+		}
+	}
+
+	if !opts.DryRun && claudeViewParentInRoot(root) {
+		for _, kind := range []string{"tmp", "old"} { // leftovers of a killed copy refresh
+			if p := claudeViewScratch(root, kind); exists(p) {
+				if err := os.RemoveAll(p); err != nil {
+					return res, err
+				}
+				res.removed(filepath.ToSlash(filepath.Join(".claude", filepath.Base(p))))
+			}
 		}
 	}
 
@@ -738,7 +786,8 @@ func uninstallMarkerFile(path string, opts UninstallOptions, res *Result) error 
 	if err != nil {
 		return nil // absent — nothing to do
 	}
-	if fi.Mode()&os.ModeSymlink != 0 {
+	// A checked-out placeholder stands in for the symlink, so it goes the same way.
+	if fi.Mode()&os.ModeSymlink != 0 || IsLinkPlaceholder(path, ClaudeMDTarget) {
 		if opts.DryRun {
 			res.removed(rel + " (symlink, dry-run)")
 			return nil
@@ -1097,9 +1146,15 @@ func writeConfig(root, payloadVersion string, opts Options, res *Result) (*confi
 	return cfg, nil
 }
 
+// symlink is os.Symlink, swappable so tests can stand in for a filesystem —
+// or a Windows account without Developer Mode — that refuses symlinks.
+var symlink = os.Symlink
+
 // ensureSymlink creates or repairs a relative symlink at link pointing to target.
-// It errors if a real (non-symlink) file or directory blocks the path.
-func ensureSymlink(link, target string, res *Result) error {
+// It errors if a real (non-symlink) file or directory blocks the path. When the
+// symlink itself cannot be created and fallback is non-nil, fallback(err) runs
+// instead and its result is returned (T-143).
+func ensureSymlink(link, target string, res *Result, fallback func(error) error) error {
 	rel := link
 	if wd, err := os.Getwd(); err == nil {
 		if r, err := filepath.Rel(wd, link); err == nil {
@@ -1108,7 +1163,8 @@ func ensureSymlink(link, target string, res *Result) error {
 	}
 	if fi, err := os.Lstat(link); err == nil {
 		if fi.Mode()&os.ModeSymlink != 0 {
-			if cur, _ := os.Readlink(link); cur == target {
+			// Windows stores the target with backslashes.
+			if cur, _ := os.Readlink(link); filepath.ToSlash(cur) == target {
 				res.skipped(rel + " (symlink ok)")
 				return nil
 			}
@@ -1122,11 +1178,177 @@ func ensureSymlink(link, target string, res *Result) error {
 	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
 		return err
 	}
-	if err := os.Symlink(target, link); err != nil {
+	if err := symlink(target, link); err != nil {
+		if fallback != nil {
+			return fallback(err)
+		}
 		return err
 	}
 	res.created(rel + " -> " + target)
 	return nil
+}
+
+// ensureClaudeView creates or refreshes the Claude view of the skill: a
+// symlink to SkillDir where the OS allows one, otherwise a sentinel-marked
+// copy of it (T-143 decision 4). An existing copy is moved aside and the
+// symlink tried again, so a project that gains symlink support converges on
+// the link; the old copy is restored if no new view lands. A checked-out link
+// placeholder is replaced. Nothing is touched unless the view's parent
+// resolves inside root.
+func ensureClaudeView(root string, res *Result) (err error) {
+	link := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
+	refreshed := false
+	switch {
+	case IsClaudeViewCopy(root):
+		aside := claudeViewScratch(root, "old")
+		if err := os.RemoveAll(aside); err != nil {
+			return err
+		}
+		// A rename moves the whole copy or nothing (a locked file on Windows
+		// fails it cleanly), where RemoveAll could stop halfway with the
+		// sentinel already gone (re-review D2).
+		if err := os.Rename(link, aside); err != nil {
+			return fmt.Errorf("move %s aside: %w", ClaudeSkillLink, err)
+		}
+		refreshed = true
+		defer func() {
+			if _, lerr := os.Lstat(link); err != nil && os.IsNotExist(lerr) {
+				if rerr := os.Rename(aside, link); rerr != nil {
+					err = fmt.Errorf("%w (restoring the previous copy from %s also failed: %v)", err, aside, rerr)
+				}
+			}
+		}()
+	case claudeViewParentInRoot(root) && IsLinkPlaceholder(link, ClaudeSkillTarget):
+		if err := os.Remove(link); err != nil {
+			return err
+		}
+		res.note(ClaudeSkillLink + " was a symlink placeholder (checked out without core.symlinks); replaced")
+	}
+	defer func() {
+		if err == nil && claudeViewParentInRoot(root) {
+			// A new view landed: drop the parked copy, and anything a killed
+			// run left behind. A leftover that will not go is retried next run.
+			_ = os.RemoveAll(claudeViewScratch(root, "old"))
+		}
+	}()
+	return ensureSymlink(link, ClaudeSkillTarget, res, func(err error) error {
+		if cerr := writeClaudeViewCopy(root, link); cerr != nil {
+			return fmt.Errorf("%s: symlink unavailable (%s), and copying failed: %w", ClaudeSkillLink, linkErr(err), cerr)
+		}
+		label := " (copy — symlink unavailable: "
+		if refreshed {
+			// ponytail: re-copied on every run, so this reports a refresh even
+			// when nothing changed; compare first (as copyPayload does) if that noise matters.
+			label = " (copy refreshed — symlink unavailable: "
+		}
+		res.created(ClaudeSkillLink + label + linkErr(err) + ")")
+		return nil
+	})
+}
+
+// writeClaudeViewCopy copies SkillDir to link by way of a staging directory
+// (claudeViewScratch "tmp"), writing the sentinel last and renaming the result
+// into place, so a copy
+// that fails partway never carries the sentinel and is never taken for
+// pickle's (T-143 decision 4).
+func writeClaudeViewCopy(root, link string) error {
+	if !claudeViewParentInRoot(root) {
+		return fmt.Errorf("%s resolves outside the project; refusing to write there", filepath.Dir(ClaudeSkillLink))
+	}
+	tmp := claudeViewScratch(root, "tmp")
+	if err := os.RemoveAll(tmp); err != nil {
+		return err
+	}
+	err := os.CopyFS(tmp, os.DirFS(filepath.Join(root, filepath.FromSlash(SkillDir))))
+	if err == nil {
+		err = os.WriteFile(filepath.Join(tmp, ClaudeViewSentinel), []byte(claudeViewSentinelBody), 0o644)
+	}
+	if err == nil {
+		err = os.Rename(tmp, link)
+	}
+	if err != nil {
+		_ = os.RemoveAll(tmp)
+	}
+	return err
+}
+
+// claudeViewScratch is where ensureClaudeView stages a new copy ("tmp") or
+// parks the old one ("old"). It sits in .claude/, not .claude/skills/, so a
+// leftover from a killed run is never picked up as a second skill.
+func claudeViewScratch(root, kind string) string {
+	return filepath.Join(root, ".claude", ".brine.pickle-"+kind)
+}
+
+func exists(path string) bool {
+	_, err := os.Lstat(path)
+	return err == nil
+}
+
+const claudeViewSentinelBody = "Written by pickle: this directory is a copy of " + SkillDir + ", made because\n" +
+	"symlinks are unavailable here. `pickle upgrade` replaces it wholesale; do not edit it.\n"
+
+// claudeViewParentInRoot reports whether the Claude view's parent directory
+// (.claude/skills), with every symlink resolved, lies inside root. A view
+// reached through a symlinked parent belongs to whatever the link points at,
+// so pickle never removes or replaces it (T-143 decision 4).
+func claudeViewParentInRoot(root string) bool {
+	parent, err := filepath.EvalSymlinks(filepath.Join(root, filepath.FromSlash(filepath.Dir(ClaudeSkillLink))))
+	if err != nil {
+		return false
+	}
+	base, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(base, parent)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// linkErr trims a symlink failure to its cause; os.LinkError's own text
+// repeats both paths, which the caller's message already names.
+func linkErr(err error) string {
+	var le *os.LinkError
+	if errors.As(err, &le) {
+		return le.Err.Error()
+	}
+	return err.Error()
+}
+
+// IsClaudeViewCopy reports whether root's Claude view is pickle's copy: a
+// real directory carrying ClaudeViewSentinel, under a parent that resolves
+// inside root. Anything else at that path is not pickle's to remove.
+func IsClaudeViewCopy(root string) bool {
+	link := filepath.Join(root, filepath.FromSlash(ClaudeSkillLink))
+	fi, err := os.Lstat(link)
+	if err != nil || !fi.IsDir() || !claudeViewParentInRoot(root) {
+		return false
+	}
+	_, err = os.Lstat(filepath.Join(link, ClaudeViewSentinel))
+	return err == nil
+}
+
+// IsLinkPlaceholder reports whether path is a regular file standing in for a
+// symlink to target: what git checks out for a committed link under
+// core.symlinks=false (Git for Windows' default) — a small file whose only
+// content is the link target (T-143 decision 9).
+func IsLinkPlaceholder(path, target string) bool {
+	fi, err := os.Lstat(path)
+	if err != nil || !fi.Mode().IsRegular() || fi.Size() > 4096 {
+		return false
+	}
+	b, err := os.ReadFile(path)
+	return err == nil && filepath.ToSlash(strings.TrimSpace(string(b))) == target
+}
+
+// regularWithMarker reports whether path is a regular file (not a symlink)
+// that already carries the pickle marker block.
+func regularWithMarker(path string) bool {
+	fi, err := os.Lstat(path)
+	if err != nil || !fi.Mode().IsRegular() {
+		return false
+	}
+	_, ok := InstalledMarkerBody(path)
+	return ok
 }
 
 // markerSpan locates the pickle-managed block within text, returning the byte

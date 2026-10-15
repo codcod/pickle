@@ -36,9 +36,9 @@ use it to re-test the user-manual build against an already fully published tag. 
 hit `422 already_exists` when it re-uploads the binaries/checksums the real first run already
 published — see *Testing the user-manual build* below for the non-destructive way to do that.
 
-That produces, for `darwin`/`linux` × `amd64`/`arm64`:
+That produces, for `darwin`/`linux`/`windows` × `amd64`/`arm64`:
 
-- a **GitHub release** with `.tar.gz` archives + `checksums.txt`;
+- a **GitHub release** with `.tar.gz` archives (`.zip` for windows) + `checksums.txt`;
 - an updated **Homebrew formula** committed to the tap.
 
 The version is stamped into the binary via `-ldflags -X main.version={{.Version}}`; a

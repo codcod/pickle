@@ -2,6 +2,6 @@
 // Static values only: no build-time revnumber/revdate plumbing (T-047, decision 5).
 :product: pickle
 :repo-url: https://github.com/codcod/pickle
-:homebrew-tap: codcod/taps
+:homebrew-tap: codcod/tap
 :skill-dir: .agents/skills/brine
 :flow: brine

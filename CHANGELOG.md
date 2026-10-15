@@ -13,6 +13,19 @@ may change in any release.
 
 ## [Unreleased]
 
+### Added
+
+- **Windows builds** (T-143). Releases now ship `pickle_<version>_windows_amd64.zip` and
+  `_arm64.zip`, each holding `pickle.exe`. Where Windows refuses a symlink (no Developer Mode),
+  `pickle install` writes a copy of the skill at `.claude/skills/brine` instead, which
+  `upgrade`, `doctor` and `uninstall` all understand, and `--claude-symlink` falls back to the
+  `CLAUDE.md` marker block. Link placeholders that git checks out under `core.symlinks=false`
+  are replaced (the skill view) or left alone (`CLAUDE.md`), and `doctor` reports both.
+
+### Fixed
+
+- The user manual named the Homebrew tap `codcod/taps`; it is `codcod/tap`.
+
 ## [1.3.0] - 2026-10-09
 
 ### Added

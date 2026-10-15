@@ -34,6 +34,17 @@ brew trust --formula codcod/tap/pickle
 brew install codcod/tap/pickle
 ```
 
+On Windows, download `pickle_<version>_windows_amd64.zip` (or `_arm64`) from the
+[latest release](https://github.com/codcod/pickle/releases/latest), unzip it, and put
+`pickle.exe` on your `PATH`. `pickle install` links `.claude/skills/brine` to the skill
+directory. Windows only allows that with Developer Mode on (or as an administrator), so
+without it pickle writes a copy of the skill there instead, and `pickle upgrade` keeps that
+copy current. If the project you clone already commits those paths as symlinks, turn on
+Developer Mode and run `git config --global core.symlinks true` *before* cloning; otherwise
+git checks them out as small placeholder files. `pickle doctor` reports those, and
+`pickle upgrade` replaces the `.claude/skills/brine` placeholder with a copy that git will
+then show as changed. Don't commit that change.
+
 Then, inside any project:
 
 ```sh
