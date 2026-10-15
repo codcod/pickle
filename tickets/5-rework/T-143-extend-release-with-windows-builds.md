@@ -139,12 +139,17 @@ None. No `depends-on:`. The working tree must be clean on `main` before you bran
      into place. A partial copy therefore never carries the sentinel.
    - **What counts as pickle's copy.** Only a real directory carrying `.pickle-copy` is pickle's
      copy. A real directory without it is refused, as it is today.
-   - **On every `install` and `upgrade`.** An existing copy is removed and the symlink is tried
-     first. A copy is written only when the symlink fails.
+   - **On every `install` and `upgrade`.** An existing copy is first renamed aside to
+     `<view>.pickle-old`, then the symlink is tried. A copy is written only when the symlink
+     fails. *(Amended again after re-review round 1, D2.)* The aside copy is removed once a link
+     or a new copy is in place. If neither lands, it is renamed back, so a failure never loses
+     the view or leaves it without its sentinel.
    - **`doctor` and `uninstall`.** `doctor` accepts a copy, and `uninstall` removes it with
      `RemoveAll`.
-   - **The guard.** No destructive step touches the view unless its parent,
-     `filepath.EvalSymlinks(<root>/.claude/skills)`, resolves inside the project root.
+   - **The guard.** No copy is removed, replaced or written, and no placeholder is replaced,
+     unless the view's parent, `filepath.EvalSymlinks(<root>/.claude/skills)`, resolves inside
+     the project root. `uninstall` removing a symlink or placeholder file stays unguarded, as it
+     is on `main` (re-review round 1, D1, noted).
 5. **For `CLAUDE.md` under `--claude-symlink`, the fallback is the existing marker-block form, not
    a copy of `AGENTS.md`.** `doctor`, `RefreshMarkers` and `uninstall` already handle a regular
    `CLAUDE.md` that carries markers. Under `--claude-symlink`, a re-run that finds a regular
@@ -197,16 +202,19 @@ In `internal/install/install.go`:
   Claude-view call sites, `Run` (near line 245) and `Upgrade` (near line 494), in place of the
   direct `ensureSymlink`. Its behaviour by what is at the path:
   - **A symlink:** do what `ensureSymlink` does today.
-  - **A real directory with `SKILL.md`:** `RemoveAll`, then `os.CopyFS` from `SkillDir`, then
-    report `(copy refreshed)`.
-  - **A real directory without `SKILL.md`:** keep today's refusal error.
-  - **Nothing there:** try `symlink`. On error, `os.CopyFS` and report the fallback (decision 6).
+  - **pickle's copy** (a real directory carrying `.pickle-copy`, under a parent inside root): move
+    it aside, then go on as for an absent path. Report a fresh copy as `(copy refreshed — symlink
+    unavailable: …)`.
+  - **Any other real directory:** keep today's refusal error.
+  - **Nothing there:** try `symlink`. On error, build the copy in `<view>.pickle-tmp` with
+    `os.CopyFS` from `SkillDir`, write the sentinel last, rename it into place, and report the
+    fallback (decision 6).
 - `Run`'s `--claude-symlink` branch, implementing decision 5:
   - **The symlink fails:** fall back to `injectMarker` on `CLAUDE.md` and note it.
   - **`CLAUDE.md` is a regular file with a marker block:** call `injectMarker` instead of
     refusing.
-- In `Uninstall` (near line 650), a real directory at the Claude view that has `SKILL.md` is
-  removed with `os.RemoveAll`. The dry-run label is `(dry-run, copy)`.
+- In `Uninstall` (near line 650), pickle's copy (`IsClaudeViewCopy(root)`) is removed with
+  `os.RemoveAll`. The dry-run label is `(dry-run, copy)`.
 - Add `IsLinkPlaceholder` and wire it as decision 9 specifies:
   - `ensureClaudeView` treats a Claude-view placeholder as absent once it has removed it.
   - `Run`'s `CLAUDE.md` branch (both modes) and `RefreshMarkers` skip a `CLAUDE.md` placeholder,
@@ -215,7 +223,7 @@ In `internal/install/install.go`:
 - In `ensureSymlink`, compare `filepath.ToSlash(cur) == target` (decision 10).
 
 In `internal/doctor/doctor.go`:
-- `checkClaudeView` passes a real directory that contains `SKILL.md` with
+- `checkClaudeView` passes pickle's copy (`IsClaudeViewCopy(root)`) with
   `claude view present (.claude/skills/brine, copy)`. A placeholder is an error that names
   `pickle upgrade`. Every other non-symlink is still an error.
 - `checkMarkers` warns on a `CLAUDE.md` placeholder (decision 9) instead of reporting "no pickle
@@ -223,10 +231,10 @@ In `internal/doctor/doctor.go`:
 
 Tests, all running on darwin/linux. Each one swaps `symlink` for a function that returns an error
 and restores it with `t.Cleanup`:
-- `internal/install`: `install` writes a copy view that contains `SKILL.md`, and the output names
-  the fallback. Planting a stale extra file in the copy and then running `upgrade` removes it.
-  `uninstall` removes the copy. A real `.claude/skills/brine` directory without `SKILL.md` is
-  still refused. With `--claude-symlink` and a failing symlink, `CLAUDE.md` is a regular file
+- `internal/install`: `install` writes a copy view that carries `.pickle-copy`, and the output
+  names the fallback. Planting a stale extra file in the copy and then running `upgrade` removes it.
+  `uninstall` removes the copy. A real `.claude/skills/brine` directory without the sentinel
+  is still refused. With `--claude-symlink` and a failing symlink, `CLAUDE.md` is a regular file
   with the marker block, and a second `install --claude-symlink` succeeds.
 - Placeholders: `upgrade` turns a planted Claude-view placeholder into a link (or a copy, with
   `symlink` forced to fail). `RefreshMarkers` and `install` leave a planted `CLAUDE.md` placeholder
@@ -385,19 +393,18 @@ cost: estimated L, actual L
 - [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references T-143.
 - [ ] Approval gate (step 9): not reached. The verdict is rework.
 
-### Rework fix record — round 1 (commits b5d023b..d9469a9)
+### Rework fix record — round 1 (commits pinned by subject)
 
-The SHAs are as of the branch's rebase onto `main` on 2026-10-15. A bookkeeping commit on `main`
-rewrites them on each rebase, so the commit subjects are the stable reference. The round is the
-three commits after `docs: finish the tap-name fix and record windows support (T-143)`:
-- `fix(install): mark and guard the claude view copy (T-143)`, which is `2730bfc` below;
-- `ci(smoke): require the guard's refusal text, not any failed commit (T-143)`, which is
-  `71dbfc7`;
-- `docs(cli): describe the sentinel-marked claude view copy (T-143)`, which is `88fc316`.
+Every bookkeeping commit on `main` forces a rebase of the in-tree branch, which rewrites the SHAs,
+so this record names commits by subject only. The round is the three commits after
+`docs: finish the tap-name fix and record windows support (T-143)`:
+- `fix(install): mark and guard the claude view copy (T-143)` (*fix* below);
+- `ci(smoke): require the guard's refusal text, not any failed commit (T-143)` (*smoke*);
+- `docs(cli): describe the sentinel-marked claude view copy (T-143)` (*docs*).
 
 The commits rest on decision 4 as amended on 2026-10-15, with user sign-off.
 
-- **F1** (`2730bfc`):
+- **F1** (*fix*):
   - New `claudeViewParentInRoot` requires `EvalSymlinks(<root>/.claude/skills)` to lie inside
     `EvalSymlinks(root)`.
   - `IsClaudeViewCopy(root)` checks it, and so does the placeholder branch in `ensureClaudeView`.
@@ -405,7 +412,7 @@ The commits rest on decision 4 as amended on 2026-10-15, with user sign-off.
   - Regression test: `TestClaudeViewThroughSymlinkedParentUntouched`. I also re-ran the review's
     reproduction with the branch binary: `upgrade` now refuses with "exists and is not a symlink",
     and `X/skills/brine/notes.txt` survives.
-- **F2** (`2730bfc`):
+- **F2** (*fix*):
   - The copy carries the `ClaudeViewSentinel` (`.pickle-copy`), and only a directory carrying it
     is pickle's.
   - `writeClaudeViewCopy` builds the copy in `<view>.pickle-tmp`, writes the sentinel last, then
@@ -413,18 +420,18 @@ The commits rest on decision 4 as amended on 2026-10-15, with user sign-off.
   - Regression test: `TestClaudeViewForeignDirectoryRefused` now plants `SKILL.md` and
     `notes.md` with no sentinel, and asserts that `upgrade` refuses, `uninstall` errors, and
     `notes.md` survives.
-- **F3** (`2730bfc`):
+- **F3** (*fix*):
   - `ensureClaudeView` removes an existing copy, then calls `ensureSymlink`. It copies afresh
     only from the symlink fallback, reported as `(copy refreshed — symlink unavailable: …)`.
   - Regression test: `TestClaudeViewCopyConvergesOnSymlink`.
-- **F4** (`2730bfc`):
+- **F4** (*fix*):
   - New `case opts.ClaudeLink && regularWithMarker(claudeMD)` notes "CLAUDE.md is already a
     regular file with a marker block; refreshed it rather than linking (delete it and re-run for
     a symlink)".
   - Asserted in `TestClaudeMDSymlinkFallsBackToMarker`.
-- **F5** (`71dbfc7`): `smoke.sh` captures the commit's output and requires "refusing to commit
+- **F5** (*smoke*): `smoke.sh` captures the commit's output and requires "refusing to commit
   ticket bookkeeping on a feature branch". Run locally, it reports `smoke: ok`.
-- **Prose the fixes changed** (`88fc316`): three `cli-reference.adoc` passages now describe the
+- **Prose the fixes changed** (*docs*): three `cli-reference.adoc` passages now describe the
   sentinel, the symlink retry and the never-delete rule. They are the install row, the `upgrade`
   paragraph and the `doctor` bullet.
 - **Acceptance re-run:**
@@ -432,6 +439,32 @@ The commits rest on decision 4 as amended on 2026-10-15, with user sign-off.
     plus actionlint.
   - AT5 (goreleaser snapshot) was not re-run, because round 1 left `.goreleaser.yaml` untouched.
   - AT7 waits for push approval.
+
+### Round 2 — scoped re-review of round 1, 2026-10-15
+
+F1–F5 are verified closed: each was re-tested, and F1 and F5 were reproduced as fixed.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| D2 | blocking | correctness | — | Refreshing a copy deletes the old copy before the new view exists. If the new copy then fails, the view is gone, and `Upgrade` only revisits a view that exists. On NTFS, `RemoveAll` deletes `.pickle-copy` first, so a file locked in the copy leaves a sentinel-less directory that every later upgrade refuses. A killed run leaves `<view>.pickle-tmp` behind. These fall under T-143 decision 4, amended again with user sign-off. | unreproduced: each needs a failing copy or a Windows file lock. Traced: `ensureClaudeView` `RemoveAll(link)` → `ensureSymlink` → `writeClaudeViewCopy`; the `Upgrade` gate is `os.Lstat(claudeLink)`. | Rename the old copy aside first, and restore it on failure or remove it on success. Have uninstall drop a stray `.pickle-tmp` or `.pickle-old`. |
+| D1 | non-blocking | correctness | noted | Through a symlinked `.claude/skills`, `uninstall`'s default `os.Remove` still deletes a symlink, placeholder or empty directory outside the root. doctor's placeholder remedy then points at an `upgrade` that refuses. | Reproduced (r2). `main` does the same `os.Remove`, so the branch did not cause it. | Decision 4's guard is narrowed to what the code does (copies and placeholder replacement). Guarding uninstall is pre-existing ground. |
+| D3 | non-blocking | test-gap | noted | `writeClaudeViewCopy`'s own guard, and doctor erroring on a sentinel-less directory holding `SKILL.md`, have no direct test. | by inspection | Both paths are exercised indirectly: the guard via `IsClaudeViewCopy`, and doctor via the default branch. |
+| D4 | non-blocking | stale-xref | fixed inline | The round-1 fix record's SHAs came from two different rebases, and none were on the branch. | `git merge-base --is-ancestor` → false | The record now names commits by subject only. |
+| D5 | non-blocking | stale-xref | fixed inline | Task 3's prose still described the predicate from before the amendment ("a real directory with `SKILL.md`"). | Task 3 vs decision 4 | Task 3 is rewritten to name the sentinel, the move-aside and the guard. |
+| D6 | non-blocking | design | noted | `uninstall` over a directory that is not pickle's fails partway with a raw error, after `.agents/skills/brine` is already gone. | Reproduced (r1). `main` behaves the same. | This predates the branch. Refusing up front is uninstall-robustness work. |
+| D7 | non-blocking | design | fixed inline | `TestClaudeViewCopyConvergesOnSymlink` wrapped `noSymlinks(t)` in a closure, as if that scoped it. | symlink_fallback_test.go:145-151 | Fixed by `test(install): drop a closure that implied scoping it did not have (T-143)`. |
+
+Dispositions: 1 blocking (D2, → rework round 2); fixed inline 3 (D4, D5, D7); noted 3 (D1, D3, D6); new ticket 0; folded 0.
+cost: estimated L, actual L
+
+- [x] Reviewer independence: delegated. A fresh sub-agent ran steps 1–4a with `hunt: one pass`. Its 7 findings were all kept; I re-verified D1 and D6 from its reproductions and D2 by reading the code.
+- [x] Stale-branch check: `pickle doctor` showed 0 errors and 0 warnings after the rebase.
+- [x] Implementation audit (scoped): it read the fix diff in full. AT1–AT4 and AT6 are green. AT5 was not re-run, because `.goreleaser.yaml` is unchanged. AT7 waits for push approval.
+- [x] Correctness hunt: a one-pass angle hunt over the fix diff, by the delegated reviewer with angle 7 included. D1 and D6 are reproduced, and D2 is traced.
+- [x] Consistency and docs audits: these produced D4 and D5. `just docs-check` is green.
+- [x] Docs-readability: conscious skip, for three short reference passages.
+- [x] Ticket moved to `5-rework/` (step 6a).
+- [ ] Approval gate: not reached.
 
 ## History
 
@@ -444,3 +477,5 @@ The commits rest on decision 4 as amended on 2026-10-15, with user sign-off.
 - 2026-10-15 — IN REVIEW → REWORK: review round 1: 5 blocking (F1-F5); 3 fixed inline, 6 noted
 - 2026-10-15 — plan amended inline: decision 4 rewritten per review round 1 (F1–F3, user sign-off) — `.pickle-copy` sentinel, temp-sibling copy renamed into place, symlink retried before re-copying, parent must resolve inside the root
 - 2026-10-15 — REWORK → IN REVIEW: findings fixed (round 1)
+- 2026-10-15 — plan amended inline: decision 4 again (re-review D2, user chose rework) — an existing copy is moved aside and restored on failure; the guard wording narrowed to copies and placeholder replacement (D1 noted); Task 3 prose brought in line with the amendment (D5)
+- 2026-10-15 — IN REVIEW → REWORK: re-review round 1: 1 blocking (D2); 3 fixed inline, 3 noted
