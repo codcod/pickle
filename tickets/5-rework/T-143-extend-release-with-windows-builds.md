@@ -131,12 +131,20 @@ None. No `depends-on:`. The working tree must be clean on `main` before you bran
    OS; Windows privilege is the motivating case. Route every `os.Symlink` call in
    `internal/install` through a package variable `var symlink = os.Symlink` so tests on
    darwin/linux can force the failure.
-4. **For the Claude view, the fallback is a full copy of `.agents/skills/brine`.** It is made with
-   stdlib `os.CopyFS(dst, os.DirFS(src))`, which needs Go ≥ 1.23; `go.mod` is on 1.26.
-   **A real directory at `.claude/skills/brine` that contains `SKILL.md` is a pickle copy view.**
-   `install` and `upgrade` refresh it by `RemoveAll` plus a fresh copy, `doctor` accepts it, and
-   `uninstall` removes it with `RemoveAll`. A real directory there *without* `SKILL.md` is still
-   refused, as it is today.
+4. **For the Claude view, the fallback is a full copy of `.agents/skills/brine`, marked as
+   pickle's by a sentinel file.** *(Amended 2026-10-15 after review round 1, F1–F3, with user
+   sign-off.)*
+   - **Building a copy.** The copy goes into a temporary sibling directory with stdlib
+     `os.CopyFS`, and the sentinel `.pickle-copy` is written last. The directory is then renamed
+     into place. A partial copy therefore never carries the sentinel.
+   - **What counts as pickle's copy.** Only a real directory carrying `.pickle-copy` is pickle's
+     copy. A real directory without it is refused, as it is today.
+   - **On every `install` and `upgrade`.** An existing copy is removed and the symlink is tried
+     first. A copy is written only when the symlink fails.
+   - **`doctor` and `uninstall`.** `doctor` accepts a copy, and `uninstall` removes it with
+     `RemoveAll`.
+   - **The guard.** No destructive step touches the view unless its parent,
+     `filepath.EvalSymlinks(<root>/.claude/skills)`, resolves inside the project root.
 5. **For `CLAUDE.md` under `--claude-symlink`, the fallback is the existing marker-block form, not
    a copy of `AGENTS.md`.** `doctor`, `RefreshMarkers` and `uninstall` already handle a regular
    `CLAUDE.md` that carries markers. Under `--claude-symlink`, a re-run that finds a regular
@@ -386,3 +394,4 @@ cost: estimated L, actual L
 - 2026-10-15 — READY → IN DEVELOPMENT: picked up
 - 2026-10-15 — IN DEVELOPMENT → IN REVIEW: acceptance green (steps 1-6 local; step 7 windows-smoke awaits push approval); smoke steps extracted to .github/scripts/smoke.sh so shellcheck covers them and they run locally
 - 2026-10-15 — IN REVIEW → REWORK: review round 1: 5 blocking (F1-F5); 3 fixed inline, 6 noted
+- 2026-10-15 — plan amended inline: decision 4 rewritten per review round 1 (F1–F3, user sign-off) — `.pickle-copy` sentinel, temp-sibling copy renamed into place, symlink retried before re-copying, parent must resolve inside the root
