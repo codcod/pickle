@@ -29,8 +29,35 @@ jobs:
         run: go test ./...
       - name: build
         run: go build -o pickle .
+      # Windows is a release target (T-143); vet type-checks the test files too.
+      - name: windows cross-compile
+        run: |
+          GOOS=windows GOARCH=amd64 go vet ./...
+          GOOS=windows GOARCH=arm64 go build -o /dev/null .
       - name: board audit
         run: ./pickle board audit
+
+  # Runs the real pickle.exe on Windows (T-143). GitHub's runners can create symlinks, so
+  # this proves the binary, the lock and the hooks there — not the copy fallback, which the
+  # unit tests cover by injecting a symlink failure.
+  windows-smoke:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: smoke
+        run: |
+          # RUNNER_TEMP is a Windows path (D:\a\_temp); its drive colon would split PATH.
+          t=$(cygpath -u "$RUNNER_TEMP")
+          mkdir -p "$t/bin"
+          go build -o "$t/bin/pickle.exe" .
+          .github/scripts/smoke.sh "$t/bin" "$t/smoke"
 
   goreleaser-check:
     runs-on: ubuntu-latest
