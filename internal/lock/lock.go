@@ -35,10 +35,11 @@
 // tree the way the rest of the codebase already does (see internal/config's
 // same-machine assumptions).
 //
-// Targets are darwin and linux only (.goreleaser.yaml); syscall.Flock exists
-// on both, so this needs no build tags and no new dependency. If a Windows
-// target is ever added, a build-tagged stub (e.g. LockFileEx) is that
-// ticket's problem — this package does not attempt one.
+// The platform call lives behind tryLock/unlock: lock_unix.go uses flock,
+// lock_windows.go uses LockFileEx on the file's first byte. Both are
+// advisory-equivalent here (the lock file is never read or written), both
+// are released when the process dies, and both keep the same non-blocking
+// retry and timeout, so callers see one behaviour on every target (T-143).
 package lock
 
 import (
@@ -47,7 +48,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 	"time"
 )
 
@@ -101,10 +101,10 @@ func WithExclusive(root string, fn func() error) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	if err := acquire(f, syscall.LOCK_EX); err != nil {
+	if err := acquire(f, true); err != nil {
 		return err
 	}
-	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
+	defer unlock(f)
 
 	return fn()
 }
@@ -129,29 +129,27 @@ func WithShared(root string, fn func() error) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	if err := acquire(f, syscall.LOCK_SH); err != nil {
+	if err := acquire(f, false); err != nil {
 		return err
 	}
-	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
+	defer unlock(f)
 
 	return fn()
 }
 
-// acquire retries a non-blocking flock (LOCK_EX or LOCK_SH, both bitwise-or'd
-// with LOCK_NB by this function) for up to acquireTimeout before giving up.
-// LOCK_NB rather than a bare blocking flock is what makes the bound
-// enforceable at all: a plain LOCK_EX/LOCK_SH blocks the calling goroutine
-// (and, since flock is a syscall, the OS thread under it) with no way to
-// time out.
-func acquire(f *os.File, how int) error {
+// acquire retries a non-blocking lock (exclusive, or shared when exclusive
+// is false) for up to acquireTimeout before giving up. A non-blocking try
+// rather than a blocking call is what makes the bound enforceable at all: a
+// blocking flock/LockFileEx parks the calling goroutine (and the OS thread
+// under it) with no way to time out.
+func acquire(f *os.File, exclusive bool) error {
 	deadline := time.Now().Add(acquireTimeout)
-	fd := int(f.Fd())
 	for {
-		err := syscall.Flock(fd, how|syscall.LOCK_NB)
-		if err == nil {
+		busy, err := tryLock(f, exclusive)
+		if err == nil && !busy {
 			return nil
 		}
-		if err != syscall.EWOULDBLOCK && err != syscall.EAGAIN {
+		if err != nil {
 			return fmt.Errorf("could not lock %s: %w", f.Name(), err)
 		}
 		if time.Now().After(deadline) {
