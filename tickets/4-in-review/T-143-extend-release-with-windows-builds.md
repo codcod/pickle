@@ -385,6 +385,46 @@ cost: estimated L, actual L
 - [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references T-143.
 - [ ] Approval gate (step 9): not reached. The verdict is rework.
 
+### Rework fix record — round 1 (commits 6aaaf56..88fc316)
+
+The commits rest on decision 4 as amended on 2026-10-15, with user sign-off.
+
+- **F1** (`2730bfc`):
+  - New `claudeViewParentInRoot` requires `EvalSymlinks(<root>/.claude/skills)` to lie inside
+    `EvalSymlinks(root)`.
+  - `IsClaudeViewCopy(root)` checks it, and so does the placeholder branch in `ensureClaudeView`.
+    `writeClaudeViewCopy` refuses to write outside.
+  - Regression test: `TestClaudeViewThroughSymlinkedParentUntouched`. I also re-ran the review's
+    reproduction with the branch binary: `upgrade` now refuses with "exists and is not a symlink",
+    and `X/skills/brine/notes.txt` survives.
+- **F2** (`2730bfc`):
+  - The copy carries the `ClaudeViewSentinel` (`.pickle-copy`), and only a directory carrying it
+    is pickle's.
+  - `writeClaudeViewCopy` builds the copy in `<view>.pickle-tmp`, writes the sentinel last, then
+    renames the directory into place, which also settles F6.
+  - Regression test: `TestClaudeViewForeignDirectoryRefused` now plants `SKILL.md` and
+    `notes.md` with no sentinel, and asserts that `upgrade` refuses, `uninstall` errors, and
+    `notes.md` survives.
+- **F3** (`2730bfc`):
+  - `ensureClaudeView` removes an existing copy, then calls `ensureSymlink`. It copies afresh
+    only from the symlink fallback, reported as `(copy refreshed — symlink unavailable: …)`.
+  - Regression test: `TestClaudeViewCopyConvergesOnSymlink`.
+- **F4** (`2730bfc`):
+  - New `case opts.ClaudeLink && regularWithMarker(claudeMD)` notes "CLAUDE.md is already a
+    regular file with a marker block; refreshed it rather than linking (delete it and re-run for
+    a symlink)".
+  - Asserted in `TestClaudeMDSymlinkFallsBackToMarker`.
+- **F5** (`71dbfc7`): `smoke.sh` captures the commit's output and requires "refusing to commit
+  ticket bookkeeping on a feature branch". Run locally, it reports `smoke: ok`.
+- **Prose the fixes changed** (`88fc316`): three `cli-reference.adoc` passages now describe the
+  sentinel, the symlink retry and the never-delete rule. They are the install row, the `upgrade`
+  paragraph and the `doctor` bullet.
+- **Acceptance re-run:**
+  - Green: AT1, AT2, AT3, AT4 (`just build`, `just test`, `just lint`, `just docs-check`) and AT6,
+    plus actionlint.
+  - AT5 (goreleaser snapshot) was not re-run, because round 1 left `.goreleaser.yaml` untouched.
+  - AT7 waits for push approval.
+
 ## History
 
 - 2026-10-15 — created (TO DO). source: chat: user asked to extend the release with Windows builds; filing found `GOOS=windows` does not compile (`internal/lock` uses `syscall.Flock`)
@@ -395,3 +435,4 @@ cost: estimated L, actual L
 - 2026-10-15 — IN DEVELOPMENT → IN REVIEW: acceptance green (steps 1-6 local; step 7 windows-smoke awaits push approval); smoke steps extracted to .github/scripts/smoke.sh so shellcheck covers them and they run locally
 - 2026-10-15 — IN REVIEW → REWORK: review round 1: 5 blocking (F1-F5); 3 fixed inline, 6 noted
 - 2026-10-15 — plan amended inline: decision 4 rewritten per review round 1 (F1–F3, user sign-off) — `.pickle-copy` sentinel, temp-sibling copy renamed into place, symlink retried before re-copying, parent must resolve inside the root
+- 2026-10-15 — REWORK → IN REVIEW: findings fixed (round 1)

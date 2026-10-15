@@ -20,10 +20,11 @@ Last updated: 2026-10-15
 
 ## IN REVIEW
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-143 | Extend release with Windows builds | [] |
 
 ## REWORK
 
@@ -31,7 +32,6 @@ Last updated: 2026-10-15
 
 | id | title | open findings |
 |---|---|---|
-| T-143 | Extend release with Windows builds | review round 1: 5 blocking (F1-F5); 3 fixed inline, 6 noted |
 
 ## READY (impact order, per child)
 
