@@ -500,6 +500,34 @@ have (T-143)`:
   - AT5 was not re-run (`.goreleaser.yaml` is unchanged).
   - AT7 waits for push approval.
 
+### Round 3 — scoped re-review of rework round 2, 2026-10-15
+
+D2 is verified closed. Both new tests fail when their half of the fix is removed (the restore
+defer and the `Upgrade` gate respectively).
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| E1 | non-blocking | correctness | noted | If a refresh was killed after parking the copy, and the next run's copy also fails, the parked copy is not restored, because the restore defer is only set up when this call parked it. The view stays missing and doctor is silent, but nothing is lost: a later successful run recovers. | Reproduced by the reviewer (scratch `TestReproKilledThenCopyFails`): view absent, parked copy present. | Set up the restore whenever a parked copy exists. Optionally have doctor warn on a parked copy with no view. |
+| E2 | non-blocking | correctness | noted | The scratch paths sit in `.claude/`, but the guard resolves `.claude/skills`. With `.claude` pointing outside and `<outside>/skills` pointing back in, uninstall removes `<outside>/.brine.pickle-old`. | Reproduced by the reviewer (`TestReproGuardWrongDir`). It needs a symlink planted outside the clone, and only a pickle-specific name is hit. | Guard the scratch paths on `EvalSymlinks(<root>/.claude)` as well. |
+| E3 | non-blocking | design | noted | `uninstall --dry-run` does not list the `.brine.pickle-{tmp,old}` leftovers that the real run removes. | Reproduced by the reviewer. Cause: install.go:699 `!opts.DryRun &&`. | Report them with `(dry-run)` labels. |
+| E4 | non-blocking | stale-xref | fixed inline | The `upgrade` text ("re-linked only if it is already there") and the `uninstall` text did not mention the parked-copy recovery and cleanup. | cli-reference.adoc:372, 549 vs install.go:521, 699-708 | Fixed by `docs(cli): mention the parked-copy recovery in upgrade and uninstall (T-143)`, now folded into the tidied `docs:` commit. |
+| E5 | non-blocking | test-gap | noted | Uninstall removing a parked `old` leftover is not asserted, only `tmp`. | `TestClaudeViewKilledRefreshRecovers` | The removal shows up in E3's reproduction. |
+
+Dispositions: 0 blocking; fixed inline 1 (E4); noted 4 (E1, E2, E3, E5); new ticket 0; folded 0. Across the whole review, the noted copy-view and uninstall edge cases (D1, D6, E1, E2, E3) share one theme. If they come up in use, promote them as one ticket by citing these rows.
+cost: estimated L, actual L
+
+- [x] Reviewer independence: delegated. A fresh sub-agent ran steps 1–4a with `hunt: one pass` over the round-2 fix diff. It kept 5 findings and discarded 3 candidates with reasons (pre-existing ground, D1; no lock in install/upgrade, which predates the branch; `exists` checked and unique).
+- [x] Stale-branch check: `pickle doctor` showed 0 errors and 0 warnings after the rebase onto `main`.
+- [x] Implementation audit (scoped): AT1–AT4 and AT6 are green. AT5 was green in the implementation session, and `.goreleaser.yaml` was unchanged by either rework round. AT7 (windows-smoke) waits for push approval.
+- [x] Correctness hunt: one pass, all 8 angles. E1–E3 are reproduced.
+- [x] Consistency and docs audits: these produced E4. `just docs-check` is green.
+- [x] Docs-readability: conscious skip, for two short reference clauses.
+- [x] Findings recorded. The ticket moves to `6-done/` (step 6b).
+- [x] Other references and governing documents (step 7): unchanged since round 1. No governing document names a platform constraint.
+- [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references T-143.
+- [x] Branch tidied into 6 atomic commits (root-path child). The tree is byte-identical to the reviewed tip, `af9afa0`. That makes every fix-record subject historical: §1's fallback applies, and the reviewed content is that tree.
+- [ ] Approval gate (step 9): presented 2026-10-15; awaiting the user.
+
 ## History
 
 - 2026-10-15 — created (TO DO). source: chat: user asked to extend the release with Windows builds; filing found `GOOS=windows` does not compile (`internal/lock` uses `syscall.Flock`)
@@ -515,3 +543,4 @@ have (T-143)`:
 - 2026-10-15 — IN REVIEW → REWORK: re-review round 1: 1 blocking (D2); 3 fixed inline, 3 noted
 - 2026-10-15 — plan amended inline: decision 4's parked/staging paths moved to `.claude/.brine.pickle-{old,tmp}` (rework round 2), so a leftover is never read as a second skill
 - 2026-10-15 — REWORK → IN REVIEW: findings fixed (round 2)
+- 2026-10-15 — IN REVIEW → DONE: review concluded: rounds 1-2 blocking findings fixed; final re-review 0 blocking (E4 fixed inline, E1-E3/E5 noted)

@@ -20,11 +20,10 @@ Last updated: 2026-10-15
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-143 | Extend release with Windows builds | [] |
 
 ## REWORK
 
@@ -165,6 +164,7 @@ Last updated: 2026-10-15
 | T-140 | board audit finds the merge of a DONE ticket in git history and prints the line to record | yes — merged to main (PR #96, 36d4e74, https://github.com/codcod/pickle/commit/36d4e74) |
 | T-141 | pickle retro: print a versioned retrospective prompt that locates the data and states the method | yes — merged to main (PR #97, b8afb70, https://github.com/codcod/pickle/commit/b8afb70) |
 | T-142 | pickle serve: strike through done ticket ids everywhere and dim dropped ones | yes — merged to main (PR #101, 4c2e4e2, https://github.com/codcod/pickle/commit/4c2e4e2) |
+| T-143 | Extend release with Windows builds | no — publish-gated |
 
 ## DROPPED
 
