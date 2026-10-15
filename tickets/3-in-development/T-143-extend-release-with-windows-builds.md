@@ -55,11 +55,26 @@ What I verified while refining (2026-10-15, against `main` at `393bf16`):
 - **`serve`** passes `syscall.SIGTERM` to `signal.NotifyContext`. That compiles on windows and the
   signal never arrives there, which is harmless.
 
+- **Symlinks committed by a unix teammate become plain-text placeholders on a Windows clone.**
+  Git for Windows defaults to `core.symlinks=false`, so a tracked `.claude/skills/brine` or
+  `CLAUDE.md` link (git mode 120000) checks out as a small regular file whose content is the link
+  target. Without handling, three things go wrong:
+  - `upgrade` refuses the view (install.go:1121).
+  - `doctor` errors (doctor.go:155).
+  - `RefreshMarkers` appends a marker block onto the `CLAUDE.md` placeholder, which corrupts the
+    tracked link.
+- **`os.Symlink` on windows stores the target with backslashes.** `Readlink` then never equals
+  `ClaudeSkillTarget`, so every run re-creates a valid link unless the comparison uses
+  `filepath.ToSlash`.
+
 Out of scope:
 - Scoop and winget manifests.
 - Running the full `go test ./...` on Windows. About 20 test files assume symlinks or unix
   permission modes, and an `os.Symlink` that succeeds on an admin CI runner proves little anyway.
 - Self-hosting this repository on Windows.
+- **Proving the copy fallback on real Windows.** GitHub's `windows-latest` runners can create
+  symlinks, so the unprivileged path is covered only by the injected-failure unit tests (Task 3).
+  The `windows-smoke` job proves the binary, the lock and the hooks on Windows, not the fallback.
 - Detecting drift between the copied Claude view and `.agents/skills/brine`. `upgrade` refreshes
   both together, so drift only comes from hand edits to a pickle-owned directory.
 
@@ -99,6 +114,19 @@ None. No `depends-on:`. The working tree must be clean on `main` before you bran
    rule that the lock file is never removed all stay as they are. On windows, a busy lock is
    `ERROR_LOCK_VIOLATION`; treat it the way unix treats `EWOULDBLOCK`/`EAGAIN`. Lock one byte at
    offset 0. Locking past EOF is legal, and the file stays empty.
+9. **A link placeholder is a regular file of at most 4 KiB whose trimmed content, read with
+   `filepath.ToSlash`, equals the link target.** A Windows clone that checked out committed
+   symlinks without `core.symlinks` produces exactly this. It is recognised by one predicate,
+   `IsLinkPlaceholder(path, target string) bool`, in `internal/install`:
+   - **A Claude-view placeholder** (content `../../.agents/skills/brine`) is replaced: `install`
+     and `upgrade` remove it, then link or copy as for an absent path. `doctor` reports it as an
+     error whose remedy is `pickle upgrade`, and `uninstall` removes it.
+   - **A `CLAUDE.md` placeholder** (content `AGENTS.md`) is never written to. `install`
+     (with or without `--claude-symlink`) and `RefreshMarkers` skip it and say so. `doctor`
+     warns, naming Developer Mode plus `git config core.symlinks true` as the remedy. `uninstall`
+     removes it, as it removes a real link.
+10. **Symlink-target comparisons normalise with `filepath.ToSlash`** (`ensureSymlink`'s `Readlink`
+   check), because windows stores link targets with backslashes.
 3. **When a symlink cannot be created, write a copy. Never fail the install.** This applies on any
    OS; Windows privilege is the motivating case. Route every `os.Symlink` call in
    `internal/install` through a package variable `var symlink = os.Symlink` so tests on
@@ -144,8 +172,11 @@ None. No `depends-on:`. The working tree must be clean on `main` before you bran
 
 #### Task 2 — Make the test files compile for windows
 
-- Move the `syscall.Stat_t`-dependent helper and the tests that use it out of
-  `internal/atomicfile/atomicfile_test.go` into `atomicfile_unix_test.go` (`//go:build unix`).
+- Move these out of `internal/atomicfile/atomicfile_test.go` into `atomicfile_unix_test.go`
+  (`//go:build unix`):
+  - the `syscall.Stat_t`-dependent helper (line 15) and the tests that use it;
+  - the two `syscall.Umask` tests, `TestWriteFileCreateRespectsUmask` and
+    `TestWriteFileRewriteIgnoresUmask`.
 - Do the same for the `syscall.Umask` test in `internal/config/config_test.go`: move it into
   `config_unix_test.go`.
 - Do not change any test's logic.
@@ -168,10 +199,19 @@ In `internal/install/install.go`:
     refusing.
 - In `Uninstall` (near line 650), a real directory at the Claude view that has `SKILL.md` is
   removed with `os.RemoveAll`. The dry-run label is `(dry-run, copy)`.
+- Add `IsLinkPlaceholder` and wire it as decision 9 specifies:
+  - `ensureClaudeView` treats a Claude-view placeholder as absent once it has removed it.
+  - `Run`'s `CLAUDE.md` branch (both modes) and `RefreshMarkers` skip a `CLAUDE.md` placeholder,
+    reporting `= CLAUDE.md (symlink placeholder — left alone)`.
+  - `Uninstall` and `uninstallMarkerFile` remove placeholders.
+- In `ensureSymlink`, compare `filepath.ToSlash(cur) == target` (decision 10).
 
-In `internal/doctor/doctor.go`, `checkClaudeView` passes a real directory that contains `SKILL.md`
-with `claude view present (.claude/skills/brine, copy)`. Every other non-symlink is still an
-error.
+In `internal/doctor/doctor.go`:
+- `checkClaudeView` passes a real directory that contains `SKILL.md` with
+  `claude view present (.claude/skills/brine, copy)`. A placeholder is an error that names
+  `pickle upgrade`. Every other non-symlink is still an error.
+- `checkMarkers` warns on a `CLAUDE.md` placeholder (decision 9) instead of reporting "no pickle
+  marker block".
 
 Tests, all running on darwin/linux. Each one swaps `symlink` for a function that returns an error
 and restores it with `t.Cleanup`:
@@ -180,7 +220,13 @@ and restores it with `t.Cleanup`:
   `uninstall` removes the copy. A real `.claude/skills/brine` directory without `SKILL.md` is
   still refused. With `--claude-symlink` and a failing symlink, `CLAUDE.md` is a regular file
   with the marker block, and a second `install --claude-symlink` succeeds.
-- `internal/doctor`: a copy view yields 0 errors and the `copy` passed line.
+- Placeholders: `upgrade` turns a planted Claude-view placeholder into a link (or a copy, with
+  `symlink` forced to fail). `RefreshMarkers` and `install` leave a planted `CLAUDE.md` placeholder
+  byte-for-byte unchanged.
+- `internal/doctor`:
+  - a copy view yields 0 errors and the `copy` passed line;
+  - a Claude-view placeholder is an error;
+  - a `CLAUDE.md` placeholder is a warning.
 
 #### Task 4 — Release config (`.goreleaser.yaml`)
 
@@ -206,9 +252,10 @@ and restores it with `t.Cleanup`:
 - Add a job `windows-smoke` on `runs-on: windows-latest` with `defaults: run: shell: bash`, using
   the same checkout and setup-go steps as `build-test`:
   ```bash
-  go build -o "$RUNNER_TEMP/bin/pickle.exe" .
-  export PATH="$RUNNER_TEMP/bin:$PATH"
-  mkdir "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
+  T="$(cygpath -u "$RUNNER_TEMP")"     # RUNNER_TEMP is D:\a\_temp; its colon would split PATH
+  mkdir -p "$T/bin" && go build -o "$T/bin/pickle.exe" .
+  export PATH="$T/bin:$PATH"
+  mkdir "$T/smoke" && cd "$T/smoke"
   git init -q -b main
   git -c user.name=ci -c user.email=ci@example.com commit -q --allow-empty -m init
   pickle install --in-tree --agent claude
@@ -223,8 +270,7 @@ and restores it with `t.Cleanup`:
     echo "::error::pre-commit hook did not refuse tickets/ on a feature branch"; exit 1
   fi
   ```
-  Create the `bin` directory first (`mkdir -p "$RUNNER_TEMP/bin"`). The child is named after the
-  directory, so it is `smoke`. I rehearsed this exact sequence on darwin on 2026-10-15 and it
+  The child is named after the directory, so it is `smoke`. I rehearsed this exact sequence on darwin on 2026-10-15 and it
   ended in a refused commit.
 
 ### Acceptance test
@@ -262,6 +308,13 @@ Run from the repo root on the feature branch:
   - In the `install` artifact table (the `.claude/skills/brine symlink` row), add the copy
     fallback and the `--claude-symlink` → marker fallback.
   - In the `uninstall` row, say that it removes a copy view too.
+  - In the `upgrade` "re-linked" text (around line 365), add the copy refresh.
+  - In the `doctor` Claude-view bullet (around line 449), add that a copy is accepted and a
+    placeholder is reported.
+- Add a placeholder note to the Windows paragraph in `README.md` and `installation.adoc`:
+  - Prefer Developer Mode plus `git config core.symlinks true` before cloning.
+  - Otherwise `pickle upgrade` replaces a Claude-view placeholder with a copy, which git then
+    reports as changed. Do not commit that.
 - `RELEASING.md`: change the "`darwin`/`linux` × `amd64`/`arm64`" list (around line 39) to
   include `windows` and say that windows archives are `.zip`.
 - `internal/lock/lock.go` package comment (Task 1).
@@ -296,3 +349,5 @@ Run from the repo root on the feature branch:
 - 2026-10-15 — created (TO DO). source: chat: user asked to extend the release with Windows builds; filing found `GOOS=windows` does not compile (`internal/lock` uses `syscall.Flock`)
 - 2026-10-15 — refined: decisions confirmed by user (copy fallback for symlinks, cross-compile + windows-latest smoke CI, amd64+arm64); verified lock is the sole build blocker; plan written
 - 2026-10-15 — TO DO → READY: plan complete
+- 2026-10-15 — plan amended inline: applicability gate (fresh sub-agent, 0 blocking) — added link-placeholder handling for Windows clones (decision 9, user-chosen inline), ToSlash link-target compare (decision 10), extra atomicfile Umask tests in Task 2, cygpath PATH fix in the smoke job, doctor/upgrade cli-reference rows, and an out-of-scope line that CI does not exercise the copy fallback on real Windows; noted and closed: copy view always reports "(copy refreshed)" on upgrade
+- 2026-10-15 — READY → IN DEVELOPMENT: picked up
