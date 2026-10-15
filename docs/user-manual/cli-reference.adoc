@@ -180,7 +180,13 @@ the per-agent artifacts are:
 
 | `claude`
 | `.claude/skills/brine` symlink + `CLAUDE.md` marker block
-  (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md` instead)
+  (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md` instead).
+  Where the OS refuses a symlink (Windows without Developer Mode), the view is
+  a copy of `{skill-dir}/`, marked by a `.pickle-copy` file, and `CLAUDE.md`
+  keeps the marker block; the output says which. Pickle only ever replaces or
+  removes a copy that carries that file, and never one reached through a
+  symlinked `.claude/skills`. A link placeholder that git checked out as a plain file is
+  replaced (the view) or left alone (`CLAUDE.md`)
 | pickle-owned
 
 | `opencode`
@@ -361,8 +367,14 @@ wins over the inference. Takes no flags and no arguments.
 *It never reads or writes anything under `tickets/`* — your board and tickets
 are instance data and are not upgrade's business. Only artifacts that already
 exist are refreshed: `CLAUDE.md` is re-injected only if it is a regular file
-(a `CLAUDE.md -> AGENTS.md` symlink is left alone), and the
-`.claude/skills/brine` view is re-linked only if it is already there. A
+(a `CLAUDE.md -> AGENTS.md` symlink, or a placeholder git checked out for one,
+is left alone), and the
+`.claude/skills/brine` view is re-linked only if it is already there (or a
+refresh that was killed mid-way left its old copy parked in
+`.claude/.brine.pickle-old`). A copy
+of the view is moved aside and the symlink tried again, and it is copied afresh
+only if the symlink still fails, so a project that gains symlink support ends
+up with the link. If neither lands, the old copy is put back. A
 self-host *symlinked* `{skill-dir}` is left untouched, never
 followed and overwritten. The `payload_version` stamp **is** still updated in
 that case whenever it actually differs (an already-current version is a no-op,
@@ -446,8 +458,12 @@ Verifies install integrity and exits non-zero on any error. It checks that:
 * `pickle.toml` parses;
 * the skill directory `{skill-dir}/` resolves to a directory
   and holds every payload file;
-* the `.claude/skills/brine` symlink (when present) is a symlink and not
-  broken;
+* the `.claude/skills/brine` view (when present) is a symlink that is not
+  broken, or pickle's own copy, marked by a `.pickle-copy` file (written
+  where symlinks are unavailable). Any other directory there is an error, and
+  pickle never deletes it. A plain file holding the link's target, which git writes for a
+  committed symlink under `core.symlinks=false`, is an error that names
+  `pickle upgrade`; the same placeholder at `CLAUDE.md` is a warning;
 * `AGENTS.md` (and a regular-file `CLAUDE.md`) carry the pickle marker block,
   and its content matches what `pickle.toml` renders today — a block that
   differs (e.g. hand-edited, or left behind by an install that predates a
@@ -532,10 +548,11 @@ any pre-brine legacy paths (T-074, `.agents/skills/ticket-flow/`,
 `.claude/skills/ticket-flow`) left by an older install, so a current binary
 can still fully remove one — the swept paths are reported alongside the
 usual removals below. Otherwise it removes
-`{skill-dir}/`, the `.claude/skills/brine` symlink, the
+`{skill-dir}/`, the `.claude/skills/brine` symlink (or its copy, along with any
+`.claude/.brine.pickle-{tmp,old}` a killed refresh left behind), the
 `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block from
-`AGENTS.md`/`CLAUDE.md` (a `CLAUDE.md` that is a symlink to `AGENTS.md` is
-removed outright; a regular file keeps everything outside the markers, and the
+`AGENTS.md`/`CLAUDE.md` (a `CLAUDE.md` that is a symlink to `AGENTS.md`, or a
+placeholder git checked out for one, is removed outright; a regular file keeps everything outside the markers, and the
 file itself is never deleted), and the agent scaffolds: the pickle-owned
 `.pi/extensions/` files go (pruning `.pi/` only when left empty — your own
 extensions keep it alive), and `opencode.jsonc` goes *only* while still

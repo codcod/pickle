@@ -16,7 +16,7 @@ TIP: Something not working? Run `pickle doctor` — it verifies the install
 
 [source,sh]
 ----
-brew install codcod/taps/pickle    # or: go install github.com/codcod/pickle@latest
+brew install codcod/tap/pickle    # or: go install github.com/codcod/pickle@latest
 pickle version
 ----
 

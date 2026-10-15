@@ -14,8 +14,28 @@ Via the tap:
 
 [source,sh]
 ----
-brew install codcod/taps/pickle
+brew install codcod/tap/pickle
 ----
+
+== Windows
+
+Download `pickle_<version>_windows_amd64.zip` (or `_arm64`) from the
+https://github.com/codcod/pickle/releases/latest[latest release], unzip it,
+and put `pickle.exe` on your `PATH`.
+
+`pickle install` links `.claude/skills/brine` to the skill directory. Windows
+only allows that with Developer Mode on (or as an administrator). Without it,
+pickle writes a copy of the skill there instead, and `pickle upgrade` keeps
+the copy current. `pickle install --claude-symlink` likewise falls back to the
+default `CLAUDE.md` marker block.
+
+If the project you clone already commits those paths as symlinks, turn on
+Developer Mode and run `git config --global core.symlinks true` _before_
+cloning. Otherwise git checks each link out as a small placeholder file
+holding the link's target. `pickle doctor` reports both placeholders.
+`pickle upgrade` replaces the `.claude/skills/brine` one with a copy, which git
+then shows as changed: don't commit that. A `CLAUDE.md` placeholder is never
+written to.
 
 == go install
 
