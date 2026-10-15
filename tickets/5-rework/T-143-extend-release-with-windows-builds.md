@@ -342,7 +342,40 @@ Run from the repo root on the feature branch:
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Round 1 — 2026-10-15
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | correctness | — | `upgrade` and `uninstall` run `os.RemoveAll` on the Claude view through a symlinked `.claude` or `.claude/skills` parent, which deletes a directory outside the project. `main` refuses this case. The path layout comes from a cloned repo, so this is a trust boundary. | Reproduced: a throwaway install, then `.claude/skills` replaced by a symlink to `../../X/skills`, where `X/skills/brine/` holds `SKILL.md` and `notes.txt`. `pickle-test upgrade` prints `+ .claude/skills/brine (copy refreshed)`, and `X/skills/brine/notes.txt` is gone. A `main` build refuses with "exists and is not a symlink". `IsClaudeViewCopy` (install.go:1217) uses `Lstat` on the last path element only; the deletes are `ensureClaudeView` (install.go:1178-1186) and `Uninstall` (install.go:670-680). | Before any destructive step on the view, require `filepath.EvalSymlinks(filepath.Dir(link))` to stay under `root`. Put the check inside the copy predicate so install, upgrade, uninstall and doctor all get it. Add a regression test. |
+| F2 | blocking | correctness | — | Any real directory at `.claude/skills/brine` that contains `SKILL.md` counts as pickle's copy, so `upgrade` wipes and `uninstall` removes a user's own directory. Before, upgrade refused it and uninstall's `os.Remove` failed. This follows T-143 decision 4, so the fix needs sign-off. | Same mechanism as F1 without the symlinked parent: install, then replace the view with a real directory holding `SKILL.md` and `notes.txt`, then `upgrade` → `(copy refreshed)`, and `notes.txt` is lost. Traced: `IsClaudeViewCopy` → `RemoveAll` (install.go:1180). | Mark pickle's copy with a sentinel file that the fallback writes. Only a directory carrying that sentinel is pickle's. |
+| F3 | blocking | correctness | — | Once the view is a copy it is refreshed forever and the symlink is never tried again, so a user who later turns on Developer Mode keeps a copy. This follows T-143 decision 4. | Traced: the `IsClaudeViewCopy` case in `ensureClaudeView` (install.go:1175-1187) returns before `ensureSymlink`. | Remove the copy, then retry the symlink, and copy only when the symlink fails. |
+| F4 | blocking | correctness | — | Under `--claude-symlink`, a re-run over a marker-carrying `CLAUDE.md` refreshes the block silently. T-143 decision 5 says it "refreshes the block and notes it", so the user is not told that the flag was not applied. | install.go:256-271: the `default:` branch calls `writeMarker()` with no `res.note`. | Add a note naming why no symlink was made, and test it. |
+| F5 | blocking | test-gap | — | `smoke.sh` treats any failed `git commit` as the hook refusing, so a hook that crashes (shebang or PATH failure under Git's sh) also passes. This is the only Windows check (acceptance step 7). | `.github/scripts/smoke.sh:33-36`. A failing commit of any kind takes the pass branch. | Capture the commit's stderr and require the guard's refusal text. |
+| F6 | non-blocking | correctness | noted | Refreshing a copy is not atomic: `RemoveAll` runs, then `CopyFS`, and a failure partway leaves a partial directory. Today this self-heals, because `SKILL.md` is copied before `resources/`. | install.go:1180-1186; `os.CopyFS` walks entries in lexical order. | Superseded by F2's fix, which writes the copy, sentinel last, into a temporary sibling and renames it into place. A partial copy then never carries the sentinel. |
+| F7 | non-blocking | correctness | noted | `ensureSymlink` normalises only the target it reads back, not the one passed in. A target that itself came from `Readlink` (`swept.LinkTarget`, a legacy self-host link on windows) never matches. | install.go:1146 | Self-hosting on Windows is out of scope per the Description. Comparing `ToSlash` on both sides is the fix if it ever comes into scope. |
+| F8 | non-blocking | correctness | noted | `IsLinkPlaceholder` matches on content alone, on every OS. A hand-written `CLAUDE.md` whose whole text is `AGENTS.md` would be skipped, removed by uninstall, and warned about by doctor. | install.go:1233 | Such a file is functionally a placeholder already. Claude Code's import convention is `@AGENTS.md`, which does not match. |
+| F9 | non-blocking | design | noted | `doctor` accepts a copy view on `SKILL.md` alone and never compares it with `.agents/skills/brine`. | doctor.go:157 | Drift detection is out of scope per the Description. F2's sentinel-last rename removes the partial-copy case. |
+| F10 | non-blocking | design | noted | The copy is a second copy path beside `copyPayload`, and it reports a refresh on every upgrade. | install.go:1180 | Already noted and closed at the applicability gate. |
+| F11 | non-blocking | docs-gap | fixed inline | The tap-name fix was incomplete: `quickstart.adoc:19` and `attributes.adoc:5` still said `codcod/taps`, so the manual contradicted itself. | `grep -rn codcod/taps docs` | Fixed in `7d46185`. |
+| F12 | non-blocking | stale-xref | fixed inline | The `upgrade` text in `cli-reference.adoc` said "`CLAUDE.md` is re-injected only if it is a regular file". A placeholder is a regular file that is now left alone. | cli-reference.adoc:367 vs install.go:352 | Fixed in `7d46185`. |
+| F13 | non-blocking | docs-gap | fixed inline | `CHANGELOG.md` `[Unreleased]` had no entry. | `[Unreleased]` was empty | Fixed in `7d46185`. |
+| F14 | non-blocking | test-gap | noted | `install --claude-symlink` over a `CLAUDE.md` placeholder, and the `(dry-run, copy)` uninstall label, have no direct test. | `internal/install/symlink_fallback_test.go` | The F4 rework adds a `--claude-symlink` test next to these. |
+
+Dispositions: 5 blocking (F1–F5, → rework); fixed inline 3 (F11, F12, F13); noted 6 (F6–F10, F14); new ticket 0; folded 0.
+cost: estimated L, actual L
+
+- [x] Reviewer independence settled (step 0): delegated. A fresh sub-agent ran steps 1–4a with `hunt: angle 7 only`. Its 5 findings are all kept (F1, F11–F14), and none were discarded.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned that the branch had T-143 in `3-in-development`. I rebased onto `main`, then doctor showed 0 errors and 0 warnings.
+- [x] Implementation audit (steps 1, 2): the delegated reviewer re-ran AT1–AT4 and AT6, which are green. AT5 (goreleaser snapshot) ran green in the implementation session but could not be re-run, because goreleaser is not installed on the host. AT7 waits for push approval.
+- [x] Correctness hunt (step 3): host tool path. `/code-review medium` ran on `main...feat/T-143-windows-release-builds` from the top-level session and produced 9 candidates. I re-verified each against the code: 4 are blocking (F2–F5), 5 are noted (F6–F10), and none were discarded. Angle 7 ran separately in the delegated reviewer and found F1. F1 is reproduced. F2 is reproduced through the same mechanism. F3 and F4 are traced. F6–F10 are traced.
+- [x] Consistency audit (step 4): delegated. No caller drift was found for `ensureSymlink`, `IsClaudeViewCopy` or `IsLinkPlaceholder`. It produced F11 and F12.
+- [x] Documentation audit (step 4a): delegated. It produced F11–F13. `just docs-check` is green after `7d46185`.
+- [x] Docs-readability pass (step 4b): conscious skip. The changed prose is install notes and table rows, and a later rework pass revisits the copy wording.
+- [x] Findings recorded (step 5).
+- [x] Ticket moved to `tickets/5-rework/` (step 6a).
+- [x] Other references and governing documents (step 7): DESIGN.md and AGENTS.md name no platform constraint. `NOTES.md`'s `flock` mentions are dated audit prose, so they are left as they are.
+- [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references T-143.
+- [ ] Approval gate (step 9): not reached. The verdict is rework.
 
 ## History
 
@@ -352,3 +385,4 @@ Run from the repo root on the feature branch:
 - 2026-10-15 — plan amended inline: applicability gate (fresh sub-agent, 0 blocking) — added link-placeholder handling for Windows clones (decision 9, user-chosen inline), ToSlash link-target compare (decision 10), extra atomicfile Umask tests in Task 2, cygpath PATH fix in the smoke job, doctor/upgrade cli-reference rows, and an out-of-scope line that CI does not exercise the copy fallback on real Windows; noted and closed: copy view always reports "(copy refreshed)" on upgrade
 - 2026-10-15 — READY → IN DEVELOPMENT: picked up
 - 2026-10-15 — IN DEVELOPMENT → IN REVIEW: acceptance green (steps 1-6 local; step 7 windows-smoke awaits push approval); smoke steps extracted to .github/scripts/smoke.sh so shellcheck covers them and they run locally
+- 2026-10-15 — IN REVIEW → REWORK: review round 1: 5 blocking (F1-F5); 3 fixed inline, 6 noted
