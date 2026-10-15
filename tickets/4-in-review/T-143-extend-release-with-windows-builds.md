@@ -351,3 +351,4 @@ Run from the repo root on the feature branch:
 - 2026-10-15 — TO DO → READY: plan complete
 - 2026-10-15 — plan amended inline: applicability gate (fresh sub-agent, 0 blocking) — added link-placeholder handling for Windows clones (decision 9, user-chosen inline), ToSlash link-target compare (decision 10), extra atomicfile Umask tests in Task 2, cygpath PATH fix in the smoke job, doctor/upgrade cli-reference rows, and an out-of-scope line that CI does not exercise the copy fallback on real Windows; noted and closed: copy view always reports "(copy refreshed)" on upgrade
 - 2026-10-15 — READY → IN DEVELOPMENT: picked up
+- 2026-10-15 — IN DEVELOPMENT → IN REVIEW: acceptance green (steps 1-6 local; step 7 windows-smoke awaits push approval); smoke steps extracted to .github/scripts/smoke.sh so shellcheck covers them and they run locally
