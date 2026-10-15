@@ -526,7 +526,7 @@ cost: estimated L, actual L
 - [x] Other references and governing documents (step 7): unchanged since round 1. No governing document names a platform constraint.
 - [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` references T-143.
 - [x] Branch tidied into 6 atomic commits (root-path child). The tree is byte-identical to the reviewed tip, `af9afa0`. That makes every fix-record subject historical: §1's fallback applies, and the reviewed content is that tree.
-- [ ] Approval gate (step 9): presented 2026-10-15; awaiting the user.
+- [x] Approval gate (step 9): approved 2026-10-15; `main` pushed first, then the branch; PR #102 opened and merged by the human.
 
 ## History
 
@@ -544,3 +544,4 @@ cost: estimated L, actual L
 - 2026-10-15 — plan amended inline: decision 4's parked/staging paths moved to `.claude/.brine.pickle-{old,tmp}` (rework round 2), so a leftover is never read as a second skill
 - 2026-10-15 — REWORK → IN REVIEW: findings fixed (round 2)
 - 2026-10-15 — IN REVIEW → DONE: review concluded: rounds 1-2 blocking findings fixed; final re-review 0 blocking (E4 fixed inline, E1-E3/E5 noted)
+- 2026-10-15 — merged to main (PR #102, b110ac1, https://github.com/codcod/pickle/commit/b110ac1)
