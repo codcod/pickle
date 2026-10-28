@@ -13,6 +13,8 @@ may change in any release.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-28
+
 ### Changed
 
 - **The docs step asks for the changelog entry** (T-144). A ticket's `### Docs update` step, in
@@ -1121,7 +1123,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/codcod/pickle/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/codcod/pickle/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/codcod/pickle/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/codcod/pickle/compare/v1.1.0...v1.2.0
