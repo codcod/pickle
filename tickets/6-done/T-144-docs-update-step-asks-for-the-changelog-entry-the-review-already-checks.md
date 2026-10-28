@@ -166,3 +166,4 @@ cost: estimated S, actual S
 - 2026-10-28 — plan amended inline: acceptance grep on rules item 6 now uses `grep -A1 … | grep -i changelog` so a wrapped line still matches (gate finding).
 - 2026-10-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-10-28 — IN REVIEW → DONE: review: no blocking findings; noted 3 (F1–F3)
+- 2026-10-28 — merged to main (PR #103, 7c5cda9, https://github.com/codcod/pickle/commit/7c5cda9)
