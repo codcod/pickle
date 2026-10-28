@@ -298,20 +298,24 @@ see step 7.
 
 ## 4b. Docs-readability pass — *optional second opinion on changed prose*
 
-If the host environment provides a docs-readability reviewer — a read-only,
-suggestions-only reviewer for documentation prose — run it over the `.adoc`/`.md` files the
-ticket changed, present each suggestion, and apply the approved ones yourself. Examples of
-hosts: a `docs_readability` tool in a pi session, a `docs-readability` subagent in an
-opencode session; any other session can shell out to
-`opencode run --agent docs-readability --file <changed.adoc|.md> "…"` where that subagent is
-configured.
+If the host environment provides a docs-readability reviewer — a read-only, suggestions-only
+reviewer for documentation prose — run it over the `.adoc`/`.md` files the ticket changed, present
+each suggestion, and apply the approved ones yourself. Examples of hosts: a `docs_readability` tool
+in a pi session, a `docs-readability` subagent in an opencode session; any other session can shell
+out to `opencode run --agent docs-readability --file <changed.adoc|.md> "…"` where that subagent is
+configured. If none of these is available, a host that can start a sub-agent runs a fresh one,
+giving it this skill's `resources/docs-readability.prompt.md` as its instructions and listing the
+changed files for it to read. Its read-only status is checked, not trusted: start it only on a clean
+worktree (`git status --porcelain` empty — commit or stash first) and note `git rev-parse HEAD`. If
+`git status --porcelain` shows anything after the run, or HEAD has moved, restore the worktree
+(`git reset --hard <noted HEAD>`, delete new untracked files) and discard the run as untrusted.
 
-This step is genuinely optional and never blocks a review. The reviewer only *suggests* (it
-must not edit files), and reviewing without it — no reviewer configured, the session cannot reach
-one, or its output cannot be trusted (below) — is a sanctioned conscious skip, recorded in the
-ticket's `## Review` (tick the checklist line with a "skipped: …" note). Its suggestions
-are readability polish, not findings: apply or discard them during the review; they never enter
-the findings table and never move a ticket to `tickets/5-rework/`.
+This step is genuinely optional and never blocks a review. The reviewer only *suggests* (it must not
+edit files), and reviewing without it — neither a dedicated reviewer nor a sub-agent is available,
+the session cannot reach one, or its output cannot be trusted (below) — is a sanctioned conscious
+skip, recorded in the ticket's `## Review` (tick the checklist line with a "skipped: …" note). Its
+suggestions are readability polish, not findings: apply or discard them during the review; they
+never enter the findings table and never move a ticket to `tickets/5-rework/`.
 
 **Verify every suggestion's quoted "current text" against the file before presenting it** — the
 reviewer is a model quoting source text, and can misquote it. Locate each quoted string in the file
@@ -322,12 +326,16 @@ wherever the source happens to break. A quote that still does not match under th
 discarded, not repaired — guessing which passage was meant would be inventing it. If most of a run
 fails this way, discard the run and re-invoke once. If the re-invoked run fails the same way, take
 the conscious skip above — a reviewer whose output cannot be trusted is one of its sanctioned
-grounds — rather than retrying indefinitely. Record how many suggestions were discarded as
-fabricated on the same checklist line that carries this step's conscious-skip note — bookkeeping on
-an optional pass, not a finding, so it never becomes a findings-table row. Also discard, on the
-same terms, any suggestion that changes content rather than wording — deleted emphasis that carries
-meaning, a dropped documented path, a swapped precise term are content edits whatever the reviewer
-labels them.
+grounds — rather than retrying indefinitely.
+
+Then discard any suggestion whose located passage lies wholly outside the file's diff hunks
+(`git diff -U0 <base>...<branch> -- <file>`); one overlapping a hunk is kept — the pass reviews the prose
+the ticket changed, not the rest of the file. Also discard, on the same terms, any suggestion that
+changes content rather than wording — deleted emphasis that carries meaning, a dropped documented
+path, a swapped precise term are content edits whatever the reviewer labels them. Record how many
+suggestions were discarded as fabricated, and how many as outside the diff, on the same checklist
+line that carries this step's conscious-skip note — bookkeeping on an optional pass, not a finding,
+so it never becomes a findings-table row.
 
 ## 5. Classify and record findings — severity, then disposition
 
@@ -519,7 +527,7 @@ filed per step 6c instead of taking a disposition.
 - [ ] Correctness hunt (step 3), with the rest of its quality audit: host tool or angle hunt — name which, who ran it, sub-agents used, tool findings discarded on re-verification, and whether angle 7 ran separately; every correctness row reproduced or marked unreproduced
 - [ ] Consistency audit (step 4)
 - [ ] Documentation audit — coverage, whole-tree sweep, docs build clean (step 4a, if the project ships docs)
-- [ ] Docs-readability pass on the ticket's changed `.adoc`/`.md` files — every suggestion's quoted text verified against the file, any fabricated ones discarded and counted — or a conscious skip recorded (step 4b, optional)
+- [ ] Docs-readability pass on the ticket's changed `.adoc`/`.md` files — every suggestion's quoted text verified against the file, backend named (dedicated reviewer or sub-agent); any fabricated ones and any outside the diff discarded and both counted — or a conscious skip recorded (step 4b, optional)
 - [ ] Findings recorded in the ticket's `## Review` with severity, class, and disposition per the rules §5; disposition summary line present, and a `cost: estimated …, actual …` line beneath it (step 5)
 - [ ] Ticket moved to `tickets/6-done/` or `tickets/5-rework/`; `## History` appended (step 6)
 - [ ] Other references updated if needed; governing documents reconciled, or an explicit note why not; board regenerated by the move (step 7)

@@ -215,16 +215,19 @@ only while it is still byte-identical to the shipped template.
 *The docs-readability reviewer* is a read-only, suggestions-only AI
 reviewer for the `.adoc`/`.md` files a ticket changed (review protocol
 *Step 4b* — optional, never blocking). Before a suggestion is presented,
-its quoted current text is verified against the file; one the reviewer
-cannot back with a verbatim quote is discarded rather than applied.
+its quoted current text is verified against the file. A suggestion the
+reviewer cannot back with a verbatim quote is discarded rather than applied,
+and so is one on prose outside the ticket's changed lines.
 Both scaffolds default to
 `github-copilot/gpt-5.4` (one-time GitHub Copilot login; adjust with
 `opencode models github-copilot`, or `DOCS_READABILITY_PROVIDER`/
 `DOCS_READABILITY_MODEL` for the pi extension).
-Sessions in other agents (zed, Claude Code, …) can reach the opencode reviewer
-by shelling out:
-`opencode run --agent docs-readability --file <changed.md> "…"` — or record a
-conscious skip.
+Sessions in other agents (zed, Claude Code, …) can still reach the opencode
+reviewer where it is configured, by shelling out:
+`opencode run --agent docs-readability --file <changed.md> "…"`. Where that
+reviewer is not configured, a host that can start a sub-agent runs one with the
+shipped prompt, starting from a clean worktree and checking afterwards that it
+is unchanged. Only a host that can do neither records a conscious skip.
 
 *Per-project* (never writes to `~/` or outside the root), *idempotent, and
 safe to re-run*: the marker block is refreshed in place, `{skill-dir}/` is
