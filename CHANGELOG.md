@@ -18,6 +18,10 @@ may change in any release.
 - **The docs step asks for the changelog entry** (T-144). A ticket's `### Docs update` step, in
   the template and in rules §4 item 6, now names the changelog entry when the project keeps a
   changelog, so the plan asks for what the review's `docs-gap` class already checks.
+- **The docs-readability pass runs on any host with sub-agents** (T-145). Review step 4b now
+  falls back to a fresh host sub-agent with the shipped prompt instead of skipping, checks that the
+  worktree is unchanged after the run, and keeps only the suggestions that fall on lines the
+  ticket changed.
 
 ## [1.4.0] - 2026-10-15
 

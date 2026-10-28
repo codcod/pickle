@@ -78,8 +78,10 @@ opencode run --agent docs-readability --file <changed.adoc> "…"
 
 Because the reviewer is reachable via `opencode run`, the **same reviewer is
 usable from Pi, Claude Code, and Zed sessions too** — they just shell out to
-`opencode run` (OpenCode needs the one-time Copilot login). Reviewing without it
-is a sanctioned conscious skip, recorded in the ticket's `## Review`.
+`opencode run` (OpenCode needs the one-time Copilot login). Without OpenCode, a
+session that can start a sub-agent runs one with the shared prompt instead (review
+protocol step 4b); only a session that can do neither records a conscious skip in
+the ticket's `## Review`.
 
 ## Custom plugins (optional)
 
