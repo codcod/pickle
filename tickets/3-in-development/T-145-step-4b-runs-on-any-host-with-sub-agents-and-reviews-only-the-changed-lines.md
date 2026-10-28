@@ -83,9 +83,8 @@ must print nothing.
 
 ### Prerequisite gate (hard)
 
-None. T-144 also edits the payload, but different files (`TEMPLATE.md`, `tickets-README.md`).
-Both add a `CHANGELOG.md` `[Unreleased]` entry, so whichever merges second resolves a trivial
-conflict there.
+None. T-144 (merged) edited different payload files; its `CHANGELOG.md` `[Unreleased]` bullet is
+already on main, so Task 3 appends beside it.
 
 ### Confirmed design decisions (do not deviate without asking)
 
@@ -93,11 +92,12 @@ conflict there.
    an opencode `docs-readability` subagent is configured and reachable, it runs. Otherwise a host
    that can start a sub-agent runs a fresh one with the shipped prompt. Only a host with neither
    takes the conscious skip. (User decision, refinement 2026-10-28.)
-2. **Read-only is checked for the sub-agent, not trusted.** The reviewing agent records
-   `git status --porcelain` before the run and compares it after. On any difference it restores
-   the reviewer's changes (`git checkout -- <paths>`, and removes any new untracked files the run
+2. **Read-only is checked for the sub-agent, not trusted.** The worktree must be clean
+   (`git status --porcelain` empty) before the sub-agent starts — commit or stash first, or take
+   the conscious skip — so any output after the run is the sub-agent's alone. On any output it
+   restores those changes (`git checkout -- <paths>`, and removes any new untracked files the run
    created) and discards the run as untrusted. That is the existing "output cannot be trusted"
-   skip ground, not a new one. (User decision.)
+   skip ground, not a new one. (User decision; clean-start precondition added at pickup.)
 3. **Changed-lines scope is a post-filter in 4b, not a prompt or backend change.** After the
    verbatim-quote check, a suggestion whose located passage falls wholly outside the file's
    diff hunks against the base is discarded. A passage overlapping a hunk is kept. The count of
@@ -121,6 +121,8 @@ conflict there.
   "neither a dedicated reviewer nor a sub-agent is available".
 - Verification paragraph: after the verbatim check, add the out-of-hunk discard from decision 3,
   and extend the "record how many … discarded" sentence to cover both counts.
+- The step-9 checklist template's 4b line: ask for the out-of-hunk discard count alongside the
+  fabricated-quote count, and for which backend ran (dedicated or sub-agent).
 - Keep the edit tight: the section is already long. Prefer adding clauses to existing sentences
   over adding new paragraphs, and keep the file's wrap width.
 
@@ -190,3 +192,5 @@ post-filter. It records both discard counts on the checklist line.
 - 2026-10-28 — created (TO DO). source: self-host: a month of Claude Code sessions showed step 4b ran in 0 of 12 review rounds, and earlier runs mostly flagged prose outside the diff
 - 2026-10-28 — refined: user decisions — dedicated reviewer first with host sub-agent fallback, worktree-unchanged check for the sub-agent, changed-lines scope as a post-filter in 4b (no backend or prompt change)
 - 2026-10-28 — TO DO → READY: plan complete
+- 2026-10-28 — READY → IN DEVELOPMENT: picked up
+- 2026-10-28 — plan amended inline: applicability gate (fresh sub-agent, 3 non-blocking findings, routing approved by user) — decision 2 gains a clean-worktree precondition so the check cannot miss edits or wipe the reviewer's work; Task 1 also updates the checklist template's 4b line for both discard counts and the backend used; prerequisite note updated since T-144 merged (note-and-close)
