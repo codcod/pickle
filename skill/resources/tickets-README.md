@@ -360,7 +360,8 @@ every item below:
 4. **Tasks** — concrete, referencing exact paths in the target child-project.
 5. **Acceptance test** — runnable commands (the child-project's configured build/test/lint/docs
    commands) + expected results, re-runnable verbatim.
-6. **Docs update** — which docs to add/update, or "no user-facing surface".
+6. **Docs update** — which docs to add/update (including the changelog entry, if the project
+   keeps a changelog), or "no user-facing surface".
 7. **Finish** — summary + a suggested Conventional Commit message: `<type>(<scope>): <description>`
    with the ticket id appended in brackets at the end of the subject line. `<scope>` is
    optional — per the Conventional Commits spec, omit it entirely (don't default to a

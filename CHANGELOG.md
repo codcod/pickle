@@ -13,6 +13,12 @@ may change in any release.
 
 ## [Unreleased]
 
+### Changed
+
+- **The docs step asks for the changelog entry** (T-144). A ticket's `### Docs update` step, in
+  the template and in rules §4 item 6, now names the changelog entry when the project keeps a
+  changelog, so the plan asks for what the review's `docs-gap` class already checks.
+
 ## [1.4.0] - 2026-10-15
 
 ### Added
