@@ -194,3 +194,4 @@ post-filter. It records both discard counts on the checklist line.
 - 2026-10-28 — TO DO → READY: plan complete
 - 2026-10-28 — READY → IN DEVELOPMENT: picked up
 - 2026-10-28 — plan amended inline: applicability gate (fresh sub-agent, 3 non-blocking findings, routing approved by user) — decision 2 gains a clean-worktree precondition so the check cannot miss edits or wipe the reviewer's work; Task 1 also updates the checklist template's 4b line for both discard counts and the backend used; prerequisite note updated since T-144 merged (note-and-close)
+- 2026-10-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
