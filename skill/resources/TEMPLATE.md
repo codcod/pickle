@@ -107,9 +107,10 @@ A reviewer must be able to re-run these verbatim.>
 
 ### Docs update (mandatory when user-facing)
 
-<Which docs to add/update and where to register them. Keep this heading and write "no
-user-facing surface" if it ships none — rules §4 checks that the heading is present with a
-non-empty body, so deleting it fails that check instead of satisfying it.>
+<Which docs to add/update and where to register them. If the project keeps a changelog, name
+the entry this ticket adds to it (e.g. under its unreleased section). Keep this heading and
+write "no user-facing surface" if it ships none — rules §4 checks that the heading is present
+with a non-empty body, so deleting it fails that check instead of satisfying it.>
 
 ### Finish (mandatory)
 
