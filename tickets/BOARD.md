@@ -38,6 +38,7 @@ Last updated: 2026-10-28
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-144 | Docs update step asks for the changelog entry the review already checks | low | low | S | [] |  |
 | T-145 | Step 4b runs on any host with sub-agents and reviews only the changed lines | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
@@ -49,7 +50,6 @@ Last updated: 2026-10-28
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
-| T-144 | Docs update step asks for the changelog entry the review already checks | low | low | S | [] |  |
 
 ## DONE
 
