@@ -219,3 +219,4 @@ cost: estimated S, actual S
 - 2026-10-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-10-28 — IN REVIEW → DONE: review round 1: 0 blocking, 3 fixed inline
 - 2026-10-28 — published: user approved; branch `feat/T-145-docs-readability-subagent` pushed and PR #104 opened (https://github.com/codcod/pickle/pull/104); merge is the human's
+- 2026-10-28 — merged to main (PR #104, 50c6b27, https://github.com/codcod/pickle/commit/50c6b27)
