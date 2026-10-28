@@ -217,3 +217,4 @@ cost: estimated S, actual S
 - 2026-10-28 — plan amended inline: applicability gate (fresh sub-agent, 3 non-blocking findings, routing approved by user) — decision 2 gains a clean-worktree precondition so the check cannot miss edits or wipe the reviewer's work; Task 1 also updates the checklist template's 4b line for both discard counts and the backend used; prerequisite note updated since T-144 merged (note-and-close)
 - 2026-10-28 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-10-28 — IN REVIEW → DONE: review round 1: 0 blocking, 3 fixed inline
+- 2026-10-28 — published: user approved; branch `feat/T-145-docs-readability-subagent` pushed and PR #104 opened (https://github.com/codcod/pickle/pull/104); merge is the human's
