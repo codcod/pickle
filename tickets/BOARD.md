@@ -13,10 +13,11 @@ Last updated: 2026-10-28
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-144 | Docs update step asks for the changelog entry the review already checks | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-10-28
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-144 | Docs update step asks for the changelog entry the review already checks | low | low | S | [] |  |
 | T-145 | Step 4b runs on any host with sub-agents and reviews only the changed lines | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)

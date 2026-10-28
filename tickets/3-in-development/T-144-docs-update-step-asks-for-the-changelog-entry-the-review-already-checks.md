@@ -110,7 +110,7 @@ asks for the changelog entry when the project keeps one.
 ```
 just build && just test && just lint && just docs-check          # all green; just test runs payload_lint_test.go
 grep -n -i "changelog" skill/resources/TEMPLATE.md               # expect a hit inside the Docs update placeholder
-grep -n -i "^6\. \*\*Docs update.*changelog" skill/resources/tickets-README.md   # expect one hit
+grep -n -A1 '^6\. \*\*Docs update' skill/resources/tickets-README.md | grep -i changelog   # expect a hit
 grep -n -i "changelog" docs/user-manual/concepts/lifecycle.adoc  # expect a hit on item 6
 grep -n "(T-144)" CHANGELOG.md                                   # expect one bullet under [Unreleased]
 ```
@@ -139,3 +139,6 @@ and make no claim drawn from this repo's history.
 
 - 2026-10-28 — created (TO DO). source: self-host: a review of brine's docs step, checked against a month of Claude Code sessions; the template's docs step omits the changelog the review checks for (T-143 F13)
 - 2026-10-28 — TO DO → READY: plan complete
+- 2026-10-28 — READY → IN DEVELOPMENT: picked up
+- 2026-10-28 — applicability gate: no blocking findings. Non-blocking: the READY-gate hint in `internal/flow/brine.go` restates §4.6 without the changelog (noted; it points at §4.6, decision 4 keeps this prose-only); acceptance grep fragile to line wrap (fixed inline); file-wide greps weak but correct (noted); `cli-reference.adoc` lists only the heading (noted).
+- 2026-10-28 — plan amended inline: acceptance grep on rules item 6 now uses `grep -A1 … | grep -i changelog` so a wrapped line still matches (gate finding).
