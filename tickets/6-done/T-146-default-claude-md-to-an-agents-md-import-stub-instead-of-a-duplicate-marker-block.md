@@ -142,7 +142,7 @@ import when --agent includes claude)". `TestMarkerBlockStatesNoUnconditionalAgen
 ```
 just build && just test && just lint && just docs-check      # all green
 D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" && git init -q
-./pickle-test install --path . --project demo --agent claude
+./pickle-test install --path . --project demo --agent claude --in-tree
 cat CLAUDE.md          # → "# Brine", blank, begin marker, "@AGENTS.md", end marker
 ./pickle-test doctor   # exit 0, no CLAUDE.md warning
 # simulate a pre-T-146 install: replace CLAUDE.md's body with AGENTS.md's block
@@ -192,7 +192,30 @@ python3 -c "import re;a=open('AGENTS.md').read();c=open('CLAUDE.md').read();b=re
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | spec-unclear | fixed inline | The acceptance test's install line omits `--in-tree`, so run verbatim it is refused and every later step fails | `pickle install: --path "." selects the in-tree layout; pass --in-tree explicitly` (`internal/cli/install.go:47`, already on main) | Added `--in-tree` to the plan's acceptance test |
+| F2 | non-blocking | stale-xref | fixed inline | `MarkerBlock`'s doc comment says it builds the `AGENTS.md`/`CLAUDE.md` content | `internal/install/install.go` `MarkerBlock` comment | Now says `AGENTS.md`, with `CLAUDE.md` getting `ClaudeImportBlock` |
+| F3 | non-blocking | stale-xref | fixed inline | `refreshMarkers`' comment says it re-injects the `AGENTS.md`/`CLAUDE.md` block from cfg | `internal/cli/project.go` `refreshMarkers` comment | Reworded: `AGENTS.md`'s from cfg, plus `CLAUDE.md`'s import |
+| F4 | non-blocking | docs-gap | fixed inline | The docs don't say that through the import, Claude Code now also reads `AGENTS.md`'s text outside the markers | CHANGELOG entry and the cli-reference `claude` row described "one file" only | One sentence added to each |
+| F5 | non-blocking | test-gap | fixed inline | `TestCheckClaudeMDImport`'s pass case only checked for no warnings, so it could not fail if the drift check were skipped | `internal/doctor/claude_view_test.go` | Asserts the `CLAUDE.md marker block current` pass line |
+| F6 | non-blocking | correctness | noted | A user `CLAUDE.md` that already has `@AGENTS.md` outside the markers gets a second import appended; doctor reports it current | Repro: `printf '# Notes\n\n@AGENTS.md\n' > CLAUDE.md && pickle-test install --path . --project demo --agent claude --in-tree` → `grep -c '^@AGENTS.md' CLAUDE.md` = 2 | Redundant rather than wrong; revisit if users report it |
+
+Disposition summary: 5 fixed inline (F1–F5), 1 noted (F6), 0 folded, 0 new tickets.
+cost: estimated S, actual S
+
+- [x] Reviewer independence settled (step 0): delegated. The implementer wrote the branch in this session, so steps 1–4a went to a fresh general-purpose sub-agent spawned with the step 0 prompt (`hunt: angle 7 only`). No delegated findings discarded.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned that the branch had the ticket in `3-in-development`; rebased onto main; doctor then clean.
+- [x] Implementation audit (steps 1, 2): build/test/lint/docs-check green (actionlint and shellcheck not installed locally; CI runs them). Acceptance test re-run with `--in-tree` (F1): every step as specified. Tasks 1–4 and decisions 1–5 verified.
+- [x] Correctness hunt (step 3): host tool path. `/code-review medium` run by the top-level session on `main...feat/T-146-claude-md-import-stub`, no sub-agents. It reported 8 findings: 2 overlap F2/F3, 3 became F4/F5/F6, and 3 were discarded on re-verification (block interior overwritten on refresh: pickle-owned by T-146 decision 2; doctor package doc: still accurate, both files carry a marker block; `strings.Trim` in `checkMarkerDrift`: needed for the `MarkerBlock` path, cosmetic). Angle 7 ran separately in the delegated reviewer: no findings (constant content; an out-of-root `CLAUDE.md` symlink probe left the target unmodified). F6 reproduced.
+- [x] Consistency audit (step 4): repo-wide grep for `CLAUDE.md` with copy/marker/block/render/regenerat; F2 and F3 only.
+- [x] Documentation audit (step 4a): cli-reference, installation, project-structure and CHANGELOG cover the change (plus F4); whole-tree sweep clean; `just docs-check` clean.
+- [x] Docs-readability pass (step 4b): conscious skip. Short, factual edits to existing passages.
+- [x] Findings recorded (step 5): severity, class and disposition for each; summary and cost lines present.
+- [x] Ticket moved to `tickets/6-done/`; `## History` appended (step 6).
+- [x] Other references (step 7): no other ticket or governing document describes `CLAUDE.md`'s block content; this repo's `CLAUDE.md` is a symlink, and `AGENTS.md` is unchanged.
+- [x] Remaining-tickets impact sweep (step 8): open tickets T-075, T-078 and T-079 (rick interop) don't touch `CLAUDE.md` or markers; no impact.
+- [ ] Summary + commit message & MR attributes presented for approval; in-tree remote-base check before push; bookkeeping committed; next-ticket suggestion (step 9).
 
 ## History
 
@@ -203,3 +226,5 @@ python3 -c "import re;a=open('AGENTS.md').read();c=open('CLAUDE.md').read();b=re
 - 2026-10-29 — plan amended inline: doctor drift wording depends on the file (Task 2); T-121 test correctly named (Task 3); body assertion only in the regular-file refresh case (Task 4); docs step adds the "rendered from pickle.toml" passages in cli-reference and project-structure; Finish keeps the two note prefixes the fallback tests match.
 - 2026-10-29 — READY → IN DEVELOPMENT: picked up
 - 2026-10-29 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-10-29 — plan amended inline: acceptance test install line gains `--in-tree` (review F1; `--path .` without it is refused).
+- 2026-10-29 — IN REVIEW → DONE: review: no blocking findings; 5 fixed inline (F1–F5), 1 noted (F6), 0 new tickets
