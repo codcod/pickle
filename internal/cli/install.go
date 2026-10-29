@@ -25,7 +25,7 @@ func runInstall(args []string) int {
 	lint := fs.String("lint", "", "child lint command (optional)")
 	docs := fs.String("docs", "", "child docs command (optional)")
 	noClaude := fs.Bool("no-claude", false, "deprecated: use --agent to choose agents (drops claude from the set)")
-	claudeSymlink := fs.Bool("claude-symlink", false, "make CLAUDE.md a symlink to AGENTS.md instead of a marker block")
+	claudeSymlink := fs.Bool("claude-symlink", false, "make CLAUDE.md a symlink to AGENTS.md instead of an @AGENTS.md import")
 	agentSpec := fs.String("agent", "", `comma-separated agents to wire up: claude, opencode, pi (default "claude")`)
 	hooks := fs.Bool("hooks", false, "also install the bookkeeping guard hooks (same as `pickle hooks install`)")
 	if err := fs.Parse(args); err != nil {

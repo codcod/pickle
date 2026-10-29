@@ -97,7 +97,8 @@ Usage:
 Setup commands:
   install                 Scaffold tickets/, install the skill for the agents named by
                           --agent (default claude), inject the AGENTS.md marker block
-                          (and CLAUDE.md's when --agent includes claude), write
+                          (and CLAUDE.md's @AGENTS.md import when --agent includes
+                          claude), write
                           pickle.toml, and register the first child-project.
   project add <name> <path>   Register another connected child-project.
   project list                List registered child-projects.

@@ -172,12 +172,14 @@ func checkClaudeView(root string, r *Result) {
 
 // checkMarkers verifies the pickle-managed marker block. AGENTS.md is required;
 // CLAUDE.md is optional (regular file must carry the markers; a symlink must
-// resolve; absent is fine). When cfg parsed, a present block is further
-// compared against install.MarkerBlock(cfg): a difference is a drift warning,
-// never an error — a hand-edited block is a legitimate state until the next
-// `pickle upgrade` (or `project add|remove`) re-injects it. A block cannot be
-// compared when pickle.toml itself failed to parse (cfg == nil); its absence
-// is already reported by checkConfig.
+// resolve; absent is fine). A present block is further compared against what
+// pickle would write there — install.MarkerBlock(cfg) for AGENTS.md,
+// install.ClaudeImportBlock for CLAUDE.md (T-146): a difference is a drift
+// warning, never an error — a hand-edited block, or a full copy left in
+// CLAUDE.md by an older install, is a legitimate state until the next
+// `pickle upgrade` (or `project add|remove`) re-injects it. AGENTS.md's block
+// cannot be compared when pickle.toml itself failed to parse (cfg == nil); its
+// absence is already reported by checkConfig.
 func checkMarkers(root string, cfg *config.Config, r *Result) {
 	agents := filepath.Join(root, "AGENTS.md")
 	body, ok := install.InstalledMarkerBody(agents)
@@ -185,7 +187,9 @@ func checkMarkers(root string, cfg *config.Config, r *Result) {
 		r.errf("markers: AGENTS.md is missing or has no pickle marker block")
 	} else {
 		r.ok("AGENTS.md marker block present")
-		checkMarkerDrift("AGENTS.md", body, cfg, r)
+		if cfg != nil {
+			checkMarkerDrift("AGENTS.md", body, install.MarkerBlock(cfg), "what pickle.toml renders", r)
+		}
 	}
 
 	claude := filepath.Join(root, "CLAUDE.md")
@@ -211,23 +215,21 @@ func checkMarkers(root string, cfg *config.Config, r *Result) {
 		return
 	}
 	r.ok("CLAUDE.md marker block present")
-	checkMarkerDrift("CLAUDE.md", body, cfg, r)
+	checkMarkerDrift("CLAUDE.md", body, install.ClaudeImportBlock, "the "+install.ClaudeImportBlock+" import", r)
 }
 
 // checkMarkerDrift compares an installed marker body (already trimmed by
-// install.InstalledMarkerBody) to a fresh install.MarkerBlock(cfg) render,
-// byte-exact — the literal question "would pickle upgrade change this file?".
-func checkMarkerDrift(name, installed string, cfg *config.Config, r *Result) {
-	if cfg == nil {
-		return
-	}
-	want := strings.Trim(install.MarkerBlock(cfg), "\n")
+// install.InstalledMarkerBody) to the block pickle would write there, byte-exact
+// — the literal question "would pickle upgrade change this file?". source names
+// that block in the warning.
+func checkMarkerDrift(name, installed, want, source string, r *Result) {
+	want = strings.Trim(want, "\n")
 	if installed == want {
 		r.ok(name + " marker block current")
 		return
 	}
-	r.warnf("markers: %s block differs from what pickle.toml renders (%d line(s) differ) — run `pickle upgrade`; hand-written content belongs outside the markers",
-		name, diffLineCount(installed, want))
+	r.warnf("markers: %s block differs from %s (%d line(s) differ) — run `pickle upgrade`; hand-written content belongs outside the markers",
+		name, source, diffLineCount(installed, want))
 }
 
 // diffLineCount counts how many positional lines differ between a and b,

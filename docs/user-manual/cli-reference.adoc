@@ -179,11 +179,14 @@ the per-agent artifacts are:
 | Agent | Artifacts | Ownership
 
 | `claude`
-| `.claude/skills/brine` symlink + `CLAUDE.md` marker block
-  (`--claude-symlink` makes `CLAUDE.md` a symlink to `AGENTS.md` instead).
+| `.claude/skills/brine` symlink + `CLAUDE.md`, whose marker block is the
+  single line `@AGENTS.md`, a Claude Code import, so the guidance lives in
+  `AGENTS.md` alone. Claude Code then reads all of `AGENTS.md`, including
+  your text outside its markers (`--claude-symlink` makes `CLAUDE.md` a symlink to
+  `AGENTS.md` instead).
   Where the OS refuses a symlink (Windows without Developer Mode), the view is
   a copy of `{skill-dir}/`, marked by a `.pickle-copy` file, and `CLAUDE.md`
-  keeps the marker block; the output says which. Pickle only ever replaces or
+  keeps the `@AGENTS.md` import; the output says which. Pickle only ever replaces or
   removes a copy that carries that file, and never one reached through a
   symlinked `.claude/skills`. A link placeholder that git checked out as a plain file is
   replaced (the view) or left alone (`CLAUDE.md`)
@@ -311,7 +314,8 @@ Manages the registry of connected child-projects in `pickle.toml` (see
 
 `add` and `remove` re-render `pickle.toml` to a canonical layout; hand-written
 comments in the file do not survive that re-render (see <<configuration>>). Both
-also re-inject the `AGENTS.md`/`CLAUDE.md` marker block immediately, the same
+also re-inject the `AGENTS.md` marker block (and `CLAUDE.md`'s `@AGENTS.md`
+import) immediately, the same
 way `install` and `upgrade` do (see below) — so the agent instructions never
 describe a registry state that no longer matches `pickle.toml`. Both also
 *regenerate `tickets/BOARD.md`* immediately, printing `+ tickets/BOARD.md`. The
@@ -371,7 +375,8 @@ wins over the inference. Takes no flags and no arguments.
 are instance data and are not upgrade's business. Only artifacts that already
 exist are refreshed: `CLAUDE.md` is re-injected only if it is a regular file
 (a `CLAUDE.md -> AGENTS.md` symlink, or a placeholder git checked out for one,
-is left alone), and the
+is left alone). Its block is written as the `@AGENTS.md` import, which also
+converts a full copy of the block left by an older install. The
 `.claude/skills/brine` view is re-linked only if it is already there (or a
 refresh that was killed mid-way left its old copy parked in
 `.claude/.brine.pickle-old`). A copy
@@ -410,7 +415,8 @@ a refusal *before* it, since `layout` is only ever inserted, never rewritten
 in place. Two things it _does_ replace wholesale, by design:
 
 * the `<!-- pickle:begin -->`…`<!-- pickle:end -->` region of
-  `AGENTS.md`/`CLAUDE.md`. It is regenerated from `pickle.toml` by `install`,
+  `AGENTS.md`/`CLAUDE.md`. `AGENTS.md`'s is regenerated from `pickle.toml`
+  (`CLAUDE.md`'s is always the `@AGENTS.md` import) by `install`,
   `upgrade` **and** `project add`/`remove` (<<cmd-project>>), so everything
   it states about your project comes back — the registered child names, each
   child's `build`/`test`/`lint`/`docs` commands, each child's
@@ -468,7 +474,8 @@ Verifies install integrity and exits non-zero on any error. It checks that:
   committed symlink under `core.symlinks=false`, is an error that names
   `pickle upgrade`; the same placeholder at `CLAUDE.md` is a warning;
 * `AGENTS.md` (and a regular-file `CLAUDE.md`) carry the pickle marker block,
-  and its content matches what `pickle.toml` renders today — a block that
+  and its content matches what pickle would write today — what `pickle.toml`
+  renders for `AGENTS.md`, the `@AGENTS.md` import for `CLAUDE.md`. A block that
   differs (e.g. hand-edited, or left behind by an install that predates a
   config change) is a *warning* pointing at `pickle upgrade` (customizations
   belong outside the markers, the same rule the agent-scaffold check below

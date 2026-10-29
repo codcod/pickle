@@ -57,6 +57,10 @@ const (
 	ClaudeSkillTarget = "../../.agents/skills/brine"
 	// ClaudeMDTarget is what CLAUDE.md points at under --claude-symlink.
 	ClaudeMDTarget = "AGENTS.md"
+	// ClaudeImportBlock is the body of CLAUDE.md's marker block: a Claude Code
+	// import of AGENTS.md, so the guidance lives in one file instead of being
+	// copied into both (T-146).
+	ClaudeImportBlock = "@" + ClaudeMDTarget
 	// ClaudeViewSentinel marks a Claude view directory as pickle's copy, written
 	// where symlinks are unavailable (T-143 decision 4).
 	ClaudeViewSentinel = ".pickle-copy"
@@ -120,7 +124,7 @@ var PiScaffolds = []AgentAsset{
 }
 
 // Agents selects which coding agents install wires up (the --agent flag).
-// Claude gets the .claude view + CLAUDE.md marker; opencode gets opencode.jsonc
+// Claude gets the .claude view + CLAUDE.md's @AGENTS.md import; opencode gets opencode.jsonc
 // (docs-readability subagent + bash guardrails); pi gets .pi/extensions/*.
 // There is no autodetection — the set is exactly what the user names.
 type Agents struct {
@@ -168,7 +172,7 @@ type Options struct {
 	// for ResolvedLayout's inference to fill in later.
 	InTree     bool
 	Agents     Agents // which agents to wire up (no autodetection)
-	ClaudeLink bool   // make CLAUDE.md a symlink to AGENTS.md instead of a marker block
+	ClaudeLink bool   // make CLAUDE.md a symlink to AGENTS.md instead of an @AGENTS.md import
 }
 
 // Result records what the run created, left in place, or removed, for the CLI
@@ -252,7 +256,7 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 			return res, err
 		}
 		claudeMD := filepath.Join(root, "CLAUDE.md")
-		writeMarker := func() error { return injectMarker(claudeMD, MarkerTitle, MarkerBlock(cfg), &res) }
+		writeMarker := func() error { return injectMarker(claudeMD, MarkerTitle, ClaudeImportBlock, &res) }
 		switch {
 		case IsLinkPlaceholder(claudeMD, ClaudeMDTarget):
 			res.skipped("CLAUDE.md (symlink placeholder — left alone)")
@@ -262,11 +266,11 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 				return res, err
 			}
 		case opts.ClaudeLink:
-			// The marker form is the fallback, not a copy of AGENTS.md: doctor,
+			// The import block is the fallback, not a copy of AGENTS.md: doctor,
 			// RefreshMarkers and uninstall already handle a marker-carrying
 			// CLAUDE.md, so a refused symlink costs nothing downstream (T-143).
 			if err := ensureSymlink(claudeMD, ClaudeMDTarget, &res, func(err error) error {
-				res.note("CLAUDE.md: symlink unavailable (" + linkErr(err) + "); wrote a marker block instead")
+				res.note("CLAUDE.md: symlink unavailable (" + linkErr(err) + "); wrote an @AGENTS.md import instead")
 				return writeMarker()
 			}); err != nil {
 				return res, err
@@ -340,9 +344,10 @@ func installPi(payload fs.FS, root string, res *Result) error {
 	return nil
 }
 
-// RefreshMarkers regenerates the pickle-managed marker block in AGENTS.md (and,
-// when it is a regular file rather than a CLAUDE.md -> AGENTS.md symlink,
-// CLAUDE.md too) from cfg. It is the single entry point every mutator of
+// RefreshMarkers regenerates the pickle-managed marker block in AGENTS.md from
+// cfg and, when CLAUDE.md is a regular file rather than a CLAUDE.md -> AGENTS.md
+// symlink, rewrites its block to ClaudeImportBlock, which converts a full block
+// left by an older install (T-146). It is the single entry point every mutator of
 // pickle.toml's [[project]] registry re-injects through — pickle upgrade and
 // pickle project add|remove — so the block can never describe a config state
 // other than the one on disk. (pickle install injects the same block from Run
@@ -362,7 +367,7 @@ func RefreshMarkers(root string, cfg *config.Config) (Result, error) {
 		// symlink into a modified regular file (T-143).
 		res.skipped("CLAUDE.md (symlink placeholder — left alone)")
 	} else if fi, err := os.Lstat(claude); err == nil && fi.Mode()&os.ModeSymlink == 0 {
-		if err := injectMarker(claude, MarkerTitle, MarkerBlock(cfg), &res); err != nil {
+		if err := injectMarker(claude, MarkerTitle, ClaudeImportBlock, &res); err != nil {
 			return res, err
 		}
 	}
@@ -1470,7 +1475,8 @@ func stripMarker(path string, res *Result) error {
 	return nil
 }
 
-// MarkerBlock builds the pickle-managed AGENTS.md/CLAUDE.md content from cfg. It
+// MarkerBlock builds the pickle-managed AGENTS.md content from cfg (CLAUDE.md's
+// block is ClaudeImportBlock instead, T-146). It
 // is exported so internal/doctor can render the canonical form to compare
 // against what is actually installed (drift detection).
 //

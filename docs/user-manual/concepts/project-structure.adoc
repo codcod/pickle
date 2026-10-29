@@ -15,7 +15,7 @@ targets (see <<multi-project>>):
 my-app/                           ← overarching project — pickle.toml lives here
 ├── pickle.toml                   ← child registry + pinned payload version
 ├── AGENTS.md                     ← agent instructions; holds the pickle marker block
-├── CLAUDE.md                     ← --agent claude: marker block, or symlink to AGENTS.md
+├── CLAUDE.md                     ← --agent claude: @AGENTS.md import, or symlink to AGENTS.md
 ├── opencode.jsonc                ← --agent opencode: reviewer subagent + bash guardrails
 ├── .agents/
 │   └── skills/
@@ -83,7 +83,8 @@ ordinary stageable directory like any other. `pickle project add` and
   is pinned to.
 
 | `AGENTS.md` (and `CLAUDE.md`)
-| The instructions every agent reads. The marker block is regenerated, but it
+| The instructions every agent reads. `CLAUDE.md`'s marker block only imports
+  `AGENTS.md` (`@AGENTS.md`). The marker block is regenerated, but it
   is regenerated *into a file you own* — commit it so a fresh clone briefs the
   agent identically.
 

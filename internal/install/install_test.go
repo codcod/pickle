@@ -1727,8 +1727,8 @@ func TestRefreshMarkers(t *testing.T) {
 	if _, err := RefreshMarkers(root, cfg); err != nil {
 		t.Fatalf("RefreshMarkers (CLAUDE.md regular file): %v", err)
 	}
-	if _, ok := InstalledMarkerBody(filepath.Join(root, "CLAUDE.md")); !ok {
-		t.Error("CLAUDE.md regular file was not injected")
+	if body, ok := InstalledMarkerBody(filepath.Join(root, "CLAUDE.md")); !ok || body != ClaudeImportBlock {
+		t.Errorf("CLAUDE.md regular file body = %q (ok=%v), want %q", body, ok, ClaudeImportBlock)
 	}
 
 	// A CLAUDE.md -> AGENTS.md symlink is left alone.
@@ -1745,6 +1745,48 @@ func TestRefreshMarkers(t *testing.T) {
 	fi, err := os.Lstat(filepath.Join(symlinkRoot, "CLAUDE.md"))
 	if err != nil || fi.Mode()&os.ModeSymlink == 0 {
 		t.Error("RefreshMarkers replaced a CLAUDE.md -> AGENTS.md symlink with a regular file")
+	}
+}
+
+// TestClaudeMDImportsAgentsMD covers T-146: install writes an @AGENTS.md import
+// instead of a copy of the block, a refresh converts a full block left by an
+// older install (keeping the user's lines), and uninstall leaves only the H1.
+func TestClaudeMDImportsAgentsMD(t *testing.T) {
+	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Agents: Agents{Claude: true}}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	claude := filepath.Join(root, "CLAUDE.md")
+	fresh := "# Brine\n\n<!-- pickle:begin -->\n@AGENTS.md\n<!-- pickle:end -->\n"
+	if b, _ := os.ReadFile(claude); string(b) != fresh {
+		t.Fatalf("fresh CLAUDE.md = %q, want %q", b, fresh)
+	}
+
+	cfg, err := config.Load(filepath.Join(root, "pickle.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := "# Mine\n\nkeep me\n\n" + MarkerBegin + "\n" + MarkerBlock(cfg) + "\n" + MarkerEnd + "\n"
+	if err := os.WriteFile(claude, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RefreshMarkers(root, cfg); err != nil {
+		t.Fatalf("RefreshMarkers: %v", err)
+	}
+	converted := "# Mine\n\nkeep me\n\n<!-- pickle:begin -->\n@AGENTS.md\n<!-- pickle:end -->\n"
+	if b, _ := os.ReadFile(claude); string(b) != converted {
+		t.Fatalf("converted CLAUDE.md = %q, want %q", b, converted)
+	}
+
+	if err := os.WriteFile(claude, []byte(fresh), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(payload, root, UninstallOptions{}); err != nil {
+		t.Fatalf("Uninstall: %v", err)
+	}
+	if b, _ := os.ReadFile(claude); string(b) != "# Brine\n" {
+		t.Errorf("CLAUDE.md after uninstall = %q, want %q", b, "# Brine\n")
 	}
 }
 
