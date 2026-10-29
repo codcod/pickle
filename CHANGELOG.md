@@ -13,6 +13,8 @@ may change in any release.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-29
+
 ### Changed
 
 - **`CLAUDE.md` imports `AGENTS.md` instead of copying it** (T-146). With `--agent claude`,
@@ -1132,7 +1134,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/codcod/pickle/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/codcod/pickle/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/codcod/pickle/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/codcod/pickle/compare/v1.2.0...v1.3.0
