@@ -13,6 +13,15 @@ may change in any release.
 
 ## [Unreleased]
 
+### Changed
+
+- **`CLAUDE.md` imports `AGENTS.md` instead of copying it** (T-146). With `--agent claude`,
+  `pickle install` writes `CLAUDE.md`'s marker block as the single line `@AGENTS.md`, so the
+  guidance lives in one file. `pickle upgrade` and `pickle project add|remove` convert a full
+  copy left by an older install, and `pickle doctor` reports a leftover copy as drift.
+  `--claude-symlink` still makes `CLAUDE.md` a symlink, and now falls back to the import.
+  Through the import, Claude Code also reads whatever `AGENTS.md` holds outside its markers.
+
 ## [1.4.1] - 2026-10-28
 
 ### Changed

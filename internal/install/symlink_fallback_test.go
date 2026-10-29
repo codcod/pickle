@@ -180,8 +180,8 @@ func TestClaudeMDSymlinkFallsBackToMarker(t *testing.T) {
 		t.Errorf("fallback not noted; notes: %v", res.Notes)
 	}
 	claude := filepath.Join(root, "CLAUDE.md")
-	if !regularWithMarker(claude) {
-		t.Fatal("CLAUDE.md is not a regular file carrying the marker block")
+	if body, ok := InstalledMarkerBody(claude); !regularWithMarker(claude) || !ok || body != ClaudeImportBlock {
+		t.Fatalf("CLAUDE.md is not a regular file carrying the %s import (body %q)", ClaudeImportBlock, body)
 	}
 	res, err = Run(payload, root, "v1", opts)
 	if err != nil {

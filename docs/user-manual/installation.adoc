@@ -27,7 +27,7 @@ and put `pickle.exe` on your `PATH`.
 only allows that with Developer Mode on (or as an administrator). Without it,
 pickle writes a copy of the skill there instead, and `pickle upgrade` keeps
 the copy current. `pickle install --claude-symlink` likewise falls back to the
-default `CLAUDE.md` marker block.
+default `CLAUDE.md`, a marker block holding the `@AGENTS.md` import.
 
 If the project you clone already commits those paths as symlinks, turn on
 Developer Mode and run `git config --global core.symlinks true` _before_

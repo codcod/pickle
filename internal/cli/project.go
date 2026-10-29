@@ -189,7 +189,8 @@ func noteIfStageable(root string, p config.Project) {
 	}
 }
 
-// refreshMarkers re-injects the AGENTS.md/CLAUDE.md marker block from cfg and
+// refreshMarkers re-injects the AGENTS.md marker block from cfg (and CLAUDE.md's
+// @AGENTS.md import) and
 // prints what changed with the same +/= idiom runInstall and runUpgrade use, so
 // the registry stays the block's single source of truth across every mutator.
 // Callers report its error as-is: it already says that pickle.toml is saved and
