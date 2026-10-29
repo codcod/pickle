@@ -215,7 +215,7 @@ cost: estimated S, actual S
 - [x] Ticket moved to `tickets/6-done/`; `## History` appended (step 6).
 - [x] Other references (step 7): no other ticket or governing document describes `CLAUDE.md`'s block content; this repo's `CLAUDE.md` is a symlink, and `AGENTS.md` is unchanged.
 - [x] Remaining-tickets impact sweep (step 8): open tickets T-075, T-078 and T-079 (rick interop) don't touch `CLAUDE.md` or markers; no impact.
-- [ ] Summary + commit message & MR attributes presented for approval; in-tree remote-base check before push; bookkeeping committed; next-ticket suggestion (step 9).
+- [x] Summary + commit message & MR attributes presented and approved (2026-10-29); in-tree remote-base check clean after pushing main; bookkeeping committed; next-ticket suggestion given: READY is empty (step 9).
 
 ## History
 
@@ -228,3 +228,4 @@ cost: estimated S, actual S
 - 2026-10-29 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-10-29 — plan amended inline: acceptance test install line gains `--in-tree` (review F1; `--path .` without it is refused).
 - 2026-10-29 — IN REVIEW → DONE: review: no blocking findings; 5 fixed inline (F1–F5), 1 noted (F6), 0 new tickets
+- 2026-10-29 — published: commit approved, pushed, PR #105 opened (https://github.com/codcod/pickle/pull/105); awaiting human merge.
