@@ -229,3 +229,4 @@ cost: estimated S, actual S
 - 2026-10-29 — plan amended inline: acceptance test install line gains `--in-tree` (review F1; `--path .` without it is refused).
 - 2026-10-29 — IN REVIEW → DONE: review: no blocking findings; 5 fixed inline (F1–F5), 1 noted (F6), 0 new tickets
 - 2026-10-29 — published: commit approved, pushed, PR #105 opened (https://github.com/codcod/pickle/pull/105); awaiting human merge.
+- 2026-10-29 — merged to main (PR #105, 494e790, https://github.com/codcod/pickle/commit/494e790)

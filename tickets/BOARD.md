@@ -167,7 +167,7 @@ Last updated: 2026-10-29
 | T-143 | Extend release with Windows builds | yes — merged to main (PR #102, b110ac1, https://github.com/codcod/pickle/commit/b110ac1) |
 | T-144 | Docs update step asks for the changelog entry the review already checks | yes — merged to main (PR #103, 7c5cda9, https://github.com/codcod/pickle/commit/7c5cda9) |
 | T-145 | Step 4b runs on any host with sub-agents and reviews only the changed lines | yes — merged to main (PR #104, 50c6b27, https://github.com/codcod/pickle/commit/50c6b27) |
-| T-146 | Default CLAUDE.md to an @AGENTS.md import stub instead of a duplicate marker block | no — publish-gated |
+| T-146 | Default CLAUDE.md to an @AGENTS.md import stub instead of a duplicate marker block | yes — merged to main (PR #105, 494e790, https://github.com/codcod/pickle/commit/494e790) |
 
 ## DROPPED
 
