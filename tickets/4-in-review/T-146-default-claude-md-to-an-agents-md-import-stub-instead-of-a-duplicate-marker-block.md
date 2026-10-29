@@ -202,3 +202,4 @@ python3 -c "import re;a=open('AGENTS.md').read();c=open('CLAUDE.md').read();b=re
 - 2026-10-29 — applicability gate (fresh sub-agent): no blocking findings, 5 non-blocking. Routing approved by user: 1, 3, 4 inline; 2 inline then closed; 5 note-and-close.
 - 2026-10-29 — plan amended inline: doctor drift wording depends on the file (Task 2); T-121 test correctly named (Task 3); body assertion only in the regular-file refresh case (Task 4); docs step adds the "rendered from pickle.toml" passages in cli-reference and project-structure; Finish keeps the two note prefixes the fallback tests match.
 - 2026-10-29 — READY → IN DEVELOPMENT: picked up
+- 2026-10-29 — IN DEVELOPMENT → IN REVIEW: acceptance green
