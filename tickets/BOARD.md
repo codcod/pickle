@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-10-28
+Last updated: 2026-10-29
 
 ## IN DEVELOPMENT
 
@@ -48,6 +48,7 @@ Last updated: 2026-10-28
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
+| T-146 | Default CLAUDE.md to an @AGENTS.md import stub instead of a duplicate marker block | medium | medium | M | [] |  |
 
 ## DONE
 
