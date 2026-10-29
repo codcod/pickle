@@ -114,22 +114,23 @@ In `internal/install/install.go`:
 #### Task 2: doctor
 In `checkMarkers` (`internal/doctor/doctor.go`), the regular-file `CLAUDE.md` branch compares its
 body to `install.ClaudeImportBlock`. Factor `checkMarkerDrift` to take the wanted body (or add a
-sibling) so the warning wording stays shared. When cfg is nil, the `CLAUDE.md` comparison still
+sibling) so the warning wording stays shared. Make the "differs from what pickle.toml renders"
+phrase depend on the file: for `CLAUDE.md` it reads "differs from the `@AGENTS.md` import". When cfg is nil, the `CLAUDE.md` comparison still
 runs, because it does not depend on cfg. Update the function's doc comment.
 
 #### Task 3: CLI help
 `internal/cli/install.go` `--claude-symlink` usage: "make CLAUDE.md a symlink to AGENTS.md instead
 of an @AGENTS.md import". `internal/cli/cli.go` install summary: "(and CLAUDE.md's @AGENTS.md
-import when --agent includes claude)". The T-121 test (`install_test.go`, the help-text
-`--agent` condition check) must stay green.
+import when --agent includes claude)". `TestMarkerBlockStatesNoUnconditionalAgentArtifact`
+(T-121, checks `MarkerBlock` lines) is unaffected, because `MarkerBlock` does not change.
 
 #### Task 4: tests
 - `internal/install/install_test.go`: a fresh `Run` with `Agents{Claude: true}` produces
   `CLAUDE.md` == `"# Brine\n\n<!-- pickle:begin -->\n@AGENTS.md\n<!-- pickle:end -->\n"`;
   `RefreshMarkers` over a `CLAUDE.md` holding the full `MarkerBlock(cfg)`, with a user line above
-  the markers, leaves the user line and an `@AGENTS.md` body; the existing regular-file and
-  symlink refresh cases (around the `RefreshMarkers (CLAUDE.md regular file)` check) assert the
-  body is `ClaudeImportBlock`; `Uninstall` on the fresh install leaves `CLAUDE.md` == `"# Brine\n"`.
+  the markers, leaves the user line and an `@AGENTS.md` body; the existing regular-file refresh case
+  (the `RefreshMarkers (CLAUDE.md regular file)` check) asserts the body is `ClaudeImportBlock`,
+  and the symlink case keeps asserting only that the link survives; `Uninstall` on the fresh install leaves `CLAUDE.md` == `"# Brine\n"`.
 - `internal/install/symlink_fallback_test.go` `TestClaudeMDSymlinkFallsBackToMarker`: assert the
   fallback body is `ClaudeImportBlock`.
 - `internal/doctor/`: an import-form `CLAUDE.md` passes with no warning; a full-block `CLAUDE.md`
@@ -156,12 +157,15 @@ python3 -c "import re;a=open('AGENTS.md').read();c=open('CLAUDE.md').read();b=re
 - `docs/user-manual/cli-reference.adoc`: the `claude` agent-artifacts row (`CLAUDE.md` carries
   an `@AGENTS.md` import block; fallback wording), the `upgrade` refresh paragraph (a regular
   `CLAUDE.md` is re-injected with the import and converts a full block), the `doctor` markers
-  bullet (`CLAUDE.md`'s block must be the import), and the `uninstall` paragraph if its wording
-  no longer holds.
+  bullet (`CLAUDE.md`'s block must be the import), the `uninstall` paragraph if its wording
+  no longer holds, and every sentence saying the `AGENTS.md`/`CLAUDE.md` block is rendered or
+  regenerated from `pickle.toml` (around the `project add|remove` re-inject paragraph, the
+  marker-region ownership paragraph, and the doctor bullet): only `AGENTS.md`'s is.
 - `docs/user-manual/installation.adoc`: the `--claude-symlink` fallback sentence.
 - `docs/user-manual/concepts/project-structure.adoc`: the tree annotation
-  (`CLAUDE.md ← --agent claude: @AGENTS.md import, or symlink to AGENTS.md`) and the
-  ownership row if it says "marker block".
+  (`CLAUDE.md ← --agent claude: @AGENTS.md import, or symlink to AGENTS.md`) the
+  pickle-owned paragraph saying both files are replaced, and the ownership row
+  (`AGENTS.md` (and `CLAUDE.md`)), which must say `CLAUDE.md` holds the import.
 - `CHANGELOG.md` under `## [Unreleased]` → `### Changed`: **`CLAUDE.md` imports `AGENTS.md`
   instead of copying it** (T-146): install writes an `@AGENTS.md` block, upgrade converts an
   existing full block, doctor treats a leftover copy as drift.
@@ -181,8 +185,10 @@ python3 -c "import re;a=open('AGENTS.md').read();c=open('CLAUDE.md').read();b=re
    measures CLAUDE.md against the import. --claude-symlink stays as an opt-in.
    ```
 
-5. Tidy the WIP commits into atomic ones (root-path child).
-6. Commit locally; do not push or open an MR. Move to `4-in-review/`.
+5. Keep the note prefixes `CLAUDE.md: symlink unavailable` and
+   `CLAUDE.md is already a regular file with a marker block`, because the fallback tests match them.
+6. Tidy the WIP commits into atomic ones (root-path child).
+7. Commit locally; do not push or open an MR. Move to `4-in-review/`.
 
 ## Review
 
@@ -193,3 +199,6 @@ python3 -c "import re;a=open('AGENTS.md').read();c=open('CLAUDE.md').read();b=re
 - 2026-10-29 — created (TO DO). source: chat: user asked to replace the duplicated CLAUDE.md marker block with a `See @AGENTS.md` import; exploration found the default and symlink-fallback install paths duplicate AGENTS.md
 - 2026-10-29 — refined: design narrowed to an `@AGENTS.md` body inside the existing marker pair (no sentinel, uninstall unchanged); user approved converting on refresh and keeping `--claude-symlink` as an opt-in; re-graded complexity low, cost S.
 - 2026-10-29 — TO DO → READY: plan complete
+- 2026-10-29 — applicability gate (fresh sub-agent): no blocking findings, 5 non-blocking. Routing approved by user: 1, 3, 4 inline; 2 inline then closed; 5 note-and-close.
+- 2026-10-29 — plan amended inline: doctor drift wording depends on the file (Task 2); T-121 test correctly named (Task 3); body assertion only in the regular-file refresh case (Task 4); docs step adds the "rendered from pickle.toml" passages in cli-reference and project-structure; Finish keeps the two note prefixes the fallback tests match.
+- 2026-10-29 — READY → IN DEVELOPMENT: picked up
