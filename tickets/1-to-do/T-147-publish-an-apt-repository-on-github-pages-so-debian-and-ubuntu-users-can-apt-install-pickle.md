@@ -45,6 +45,23 @@ this repo references it, and only v1.4.3 is there.
    avoids the release-detection failure Cloudsmith's setup script showed on Ubuntu 26.04.
 4. **Document it** in the user manual's installation page and the README install section.
 
+**Constraint (user-stated, 2026-11-04): the `.deb`/apt work must not break the existing
+release.** Whatever this adds is additive and isolated from what a tag already produces: the
+GitHub release with its archives and `checksums.txt`, the Homebrew formula pushed to the tap,
+and the user-manual attachment. Concretely:
+
+- The apt steps run **after** goreleaser has published, and a failure in them (index build,
+  signing, Pages deploy, missing secret) must not fail or roll back the GitHub release or the
+  Homebrew update. They should be `continue-on-error` or their own job, and annotated when they
+  miss, the same way the user-manual step is.
+- Adding `nfpms` must not rename, remove or change the existing archives, `checksums.txt`
+  entries, or the Homebrew formula's download URLs. The `.deb` files are extra release assets.
+  `checksums.txt` gains lines and loses none.
+- A missing signing-key secret, for example on a fork or a re-run, skips the apt publish with a
+  warning. It never blocks the tag's release.
+- The acceptance test includes `just dist-snapshot` with the old artifact set still present
+  and unchanged, and a dry run of the apt steps that cannot touch the real Pages site.
+
 **Open decisions for refinement:**
 
 - **GitHub Pages or Cloudsmith.** This ticket is filed as GitHub Pages. The alternative is to
