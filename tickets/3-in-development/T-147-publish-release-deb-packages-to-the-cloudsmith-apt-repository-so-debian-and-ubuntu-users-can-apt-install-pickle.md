@@ -115,7 +115,9 @@ policy). This ticket touches no payload or marker block, so no test install is n
 4. **The push never fails the release.** It is a separate step after goreleaser and after the
    manual attachment, with `continue-on-error: true`. A missing `CLOUDSMITH_API_KEY` exits 0 with
    a `::warning::` and a `$GITHUB_STEP_SUMMARY` line, as does a failed push, the same pattern as
-   the user-manual step. Nothing in goreleaser's own run depends on Cloudsmith.
+   the user-manual step. Nothing in goreleaser's own run depends on Cloudsmith. A prerelease
+   tag (one containing `-`) is skipped with the same warning and summary line, because the one
+   `any-distro/any-version` channel would otherwise put it in front of `apt upgrade` users.
 5. **Pushes are idempotent.** The step uses `cloudsmith push deb … --republish`, so a
    `workflow_dispatch` re-run for an existing tag replaces rather than errors.
 6. **The `.deb` files are additive.** `nfpms` adds release assets and `checksums.txt` lines. The
@@ -164,7 +166,8 @@ Append a step after "Attach user manual to release":
 - `env:` `CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}`,
   `CLOUDSMITH_REPO: codcod/pickle-cli`, `TAG: ${{ inputs.tag || github.ref_name }}`.
 - Script: if `CLOUDSMITH_API_KEY` is empty, write a warning and summary line ("No .deb published
-  to Cloudsmith for $TAG: CLOUDSMITH_API_KEY is not set") and `exit 0`. Otherwise run
+  to Cloudsmith for $TAG: CLOUDSMITH_API_KEY is not set") and `exit 0`. If `$TAG`
+  contains `-` (a prerelease), warn and summarise likewise and `exit 0` (decision 4). Otherwise run
   `pipx install cloudsmith-cli==<pinned>`. Collect `dist/*.deb` with `nullglob`; if none, warn
   and exit 0. For each file run
   `cloudsmith push deb "$CLOUDSMITH_REPO/any-distro/any-version" "$f" --republish`. On any push
@@ -177,7 +180,9 @@ Append a step after "Attach user manual to release":
 Through the API with the user's key, never printing it:
 `PATCH https://api.cloudsmith.io/v1/repos/codcod/pickle-cli/retention/` with the decision 7
 values. Read it back with a `GET` and paste the result, without credentials, into the
-ticket's History. This changes the user's account, so confirm with the user immediately before
+ticket's History. If neither Cloudsmith's docs nor the UI's label for `0` confirms that
+`retention_days_limit: 0` means "no day limit", ask Cloudsmith support and do not enable
+retention until it is confirmed. This changes the user's account, so confirm with the user immediately before
 sending it. It is reversible: setting `retention_enabled: false` undoes it.
 
 #### Task 4 — `RELEASING.md`
@@ -191,7 +196,7 @@ what a release produces.
 
 ### Acceptance test
 
-1. **Old artifacts unchanged.** On `main` before the change, run `just dist-snapshot` and save
+1. **Old artifacts unchanged.** Needs goreleaser v2.8 or later on the PATH (`brew install goreleaser`). On `main` before the change, run `just dist-snapshot` and save
    `ls dist/*.tar.gz dist/*.zip` plus the archive file names in `dist/checksums.txt`. Then on the
    branch, run `just dist-snapshot` again. Every earlier archive name is still present, unchanged,
    and listed in `checksums.txt`, and the only new entries are the two `.deb` files. Use `diff`
@@ -204,7 +209,8 @@ what a release produces.
    container. `pickle --version` prints the snapshot version in both.
 4. **The push step's soft-fail paths.** Run the Task 2 script locally with `bash`:
    (a) `CLOUDSMITH_API_KEY` unset: exits 0 and prints the warning; (b) no `dist/*.deb`: exits 0
-   and warns; (c) push failure, simulated with a bogus key: exits 0 and warns. Never run it with
+   and warns; (c) push failure, simulated with a bogus key: exits 0 and warns; (d) a prerelease
+   `TAG=v9.9.9-rc1` with a key set: exits 0 and warns without attempting a push. Never run it with
    the real key against the real repository during the test.
 5. **Workflow syntax.** `actionlint .github/workflows/release.yml` passes, if available, or run
    it in its Docker image.
@@ -249,3 +255,5 @@ Then `pickle ticket move T-147 in-review --reason "acceptance green"` and contin
 - 2026-11-04 — created (TO DO). source: chat: after a hand-built v1.4.3 `.deb` was pushed to the Cloudsmith repository `codcod/pickle-cli` and installed on Ubuntu and Debian, the user asked to make the GitHub Pages variant of an apt repository a ticket, so future releases reach apt without a manual push
 - 2026-11-04 — refined: user chose Cloudsmith over GitHub Pages, keeping the latest 5 versions, Cloudsmith only (no Pages, no mirror); retitled and filename slug tidied to match, re-graded complexity medium → low and cost M → S, since there is no signing key or index generation
 - 2026-11-04 — TO DO → READY: plan complete
+- 2026-11-04 — READY → IN DEVELOPMENT: picked up
+- 2026-11-04 — plan amended inline: applicability gate (fresh sub-agent, no blocking findings). (1) Task 3 aborts the retention change unless `retention_days_limit: 0` = "no limit" is confirmed (the OpenAPI spec is silent; range 0–180); (2) acceptance step 1 names goreleaser ≥ v2.8 as a local prerequisite; (3) user chose to skip prerelease (`-`) tags in the Cloudsmith step, added to decision 4, Task 2 and acceptance 4(d)

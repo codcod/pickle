@@ -13,10 +13,11 @@ Last updated: 2026-11-04
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-11-04
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | medium | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
