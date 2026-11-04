@@ -13,6 +13,11 @@ may change in any release.
 
 ## [Unreleased]
 
+### Added
+
+- `.deb` packages for Debian and Ubuntu, installable with `apt` from the Cloudsmith repository
+  `codcod/pickle-cli` (T-147).
+
 ## [1.4.3] - 2026-11-04
 
 ### Added

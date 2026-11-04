@@ -17,6 +17,49 @@ Via the tap:
 brew install codcod/tap/pickle
 ----
 
+== Debian and Ubuntu (apt)
+
+Every final release (not prereleases) is published to the Cloudsmith apt
+repository `codcod/pickle-cli`.
+The package itself is named `pickle`. Add the repository once, and `apt upgrade`
+picks up each new version:
+
+[source,sh]
+----
+curl -1sLf 'https://dl.cloudsmith.io/public/codcod/pickle-cli/setup.deb.sh' | sudo -E bash
+sudo apt install pickle
+----
+
+If the setup script does not recognise your release (this can happen for a
+distribution newer than the script), add the source by hand instead:
+
+[source,sh]
+----
+curl -1sLf https://dl.cloudsmith.io/public/codcod/pickle-cli/gpg.key \
+  | sudo gpg --dearmor --yes --output /usr/share/keyrings/pickle-cli.gpg
+. /etc/os-release
+echo "deb [signed-by=/usr/share/keyrings/pickle-cli.gpg] https://dl.cloudsmith.io/public/codcod/pickle-cli/deb/$ID $VERSION_CODENAME main" \
+  | sudo tee /etc/apt/sources.list.d/pickle-cli.list
+sudo apt update && sudo apt install pickle
+----
+
+The path uses your distribution's own `$ID` and `$VERSION_CODENAME` (for
+example `ubuntu noble`). The package is uploaded as `any-distro`, but that is
+not a valid path in the source line. `--yes` lets the commands be re-run, for
+example after a key change, without gpg stopping to ask about overwriting.
+
+Offline, download `pickle_<version>_amd64.deb` (or `_arm64`) from the
+https://github.com/codcod/pickle/releases/latest[latest release], together with
+`checksums.txt`, then check and install it:
+
+[source,sh]
+----
+sha256sum --ignore-missing -c checksums.txt
+sudo dpkg -i pickle_<version>_amd64.deb
+----
+
+A package installed this way does not update itself.
+
 == Windows
 
 Download `pickle_<version>_windows_amd64.zip` (or `_arm64`) from the

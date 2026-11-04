@@ -2,7 +2,8 @@
 
 `pickle` is distributed as cross-compiled static binaries via
 [goreleaser](https://goreleaser.com), a GitHub release per tag, and a Homebrew formula published to
-a separate tap repo (`github.com/codcod/homebrew-tap` → `brew install codcod/tap/pickle`).
+a separate tap repo (`github.com/codcod/homebrew-tap` → `brew install codcod/tap/pickle`), and
+`.deb` packages pushed to the Cloudsmith apt repository `codcod/pickle-cli`.
 
 ## Cutting a release
 
@@ -39,11 +40,61 @@ published — see *Testing the user-manual build* below for the non-destructive 
 That produces, for `darwin`/`linux`/`windows` × `amd64`/`arm64`:
 
 - a **GitHub release** with `.tar.gz` archives (`.zip` for windows) + `checksums.txt`;
-- an updated **Homebrew formula** committed to the tap.
+- an updated **Homebrew formula** committed to the tap;
+- `pickle_X.Y.Z_amd64.deb` and `pickle_X.Y.Z_arm64.deb` on the release, also pushed to the
+  Cloudsmith apt repository (see *Debian/Ubuntu packages* below).
 
 The version is stamped into the binary via `-ldflags -X main.version={{.Version}}`; a
 `go install github.com/codcod/pickle@vX.Y.Z` build (no ldflags) falls back to the module version
 from `runtime/debug.ReadBuildInfo()`.
+
+## Debian/Ubuntu packages (Cloudsmith)
+
+goreleaser's `nfpms` section builds the two `.deb` files. Then the last step of the release
+workflow, *Publish .deb to Cloudsmith*, pushes them to the Cloudsmith repository
+`codcod/pickle-cli`, distribution `any-distro/any-version`. The binary is static, so one
+package serves every Debian and Ubuntu release, and Cloudsmith signs and serves the apt index.
+
+- **Secret.** `CLOUDSMITH_API_KEY` is a Cloudsmith API key, stored as a repository secret:
+  `gh secret set CLOUDSMITH_API_KEY -R codcod/pickle`. Prefer a service account's key with write
+  access to `codcod/pickle-cli` only over a personal user key, so a leak reaches one repository.
+- **Soft-fail.** The step never fails the release. It exits 0 with a `::warning::` annotation
+  and a job-summary line, *No .deb published to Cloudsmith for vX.Y.Z*, when the secret is
+  missing (on a fork, for example), the tag is a prerelease (contains `-`), there is no
+  `dist/*.deb`, or the CLI install fails. A failed push does not stop the others: the step tries
+  every package, then warns *Cloudsmith publish incomplete for vX.Y.Z* and names the ones that
+  failed. Prereleases are skipped
+  on purpose, because there is one channel and anything pushed to it reaches `apt upgrade`. The
+  GitHub release and the formula are published before this step runs.
+- **Re-pushing an old tag** (for example after the secret was missing, or a push failed). Do it
+  by hand. A `workflow_dispatch` re-run does not work: goreleaser fails first with
+  `422 already_exists` (see *Cutting a release*), so the Cloudsmith step never runs. With the
+  `cloudsmith` CLI installed (`pipx install cloudsmith-cli==1.30.0`, the version the workflow
+  pins) and `CLOUDSMITH_API_KEY` exported:
+
+  ```sh
+  D=$(mktemp -d)
+  gh release download vX.Y.Z -R codcod/pickle -p '*.deb' -D "$D"
+  for f in "$D"/*.deb; do
+    cloudsmith push deb codcod/pickle-cli/any-distro/any-version "$f" --republish
+  done
+  ```
+
+  `cloudsmith push deb` takes one file per call, hence the loop. A fresh directory per run keeps
+  `gh release download` from refusing to overwrite and keeps another tag's packages out of the
+  loop. `--republish` replaces a version that is already there, so the whole block is safe to
+  repeat. It works for tags released with `.deb` assets, from the first release after `nfpms` was
+  added; earlier releases have none to download.
+- **Retention.** *Not applied yet* (deferred, so the repository keeps every version). The
+  intended rule is set once on the repository, not from the workflow, and keeps the latest 5
+  versions: 10 packages, grouped by name, across two architectures. Apply it with a `PATCH` of
+  `{"retention_enabled": true, "retention_count_limit": 10, "retention_group_by_name": true,
+  "retention_days_limit": 0}` to the URL below (a `0` limit disables that criterion). Inspect it with
+  `curl -s -H "X-Api-Key: $CLOUDSMITH_API_KEY" https://api.cloudsmith.io/v1/repos/codcod/pickle-cli/retention/`.
+- **Why `pickle-cli`.** An earlier `codcod/pickle` repository was deleted, and Cloudsmith
+  still reserves that slug. Only the repository slug carries `-cli`; the package is named
+  `pickle`. If the slug is ever freed, a move changes `CLOUDSMITH_REPO` in the workflow and the
+  URLs in the user manual.
 
 ## Validating locally (no publish)
 

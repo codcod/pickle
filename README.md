@@ -34,6 +34,10 @@ brew trust --formula codcod/tap/pickle
 brew install codcod/tap/pickle
 ```
 
+On Debian or Ubuntu, `sudo apt install pickle` after adding the Cloudsmith repository
+`codcod/pickle-cli`. The [user manual](docs/user-manual/installation.adoc#debian-and-ubuntu-apt)
+has the one-line setup and the hand-written source line.
+
 On Windows, download `pickle_<version>_windows_amd64.zip` (or `_arm64`) from the
 [latest release](https://github.com/codcod/pickle/releases/latest), unzip it, and put
 `pickle.exe` on your `PATH`. `pickle install` links `.claude/skills/brine` to the skill
