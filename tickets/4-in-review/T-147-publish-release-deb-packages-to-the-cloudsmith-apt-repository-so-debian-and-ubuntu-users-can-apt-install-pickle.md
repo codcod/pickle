@@ -281,6 +281,26 @@ Checklist:
 - [x] Consistency audit (step 4) and docs audit (step 4a): delegated reviewer; F5, F6, F7. `just docs-check` clean. DESIGN.md's distribution line is reconciled at step 7, after the fix.
 - [ ] Docs-readability reviewer (step 4b): consciously skipped. It is optional, and the rework pass rewrites the affected prose anyway.
 
+### Rework fix record — round 1 (commits 2174370..c4ca513)
+
+- **B1:** fixed, docs-only (user's choice; decision 5 amended). RELEASING.md *Re-pushing an old tag* now gives a by-hand `gh release download … -p '*.deb'` + `cloudsmith push deb … --republish`, and says why a `workflow_dispatch` re-run cannot reach the step. The workflow comment no longer claims it can. (`c4ca513`, `bfea270`)
+- **B2:** fixed. The loop tries every `.deb` and collects failures, then warns once: *Cloudsmith publish incomplete for vX.Y.Z: failed to push …*. The *No .deb published* heading is now only used when nothing was attempted. Re-tested under `bash -e`:
+  - stub failing on amd64: both pushes attempted, one warning naming amd64, rc=0;
+  - all succeed: no summary, rc=0;
+  - real CLI with a bogus key: both pushes 401, one warning naming both, rc=0;
+  - (a), (b) and (d): unchanged.
+
+  (`bfea270`)
+- **Fixed inline**, all in `c4ca513`:
+  - F2: a service-account key is recommended.
+  - F3: the offline path checks `sha256sum --ignore-missing -c checksums.txt` (both OK in ubuntu:24.04).
+  - F5: retention is marked *not applied yet*, with the PATCH body.
+  - F6: the RELEASING.md intro names the Cloudsmith repository.
+  - F7: "Every final release (not prereleases)".
+  - F8: the `-o` sentence is dropped.
+  - F9: `--yes` added; two consecutive runs both rc=0 in ubuntu:24.04.
+- Gates: actionlint ok; `just build`, `test`, `lint` and `docs-check` all green.
+
 ## History
 
 - 2026-11-04 — created (TO DO). source: chat: after a hand-built v1.4.3 `.deb` was pushed to the Cloudsmith repository `codcod/pickle-cli` and installed on Ubuntu and Debian, the user asked to make the GitHub Pages variant of an apt repository a ticket, so future releases reach apt without a manual push
@@ -292,3 +312,4 @@ Checklist:
 - 2026-11-04 — IN DEVELOPMENT → IN REVIEW: acceptance green (1-5, 7); 6 is release-time; Task 3 deferred by user
 - 2026-11-04 — IN REVIEW → REWORK: review 1: 2 blocking (B1, B2), 7 fixed inline in rework, 3 noted
 - 2026-11-04 — plan amended inline: decision 5 no longer claims a `workflow_dispatch` re-run re-pushes an old tag (it 422s at goreleaser first); the re-push is by hand. User chose the docs-only fix for review 1's B1 over adding `if: !cancelled()` to the step
+- 2026-11-04 — REWORK → IN REVIEW: findings fixed (round 1)
