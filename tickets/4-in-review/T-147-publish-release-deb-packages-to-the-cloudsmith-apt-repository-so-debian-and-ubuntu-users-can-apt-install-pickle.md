@@ -257,3 +257,5 @@ Then `pickle ticket move T-147 in-review --reason "acceptance green"` and contin
 - 2026-11-04 — TO DO → READY: plan complete
 - 2026-11-04 — READY → IN DEVELOPMENT: picked up
 - 2026-11-04 — plan amended inline: applicability gate (fresh sub-agent, no blocking findings). (1) Task 3 aborts the retention change unless `retention_days_limit: 0` = "no limit" is confirmed (the OpenAPI spec is silent; range 0–180); (2) acceptance step 1 names goreleaser ≥ v2.8 as a local prerequisite; (3) user chose to skip prerelease (`-`) tags in the Cloudsmith step, added to decision 4, Task 2 and acceptance 4(d)
+- 2026-11-04 — Task 3 (retention rule) deferred by the user: not applied; Cloudsmith docs confirm `retention_days_limit: 0` disables the age criterion, so the plan's values stand when it is applied. Pending human action, alongside `gh secret set CLOUDSMITH_API_KEY -R codcod/pickle` before the next tag
+- 2026-11-04 — IN DEVELOPMENT → IN REVIEW: acceptance green (1-5, 7); 6 is release-time; Task 3 deferred by user
