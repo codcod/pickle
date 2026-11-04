@@ -319,6 +319,13 @@ Checklist (review 2):
 - [x] Step 3: angle hunt, one pass over the fix diff; B3 and F11. Angle 7: nothing new. The orchestrator reproduced B3 with the real CLI before recording it.
 - [x] Steps 4 and 4a: no stale `workflow_dispatch` or `republish` claim left; warning headings agree between release.yml and RELEASING.md; F12. `just docs-check` clean.
 
+### Rework fix record — round 2 (commit SHA_TIP)
+
+- **B3:** fixed. The RELEASING.md re-push loops `for f in /tmp/pickle-debs/*.deb`, one `cloudsmith push deb … "$f" --republish` per file, and says why. Run as written with cloudsmith-cli 1.30.0 and a bogus key, each file reaches the API (401 twice), with no `unexpected extra argument`.
+- **F11:** fixed inline. The summary reads "the rest, if any, were pushed". Checked with every push failing: rc=0.
+- **F12:** fixed inline. The re-push bullet pins `cloudsmith-cli==1.30.0`, matching the workflow.
+- Gates: actionlint ok; `just build`, `test`, `lint` and `docs-check` all green.
+
 ## History
 
 - 2026-11-04 — created (TO DO). source: chat: after a hand-built v1.4.3 `.deb` was pushed to the Cloudsmith repository `codcod/pickle-cli` and installed on Ubuntu and Debian, the user asked to make the GitHub Pages variant of an apt repository a ticket, so future releases reach apt without a manual push
@@ -332,3 +339,4 @@ Checklist (review 2):
 - 2026-11-04 — plan amended inline: decision 5 no longer claims a `workflow_dispatch` re-run re-pushes an old tag (it 422s at goreleaser first); the re-push is by hand. User chose the docs-only fix for review 1's B1 over adding `if: !cancelled()` to the step
 - 2026-11-04 — REWORK → IN REVIEW: findings fixed (round 1)
 - 2026-11-04 — IN REVIEW → REWORK: review 2: 1 blocking (B3), 2 fixed inline in rework
+- 2026-11-04 — REWORK → IN REVIEW: findings fixed (round 2)
