@@ -319,7 +319,7 @@ Checklist (review 2):
 - [x] Step 3: angle hunt, one pass over the fix diff; B3 and F11. Angle 7: nothing new. The orchestrator reproduced B3 with the real CLI before recording it.
 - [x] Steps 4 and 4a: no stale `workflow_dispatch` or `republish` claim left; warning headings agree between release.yml and RELEASING.md; F12. `just docs-check` clean.
 
-### Rework fix record — round 2 (commit SHA_TIP)
+### Rework fix record — round 2 (commit 873bcf3)
 
 - **B3:** fixed. The RELEASING.md re-push loops `for f in /tmp/pickle-debs/*.deb`, one `cloudsmith push deb … "$f" --republish` per file, and says why. Run as written with cloudsmith-cli 1.30.0 and a bogus key, each file reaches the API (401 twice), with no `unexpected extra argument`.
 - **F11:** fixed inline. The summary reads "the rest, if any, were pushed". Checked with every push failing: rc=0.
