@@ -248,7 +248,35 @@ Then `pickle ticket move T-147 in-review --reason "acceptance green"` and contin
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+Review 1 (2026-11-04), branch `feat/T-147-cloudsmith-deb` at `c095d71`.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| B1 | blocking | correctness | — | The documented re-push path (`workflow_dispatch` for an already-published tag) never reaches the Cloudsmith step: goreleaser fails with `422 already_exists` first, and the step has no `if:`, so it is skipped. RELEASING.md's *Re-pushing an old tag* bullet and the workflow comment both promise it works. That recovery is the one needed when the first post-merge tag runs before `CLOUDSMITH_API_KEY` is set. T-147 decision 5 | unreproduced: needs a real dispatch against a published tag. Traced: release.yml goreleaser step (`release --clean`, no `continue-on-error`) → 422 (seen in T-086's History, run 31222772467) → next step skipped under default `success()`. RELEASING.md *Cutting a release* already documents the 422 | Docs-only: replace the bullet with a by-hand re-push (`gh release download vX.Y.Z -p '*.deb'` + `cloudsmith push deb … --republish`) and correct the workflow comment. Needs user sign-off (decision 5) |
+| B2 | blocking | correctness | — | One failed push ends the loop (`skip` exits), so a later `.deb` is never pushed, and the summary says "No .deb published" even when an earlier one was. amd64 and arm64 apt users then see different versions | Reproduced (delegated reviewer, step script with stub `cloudsmith` failing on `*arm64*`): amd64 pushed, warning "No .deb published to Cloudsmith for v1.0.0: pushing pickle_1.0.0_arm64.deb failed", exit 0. With the failure on amd64, the arm64 push is never attempted (loop at release.yml `for f in "${debs[@]}"`) | Try every file, collect failures, warn once listing them, with a heading that is accurate for partial publishes |
+| F1 | non-blocking | design | noted | `CLOUDSMITH_API_KEY` is in the environment while `pipx install` runs, and transitive PyPI deps are unpinned | unreproduced: supply-chain path; release.yml step `env:` + `pipx install cloudsmith-cli==1.30.0` | Hide the key from the install (`env -u CLOUDSMITH_API_KEY pipx install …`) if ever touched |
+| F2 | non-blocking | docs-gap | fixed inline | RELEASING.md recommends a full-scope user API key | RELEASING.md *Secret* bullet | Recommend a service account scoped to `codcod/pickle-cli` |
+| F3 | non-blocking | docs-gap | fixed inline | The offline `dpkg -i` path skips the checksum check that `checksums.txt` makes possible | installation.adoc, offline paragraph | Add a `sha256sum --ignore-missing -c checksums.txt` line |
+| F4 | non-blocking | design | noted | The retention-inspection `curl` puts the key on the command line | RELEASING.md *Retention* bullet | — |
+| F5 | non-blocking | stale-xref | fixed inline | RELEASING.md states the retention rule as in place, but Task 3 was deferred | RELEASING.md *Retention* bullet; History 2026-11-04 | Mark it as not yet applied and give the PATCH |
+| F6 | non-blocking | stale-xref | fixed inline | RELEASING.md's opening paragraph still lists only the GitHub release and the Homebrew formula | RELEASING.md lines 3-5 | Add the Cloudsmith apt repository |
+| F7 | non-blocking | spec-unclear | fixed inline | "Every release is published" to apt, but prereleases are skipped by design | installation.adoc, first line of the apt section | "Every final release" |
+| F8 | non-blocking | docs-gap | fixed inline | The manual says a mistyped `-o` gives a gpg usage error; `-o` is a valid short form | `gpg --dearmor -o /tmp/x.gpg` → rc=0 in ubuntu:24.04 | Drop the sentence |
+| F9 | non-blocking | docs-gap | fixed inline | Re-running the hand-written setup fails: gpg prompts to overwrite the existing keyring and has no tty | ubuntu:24.04, second run → `gpg: cannot open '/dev/tty'`, rc=2 | Add `--yes` |
+| F10 | non-blocking | spec-unclear | noted | Acceptance step 3 omits `--platform linux/amd64`, so on an arm64 host the amd64 `.deb` refuses to install | delegated reviewer, AT3 | — |
+
+Disposition summary: 2 blocking (B1, B2) → rework; 7 fixed inline (F2, F3, F5, F6, F7, F8, F9), applied in the rework pass; 3 noted (F1, F4, F10); 0 folded; 0 new tickets.
+
+Checklist:
+
+- [x] Reviewer independence (step 0): delegated. The orchestrator wrote the branch, so steps 1–4a went to a fresh sub-agent with the verbatim spawn prompt (`hunt: angle 7 only`). It first ran angle 7 alone and was re-sent, quoting the prompt, for steps 1, 2, 4 and 4a.
+- [x] Stale-branch check (step 0a): `pickle doctor` warned that the branch copy was behind `main`; rebased, then 0 warnings.
+- [x] Implementation audit (step 2): acceptance 1–5 and 7 pass (re-run by the delegated reviewer); 6 is release-time. Tasks 1, 2, 4 met; Task 3 deferred by the user. Decisions 1–4, 6, 8 met; 5 partial (B1); 7 deferred.
+- [x] Correctness hunt (step 3): host tool path (`/code-review medium` on `main...feat/T-147-cloudsmith-deb`), 6 findings: 4 kept (B2, F5, F8, F9), 2 discarded. Angle 7 delegated: F1–F4. B2 merges the tool's partial-push row with the reviewer's mislabelled-summary row (one loop, one fix).
+  - Discarded: README anchor `#debian-and-ubuntu-apt` "will not resolve". GitHub renders AsciiDoc ids dash-style (`user-content-homebrew`), so it resolves.
+  - Discarded: hand-written line "404s on Linux Mint". `deb/linuxmint/dists/wilma/Release` → HTTP 200.
+- [x] Consistency audit (step 4) and docs audit (step 4a): delegated reviewer; F5, F6, F7. `just docs-check` clean. DESIGN.md's distribution line is reconciled at step 7, after the fix.
+- [ ] Docs-readability reviewer (step 4b): consciously skipped. It is optional, and the rework pass rewrites the affected prose anyway.
 
 ## History
 
@@ -259,3 +287,4 @@ Then `pickle ticket move T-147 in-review --reason "acceptance green"` and contin
 - 2026-11-04 — plan amended inline: applicability gate (fresh sub-agent, no blocking findings). (1) Task 3 aborts the retention change unless `retention_days_limit: 0` = "no limit" is confirmed (the OpenAPI spec is silent; range 0–180); (2) acceptance step 1 names goreleaser ≥ v2.8 as a local prerequisite; (3) user chose to skip prerelease (`-`) tags in the Cloudsmith step, added to decision 4, Task 2 and acceptance 4(d)
 - 2026-11-04 — Task 3 (retention rule) deferred by the user: not applied; Cloudsmith docs confirm `retention_days_limit: 0` disables the age criterion, so the plan's values stand when it is applied. Pending human action, alongside `gh secret set CLOUDSMITH_API_KEY -R codcod/pickle` before the next tag
 - 2026-11-04 — IN DEVELOPMENT → IN REVIEW: acceptance green (1-5, 7); 6 is release-time; Task 3 deferred by user
+- 2026-11-04 — IN REVIEW → REWORK: review 1: 2 blocking (B1, B2), 7 fixed inline in rework, 3 noted
