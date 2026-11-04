@@ -20,11 +20,10 @@ Last updated: 2026-11-04
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-11-04
 
 | id | title | open findings |
 |---|---|---|
+| T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | review 2: 1 blocking (B3), 2 fixed inline in rework |
 
 ## READY (impact order, per child)
 

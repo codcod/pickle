@@ -301,6 +301,24 @@ Checklist:
   - F9: `--yes` added; two consecutive runs both rc=0 in ubuntu:24.04.
 - Gates: actionlint ok; `just build`, `test`, `lint` and `docs-check` all green.
 
+Review 2 (2026-11-04), a scoped re-review of `02000e9..29981c1`.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| B3 | blocking | correctness | — | The by-hand re-push that B1's fix added (RELEASING.md *Re-pushing an old tag*) fails: `cloudsmith push deb` takes exactly one file. T-147 decision 5 (amended) | Reproduced, cloudsmith-cli 1.30.0: `cloudsmith push deb codcod/pickle-cli/any-distro/any-version dist/*.deb --republish` → `Error: Got unexpected extra argument (dist/pickle_1.4.4-snapshot_arm64.deb)` | Loop over the files, one push each |
+| F11 | non-blocking | spec-unclear | fixed inline | When every push fails, the summary still says "any other .deb was pushed" | delegated reviewer, stub failing every push | Reword to "the rest, if any, were pushed" |
+| F12 | non-blocking | docs-gap | fixed inline | The re-push bullet's `pipx install cloudsmith-cli` is unpinned; the workflow pins `==1.30.0` (decision 8) | RELEASING.md *Re-pushing an old tag* | Pin the same version |
+
+Disposition summary: 1 blocking (B3) → rework round 2; 2 fixed inline (F11, F12), applied in the rework pass; 0 noted, folded or new tickets.
+
+Checklist (review 2):
+
+- [x] Independence: delegated to a fresh sub-agent, verbatim spawn prompt, `hunt: one pass` (scoped re-review).
+- [x] Step 1: ticket read from `main`; fix record range resolves.
+- [x] Step 2: B2 met (re-tested under `bash -e` with stubs: amd64 fails, arm64 fails, both fail, all succeed, plus (a), (b) and (d), all rc=0). B1 partially met (B3). F2, F3 and F5–F9 present. Gates and actionlint green.
+- [x] Step 3: angle hunt, one pass over the fix diff; B3 and F11. Angle 7: nothing new. The orchestrator reproduced B3 with the real CLI before recording it.
+- [x] Steps 4 and 4a: no stale `workflow_dispatch` or `republish` claim left; warning headings agree between release.yml and RELEASING.md; F12. `just docs-check` clean.
+
 ## History
 
 - 2026-11-04 — created (TO DO). source: chat: after a hand-built v1.4.3 `.deb` was pushed to the Cloudsmith repository `codcod/pickle-cli` and installed on Ubuntu and Debian, the user asked to make the GitHub Pages variant of an apt repository a ticket, so future releases reach apt without a manual push
@@ -313,3 +331,4 @@ Checklist:
 - 2026-11-04 — IN REVIEW → REWORK: review 1: 2 blocking (B1, B2), 7 fixed inline in rework, 3 noted
 - 2026-11-04 — plan amended inline: decision 5 no longer claims a `workflow_dispatch` re-run re-pushes an old tag (it 422s at goreleaser first); the re-push is by hand. User chose the docs-only fix for review 1's B1 over adding `if: !cancelled()` to the step
 - 2026-11-04 — REWORK → IN REVIEW: findings fixed (round 1)
+- 2026-11-04 — IN REVIEW → REWORK: review 2: 1 blocking (B3), 2 fixed inline in rework
