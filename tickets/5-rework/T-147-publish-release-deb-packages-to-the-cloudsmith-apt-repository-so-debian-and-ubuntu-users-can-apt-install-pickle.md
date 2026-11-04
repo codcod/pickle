@@ -118,8 +118,11 @@ policy). This ticket touches no payload or marker block, so no test install is n
    the user-manual step. Nothing in goreleaser's own run depends on Cloudsmith. A prerelease
    tag (one containing `-`) is skipped with the same warning and summary line, because the one
    `any-distro/any-version` channel would otherwise put it in front of `apt upgrade` users.
-5. **Pushes are idempotent.** The step uses `cloudsmith push deb … --republish`, so a
-   `workflow_dispatch` re-run for an existing tag replaces rather than errors.
+5. **Pushes are idempotent.** The step uses `cloudsmith push deb … --republish`, so pushing a
+   version that is already there replaces it rather than erroring. A `workflow_dispatch` re-run
+   for an already-published tag never reaches the step (goreleaser fails first with
+   `422 already_exists`), so an old tag is re-pushed by hand: `gh release download` the `.deb`
+   files and `cloudsmith push deb … --republish` them (amended after review 1, B1).
 6. **The `.deb` files are additive.** `nfpms` adds release assets and `checksums.txt` lines. The
    `archives` block, its `name_template`, and the `brews` block are not edited. The `brews` block
    has no `ids:`, and goreleaser's brew pipe only consumes archives, so the formula's URLs are
@@ -288,3 +291,4 @@ Checklist:
 - 2026-11-04 — Task 3 (retention rule) deferred by the user: not applied; Cloudsmith docs confirm `retention_days_limit: 0` disables the age criterion, so the plan's values stand when it is applied. Pending human action, alongside `gh secret set CLOUDSMITH_API_KEY -R codcod/pickle` before the next tag
 - 2026-11-04 — IN DEVELOPMENT → IN REVIEW: acceptance green (1-5, 7); 6 is release-time; Task 3 deferred by user
 - 2026-11-04 — IN REVIEW → REWORK: review 1: 2 blocking (B1, B2), 7 fixed inline in rework, 3 noted
+- 2026-11-04 — plan amended inline: decision 5 no longer claims a `workflow_dispatch` re-run re-pushes an old tag (it 422s at goreleaser first); the re-push is by hand. User chose the docs-only fix for review 1's B1 over adding `if: !cancelled()` to the step
