@@ -281,17 +281,17 @@ Checklist:
 - [x] Consistency audit (step 4) and docs audit (step 4a): delegated reviewer; F5, F6, F7. `just docs-check` clean. DESIGN.md's distribution line is reconciled at step 7, after the fix.
 - [ ] Docs-readability reviewer (step 4b): consciously skipped. It is optional, and the rework pass rewrites the affected prose anyway.
 
-### Rework fix record — round 1 (commits 2174370..c4ca513)
+### Rework fix record — round 1 (commits 02000e9..29981c1)
 
-- **B1:** fixed, docs-only (user's choice; decision 5 amended). RELEASING.md *Re-pushing an old tag* now gives a by-hand `gh release download … -p '*.deb'` + `cloudsmith push deb … --republish`, and says why a `workflow_dispatch` re-run cannot reach the step. The workflow comment no longer claims it can. (`c4ca513`, `bfea270`)
+- **B1:** fixed, docs-only (user's choice; decision 5 amended). RELEASING.md *Re-pushing an old tag* now gives a by-hand `gh release download … -p '*.deb'` + `cloudsmith push deb … --republish`, and says why a `workflow_dispatch` re-run cannot reach the step. The workflow comment no longer claims it can. (`29981c1`, `2638c04`)
 - **B2:** fixed. The loop tries every `.deb` and collects failures, then warns once: *Cloudsmith publish incomplete for vX.Y.Z: failed to push …*. The *No .deb published* heading is now only used when nothing was attempted. Re-tested under `bash -e`:
   - stub failing on amd64: both pushes attempted, one warning naming amd64, rc=0;
   - all succeed: no summary, rc=0;
   - real CLI with a bogus key: both pushes 401, one warning naming both, rc=0;
   - (a), (b) and (d): unchanged.
 
-  (`bfea270`)
-- **Fixed inline**, all in `c4ca513`:
+  (`2638c04`)
+- **Fixed inline**, all in `29981c1`:
   - F2: a service-account key is recommended.
   - F3: the offline path checks `sha256sum --ignore-missing -c checksums.txt` (both OK in ubuntu:24.04).
   - F5: retention is marked *not applied yet*, with the PATCH body.
