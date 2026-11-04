@@ -13,6 +13,13 @@ may change in any release.
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-11-04
+
+### Added
+
+- **`pickle serve` has a favicon.** The board UI's browser tab now shows a pickle icon,
+  served from the embedded static assets.
+
 ## [1.4.2] - 2026-10-29
 
 ### Changed
@@ -1134,7 +1141,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/codcod/pickle/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/codcod/pickle/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/codcod/pickle/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/codcod/pickle/compare/v1.3.0...v1.4.0
