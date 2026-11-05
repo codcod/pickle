@@ -38,6 +38,23 @@ archives:
           - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
+# Debian/Ubuntu packages, built for the linux targets only and attached to the
+# release as extra assets. The brews pipe ignores them (it consumes archives
+# only), so the formula is unaffected. The release workflow pushes them to the
+# Cloudsmith apt repository afterwards (see RELEASING.md).
+nfpms:
+  - id: pickle-deb
+    package_name: pickle
+    ids: [pickle]
+    formats: [deb]
+    vendor: codcod
+    homepage: https://github.com/codcod/pickle
+    maintainer: codcod <nikos@linux.com>
+    description: Ticket-based, board-driven feature flow as a CLI
+    license: MIT
+    bindir: /usr/bin
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Arch }}"
+
 # Pin the release forge to GitHub explicitly. goreleaser otherwise infers it and
 # will prefer GitLab whenever a GITLAB_TOKEN is present in the environment, which
 # would wrongly point release/cask URLs at gitlab.com even though origin is

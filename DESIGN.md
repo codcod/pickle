@@ -285,7 +285,7 @@ child-project the feature targets** rather than guessing.
 - **Language**: strong candidates are Go (single static binary, trivial `embed` of the
   payload, matches the ai-sdlc toolchain habits) or Rust/Zig. Go is the safe default:
   `go:embed` the entire `resources/` tree, cross-compile, distribute via a Homebrew tap +
-  `go install` + GitHub/GitLab releases. (Avoid a runtime dep like Python so `board audit`
+  `go install` + GitHub/GitLab releases + `.deb` packages on a Cloudsmith apt repository. (Avoid a runtime dep like Python so `board audit`
   needs nothing installed — hence reimplementing `check-board.py` natively.)
 - **Payload versioning**: embed a payload version; `pickle upgrade` compares it to the
   installed skill's version and rewrites in place. `pickle.toml` records the version a project
