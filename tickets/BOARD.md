@@ -9,7 +9,7 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-11-04
+Last updated: 2026-11-05
 
 ## IN DEVELOPMENT
 
@@ -168,7 +168,7 @@ Last updated: 2026-11-04
 | T-144 | Docs update step asks for the changelog entry the review already checks | yes — merged to main (PR #103, 7c5cda9, https://github.com/codcod/pickle/commit/7c5cda9) |
 | T-145 | Step 4b runs on any host with sub-agents and reviews only the changed lines | yes — merged to main (PR #104, 50c6b27, https://github.com/codcod/pickle/commit/50c6b27) |
 | T-146 | Default CLAUDE.md to an @AGENTS.md import stub instead of a duplicate marker block | yes — merged to main (PR #105, 494e790, https://github.com/codcod/pickle/commit/494e790) |
-| T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | no — publish-gated |
+| T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | yes — merged to main (PR #107, 91f9782, https://github.com/codcod/pickle/commit/91f9782) |
 
 ## DROPPED
 

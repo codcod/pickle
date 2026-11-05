@@ -361,3 +361,4 @@ Checklist (review 3):
 - 2026-11-04 — IN REVIEW → REWORK: review 2: 1 blocking (B3), 2 fixed inline in rework
 - 2026-11-04 — REWORK → IN REVIEW: findings fixed (round 2)
 - 2026-11-04 — IN REVIEW → DONE: review 3 clean: 0 blocking; reviews 1-3: 3 blocking fixed over 2 rework rounds (B1-B3), 10 fixed inline, 3 noted, 0 new tickets. Pending: user approval to publish; Task 3 retention and the CLOUDSMITH_API_KEY secret are human actions
+- 2026-11-05 — merged to main (PR #107, 91f9782, https://github.com/codcod/pickle/commit/91f9782)
