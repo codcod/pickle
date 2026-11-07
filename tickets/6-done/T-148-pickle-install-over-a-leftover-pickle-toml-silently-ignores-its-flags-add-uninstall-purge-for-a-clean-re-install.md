@@ -247,11 +247,40 @@ cost: estimated M, actual M
 - [x] Impact sweep (step 8): T-150 adds an install flag (`--ticket-prefix`) that must join `checkExistingConfig`'s mismatch check; T-149 and T-151 must list `uninstall --purge` in help/completion. Each ticket already owns its own help/docs lines.
 - [ ] Summary + commit messages for approval (step 9): pending the rework.
 
-### Rework fix record — round 1 (commits 0b2c9d6..d703fd2)
+### Rework fix record — round 1 (commits ac869c2..5692f68)
 
-- **F1** (12e319b): `purgeBlockers` Lstats `tickets/` and refuses when it is not a plain directory, and refuses on any symlink entry inside the walk, allowlisted name or not, so no removal ever runs through a link. Regression: `TestUninstallPurgeRefuses/symlinked_tickets_dir` (fails before the fix). The F1 repro now exits 1 with `tickets (not a plain directory)`, and the shared `NOTES.md` survives.
-- **F2** (d703fd2): when `--project` is not given, `runInstall` takes the name of the child already registered at the given path, so the existing-config check and the success line see the registered child. Decision 2 was amended to match (user sign-off 2026-11-07). Regression: `TestInstallInTreeRerunMatchesChildByPath` (fails before the fix).
+- **F1** (2c864c7): `purgeBlockers` Lstats `tickets/` and refuses when it is not a plain directory, and refuses on any symlink entry inside the walk, allowlisted name or not, so no removal ever runs through a link. Regression: `TestUninstallPurgeRefuses/symlinked_tickets_dir` (fails before the fix). The F1 repro now exits 1 with `tickets (not a plain directory)`, and the shared `NOTES.md` survives.
+- **F2** (5692f68): when `--project` is not given, `runInstall` takes the name of the child already registered at the given path, so the existing-config check and the success line see the registered child. Decision 2 was amended to match (user sign-off 2026-11-07). Regression: `TestInstallInTreeRerunMatchesChildByPath` (fails before the fix).
 - Acceptance test re-run green; `just build`, `just test`, `just lint` and `just docs-check` are clean.
+
+### Review 2 — 2026-11-07 (scoped re-review of F1, F2 and `ac869c2..5692f68`)
+
+F1 and F2 are resolved: the original reproductions and their variants hold (symlinked status dir and `BOARD.md` refused; an unnamed re-run re-attaches to `api`, by `./sub` and `sub/` alike, and after a root rename), and an explicit differing `--project` or `--build` is still refused.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | non-blocking | stale-xref | fixed inline | the rework fix record named pre-rebase SHAs | `diff <(git diff 0b2c9d6..d703fd2) <(git diff ac869c2..5692f68)` is empty | record re-pointed at `ac869c2..5692f68` (this commit) |
+| R2 | non-blocking | test-gap | noted | F1's two guards each mask the other in the regression test, so a symlink *inside* `tickets/` has no test; the assertion text is loose | mutation check by the delegated reviewer: disabling either guard alone keeps `-run Purge` green; by hand both inside cases refuse (`tickets/2-ready (symlink)`, `tickets/BOARD.md (symlink)`) | add a symlinked-status-dir case asserting `(symlink)` |
+| R3 | non-blocking | stale-xref | fixed inline | `--project` flag help and the "Re-running install" docs still stated the dir-name default the F2 fix changed | `internal/cli/install.go` flag help; `cli-reference.adoc` § Re-running install | both reworded (fixup commits, folded into the tidy) |
+| R4 | non-blocking | design | noted | with nothing registered at the path, the refusal names the defaulted name the user never typed | reproduced: umbrella with `web` at `sub`; `install --path other` → `child "umb.URLN" is not registered` | say `no child registered at path "other"` when `--project` was omitted |
+| R5 | non-blocking | correctness | noted | two children sharing a path: the name lookup takes the last match | unreproduced: needs a hand-built config; traced `runInstall` loop without `break` | break on first match or treat as ambiguous |
+| R6 | non-blocking | design | noted | `pickle.toml` is loaded in the CLI and again in `checkExistingConfig` | read `runInstall` and `Run` | leave |
+
+Disposition summary: 0 blocking; 2 fixed inline (R1, R3); 4 noted (R2, R4, R5, R6); 0 folded; 0 new tickets.
+cost: estimated M, actual M
+
+- [x] Reviewer independence (step 0): delegated — fresh sub-agent, `hunt: one pass`; nothing discarded.
+- [x] In-tree stale-branch check (step 0a): branch rebased onto `main`; `pickle doctor` clean.
+- [x] Implementation audit (steps 1, 2): scoped to F1, F2 and the diff that closed them; acceptance test re-run green; `just build/test/lint/docs-check` clean.
+- [x] Correctness hunt (step 3): one pass over all eight angles on the fix diff, by the delegated reviewer, with mutation checks of both F1 guards; R5 unreproduced, path traced.
+- [x] Consistency audit (step 4): R3.
+- [x] Documentation audit (step 4a): R3; docs build clean.
+- [ ] Docs-readability pass (step 4b): conscious skip — two short reference sentences changed.
+- [x] Findings recorded; summary and cost lines present (step 5).
+- [x] Ticket moved to `tickets/6-done/`; History appended (step 6).
+- [x] Other references (step 7): R3; nothing else.
+- [x] Impact sweep (step 8): unchanged from review 1 (T-150's new install flag joins the mismatch check; T-149/T-151 list `--purge`).
+- [ ] Summary + commit messages for approval (step 9): presented 2026-11-07, awaiting approval.
 
 ## History
 
@@ -263,3 +292,4 @@ cost: estimated M, actual M
 - 2026-11-07 — IN REVIEW → REWORK: review 1: 2 blocking (F1 symlinked tickets/ purge, F2 defaulted child name refused); 1 fixed inline, 9 noted
 - 2026-11-07 — plan amended inline: decision 2 — without `--project`, the child is matched by its registered path, not by the CLI's defaulted name (review 1 F2; user sign-off 2026-11-07)
 - 2026-11-07 — REWORK → IN REVIEW: findings fixed
+- 2026-11-07 — IN REVIEW → DONE: review 2: F1, F2 resolved; 0 blocking; fixed inline R1, R3; noted R2, R4-R6; 0 new tickets
