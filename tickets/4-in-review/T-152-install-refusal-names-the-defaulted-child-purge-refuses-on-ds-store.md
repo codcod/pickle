@@ -107,3 +107,5 @@ T-148 entries are unreleased and cover it.
 - 2026-11-07 — refined: user promoted T-148 review findings R4 and F6 to blocking after T-148 reached done (protocol §6c); filed here, batched by theme
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
 - 2026-11-07 — READY → IN DEVELOPMENT: picked up
+- 2026-11-07 — applicability gate: conscious skip — filed and refined minutes earlier in this session from findings two independent reviewers had already reproduced; no board delta since
+- 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
