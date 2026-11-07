@@ -1894,7 +1894,7 @@ func TestRunRefusesConflictingFlagsOverExistingConfig(t *testing.T) {
 		{"path over childless umbrella",
 			Options{Agents: agents},
 			Options{ProjectName: "sub", ProjectPath: "sub", Agents: agents},
-			`child "sub" is not registered`},
+			`no child is registered at path "sub"`},
 		{"differing build",
 			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "make", Agents: agents},
 			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "just build", Agents: agents},
@@ -2049,4 +2049,47 @@ func TestUninstallPurgeDryRunChangesNothing(t *testing.T) {
 		}
 	}
 	assertSameTree(t, before, snapshotTree(t, root))
+}
+
+// T-152: Finder's .DS_Store in the scaffold is cleared by the purge, but one
+// inside an unknown dir still leaves that dir a blocker.
+func TestUninstallPurgeHandlesDSStore(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	before := snapshotTree(t, root)
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"tickets/.DS_Store", "tickets/1-to-do/.DS_Store"} {
+		os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), nil, 0o644)
+	}
+	if _, err := Uninstall(payload, root, UninstallOptions{Purge: true}); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	assertSameTree(t, before, snapshotTree(t, root))
+
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(filepath.Join(root, "tickets", "retros"), 0o755)
+	os.WriteFile(filepath.Join(root, "tickets", "retros", ".DS_Store"), nil, 0o644)
+	_, err := Uninstall(payload, root, UninstallOptions{Purge: true})
+	if err == nil || !strings.Contains(err.Error(), "tickets/retros") {
+		t.Errorf("err = %v, want a refusal naming tickets/retros", err)
+	}
+}
+
+// T-152: an explicit --project naming a different child than the one at the
+// path says which child holds it.
+func TestRunRefusalNamesChildHoldingThePath(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	os.Mkdir(filepath.Join(root, "sub"), 0o755)
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "web", ProjectPath: "sub"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Run(payload, root, "v1", Options{ProjectName: "api", ProjectPath: "sub"})
+	if err == nil || !strings.Contains(err.Error(), `path "sub" is registered to child "web", not "api"`) {
+		t.Errorf("err = %v", err)
+	}
 }

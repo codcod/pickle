@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -331,7 +332,17 @@ func checkExistingConfig(root string, opts Options, res *Result) error {
 		p, ok := cfg.Project(opts.ProjectName)
 		switch {
 		case !ok:
-			bad = append(bad, fmt.Sprintf("child %q is not registered", opts.ProjectName))
+			// Worded from the path (T-152 decision 1): without --project the
+			// CLI already resolved the name by path, so a defaulted name only
+			// lands here when nothing is registered at the path at all.
+			msg := fmt.Sprintf("no child is registered at path %q", opts.ProjectPath)
+			for _, q := range cfg.Projects {
+				if filepath.Clean(q.Path) == filepath.Clean(opts.ProjectPath) {
+					msg = fmt.Sprintf("path %q is registered to child %q, not %q", opts.ProjectPath, q.Name, opts.ProjectName)
+					break
+				}
+			}
+			bad = append(bad, msg)
 		case filepath.Clean(p.Path) != filepath.Clean(opts.ProjectPath):
 			bad = append(bad, fmt.Sprintf("child %q is registered at %q, not %q", p.Name, p.Path, opts.ProjectPath))
 		default:
@@ -863,8 +874,23 @@ func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error
 // purgeAllowed reports whether rel (slash-separated, under tickets/) is a file
 // install itself created and nobody has touched since (T-148 decision 6).
 // BOARD.md is generated, so any content is regenerable; NOTES.md and README.md
-// count only while byte-identical to what install wrote.
+// count only while byte-identical to what install wrote. Finder's .DS_Store is
+// allowed too, directly in tickets/ or a status dir (T-152), though install never
+// wrote it.
 func purgeAllowed(root, rel string) bool {
+	// Finder's .DS_Store, directly in tickets/ or a status dir only (T-152): one
+	// inside an unknown dir leaves that dir a blocker.
+	if dir, base := path.Split(rel); base == ".DS_Store" {
+		if dir == "tickets/" {
+			return true
+		}
+		for _, s := range flow.Default().States() {
+			if dir == "tickets/"+s.Dir+"/" {
+				return true
+			}
+		}
+		return false
+	}
 	switch rel {
 	case "tickets/BOARD.md":
 		return true
@@ -961,10 +987,14 @@ func purgeScaffold(root string, opts UninstallOptions, res *Result) error {
 			for _, s := range states {
 				dir := filepath.Join(tdir, s.Dir)
 				_ = os.Remove(filepath.Join(dir, ".gitkeep"))
+				_ = os.Remove(filepath.Join(dir, ".DS_Store"))
 				if err := os.Remove(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
 					return err
 				}
 			}
+		}
+		if !opts.DryRun {
+			_ = os.Remove(filepath.Join(tdir, ".DS_Store"))
 		}
 		if err := rm(fmt.Sprintf("tickets/ (%d status dirs)", len(states)), tdir); err != nil {
 			return err

@@ -593,11 +593,13 @@ or `pickle upgrade` re-attaches cleanly to the same configuration.
 clean re-install is one command. On top of the removals above it deletes
 `pickle.toml` (even if hand-edited), the `tickets/` scaffold install created
 (the status dirs and their `.gitkeep`, `BOARD.md`, and `NOTES.md` and
-`README.md` while still byte-identical to what install wrote), an
+`README.md` while still byte-identical to what install wrote, plus any Finder
+`.DS_Store` directly in `tickets/` or a status dir), an
 `AGENTS.md`/`CLAUDE.md` that holds nothing but the marker (or only the title
 header install wrote with it), and the then-empty `.agents/` and `.claude/`
 dirs (a non-empty one survives). It *refuses* if `tickets/` holds anything
-else — a ticket, an edited `NOTES.md` or `README.md`, any unknown file — exiting
+else — a ticket, an edited `NOTES.md` or `README.md`, a symlink, any unknown
+file — exiting
 `1`, naming each such path, and removing nothing at all.
 
 `--dry-run` (`-n`) lists what would be removed and changes nothing; with
