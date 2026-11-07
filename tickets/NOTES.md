@@ -1426,3 +1426,19 @@ reasoning, "let the queries be ad-hoc". pickle only prints a prompt and locates 
 directories. It computes nothing, and the agent runs every query. The removal criterion is
 T-141's own: if three months after it ships no ticket filing, drop or re-grade cites a retro
 report, remove the command rather than extending it.
+
+## Install-experience triage (2026-11-07)
+
+A user reported six install-experience issues. Four became tickets: T-148 (re-install over a
+leftover `pickle.toml` silently ignores its flags, plus `uninstall --purge`), T-149 (install flags
+missing from `pickle help`), T-150 (`install --ticket-prefix` and a prefix-aware marker block) and
+T-151 (shell completion). Two were declined, without filing:
+
+- **A scaffolded `development/design.md` or `spec.md`.** An empty doc pickle creates is
+  speculative, and projects already describe themselves in their README. If it comes up again, the
+  smaller move is for the make-ticket procedure to say "read the project's design doc if one
+  exists", without pickle creating one.
+- **An interactive install wizard.** The motivating case is regretting a flag right after install.
+  T-148 makes that recoverable, and T-149 and T-150 make the flags visible and complete, so the
+  wizard's remaining value is small. Reconsider once those ship, and only if the regret still
+  shows up in field use. If it is built, it prompts only on a TTY with no flags given.
