@@ -13,10 +13,11 @@ Last updated: 2026-11-07
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-152 | install refusal names the defaulted child; purge refuses on .DS_Store | [] |
 
 ## IN REVIEW
 

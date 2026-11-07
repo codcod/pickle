@@ -280,7 +280,7 @@ cost: estimated M, actual M
 - [x] Ticket moved to `tickets/6-done/`; History appended (step 6).
 - [x] Other references (step 7): R3; nothing else.
 - [x] Impact sweep (step 8): unchanged from review 1 (T-150's new install flag joins the mismatch check; T-149/T-151 list `--purge`).
-- [ ] Summary + commit messages for approval (step 9): presented 2026-11-07, awaiting approval.
+- [ ] Summary + commit messages for approval (step 9): presented 2026-11-07; publishing held for T-152, which rides on this branch.
 
 ## History
 
@@ -293,3 +293,4 @@ cost: estimated M, actual M
 - 2026-11-07 — plan amended inline: decision 2 — without `--project`, the child is matched by its registered path, not by the CLI's defaulted name (review 1 F2; user sign-off 2026-11-07)
 - 2026-11-07 — REWORK → IN REVIEW: findings fixed
 - 2026-11-07 — IN REVIEW → DONE: review 2: F1, F2 resolved; 0 blocking; fixed inline R1, R3; noted R2, R4-R6; 0 new tickets
+- 2026-11-07 — filed T-152: user promoted R4 and F6 to blocking after done (protocol §6c); it ships on this ticket's unpushed branch, in the same PR
