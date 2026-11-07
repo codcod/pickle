@@ -1940,3 +1940,113 @@ func TestRunReattachesWithMatchingOrNoFlags(t *testing.T) {
 		t.Errorf("missing re-attach note, got %q", res.Notes)
 	}
 }
+
+func TestUninstallPurgeRestoresPreInstallTree(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	os.Mkdir(filepath.Join(root, ".git"), 0o755)
+	os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\n"), 0o644)
+	before := snapshotTree(t, root)
+
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Agents: Agents{Claude: true, Opencode: true, Pi: true}}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(payload, root, UninstallOptions{Purge: true}); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	assertSameTree(t, before, snapshotTree(t, root))
+}
+
+func TestUninstallPurgeRefuses(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	cases := []struct{ name, rel, body string }{
+		{"ticket", "tickets/1-to-do/T-001-x.md", "work"},
+		{"edited notes", "tickets/NOTES.md", "my notes"},
+		{"unknown file", "tickets/retros/x.py", "print()"},
+	}
+	// F1 (review 1): a symlinked tickets/ must refuse, never delete through it.
+	t.Run("symlinked tickets dir", func(t *testing.T) {
+		base := t.TempDir()
+		root := filepath.Join(base, "p")
+		os.Mkdir(root, 0o755)
+		if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+			t.Fatal(err)
+		}
+		shared := filepath.Join(base, "shared")
+		if err := os.Rename(filepath.Join(root, "tickets"), shared); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(shared, filepath.Join(root, "tickets")); err != nil {
+			t.Skip("symlinks unavailable:", err)
+		}
+		os.WriteFile(filepath.Join(shared, "NOTES.md"), []byte("precious"), 0o644)
+		before := snapshotTree(t, base)
+		_, err := Uninstall(payload, root, UninstallOptions{Purge: true})
+		if err == nil || !strings.Contains(err.Error(), "tickets") {
+			t.Errorf("err = %v, want a refusal naming tickets", err)
+		}
+		assertSameTree(t, before, snapshotTree(t, base))
+	})
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+				t.Fatal(err)
+			}
+			p := filepath.Join(root, filepath.FromSlash(tc.rel))
+			os.MkdirAll(filepath.Dir(p), 0o755)
+			os.WriteFile(p, []byte(tc.body), 0o644)
+			before := snapshotTree(t, root)
+
+			for _, dry := range []bool{true, false} {
+				_, err := Uninstall(payload, root, UninstallOptions{Purge: true, DryRun: dry})
+				if err == nil || !strings.Contains(err.Error(), tc.rel) {
+					t.Errorf("dry=%v: err = %v, want a refusal naming %s", dry, err, tc.rel)
+				}
+			}
+			mustExist(t, filepath.Join(root, filepath.FromSlash(SkillDir)))
+			assertSameTree(t, before, snapshotTree(t, root))
+		})
+	}
+}
+
+func TestUninstallPurgeKeepsUserAgentsProse(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	agentsMD := filepath.Join(root, "AGENTS.md")
+	os.WriteFile(agentsMD, []byte("# Mine\n\nKeep this.\n"), 0o644)
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(payload, root, UninstallOptions{Purge: true}); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(agentsMD)
+	if err != nil || string(b) != "# Mine\n\nKeep this.\n" {
+		t.Errorf("AGENTS.md = %q, %v; want the user prose back unchanged", b, err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Error("CLAUDE.md (header only after strip) survived the purge")
+	}
+}
+
+func TestUninstallPurgeDryRunChangesNothing(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshotTree(t, root)
+	res, err := Uninstall(payload, root, UninstallOptions{Purge: true, DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(res.Removed, "\n")
+	for _, want := range []string{"pickle.toml (dry-run)", "tickets/BOARD.md (dry-run)", "AGENTS.md (dry-run)", "CLAUDE.md (dry-run)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("dry-run list missing %q:\n%s", want, got)
+		}
+	}
+	assertSameTree(t, before, snapshotTree(t, root))
+}

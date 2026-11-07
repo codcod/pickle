@@ -303,6 +303,7 @@ func runUninstall(args []string) int {
 	fs := flag.NewFlagSet("uninstall", flag.ContinueOnError)
 	dryRun := fs.Bool("dry-run", false, "list what would be removed without changing anything")
 	fs.BoolVar(dryRun, "n", false, "list what would be removed without changing anything (shorthand)")
+	purge := fs.Bool("purge", false, "also remove pickle.toml and the untouched tickets/ scaffold; refused if any work is found")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
@@ -316,7 +317,7 @@ func runUninstall(args []string) int {
 		return code
 	}
 
-	res, err := install.Uninstall(Payload, root, install.UninstallOptions{DryRun: *dryRun})
+	res, err := install.Uninstall(Payload, root, install.UninstallOptions{DryRun: *dryRun, Purge: *purge})
 	for _, r := range res.Removed {
 		fmt.Printf("  - %s\n", r)
 	}
@@ -329,6 +330,8 @@ func runUninstall(args []string) int {
 
 	if *dryRun {
 		fmt.Printf("\npickle uninstall --dry-run: %d item(s) would be removed; nothing changed\n", len(res.Removed))
+	} else if *purge {
+		fmt.Printf("\npickle uninstall --purge: removed %d item(s); pickle fully removed\n", len(res.Removed))
 	} else {
 		fmt.Printf("\npickle uninstall: removed %d item(s); tickets/ and pickle.toml left intact\n", len(res.Removed))
 	}

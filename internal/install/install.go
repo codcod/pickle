@@ -694,6 +694,9 @@ type UninstallOptions struct {
 	// DryRun computes and records what would be removed/stripped without
 	// mutating the tree.
 	DryRun bool
+	// Purge also removes pickle.toml and the untouched tickets/ scaffold
+	// (T-148), refusing up front if any work is found under tickets/.
+	Purge bool
 }
 
 // Uninstall removes the installed skill dir, Claude symlinks and agent
@@ -705,6 +708,19 @@ type UninstallOptions struct {
 // removed.
 func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error) {
 	var res Result
+
+	// The work check runs before any removal (T-148 decision 6): a refused
+	// purge removes nothing, not even the skill dir.
+	if opts.Purge {
+		blockers, err := purgeBlockers(root)
+		if err != nil {
+			return res, err
+		}
+		if len(blockers) > 0 {
+			return res, fmt.Errorf("--purge refused: tickets/ holds work install did not create (nothing was removed):\n  - %s",
+				strings.Join(blockers, "\n  - "))
+		}
+	}
 
 	// Sweep any pre-brine install left by an older pickle, so a new binary can
 	// still fully remove an install made by an old one (T-074).
@@ -836,7 +852,152 @@ func Uninstall(payload fs.FS, root string, opts UninstallOptions) (Result, error
 		}
 	}
 
+	if opts.Purge {
+		if err := purgeScaffold(root, opts, &res); err != nil {
+			return res, err
+		}
+	}
 	return res, nil
+}
+
+// purgeAllowed reports whether rel (slash-separated, under tickets/) is a file
+// install itself created and nobody has touched since (T-148 decision 6).
+// BOARD.md is generated, so any content is regenerable; NOTES.md and README.md
+// count only while byte-identical to what install wrote.
+func purgeAllowed(root, rel string) bool {
+	switch rel {
+	case "tickets/BOARD.md":
+		return true
+	case "tickets/NOTES.md", "tickets/README.md":
+		want := notesScaffold
+		if rel == "tickets/README.md" {
+			want = ticketsReadme
+		}
+		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		return err == nil && string(b) == want
+	}
+	for _, s := range flow.Default().States() {
+		if rel == "tickets/"+s.Dir || rel == "tickets/"+s.Dir+"/.gitkeep" {
+			return true
+		}
+	}
+	return false
+}
+
+// purgeBlockers lists every path under tickets/ that --purge may not delete:
+// tickets, an edited NOTES.md/README.md, or any unknown file.
+func purgeBlockers(root string) ([]string, error) {
+	var blockers []string
+	tdir := filepath.Join(root, "tickets")
+	// A symlink anywhere in tickets/ (tickets/ itself included) points the
+	// removals outside the tree install created, so it is never purged.
+	if fi, err := os.Lstat(tdir); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	} else if !fi.IsDir() {
+		return []string{"tickets (not a plain directory)"}, nil
+	}
+	err := filepath.WalkDir(tdir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, path)
+		rel = filepath.ToSlash(rel)
+		if d.Type()&fs.ModeSymlink != 0 {
+			blockers = append(blockers, rel+" (symlink)")
+			return nil
+		}
+		if path == tdir || purgeAllowed(root, rel) {
+			return nil
+		}
+		if d.IsDir() {
+			// An unknown dir is reported once, by the files inside it; an
+			// empty one is still a blocker of its own.
+			if entries, _ := os.ReadDir(path); len(entries) > 0 {
+				return nil
+			}
+		}
+		blockers = append(blockers, rel)
+		return nil
+	})
+	return blockers, err
+}
+
+// purgeScaffold removes, on top of plain uninstall, what install created
+// (T-148 decision 7): pickle.toml, the allowlisted tickets/ scaffold, and an
+// AGENTS.md/CLAUDE.md left empty (or holding only injectMarker's title header)
+// once the marker is stripped. purgeBlockers has already vouched for tickets/.
+// The agent dirs are pruned with os.Remove only, so a non-empty one survives.
+func purgeScaffold(root string, opts UninstallOptions, res *Result) error {
+	rm := func(label string, path string) error {
+		if _, err := os.Lstat(path); err != nil {
+			return nil
+		}
+		if opts.DryRun {
+			res.removed(label + " (dry-run)")
+			return nil
+		}
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("remove %s: %w", label, err)
+		}
+		res.removed(label)
+		return nil
+	}
+
+	if err := rm(config.FileName, filepath.Join(root, config.FileName)); err != nil {
+		return err
+	}
+	for _, f := range []string{"BOARD.md", "NOTES.md", "README.md"} {
+		if err := rm("tickets/"+f, filepath.Join(root, "tickets", f)); err != nil {
+			return err
+		}
+	}
+	tdir := filepath.Join(root, "tickets")
+	if exists(tdir) {
+		states := flow.Default().States()
+		if !opts.DryRun {
+			for _, s := range states {
+				dir := filepath.Join(tdir, s.Dir)
+				_ = os.Remove(filepath.Join(dir, ".gitkeep"))
+				if err := os.Remove(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
+					return err
+				}
+			}
+		}
+		if err := rm(fmt.Sprintf("tickets/ (%d status dirs)", len(states)), tdir); err != nil {
+			return err
+		}
+	}
+
+	for _, name := range []string{"AGENTS.md", "CLAUDE.md"} {
+		path := filepath.Join(root, name)
+		fi, err := os.Lstat(path)
+		if err != nil || !fi.Mode().IsRegular() {
+			continue // absent, or a symlink plain uninstall already handled
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		text := string(b)
+		if bi, ei, ok := markerSpan(text); ok {
+			text = stripMarkerText(text, bi, ei)
+		}
+		if t := strings.TrimSpace(text); t == "" || t == "# "+MarkerTitle {
+			if err := rm(name, path); err != nil {
+				return err
+			}
+		}
+	}
+
+	if !opts.DryRun {
+		for _, d := range []string{".agents/skills", ".agents", ".claude/skills", ".claude"} {
+			_ = os.Remove(filepath.Join(root, filepath.FromSlash(d)))
+		}
+	}
+	return nil
 }
 
 // uninstallMarkerFile handles one AGENTS.md/CLAUDE.md: a symlink (CLAUDE.md ->
@@ -1509,28 +1670,29 @@ func stripMarker(path string, res *Result) error {
 		res.skipped(rel + " (no marker)")
 		return nil
 	}
-	end := ei + len(MarkerEnd)
-
-	before := strings.TrimRight(text[:bi], "\n")
-	after := strings.TrimLeft(text[end:], "\n")
-
-	var out string
-	switch {
-	case before == "" && after == "":
-		out = ""
-	case before == "":
-		out = after
-	case after == "":
-		out = before + "\n"
-	default:
-		out = before + "\n\n" + after
-	}
-
+	out := stripMarkerText(text, bi, ei)
 	if err := atomicfile.WriteFile(path, []byte(out)); err != nil {
 		return err
 	}
 	res.removed(rel + " (marker stripped)")
 	return nil
+}
+
+// stripMarkerText returns text with the marker span [bi, ei+len(MarkerEnd))
+// removed, along with the blank lines it orphans.
+func stripMarkerText(text string, bi, ei int) string {
+	before := strings.TrimRight(text[:bi], "\n")
+	after := strings.TrimLeft(text[ei+len(MarkerEnd):], "\n")
+	switch {
+	case before == "" && after == "":
+		return ""
+	case before == "":
+		return after
+	case after == "":
+		return before + "\n"
+	default:
+		return before + "\n\n" + after
+	}
 }
 
 // MarkerBlock builds the pickle-managed AGENTS.md content from cfg (CLAUDE.md's
