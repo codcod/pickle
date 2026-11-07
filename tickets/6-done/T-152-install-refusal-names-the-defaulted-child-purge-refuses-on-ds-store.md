@@ -99,7 +99,30 @@ T-148 entries are unreleased and cover it.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Review 1 — 2026-11-07
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R1 | non-blocking | design | noted | the find-child-by-path loop exists twice (`internal/cli/install.go`, last match wins; `checkExistingConfig`, first match wins) | read both; they cannot disagree today, since the core's not-found branch is unreachable once the CLI resolved a name by path | a `(*Config).ProjectAt(path)` helper, if a third caller appears |
+| R2 | non-blocking | stale-xref | fixed inline | `purgeAllowed`'s doc comment still said "a file install itself created", which `.DS_Store` made false | `internal/install/install.go` doc comment | comment extended (folded into the T-152 commit) |
+| R3 | non-blocking | test-gap | noted | `TestUninstallPurgeHandlesDSStore` ignores setup write errors and does not assert the refusal removed nothing | read the test; the removes-nothing guarantee is covered by `TestUninstallPurgeRefuses` | check setup errors with `t.Fatal` |
+| R4 | non-blocking | design | noted | a `.DS_Store` keeping `.claude/` alive still gets "pickle fully removed" | reproduced: `install`; `touch .claude/.DS_Store`; `uninstall --purge` → `.claude/.DS_Store` survives; out of scope per decision 2, same theme as T-148 review 1 F12 | reword the summary if users trip on it |
+
+Disposition summary: 0 blocking; 1 fixed inline (R2); 3 noted (R1, R3, R4); 0 folded; 0 new tickets.
+cost: estimated S, actual S
+
+- [x] Reviewer independence (step 0): delegated — fresh sub-agent, `hunt: one pass`; nothing discarded.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` clean; branch carries no `tickets/` path against `main`.
+- [x] Implementation audit (steps 1, 2): Tasks 1–3 and the docs step met; acceptance test green; build/test/lint/docs-check clean.
+- [x] Correctness hunt (step 3): one pass over all eight angles by the delegated reviewer (`.DS_Store` as a dir, symlinked `.DS_Store`, in-tree path); no defects.
+- [x] Consistency audit (step 4): no stale references to the old wording.
+- [x] Documentation audit (step 4a): coverage met; docs build clean.
+- [ ] Docs-readability pass (step 4b): conscious skip — one clause changed.
+- [x] Findings recorded; summary and cost lines present (step 5).
+- [x] Ticket moved to `tickets/6-done/`; History appended (step 6).
+- [x] Other references (step 7): R2; nothing else.
+- [x] Impact sweep (step 8): none beyond T-148's.
+- [ ] Summary + commit messages for approval (step 9): presented 2026-11-07 together with T-148, awaiting approval.
 
 ## History
 
@@ -109,3 +132,4 @@ T-148 entries are unreleased and cover it.
 - 2026-11-07 — READY → IN DEVELOPMENT: picked up
 - 2026-11-07 — applicability gate: conscious skip — filed and refined minutes earlier in this session from findings two independent reviewers had already reproduced; no board delta since
 - 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-11-07 — IN REVIEW → DONE: review 1: 0 blocking; fixed inline R2; noted R1, R3, R4; 0 new tickets
