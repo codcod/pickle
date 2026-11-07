@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/codcod/pickle/internal/audit"
 	"github.com/codcod/pickle/internal/config"
@@ -17,7 +19,7 @@ import (
 
 func runInstall(args []string) int {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
-	project := fs.String("project", "", "first child-project name (default: the root dir name)")
+	project := fs.String("project", "", "first child-project name (default: the child already registered at --path, else the root dir name)")
 	path := fs.String("path", "", "first child-project path, relative to the install root (registers no child if omitted)")
 	inTree := fs.Bool("in-tree", false, "select the in-tree layout: the board lives inside its sole child, registered at \".\"")
 	build := fs.String("build", "", "child build command (optional)")
@@ -80,6 +82,16 @@ func runInstall(args []string) int {
 		name = *project
 		if name == "" {
 			name = filepath.Base(root)
+			// Re-running over an existing config without --project (T-148
+			// decision 2, as amended): the child already registered at this
+			// path is the one meant, whatever the dir is called today.
+			if cfg, err := config.Load(filepath.Join(root, config.FileName)); err == nil {
+				for _, p := range cfg.Projects {
+					if filepath.Clean(p.Path) == filepath.Clean(*path) {
+						name = p.Name
+					}
+				}
+			}
 		}
 	}
 
@@ -102,6 +114,11 @@ func runInstall(args []string) int {
 	}
 	for _, n := range res.Notes {
 		fmt.Printf("\n%s\n", n)
+	}
+	if errors.Is(err, install.ErrConfigMismatch) {
+		// The invocation is what is wrong, not the tree (T-148 decision 1).
+		fmt.Fprintf(os.Stderr, "pickle install: %v\n", err)
+		return exitUsage
 	}
 	if err != nil {
 		return errf("%v", err)
@@ -172,9 +189,17 @@ func runInstall(args []string) int {
 		}
 	}
 
-	if *path != "" {
+	// Reported from the loaded config, never from the flags (T-148 decision 5).
+	if _, ok := cfg.Project(name); ok && name != "" {
 		fmt.Printf("\npickle installed in %s (child %q). Next: pickle ticket new \"<title>\" --project %s\n",
 			root, name, name)
+	} else if len(cfg.Projects) > 0 {
+		names := make([]string, len(cfg.Projects))
+		for i, p := range cfg.Projects {
+			names[i] = p.Name
+		}
+		fmt.Printf("\npickle re-attached in %s (%s layout, children: %s)\n",
+			root, cfg.ResolvedLayout(), strings.Join(names, ", "))
 	} else {
 		fmt.Printf("\npickle installed in %s (umbrella layout, no child registered yet). Next: pickle project add\n", root)
 	}
@@ -278,6 +303,7 @@ func runUninstall(args []string) int {
 	fs := flag.NewFlagSet("uninstall", flag.ContinueOnError)
 	dryRun := fs.Bool("dry-run", false, "list what would be removed without changing anything")
 	fs.BoolVar(dryRun, "n", false, "list what would be removed without changing anything (shorthand)")
+	purge := fs.Bool("purge", false, "also remove pickle.toml and the untouched tickets/ scaffold; refused if any work is found")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}
@@ -291,7 +317,7 @@ func runUninstall(args []string) int {
 		return code
 	}
 
-	res, err := install.Uninstall(Payload, root, install.UninstallOptions{DryRun: *dryRun})
+	res, err := install.Uninstall(Payload, root, install.UninstallOptions{DryRun: *dryRun, Purge: *purge})
 	for _, r := range res.Removed {
 		fmt.Printf("  - %s\n", r)
 	}
@@ -304,6 +330,8 @@ func runUninstall(args []string) int {
 
 	if *dryRun {
 		fmt.Printf("\npickle uninstall --dry-run: %d item(s) would be removed; nothing changed\n", len(res.Removed))
+	} else if *purge {
+		fmt.Printf("\npickle uninstall --purge: removed %d item(s); pickle fully removed\n", len(res.Removed))
 	} else {
 		fmt.Printf("\npickle uninstall: removed %d item(s); tickets/ and pickle.toml left intact\n", len(res.Removed))
 	}

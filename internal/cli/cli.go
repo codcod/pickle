@@ -109,8 +109,11 @@ Setup commands:
                           binary's version (stamps payload_version in pickle.toml;
                           never touches tickets).
   doctor                  Verify install integrity (skill, symlinks, markers, child paths).
-  uninstall [--dry-run]   Remove skill/symlinks/markers; leave tickets/ and pickle.toml
+  uninstall [--dry-run] [--purge]
+                          Remove skill/symlinks/markers; leave tickets/ and pickle.toml
                           intact. --dry-run (-n) lists what would go, changing nothing.
+                          --purge also removes pickle.toml and the untouched tickets/
+                          scaffold, and refuses if any work is found.
   hooks install [--force]     Install the pre-commit and pre-push guards that refuse
                               ticket bookkeeping staged (or pushed) on a feature branch.
                               Once per clone.

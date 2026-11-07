@@ -44,8 +44,8 @@ the same tree. Wait for it to finish, then try again.
 | `pickle doctor`
 | Verify install integrity.
 
-| `pickle uninstall [--dry-run]`
-| Remove skill/symlinks/markers; keep `tickets/` + `pickle.toml`.
+| `pickle uninstall [--dry-run] [--purge]`
+| Remove skill/symlinks/markers; keep `tickets/` + `pickle.toml` (`--purge` removes those too while untouched).
 
 | `pickle hooks install\|uninstall\|status\|run`
 | Manage the `pre-commit` and `pre-push` guards that refuse ticket bookkeeping
@@ -166,6 +166,21 @@ instead of inferring it from the directory you happen to be standing in.
 `pickle doctor` (<<cmd-doctor>>) checks that the recorded layout and the
 registered children actually agree, and `pickle upgrade` (<<cmd-upgrade>>)
 back-fills the key on a project installed before this existed.
+
+=== Re-running install
+
+`pickle install` never rewrites an existing `pickle.toml`. Re-running it with no
+layout or child flags re-attaches to the config as it stands, refreshing the
+payload and marker blocks, and notes the layout and child count it kept. A flag
+the existing config contradicts is refused instead of silently dropped:
+`--in-tree` over a layout that is not in-tree, `--path`/`--in-tree` naming a
+child that is not registered at that path, or a `--build`, `--test`, `--lint` or
+`--docs` value that differs from the registered child's (an omitted one states
+nothing). The refusal exits `2`, names every mismatch, writes nothing, and
+points at the two ways out: `pickle uninstall --purge` and then install again,
+or `pickle project add` to register a further child. Without `--project`, a
+re-run takes whichever child is already registered at the path, so a renamed
+clone or a worktree re-attaches by path rather than by directory name.
 
 === `--agent` — which coding agents to wire up
 
@@ -550,7 +565,7 @@ Verifies install integrity and exits non-zero on any error. It checks that:
 == `pickle uninstall`
 
 ----
-pickle uninstall [--dry-run|-n]
+pickle uninstall [--dry-run|-n] [--purge]
 ----
 
 Detaches the flow from the project, leaving your work behind. It also sweeps
@@ -562,19 +577,33 @@ usual removals below. Otherwise it removes
 `.claude/.brine.pickle-{tmp,old}` a killed refresh left behind), the
 `<!-- pickle:begin -->`…`<!-- pickle:end -->` marker block from
 `AGENTS.md`/`CLAUDE.md` (a `CLAUDE.md` that is a symlink to `AGENTS.md`, or a
-placeholder git checked out for one, is removed outright; a regular file keeps everything outside the markers, and the
-file itself is never deleted), and the agent scaffolds: the pickle-owned
+placeholder git checked out for one, is removed outright; a regular file keeps everything outside the markers, and, without
+`--purge`, the file itself is never deleted), and the agent scaffolds: the pickle-owned
 `.pi/extensions/` files go (pruning `.pi/` only when left empty — your own
 extensions keep it alive), and `opencode.jsonc` goes *only* while still
 byte-identical to the shipped template; one you have edited is yours and
 stays. Pickle-owned hooks (<<cmd-hooks>>: `pre-commit` and `pre-push`) are
 removed too; a hook pickle did not write is reported and left in place.
 
-*`tickets/` and `pickle.toml` are both left intact* — the board, the tickets,
+Without `--purge`, *`tickets/` and `pickle.toml` are both left intact* — the board, the tickets,
 and the child-project registry are instance data, so a later `pickle install`
 or `pickle upgrade` re-attaches cleanly to the same configuration.
 
-`--dry-run` (`-n`) lists what would be removed and changes nothing.
+`--purge` returns a project with no work in it to its pre-install state, so a
+clean re-install is one command. On top of the removals above it deletes
+`pickle.toml` (even if hand-edited), the `tickets/` scaffold install created
+(the status dirs and their `.gitkeep`, `BOARD.md`, and `NOTES.md` and
+`README.md` while still byte-identical to what install wrote, plus any Finder
+`.DS_Store` directly in `tickets/` or a status dir), an
+`AGENTS.md`/`CLAUDE.md` that holds nothing but the marker (or only the title
+header install wrote with it), and the then-empty `.agents/` and `.claude/`
+dirs (a non-empty one survives). It *refuses* if `tickets/` holds anything
+else — a ticket, an edited `NOTES.md` or `README.md`, a symlink, any unknown
+file — exiting
+`1`, naming each such path, and removing nothing at all.
+
+`--dry-run` (`-n`) lists what would be removed and changes nothing; with
+`--purge` it runs the same work check, and reports a refusal the same way.
 Idempotent: on an already-clean tree it reports nothing removed rather than
 failing. A self-host *symlinked* skill directory has only the link removed —
 the tree it points at is never deleted.

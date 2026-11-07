@@ -1,6 +1,7 @@
 package install
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1830,5 +1831,265 @@ func TestSelfHostMarkerBlockIsCurrent(t *testing.T) {
 		if g != w {
 			t.Logf("line %d:\n  installed: %q\n  rendered : %q", i+1, g, w)
 		}
+	}
+}
+
+// snapshotTree maps every path under root (except .git) to its bytes ("" for
+// a dir), so a test can prove a refused operation changed nothing.
+func snapshotTree(t *testing.T, root string) map[string]string {
+	t.Helper()
+	snap := map[string]string{}
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, path)
+		if rel == ".git" {
+			return filepath.SkipDir
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			target, _ := os.Readlink(path)
+			snap[rel] = "->" + target
+		} else if !d.IsDir() {
+			b, _ := os.ReadFile(path)
+			snap[rel] = string(b)
+		} else {
+			snap[rel] = ""
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return snap
+}
+
+func assertSameTree(t *testing.T, before, after map[string]string) {
+	t.Helper()
+	for k, v := range before {
+		if w, ok := after[k]; !ok || w != v {
+			t.Errorf("%s changed or vanished", k)
+		}
+	}
+	for k := range after {
+		if _, ok := before[k]; !ok {
+			t.Errorf("%s appeared", k)
+		}
+	}
+}
+
+func TestRunRefusesConflictingFlagsOverExistingConfig(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	agents := Agents{Claude: true}
+	cases := []struct {
+		name   string
+		first  Options
+		second Options
+		want   string
+	}{
+		{"in-tree over umbrella",
+			Options{Agents: agents},
+			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Agents: agents},
+			`layout is "umbrella"`},
+		{"path over childless umbrella",
+			Options{Agents: agents},
+			Options{ProjectName: "sub", ProjectPath: "sub", Agents: agents},
+			`no child is registered at path "sub"`},
+		{"differing build",
+			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "make", Agents: agents},
+			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "just build", Agents: agents},
+			`build = "make"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			os.Mkdir(filepath.Join(root, "sub"), 0o755)
+			if _, err := Run(payload, root, "v1", tc.first); err != nil {
+				t.Fatal(err)
+			}
+			before := snapshotTree(t, root)
+			_, err := Run(payload, root, "v1", tc.second)
+			if !errors.Is(err, ErrConfigMismatch) {
+				t.Fatalf("err = %v, want ErrConfigMismatch", err)
+			}
+			for _, s := range []string{tc.want, "uninstall --purge", "project add"} {
+				if !strings.Contains(err.Error(), s) {
+					t.Errorf("error does not mention %q:\n%v", s, err)
+				}
+			}
+			assertSameTree(t, before, snapshotTree(t, root))
+		})
+	}
+}
+
+func TestRunReattachesWithMatchingOrNoFlags(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "make", Agents: Agents{Claude: true}}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatalf("identical flags: %v", err)
+	}
+	res, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}})
+	if err != nil {
+		t.Fatalf("no flags: %v", err)
+	}
+	if !strings.Contains(strings.Join(res.Notes, "\n"), `keeping layout "in-tree" with 1 registered child`) {
+		t.Errorf("missing re-attach note, got %q", res.Notes)
+	}
+}
+
+func TestUninstallPurgeRestoresPreInstallTree(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	os.Mkdir(filepath.Join(root, ".git"), 0o755)
+	os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\n"), 0o644)
+	before := snapshotTree(t, root)
+
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Agents: Agents{Claude: true, Opencode: true, Pi: true}}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(payload, root, UninstallOptions{Purge: true}); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	assertSameTree(t, before, snapshotTree(t, root))
+}
+
+func TestUninstallPurgeRefuses(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	cases := []struct{ name, rel, body string }{
+		{"ticket", "tickets/1-to-do/T-001-x.md", "work"},
+		{"edited notes", "tickets/NOTES.md", "my notes"},
+		{"unknown file", "tickets/retros/x.py", "print()"},
+	}
+	// F1 (review 1): a symlinked tickets/ must refuse, never delete through it.
+	t.Run("symlinked tickets dir", func(t *testing.T) {
+		base := t.TempDir()
+		root := filepath.Join(base, "p")
+		os.Mkdir(root, 0o755)
+		if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+			t.Fatal(err)
+		}
+		shared := filepath.Join(base, "shared")
+		if err := os.Rename(filepath.Join(root, "tickets"), shared); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(shared, filepath.Join(root, "tickets")); err != nil {
+			t.Skip("symlinks unavailable:", err)
+		}
+		os.WriteFile(filepath.Join(shared, "NOTES.md"), []byte("precious"), 0o644)
+		before := snapshotTree(t, base)
+		_, err := Uninstall(payload, root, UninstallOptions{Purge: true})
+		if err == nil || !strings.Contains(err.Error(), "tickets") {
+			t.Errorf("err = %v, want a refusal naming tickets", err)
+		}
+		assertSameTree(t, before, snapshotTree(t, base))
+	})
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+				t.Fatal(err)
+			}
+			p := filepath.Join(root, filepath.FromSlash(tc.rel))
+			os.MkdirAll(filepath.Dir(p), 0o755)
+			os.WriteFile(p, []byte(tc.body), 0o644)
+			before := snapshotTree(t, root)
+
+			for _, dry := range []bool{true, false} {
+				_, err := Uninstall(payload, root, UninstallOptions{Purge: true, DryRun: dry})
+				if err == nil || !strings.Contains(err.Error(), tc.rel) {
+					t.Errorf("dry=%v: err = %v, want a refusal naming %s", dry, err, tc.rel)
+				}
+			}
+			mustExist(t, filepath.Join(root, filepath.FromSlash(SkillDir)))
+			assertSameTree(t, before, snapshotTree(t, root))
+		})
+	}
+}
+
+func TestUninstallPurgeKeepsUserAgentsProse(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	agentsMD := filepath.Join(root, "AGENTS.md")
+	os.WriteFile(agentsMD, []byte("# Mine\n\nKeep this.\n"), 0o644)
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(payload, root, UninstallOptions{Purge: true}); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(agentsMD)
+	if err != nil || string(b) != "# Mine\n\nKeep this.\n" {
+		t.Errorf("AGENTS.md = %q, %v; want the user prose back unchanged", b, err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Error("CLAUDE.md (header only after strip) survived the purge")
+	}
+}
+
+func TestUninstallPurgeDryRunChangesNothing(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshotTree(t, root)
+	res, err := Uninstall(payload, root, UninstallOptions{Purge: true, DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(res.Removed, "\n")
+	for _, want := range []string{"pickle.toml (dry-run)", "tickets/BOARD.md (dry-run)", "AGENTS.md (dry-run)", "CLAUDE.md (dry-run)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("dry-run list missing %q:\n%s", want, got)
+		}
+	}
+	assertSameTree(t, before, snapshotTree(t, root))
+}
+
+// T-152: Finder's .DS_Store in the scaffold is cleared by the purge, but one
+// inside an unknown dir still leaves that dir a blocker.
+func TestUninstallPurgeHandlesDSStore(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	before := snapshotTree(t, root)
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"tickets/.DS_Store", "tickets/1-to-do/.DS_Store"} {
+		os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), nil, 0o644)
+	}
+	if _, err := Uninstall(payload, root, UninstallOptions{Purge: true}); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	assertSameTree(t, before, snapshotTree(t, root))
+
+	if _, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}}); err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(filepath.Join(root, "tickets", "retros"), 0o755)
+	os.WriteFile(filepath.Join(root, "tickets", "retros", ".DS_Store"), nil, 0o644)
+	_, err := Uninstall(payload, root, UninstallOptions{Purge: true})
+	if err == nil || !strings.Contains(err.Error(), "tickets/retros") {
+		t.Errorf("err = %v, want a refusal naming tickets/retros", err)
+	}
+}
+
+// T-152: an explicit --project naming a different child than the one at the
+// path says which child holds it.
+func TestRunRefusalNamesChildHoldingThePath(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	os.Mkdir(filepath.Join(root, "sub"), 0o755)
+	if _, err := Run(payload, root, "v1", Options{ProjectName: "web", ProjectPath: "sub"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Run(payload, root, "v1", Options{ProjectName: "api", ProjectPath: "sub"})
+	if err == nil || !strings.Contains(err.Error(), `path "sub" is registered to child "web", not "api"`) {
+		t.Errorf("err = %v", err)
 	}
 }

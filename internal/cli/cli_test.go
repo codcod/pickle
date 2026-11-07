@@ -1544,8 +1544,9 @@ func TestInstallHooksFlag(t *testing.T) {
 		}
 		// A second install re-applies the whole scaffold; hook.Install must see
 		// its own shim already current and report "skipped" rather than an error.
+		// Same child as the first run: a differing --project is refused (T-148).
 		out := captureStdout(t, func() {
-			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo2", "--hooks"}); code != exitOK {
+			if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "demo", "--hooks"}); code != exitOK {
 				t.Fatalf("second install --hooks = %d, want %d", code, exitOK)
 			}
 		})

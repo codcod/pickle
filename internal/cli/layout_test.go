@@ -122,3 +122,43 @@ func TestInstallChildFlagsWithoutPathAreRefused(t *testing.T) {
 		t.Error("a refused install still wrote pickle.toml")
 	}
 }
+
+// T-148: --in-tree over an existing umbrella install is a usage error, not a
+// silently kept config.
+func TestInstallInTreeOverUmbrellaIsRefused(t *testing.T) {
+	payload := os.DirFS(repoRoot)
+	t.Chdir(t.TempDir())
+	captureStdout(t, func() {
+		if code := Run(payload, "test", []string{"install"}); code != exitOK {
+			t.Fatalf("install = %d", code)
+		}
+	})
+	stderr := captureStderr(t, func() {
+		captureStdout(t, func() {
+			if code := Run(payload, "test", []string{"install", "--in-tree"}); code != exitUsage {
+				t.Errorf("install --in-tree over umbrella = %d, want %d", code, exitUsage)
+			}
+		})
+	})
+	if !strings.Contains(stderr, "uninstall --purge") {
+		t.Errorf("refusal does not name the way out: %q", stderr)
+	}
+}
+
+// T-148 review 1 F2: without --project, a re-run matches the child registered
+// at the path, not the dir-name default.
+func TestInstallInTreeRerunMatchesChildByPath(t *testing.T) {
+	payload := os.DirFS(repoRoot)
+	t.Chdir(t.TempDir())
+	out := captureStdout(t, func() {
+		if code := Run(payload, "test", []string{"install", "--in-tree", "--project", "api"}); code != exitOK {
+			t.Fatalf("first install = %d", code)
+		}
+		if code := Run(payload, "test", []string{"install", "--in-tree"}); code != exitOK {
+			t.Errorf("re-run install --in-tree = %d, want %d", code, exitOK)
+		}
+	})
+	if !strings.Contains(out, `(child "api")`) {
+		t.Errorf("re-run should report the registered child, got:\n%s", out)
+	}
+}
