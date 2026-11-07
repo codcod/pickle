@@ -247,6 +247,12 @@ cost: estimated M, actual M
 - [x] Impact sweep (step 8): T-150 adds an install flag (`--ticket-prefix`) that must join `checkExistingConfig`'s mismatch check; T-149 and T-151 must list `uninstall --purge` in help/completion. Each ticket already owns its own help/docs lines.
 - [ ] Summary + commit messages for approval (step 9): pending the rework.
 
+### Rework fix record — round 1 (commits 0b2c9d6..d703fd2)
+
+- **F1** (12e319b): `purgeBlockers` Lstats `tickets/` and refuses when it is not a plain directory, and refuses on any symlink entry inside the walk, allowlisted name or not, so no removal ever runs through a link. Regression: `TestUninstallPurgeRefuses/symlinked_tickets_dir` (fails before the fix). The F1 repro now exits 1 with `tickets (not a plain directory)`, and the shared `NOTES.md` survives.
+- **F2** (d703fd2): when `--project` is not given, `runInstall` takes the name of the child already registered at the given path, so the existing-config check and the success line see the registered child. Decision 2 was amended to match (user sign-off 2026-11-07). Regression: `TestInstallInTreeRerunMatchesChildByPath` (fails before the fix).
+- Acceptance test re-run green; `just build`, `just test`, `just lint` and `just docs-check` are clean.
+
 ## History
 
 - 2026-11-07 — created (TO DO). source: chat: reproduced the user-reported re-install trap (install, uninstall, install --in-tree silently keeps the old umbrella config and misreports a child) in a throwaway dir
@@ -256,3 +262,4 @@ cost: estimated M, actual M
 - 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-07 — IN REVIEW → REWORK: review 1: 2 blocking (F1 symlinked tickets/ purge, F2 defaulted child name refused); 1 fixed inline, 9 noted
 - 2026-11-07 — plan amended inline: decision 2 — without `--project`, the child is matched by its registered path, not by the CLI's defaulted name (review 1 F2; user sign-off 2026-11-07)
+- 2026-11-07 — REWORK → IN REVIEW: findings fixed
