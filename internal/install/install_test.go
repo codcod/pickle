@@ -1,6 +1,7 @@
 package install
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1830,5 +1831,112 @@ func TestSelfHostMarkerBlockIsCurrent(t *testing.T) {
 		if g != w {
 			t.Logf("line %d:\n  installed: %q\n  rendered : %q", i+1, g, w)
 		}
+	}
+}
+
+// snapshotTree maps every path under root (except .git) to its bytes ("" for
+// a dir), so a test can prove a refused operation changed nothing.
+func snapshotTree(t *testing.T, root string) map[string]string {
+	t.Helper()
+	snap := map[string]string{}
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, path)
+		if rel == ".git" {
+			return filepath.SkipDir
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			target, _ := os.Readlink(path)
+			snap[rel] = "->" + target
+		} else if !d.IsDir() {
+			b, _ := os.ReadFile(path)
+			snap[rel] = string(b)
+		} else {
+			snap[rel] = ""
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return snap
+}
+
+func assertSameTree(t *testing.T, before, after map[string]string) {
+	t.Helper()
+	for k, v := range before {
+		if w, ok := after[k]; !ok || w != v {
+			t.Errorf("%s changed or vanished", k)
+		}
+	}
+	for k := range after {
+		if _, ok := before[k]; !ok {
+			t.Errorf("%s appeared", k)
+		}
+	}
+}
+
+func TestRunRefusesConflictingFlagsOverExistingConfig(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	agents := Agents{Claude: true}
+	cases := []struct {
+		name   string
+		first  Options
+		second Options
+		want   string
+	}{
+		{"in-tree over umbrella",
+			Options{Agents: agents},
+			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Agents: agents},
+			`layout is "umbrella"`},
+		{"path over childless umbrella",
+			Options{Agents: agents},
+			Options{ProjectName: "sub", ProjectPath: "sub", Agents: agents},
+			`child "sub" is not registered`},
+		{"differing build",
+			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "make", Agents: agents},
+			Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "just build", Agents: agents},
+			`build = "make"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			os.Mkdir(filepath.Join(root, "sub"), 0o755)
+			if _, err := Run(payload, root, "v1", tc.first); err != nil {
+				t.Fatal(err)
+			}
+			before := snapshotTree(t, root)
+			_, err := Run(payload, root, "v1", tc.second)
+			if !errors.Is(err, ErrConfigMismatch) {
+				t.Fatalf("err = %v, want ErrConfigMismatch", err)
+			}
+			for _, s := range []string{tc.want, "uninstall --purge", "project add"} {
+				if !strings.Contains(err.Error(), s) {
+					t.Errorf("error does not mention %q:\n%v", s, err)
+				}
+			}
+			assertSameTree(t, before, snapshotTree(t, root))
+		})
+	}
+}
+
+func TestRunReattachesWithMatchingOrNoFlags(t *testing.T) {
+	payload := os.DirFS(payloadRoot())
+	root := t.TempDir()
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true, Build: "make", Agents: Agents{Claude: true}}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatalf("identical flags: %v", err)
+	}
+	res, err := Run(payload, root, "v1", Options{Agents: Agents{Claude: true}})
+	if err != nil {
+		t.Fatalf("no flags: %v", err)
+	}
+	if !strings.Contains(strings.Join(res.Notes, "\n"), `keeping layout "in-tree" with 1 registered child`) {
+		t.Errorf("missing re-attach note, got %q", res.Notes)
 	}
 }

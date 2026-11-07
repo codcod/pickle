@@ -228,6 +228,11 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 	if opts.ProjectPath != "" && opts.ProjectName == "" {
 		return res, fmt.Errorf("project name is required")
 	}
+	// Before anything is written (T-148 decision 3): a refused install leaves
+	// the tree byte-identical.
+	if err := checkExistingConfig(root, opts, &res); err != nil {
+		return res, err
+	}
 
 	if err := copyPayload(payload, root, &res); err != nil {
 		return res, err
@@ -292,6 +297,59 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 		}
 	}
 	return res, nil
+}
+
+// ErrConfigMismatch is returned by Run when an existing pickle.toml contradicts
+// what the install flags state (T-148). Install never rewrites an existing
+// config, so silently keeping it would drop the flags.
+var ErrConfigMismatch = errors.New("existing pickle.toml contradicts the install flags")
+
+// checkExistingConfig refuses an install whose flags state something an
+// existing pickle.toml contradicts (T-148 decision 2): --in-tree over a
+// non-in-tree layout, a child not registered at the given path, or a child
+// command differing from the registered one. Flags that state nothing never
+// mismatch; with no layout/child flag at all, it only notes what is kept.
+func checkExistingConfig(root string, opts Options, res *Result) error {
+	cfg, err := config.Load(filepath.Join(root, config.FileName))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !opts.InTree && opts.ProjectPath == "" {
+		res.note(fmt.Sprintf("%s exists: keeping layout %q with %d registered child(ren); install flags never change an existing config",
+			config.FileName, cfg.ResolvedLayout(), len(cfg.Projects)))
+		return nil
+	}
+
+	var bad []string
+	if layout := cfg.ResolvedLayout(); opts.InTree && layout != config.LayoutInTree {
+		bad = append(bad, fmt.Sprintf("layout is %q, but --in-tree was given", layout))
+	}
+	if opts.ProjectPath != "" {
+		p, ok := cfg.Project(opts.ProjectName)
+		switch {
+		case !ok:
+			bad = append(bad, fmt.Sprintf("child %q is not registered", opts.ProjectName))
+		case filepath.Clean(p.Path) != filepath.Clean(opts.ProjectPath):
+			bad = append(bad, fmt.Sprintf("child %q is registered at %q, not %q", p.Name, p.Path, opts.ProjectPath))
+		default:
+			for _, c := range []struct{ flag, have, want string }{
+				{"build", p.Build, opts.Build}, {"test", p.Test, opts.Test},
+				{"lint", p.Lint, opts.Lint}, {"docs", p.Docs, opts.Docs},
+			} {
+				if c.want != "" && c.want != c.have {
+					bad = append(bad, fmt.Sprintf("child %q has %s = %q, but --%s %q was given", p.Name, c.flag, c.have, c.flag, c.want))
+				}
+			}
+		}
+	}
+	if len(bad) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%w:\n  - %s\ninstall never rewrites an existing %s. To start over: pickle uninstall --purge, then re-run install; to register a further child: pickle project add",
+		ErrConfigMismatch, strings.Join(bad, "\n  - "), config.FileName)
 }
 
 // installOpencode lays down opencode.jsonc — whole-file, only when absent.
