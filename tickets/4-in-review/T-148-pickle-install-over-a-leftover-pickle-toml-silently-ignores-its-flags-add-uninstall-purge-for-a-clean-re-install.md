@@ -221,3 +221,4 @@ test -d .agents/skills/brine && echo skill-kept       # skill-kept (nothing remo
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
 - 2026-11-07 — READY → IN DEVELOPMENT: picked up
 - 2026-11-07 — plan amended inline: applicability gate (independent sub-agent) found no blocking findings; decision 2 now states an omitted command flag never mismatches, and Task 3 computes the post-strip AGENTS.md/CLAUDE.md text in memory so --dry-run agrees; docs anchor is `[#cmd-install]` (note-and-close)
+- 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
