@@ -74,8 +74,9 @@ adds its own help and docs lines when it lands.
    The refusal exits 2 (usage), because the invocation is what is wrong, not the tree.
 2. **A mismatch is a flag that states something the existing config contradicts. Nothing else is.**
    The cases: `--in-tree` while the config's `ResolvedLayout()` is not `in-tree`; `--path` or
-   `--in-tree` naming a child (by the name the CLI already defaults to the root dir's base) that is
-   not registered at that path; and `--build`, `--test`, `--lint` or `--docs` whose value differs
+   `--in-tree` naming a child that is not registered at that path (with an explicit `--project`, by
+   that name; without one, whatever child is registered at the path matches — amended 2026-11-07,
+   review 1 F2); and `--build`, `--test`, `--lint` or `--docs` whose value differs
    from that registered child's (an omitted command flag states nothing, so it never mismatches). Silently dropping a differing command is the same bug. Plain
    `pickle install`, with none of these flags, states no layout (`--in-tree` is the only layout
    flag, per T-108 decision 1). It is therefore never a mismatch: it re-attaches exactly as today,
@@ -254,3 +255,4 @@ cost: estimated M, actual M
 - 2026-11-07 — plan amended inline: applicability gate (independent sub-agent) found no blocking findings; decision 2 now states an omitted command flag never mismatches, and Task 3 computes the post-strip AGENTS.md/CLAUDE.md text in memory so --dry-run agrees; docs anchor is `[#cmd-install]` (note-and-close)
 - 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-07 — IN REVIEW → REWORK: review 1: 2 blocking (F1 symlinked tickets/ purge, F2 defaulted child name refused); 1 fixed inline, 9 noted
+- 2026-11-07 — plan amended inline: decision 2 — without `--project`, the child is matched by its registered path, not by the CLI's defaulted name (review 1 F2; user sign-off 2026-11-07)
