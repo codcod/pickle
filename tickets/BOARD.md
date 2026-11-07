@@ -20,11 +20,10 @@ Last updated: 2026-11-07
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-11-07
 
 | id | title | open findings |
 |---|---|---|
+| T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | review 1: 2 blocking (F1 symlinked tickets/ purge, F2 defaulted child name refused); 1 fixed inline, 9 noted |
 
 ## READY (impact order, per child)
 

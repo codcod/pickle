@@ -213,7 +213,38 @@ test -d .agents/skills/brine && echo skill-kept       # skill-kept (nothing remo
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Review 1 — 2026-11-07
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | correctness | — | `uninstall --purge` through a symlinked `tickets/` skips the work check and deletes outside the root; with a ticket present it half-purges, then fails (T-148 decision 6) | reproduced: `install`; `mv tickets ../shared/tickets && ln -s ../shared/tickets tickets`; `echo precious > tickets/NOTES.md`; `uninstall --purge` → exit 0 "pickle fully removed", `../shared/tickets/` left empty. `filepath.WalkDir` does not descend a symlinked root, so `purgeBlockers` finds nothing; `os.Remove` then follows the symlinked parent. With `tickets/1-to-do/T-001-x.md` added: skill, markers, `pickle.toml`, BOARD/NOTES/README removed, then `remove …/tickets/1-to-do: directory not empty` | in `purgeBlockers`, Lstat `tickets/` and block when it is not a real dir; block on any symlink entry inside the walk, allowlisted name or not; add a symlinked-`tickets/` case to `TestUninstallPurgeRefuses` |
+| F2 | blocking | correctness | — | `install --in-tree` (or `--path`) without `--project` is refused whenever the registered child's name differs from the dir name (a renamed clone, a worktree), because the CLI's defaulted name is compared as if the user had typed it; the refusal then advises `project add`, wrong for in-tree (T-148 decision 2) | reproduced: in dir `svc.PpfM`, `install --in-tree --project api`, then `install --in-tree` → exit 2 `child "svc.PpfM" is not registered` | when `--project` was not given, match the child registered at the given path rather than by the defaulted name; needs user sign-off, since it amends decision 2 |
+| F3 | non-blocking | correctness | noted | a symlinked `.agents`/`.claude` dir, or a symlinked status dir, is unlinked by the purge prune even when its target is non-empty (and that dir's `.gitkeep` inside the target goes); no user data lost | reproduced by the delegated reviewer: `ln -s ../shared/agents .agents` with `shared/agents/other.txt`; install; purge → link gone, `other.txt` survives | Lstat each prune target and skip non-dirs; natural to fold into F1's fix if the rework touches the same lines |
+| F4 | non-blocking | test-gap | noted | the CLI's re-attach success line and the `--purge` summary line have no CLI-level test | grep of `re-attached`/`fully removed` across `internal/**/*_test.go` finds none | one CLI test per line |
+| F5 | non-blocking | stale-xref | fixed inline | `cli-reference.adoc` `[#cmd-uninstall]` said a marker file "itself is never deleted", which `--purge` made false | `cli-reference.adoc`, shared removals paragraph | scoped to "without `--purge`" (e6b549b) |
+| F6 | non-blocking | correctness | noted | purge refuses on OS cruft such as a Finder `.DS_Store` under `tickets/`; refusal is safe, nothing lost | reproduced: `touch tickets/1-to-do/.DS_Store`; `uninstall --purge -n` → refused naming it | allowlist (and remove) known OS cruft if it bites |
+| F7 | non-blocking | correctness | noted | `purgeScaffold` removes `pickle.toml` first, so a later removal failure leaves a tree `uninstall` can no longer find | unreproduced: needs a mid-purge I/O failure; traced `purgeScaffold` → `rm(config.FileName)` precedes the `tickets/` removals | remove `pickle.toml` last |
+| F8 | non-blocking | correctness | noted | `NOTES.md`/`README.md` count as untouched only when byte-identical to this binary's text; an install from a release with different text is refused | unreproduced: `ticketsReadme` changed once (T-044), so installs older than that hit it; refusal is safe | accept any shipped version, if it ever matters |
+| F9 | non-blocking | correctness | noted | a pre-existing empty `CLAUDE.md`/`AGENTS.md` (or one holding only `# Brine`), or a pre-existing empty `.claude/`/`.agents/`, is removed by the purge | traced: `purgeScaffold` cannot tell whether install created them; content is empty, so nothing is lost | none |
+| F10 | non-blocking | correctness | noted | path comparison is lexical: `--path $PWD/sub` is refused against a child registered as `sub` | traced: `checkExistingConfig` compares `filepath.Clean` of both | resolve both against root before comparing, if it ever bites |
+| F11 | non-blocking | correctness | noted | a config with no `layout` key in a dir without `.git` resolves to umbrella, so `install --in-tree` over it is refused | traced: `ResolvedLayout` infers in-tree from `vcs.IsRepoRoot`; long-standing inference, not introduced here | none |
+| F12 | non-blocking | design | noted | output wording: a purge that kept user files still says "pickle fully removed", and a matching-flags re-run prints "installed … (child)" where a flag-less one prints "re-attached" | read `runUninstall`/`runInstall` summary branches | reword if users trip on it |
+
+Disposition summary: 2 blocking (F1, F2); 1 fixed inline (F5); 9 noted (F3, F4, F6–F12); 0 folded; 0 new tickets.
+cost: estimated M, actual M
+
+- [x] Reviewer independence settled (step 0): delegated — the orchestrator wrote the branch this session; a fresh sub-agent ran steps 1–4a (hunt: angle 7 only). No delegated findings discarded.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned the branch had T-148 in 3-in-development; rebased onto `main`, re-run clean.
+- [x] Implementation audit (steps 1, 2): acceptance test re-run by the delegated reviewer, green; Tasks 1–5 present (the CLI refusal test landed in `layout_test.go`, not `cli_test.go` — harmless).
+- [x] Correctness hunt (step 3): host tool path — the orchestrator ran the host code-review tool (medium) on `main...feat/T-148-…`; 10 findings, 0 discarded on re-verification (recorded as F2, F6–F12). Angle 7 ran separately in the delegated reviewer (F1, F3). Every correctness row reproduced or marked unreproduced.
+- [x] Consistency audit (step 4): delegated; one contradiction (F5).
+- [x] Documentation audit (step 4a): delegated; coverage present for both changes, `just docs-check` clean.
+- [ ] Docs-readability pass (step 4b): conscious skip — the changed prose is short reference text.
+- [x] Findings recorded with severity, class and disposition; summary and cost lines present (step 5).
+- [x] Ticket moved to `tickets/5-rework/`; History appended (step 6).
+- [x] Other references (step 7): none beyond F5; governing docs unaffected.
+- [x] Impact sweep (step 8): T-150 adds an install flag (`--ticket-prefix`) that must join `checkExistingConfig`'s mismatch check; T-149 and T-151 must list `uninstall --purge` in help/completion. Each ticket already owns its own help/docs lines.
+- [ ] Summary + commit messages for approval (step 9): pending the rework.
 
 ## History
 
@@ -222,3 +253,4 @@ test -d .agents/skills/brine && echo skill-kept       # skill-kept (nothing remo
 - 2026-11-07 — READY → IN DEVELOPMENT: picked up
 - 2026-11-07 — plan amended inline: applicability gate (independent sub-agent) found no blocking findings; decision 2 now states an omitted command flag never mismatches, and Task 3 computes the post-strip AGENTS.md/CLAUDE.md text in memory so --dry-run agrees; docs anchor is `[#cmd-install]` (note-and-close)
 - 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-11-07 — IN REVIEW → REWORK: review 1: 2 blocking (F1 symlinked tickets/ purge, F2 defaulted child name refused); 1 fixed inline, 9 noted
