@@ -1,0 +1,166 @@
+---
+id: T-150
+title: install takes --ticket-prefix and the marker block renders the configured prefix instead of a hardcoded T-NNN
+project: pickle
+depends-on: []
+spawned-by: []
+impact: medium
+complexity: low
+cost: S
+---
+
+# T-150 — install takes --ticket-prefix and the marker block renders the configured prefix instead of a hardcoded T-NNN
+
+## Outcome
+
+A project can pick its ticket prefix at install time (`pickle install --in-tree
+--ticket-prefix ABC`), and the generated `AGENTS.md` marker block shows that prefix in its trigger
+phrases and bookkeeping grammar, so agents are not pointed at `T-NNN` in a project whose ids are
+`ABC-NNN`.
+
+## Description
+
+On `main` (0017563): `pickle project add` already takes `--ticket-prefix` (T-058), but `install`
+does not, so the first child's prefix can only be changed by hand-editing `pickle.toml`. After that
+edit, `pickle upgrade` re-renders the branch line (`feat/ABC-NNN-<slug>`) and `ticket new` allocates
+`ABC-001`. But the trigger phrases and the `board: T-NNN <verb phrase>` grammar in `MarkerBlock()`
+(`internal/install/install.go`, the hardcoded lines near 1608-1618) stay `T-NNN`.
+`pickle doctor` does flag the stale block and names `upgrade`, and the configuration chapter
+says so too.
+
+Scope:
+- Add `install --ticket-prefix`, validated exactly like `project add`'s flag and written to the
+  first child.
+- Render the marker block's `T-NNN` placeholders from the prefix when all registered children share
+  one; render the literal `<PREFIX>-NNN` when they differ, and `T-NNN` when no child is
+  registered (decision 3). Update the golden file.
+- No doctor work: `pickle doctor` already warns on marker-block drift and names `pickle upgrade`
+  (checked at refinement), so a hand edit of `ticket_prefix` is already caught.
+
+The skill payload's `T-NNN` examples are generic syntax and stay as they are (the payload is shared
+by every install).
+
+## Implementation Plan
+
+### 0. Feature branch (mandatory)
+
+```
+cd .                          # the pickle child is the repo root
+git checkout main && git pull --ff-only
+git checkout -b feat/T-150-install-ticket-prefix
+```
+
+Commit locally as you go (WIP commits are encouraged). Follow this repo's self-modify policy:
+never run `pickle install|upgrade|uninstall` against this repo. Do test installs in a throwaway
+dir with the binary copied in as `pickle-test`. `layout = "in-tree"`: before pushing, run
+`git fetch origin main && git diff --name-only origin/main...HEAD | grep '^tickets/'`, which
+must print nothing. No push and no MR without explicit user approval. Merging is always the
+human's.
+
+### Prerequisite gate (hard)
+
+None. `main` is clean and `just test` passes on it. T-148 is a soft coupling only; see Task 4.
+
+### Confirmed design decisions (do not deviate without asking)
+
+1. **`install --ticket-prefix` mirrors `project add --ticket-prefix`.** Validation is the same
+   (`cfg.AddProject` → `Validate`, `^[A-Z][A-Z0-9]{0,7}$`), and the value is written to the
+   first child's `ticket_prefix`.
+2. **It needs a child.** The flag defaults to empty, meaning `config.DefaultTicketPrefix`. Given
+   without `--path` or `--in-tree`, it is refused with the same message the other child flags get
+   (it joins `childFlagsGiven`).
+3. **The marker block renders one prefix when the registered children agree.** With no children,
+   it renders `T`, the default every new child gets. When all children share prefix P, it renders
+   P. When they differ, it renders the literal `<PREFIX>`. This covers the trigger phrases, the
+   `board: T-NNN <verb phrase>` grammar and the commit example `(T-2)`. A config whose children
+   all use `T` renders byte-identical to today, so no existing install drifts, this repo's
+   included.
+4. **No new doctor check.** `checkMarkerDrift` (`internal/doctor/doctor.go`) already warns,
+   naming `pickle upgrade`, when the marker block differs from what `pickle.toml` renders.
+   Verified on 2026-11-07 by reading the code; the acceptance test proves it. The configuration
+   chapter already says to re-run `pickle upgrade` after changing `ticket_prefix`.
+5. **The skill payload is untouched.** Its `T-NNN` are generic syntax for the default, and the
+   payload's "Project configuration wins" note already defers to the marker block.
+
+### Tasks
+
+#### Task 1 — Flag plumbing
+- In `internal/cli/install.go`, add the `--ticket-prefix` flag, add it to `childFlagsGiven`, and
+  name it in that refusal message.
+- In `internal/install/install.go`, add `TicketPrefix string` to `Options`, and pass it into the
+  `config.Project` that `writeConfig` builds. An empty value falls through to `AddProject`'s
+  default.
+
+#### Task 2 — Prefix-aware marker block
+In `internal/install/install.go`, add `markerPrefix(cfg *config.Config) string` implementing
+decision 3, using `Project.Prefix()`. In `MarkerBlock`, replace the hardcoded `T-NNN` (the
+triggers lines and the board-grammar line) and the `(T-2)` example with that prefix. Regenerate
+the golden file with `UPDATE_GOLDEN=1 go test ./internal/install/ -run TestMarkerBlockGolden`.
+The golden config mixes `T` and `BETA`, so the diff must be exactly those lines turning into
+`<PREFIX>`; review it before committing. Add `TestMarkerBlockPrefix`, table-driven: no children
+→ `T-NNN`; one child `ABC` → `ABC-NNN` and no `T-NNN`; mixed → `<PREFIX>-NNN`; all `T` → the
+same output as before this change.
+
+#### Task 3 — Help line
+In `internal/cli/cli.go` `usage()`, add a `--ticket-prefix <P>` clause under `install`, in the
+style T-149 established if it has landed, otherwise as one continuation line.
+
+#### Task 4 — T-148 coupling (only if T-148 is merged at pickup)
+Add `ticket_prefix` to `checkExistingConfig`'s comparison: a `--ticket-prefix` differing from the
+registered child's prefix is a mismatch. If T-148 is not merged, skip this task. T-148's own
+pickup then sees the flag in `Options` and compares it.
+
+### Acceptance test
+
+```
+just build && just test && just lint && just docs-check
+./pickle doctor 2>&1 | grep -i 'marker'      # this repo: "AGENTS.md marker block current"
+                                             # (decision 3: default T renders unchanged)
+
+D=$(mktemp -d) && cp pickle "$D/pickle-test" && cd "$D" && git init -q
+./pickle-test install --in-tree --ticket-prefix ABC
+grep -c 'T-NNN' AGENTS.md                    # 0
+grep -c 'ABC-NNN' AGENTS.md                  # ≥ 3 (triggers, board grammar, branch line)
+./pickle-test ticket new "x" --project "$(basename "$D")"   # created ABC-001
+
+D2=$(mktemp -d) && cp pickle "$D2/pickle-test" && cd "$D2" && git init -q
+./pickle-test install --ticket-prefix ABC; echo "exit=$?"            # exit=2, needs --path/--in-tree
+./pickle-test install --in-tree --ticket-prefix abc; echo "exit=$?"  # non-zero, names the legal shape
+
+D3=$(mktemp -d) && cp pickle "$D3/pickle-test" && cd "$D3" && git init -q
+./pickle-test install --in-tree
+sed -i '' 's/^ticket_prefix = "T"/ticket_prefix = "XYZ"/' pickle.toml
+./pickle-test doctor 2>&1 | grep 'AGENTS.md block differs'   # warns, names pickle upgrade
+./pickle-test upgrade >/dev/null && ./pickle-test doctor 2>&1 | grep -c 'differs'   # 0
+grep -c 'XYZ-NNN' AGENTS.md                  # ≥ 3
+```
+
+### Docs update (mandatory when user-facing)
+
+- `docs/user-manual/cli-reference.adoc`: add `[--ticket-prefix <P>]` to the `== pickle install`
+  synopsis, with one sentence pointing at `project add`'s identical flag.
+- `docs/user-manual/configuration.adoc`: in the `ticket_prefix` bullet, add that
+  `pickle install --ticket-prefix` sets it for the first child.
+- `CHANGELOG.md` `[Unreleased]`:
+  - *Added*: `pickle install --ticket-prefix` (T-150).
+  - *Changed*: the `AGENTS.md` marker block shows the configured ticket prefix in its trigger
+    phrases and bookkeeping grammar (T-150).
+
+### Finish (mandatory)
+
+1. Acceptance test green; `just build`, `just test`, `just lint`, `just docs-check` clean.
+2. Docs and the `CHANGELOG.md` entry above in place.
+3. Write a summary: files touched, decisions made, anything deferred.
+4. Suggested commit(s), Conventional Commits with the id at the end of the subject:
+   - `feat(install): add --ticket-prefix and render the configured prefix in the marker block (T-150)`
+5. Root-path child: before presenting, tidy the WIP commits into the atomic commits above.
+6. Commit locally. Do not push. `pickle ticket move T-150 in-review --reason "acceptance green"`.
+
+## Review
+
+<!-- empty until IN REVIEW -->
+
+## History
+
+- 2026-11-07 — created (TO DO). source: chat: user changed ticket_prefix after install and found AGENTS.md still says T; confirmed upgrade fixes only the branch line
+- 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07

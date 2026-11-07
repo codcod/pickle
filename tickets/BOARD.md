@@ -38,6 +38,10 @@ Last updated: 2026-11-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
+| T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | high | medium | M | [] |  |
+| T-149 | pickle help lists install with none of its flags, so --in-tree is undiscoverable | medium | low | S | [] |  |
+| T-150 | install takes --ticket-prefix and the marker block renders the configured prefix instead of a hardcoded T-NNN | medium | low | S | [] |  |
+| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
@@ -45,13 +49,9 @@ Last updated: 2026-11-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | high | medium | M | [] |  |
 | T-075 | interoperate with rick: pickle owns the queue, rick owns per-ticket execution | high | high | XL | [] |  |
 | T-078 | draft rick Revise feedback in the browser for pasting into the agent TUI | medium | low | S | [T-077] | T-075 |
 | T-079 | amend rick artifacts in pickle serve: digest-CAS, atomic write, and a lifecycle-field guard | medium | high | L | [T-077] | T-075 |
-| T-149 | pickle help lists install with none of its flags, so --in-tree is undiscoverable | medium | low | S | [] |  |
-| T-150 | install takes --ticket-prefix and the marker block renders the configured prefix instead of a hardcoded T-NNN | medium | low | S | [] |  |
-| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | low | low | S | [] |  |
 
 ## DONE
 
