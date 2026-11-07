@@ -76,7 +76,7 @@ adds its own help and docs lines when it lands.
    The cases: `--in-tree` while the config's `ResolvedLayout()` is not `in-tree`; `--path` or
    `--in-tree` naming a child (by the name the CLI already defaults to the root dir's base) that is
    not registered at that path; and `--build`, `--test`, `--lint` or `--docs` whose value differs
-   from that registered child's. Silently dropping a differing command is the same bug. Plain
+   from that registered child's (an omitted command flag states nothing, so it never mismatches). Silently dropping a differing command is the same bug. Plain
    `pickle install`, with none of these flags, states no layout (`--in-tree` is the only layout
    flag, per T-108 decision 1). It is therefore never a mismatch: it re-attaches exactly as today,
    but adds one note naming the kept layout and child count, and that flags cannot change an
@@ -130,7 +130,9 @@ allowlist; it uses `flow.Default().States()` for the dirs, and `notesScaffold` a
 `ticketsReadme` for the byte comparisons. In `Uninstall`, when `opts.Purge`, call it before the
 legacy sweep. Return an error listing the blockers if there are any. After the existing removals,
 call a new `purgeScaffold(root, opts, &res)` doing decision 7. Match the existing `res.removed`
-labels and the dry-run suffix.
+labels and the dry-run suffix. The empty/header-only test on `AGENTS.md`/`CLAUDE.md` computes the
+post-strip text in memory (the before/after logic pulled out of `stripMarker`), so a dry run
+answers the same as a real one.
 
 #### Task 4 — CLI flag and help
 In `internal/cli/install.go` `runUninstall`, add `--purge` and pass it through. For a purge,
@@ -217,3 +219,5 @@ test -d .agents/skills/brine && echo skill-kept       # skill-kept (nothing remo
 
 - 2026-11-07 — created (TO DO). source: chat: reproduced the user-reported re-install trap (install, uninstall, install --in-tree silently keeps the old umbrella config and misreports a child) in a throwaway dir
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
+- 2026-11-07 — READY → IN DEVELOPMENT: picked up
+- 2026-11-07 — plan amended inline: applicability gate (independent sub-agent) found no blocking findings; decision 2 now states an omitted command flag never mismatches, and Task 3 computes the post-strip AGENTS.md/CLAUDE.md text in memory so --dry-run agrees; docs anchor is `[#cmd-install]` (note-and-close)
