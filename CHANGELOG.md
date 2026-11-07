@@ -17,6 +17,14 @@ may change in any release.
 
 - `.deb` packages for Debian and Ubuntu, installable with `apt` from the Cloudsmith repository
   `codcod/pickle-cli` (T-147).
+- `pickle uninstall --purge` also removes `pickle.toml` and the untouched `tickets/` scaffold, so a
+  clean re-install is one command; it refuses, removing nothing, if any work is found (T-148).
+
+### Fixed
+
+- `pickle install` over an existing `pickle.toml` refuses flags that config contradicts (such as
+  `--in-tree` over an umbrella install), instead of silently ignoring them, and its success line
+  no longer names a child that was never registered (T-148).
 
 ## [1.4.3] - 2026-11-04
 
