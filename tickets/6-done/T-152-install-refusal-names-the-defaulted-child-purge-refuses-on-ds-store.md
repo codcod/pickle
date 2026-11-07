@@ -134,3 +134,4 @@ cost: estimated S, actual S
 - 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-07 — IN REVIEW → DONE: review 1: 0 blocking; fixed inline R2; noted R1, R3, R4; 0 new tickets
 - 2026-11-07 — published: user approved; PR https://github.com/codcod/pickle/pull/108 (T-148 + T-152 on one branch); awaiting human merge
+- 2026-11-07 — merged to main (739280c, https://github.com/codcod/pickle/commit/739280c)

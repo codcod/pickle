@@ -295,3 +295,4 @@ cost: estimated M, actual M
 - 2026-11-07 — IN REVIEW → DONE: review 2: F1, F2 resolved; 0 blocking; fixed inline R1, R3; noted R2, R4-R6; 0 new tickets
 - 2026-11-07 — filed T-152: user promoted R4 and F6 to blocking after done (protocol §6c); it ships on this ticket's unpushed branch, in the same PR
 - 2026-11-07 — published: user approved; PR https://github.com/codcod/pickle/pull/108 (T-148 + T-152 on one branch); awaiting human merge
+- 2026-11-07 — merged to main (PR #108, 3361777, https://github.com/codcod/pickle/commit/3361777)

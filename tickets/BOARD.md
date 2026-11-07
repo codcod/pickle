@@ -172,8 +172,8 @@ Last updated: 2026-11-07
 | T-145 | Step 4b runs on any host with sub-agents and reviews only the changed lines | yes — merged to main (PR #104, 50c6b27, https://github.com/codcod/pickle/commit/50c6b27) |
 | T-146 | Default CLAUDE.md to an @AGENTS.md import stub instead of a duplicate marker block | yes — merged to main (PR #105, 494e790, https://github.com/codcod/pickle/commit/494e790) |
 | T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | yes — merged to main (PR #107, 91f9782, https://github.com/codcod/pickle/commit/91f9782) |
-| T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | no — publish-gated |
-| T-152 | install refusal names the defaulted child; purge refuses on .DS_Store | no — publish-gated |
+| T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | yes — merged to main (PR #108, 3361777, https://github.com/codcod/pickle/commit/3361777) |
+| T-152 | install refusal names the defaulted child; purge refuses on .DS_Store | yes — merged to main (739280c, https://github.com/codcod/pickle/commit/739280c) |
 
 ## DROPPED
 
