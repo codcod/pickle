@@ -245,7 +245,7 @@ cost: estimated M, actual M
 - [x] Ticket moved to `tickets/5-rework/`; History appended (step 6).
 - [x] Other references (step 7): none beyond F5; governing docs unaffected.
 - [x] Impact sweep (step 8): T-150 adds an install flag (`--ticket-prefix`) that must join `checkExistingConfig`'s mismatch check; T-149 and T-151 must list `uninstall --purge` in help/completion. Each ticket already owns its own help/docs lines.
-- [ ] Summary + commit messages for approval (step 9): pending the rework.
+- [x] Summary + commit messages for approval (step 9): approved 2026-11-07; remote base verified (no `tickets/` path in `origin/main...HEAD`); pushed, PR #108
 
 ### Rework fix record — round 1 (commits ac869c2..5692f68)
 
@@ -280,7 +280,7 @@ cost: estimated M, actual M
 - [x] Ticket moved to `tickets/6-done/`; History appended (step 6).
 - [x] Other references (step 7): R3; nothing else.
 - [x] Impact sweep (step 8): unchanged from review 1 (T-150's new install flag joins the mismatch check; T-149/T-151 list `--purge`).
-- [ ] Summary + commit messages for approval (step 9): presented 2026-11-07; publishing held for T-152, which rides on this branch.
+- [x] Summary + commit messages for approval (step 9): approved 2026-11-07; remote base verified (no `tickets/` path in `origin/main...HEAD`); pushed, PR #108
 
 ## History
 
@@ -294,3 +294,4 @@ cost: estimated M, actual M
 - 2026-11-07 — REWORK → IN REVIEW: findings fixed
 - 2026-11-07 — IN REVIEW → DONE: review 2: F1, F2 resolved; 0 blocking; fixed inline R1, R3; noted R2, R4-R6; 0 new tickets
 - 2026-11-07 — filed T-152: user promoted R4 and F6 to blocking after done (protocol §6c); it ships on this ticket's unpushed branch, in the same PR
+- 2026-11-07 — published: user approved; PR https://github.com/codcod/pickle/pull/108 (T-148 + T-152 on one branch); awaiting human merge

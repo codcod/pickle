@@ -122,7 +122,7 @@ cost: estimated S, actual S
 - [x] Ticket moved to `tickets/6-done/`; History appended (step 6).
 - [x] Other references (step 7): R2; nothing else.
 - [x] Impact sweep (step 8): none beyond T-148's.
-- [ ] Summary + commit messages for approval (step 9): presented 2026-11-07 together with T-148, awaiting approval.
+- [x] Summary + commit messages for approval (step 9): approved 2026-11-07; remote base verified (no `tickets/` path in `origin/main...HEAD`); pushed, PR #108
 
 ## History
 
@@ -133,3 +133,4 @@ cost: estimated S, actual S
 - 2026-11-07 — applicability gate: conscious skip — filed and refined minutes earlier in this session from findings two independent reviewers had already reproduced; no board delta since
 - 2026-11-07 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-07 — IN REVIEW → DONE: review 1: 0 blocking; fixed inline R2; noted R1, R3, R4; 0 new tickets
+- 2026-11-07 — published: user approved; PR https://github.com/codcod/pickle/pull/108 (T-148 + T-152 on one branch); awaiting human merge
