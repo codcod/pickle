@@ -103,6 +103,7 @@ Setup commands:
                           --project <name>   the child's name (default: root dir name)
                           --agent <list>     agents to wire up (default claude)
                           --hooks            also install the guard hooks
+                          --ticket-prefix <P> the child's ticket id prefix (default T)
                           pickle install --help lists every flag.
   project add <name> <path>   Register another connected child-project.
   project list                List registered child-projects.

@@ -102,8 +102,12 @@ the same tree. Wait for it to finish, then try again.
 
 ----
 pickle install [--in-tree] [--project <name>] [--path <path>] [--build/--test/--lint/--docs <cmd>]
-               [--agent claude,opencode,pi] [--claude-symlink] [--hooks]
+               [--ticket-prefix <PREFIX>] [--agent claude,opencode,pi] [--claude-symlink] [--hooks]
 ----
+
+`--ticket-prefix` sets the first child's ticket-id prefix, exactly as
+`pickle project add --ticket-prefix` does (see <<cmd-project>>); like the other
+child flags it needs `--path` or `--in-tree`.
 
 Run once in a project to lay down the flow. It:
 
@@ -174,9 +178,9 @@ layout or child flags re-attaches to the config as it stands, refreshing the
 payload and marker blocks, and notes the layout and child count it kept. A flag
 the existing config contradicts is refused instead of silently dropped:
 `--in-tree` over a layout that is not in-tree, `--path`/`--in-tree` naming a
-child that is not registered at that path, or a `--build`, `--test`, `--lint` or
-`--docs` value that differs from the registered child's (an omitted one states
-nothing). The refusal exits `2`, names every mismatch, writes nothing, and
+child that is not registered at that path, or a `--build`, `--test`, `--lint`,
+`--docs` or `--ticket-prefix` value that differs from the registered child's (an
+omitted one states nothing). The refusal exits `2`, names every mismatch, writes nothing, and
 points at the two ways out: `pickle uninstall --purge` and then install again,
 or `pickle project add` to register a further child. Without `--project`, a
 re-run takes whichever child is already registered at the path, so a renamed

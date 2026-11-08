@@ -26,6 +26,7 @@ func runInstall(args []string) int {
 	test := fs.String("test", "", "child test command (optional)")
 	lint := fs.String("lint", "", "child lint command (optional)")
 	docs := fs.String("docs", "", "child docs command (optional)")
+	ticketPrefix := fs.String("ticket-prefix", "", "first child's ticket id prefix, e.g. ABC (default T)")
 	noClaude := fs.Bool("no-claude", false, "deprecated: use --agent to choose agents (drops claude from the set)")
 	claudeSymlink := fs.Bool("claude-symlink", false, "make CLAUDE.md a symlink to AGENTS.md instead of an @AGENTS.md import")
 	agentSpec := fs.String("agent", "", `comma-separated agents to wire up: claude, opencode, pi (default "claude")`)
@@ -38,7 +39,7 @@ func runInstall(args []string) int {
 	// way to select the in-tree layout, and it implies the sole child at ".".
 	// A bare --path "." without --in-tree is refused rather than silently
 	// treated as in-tree, so the choice is always the one the caller stated.
-	childFlagsGiven := *project != "" || *build != "" || *test != "" || *lint != "" || *docs != ""
+	childFlagsGiven := *project != "" || *build != "" || *test != "" || *lint != "" || *docs != "" || *ticketPrefix != ""
 	switch {
 	case *inTree && *path != "" && *path != ".":
 		fmt.Fprintf(os.Stderr, "pickle install: --in-tree registers the child at \".\"; --path %q conflicts with it\n", *path)
@@ -49,10 +50,10 @@ func runInstall(args []string) int {
 		fmt.Fprintln(os.Stderr, "pickle install: --path \".\" selects the in-tree layout; pass --in-tree explicitly")
 		return exitUsage
 	case *path == "" && childFlagsGiven:
-		// Silently discarding an explicit --project/--build/--test/--lint/--docs
+		// Silently discarding an explicit --project/--build/--test/--lint/--docs/--ticket-prefix
 		// is exactly the kind of guess this ticket exists to remove (T-108
 		// decision 1's spirit, extended): say so instead.
-		fmt.Fprintln(os.Stderr, "pickle install: --project/--build/--test/--lint/--docs need --path (or --in-tree) to name a child; omit them to install the umbrella layout with no child yet")
+		fmt.Fprintln(os.Stderr, "pickle install: --project/--build/--test/--lint/--docs/--ticket-prefix need --path (or --in-tree) to name a child; omit them to install the umbrella layout with no child yet")
 		return exitUsage
 	}
 
@@ -96,15 +97,16 @@ func runInstall(args []string) int {
 	}
 
 	res, err := install.Run(Payload, root, Version, install.Options{
-		ProjectName: name,
-		ProjectPath: *path,
-		Build:       *build,
-		Test:        *test,
-		Lint:        *lint,
-		Docs:        *docs,
-		InTree:      *inTree,
-		Agents:      agents,
-		ClaudeLink:  *claudeSymlink,
+		ProjectName:  name,
+		ProjectPath:  *path,
+		Build:        *build,
+		Test:         *test,
+		Lint:         *lint,
+		Docs:         *docs,
+		TicketPrefix: *ticketPrefix,
+		InTree:       *inTree,
+		Agents:       agents,
+		ClaudeLink:   *claudeSymlink,
 	})
 	for _, c := range res.Created {
 		fmt.Printf("  + %s\n", c)
