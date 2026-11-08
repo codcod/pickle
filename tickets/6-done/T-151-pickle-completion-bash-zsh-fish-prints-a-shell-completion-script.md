@@ -187,6 +187,29 @@ cost: estimated S, actual S
 
 - F1 fixed: bash registers `complete -o default -F _pickle pickle`; zsh runs `compadd -- $cands || _files`, so filenames are offered whenever no spec word matches; fish keeps `-f` (no files) only while the previous token is not a flag. Regression test `TestCompletionFallsBackToFiles` asserts each script's fallback line and that bash (5 and `/bin/bash` 3.2) registers `-o default`. zsh fallback verified in a pty: `pickle install --path RE<TAB>` → `README.md`, `pickle tick<TAB>` → `ticket`. fish unverified (not installed).
 
+### Round 2 (scoped re-review) — 2026-11-08
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| R2-1 | non-blocking | test-gap | noted | The fallback test proves bash registers `-o default` but not that `_pickle` leaves `COMPREPLY` empty at a flag-value slot; the zsh and fish checks are string matches on the rendered line | `TestCompletionFallsBackToFiles`; re-verified by hand: `COMP_WORDS=(pickle install --path "")` → `[]` today | Add a bash `install --path ""` → empty case; a stub-driven zsh check |
+| R2-2 | non-blocking | design | noted | The shells differ on when files are offered: bash/zsh whenever no spec word matches; fish only after a token starting with `-` (boolean flags included) | Reviewer's stubbed zsh run and bash runs; fish traced from `renderFish`, unreproduced (not installed) | Align only if a user reports it |
+
+Disposition summary: F1 resolved (fix commit 86d55bc, verified in bash 3.2/5 and zsh); 2 new non-blocking, both noted (R2-1, R2-2); 0 blocking, 0 fixed inline, 0 folded, 0 new tickets.
+cost: estimated S, actual S
+
+- [x] Reviewer independence (step 0): delegated to a fresh sub-agent (`hunt: one pass`); delegated findings discarded: none.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` clean.
+- [x] Implementation audit (steps 1, 2): fix record resolves; fix diff read; `just build|test|lint|docs-check` green; `bash -n` (3.2) and `zsh -n` ok, fish skipped (not installed).
+- [x] Correctness hunt (step 3): one pass over all eight angles on the fix diff, by the delegated reviewer, no sub-agents; 0 correctness findings; angle 7 included.
+- [x] Consistency audit (step 4): clean.
+- [x] Documentation audit (step 4a): no docs claim contradicted; docs-check green.
+- [ ] Docs-readability pass (step 4b): conscious skip — the fix changed no prose.
+- [x] Findings recorded (step 5).
+- [x] Ticket moved to `tickets/6-done/` (step 6b).
+- [x] Other references (step 7): no ticket or doc references T-151 by id beyond `tickets/NOTES.md`'s filing record, which stays accurate; no governing document made false.
+- [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` names T-151.
+- [x] Summary + commit messages and MR attributes presented for approval (step 9).
+
 ## History
 
 - 2026-11-07 — created (TO DO). source: chat: user noted pickle generates no shell completion
@@ -196,3 +219,4 @@ cost: estimated S, actual S
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-08 — IN REVIEW → REWORK: review round 1: 1 blocking finding (F1, no filename fallback)
 - 2026-11-08 — REWORK → IN REVIEW: findings fixed
+- 2026-11-08 — IN REVIEW → DONE: review round 2 clean; F1 resolved; 9 non-blocking noted (F2-F8, R2-1, R2-2)
