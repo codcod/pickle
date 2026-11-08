@@ -175,7 +175,7 @@ Review 1 — 2026-11-08, branch `feat/T-150-install-ticket-prefix` (57dc9b4).
 - [x] Ticket moved to `6-done/` (step 6).
 - [x] Other references / governing documents (step 7): `lifecycle.adoc`'s note that `ticket_prefix` renders into the marker block is now more accurate; no edit needed.
 - [x] Impact sweep (step 8): T-151 (READY) already plans for T-150's flags via its drift test; no patch.
-- [ ] Summary + commit message & MR attributes presented for approval (step 9).
+- [x] Summary + commit message & MR attributes presented for approval (step 9): approved 2026-11-08; remote base verified not behind (no `tickets/` path in `origin/main...HEAD`).
 
 | id | severity | class | disposition | description | evidence | suggestion |
 |---|---|---|---|---|---|---|
@@ -195,3 +195,4 @@ cost: estimated S, actual S
 - 2026-11-08 — plan amended inline: applicability gate (fresh sub-agent, no blocking findings) — refreshed stale line refs; Task 1 validates the prefix before any write; Task 4 now required (T-148 merged) with its mechanics; Docs adds --ticket-prefix to the re-install refusal list
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-08 — IN REVIEW → DONE: review 1: no blocking findings; 4 noted (F1-F4)
+- 2026-11-08 — published: user approved; pushed `feat/T-150-install-ticket-prefix`, opened PR #110 (merge is the human's)
