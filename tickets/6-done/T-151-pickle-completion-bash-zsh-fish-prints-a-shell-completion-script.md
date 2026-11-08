@@ -208,7 +208,7 @@ cost: estimated S, actual S
 - [x] Ticket moved to `tickets/6-done/` (step 6b).
 - [x] Other references (step 7): no ticket or doc references T-151 by id beyond `tickets/NOTES.md`'s filing record, which stays accurate; no governing document made false.
 - [x] Impact sweep (step 8): no ticket in `1-to-do/` or `2-ready/` names T-151.
-- [x] Summary + commit messages and MR attributes presented for approval (step 9).
+- [x] Summary + commit messages and MR attributes presented for approval (step 9): approved 2026-11-08; remote base verified not behind (no `tickets/` path in `origin/main...HEAD`).
 
 ## History
 
@@ -220,3 +220,4 @@ cost: estimated S, actual S
 - 2026-11-08 — IN REVIEW → REWORK: review round 1: 1 blocking finding (F1, no filename fallback)
 - 2026-11-08 — REWORK → IN REVIEW: findings fixed
 - 2026-11-08 — IN REVIEW → DONE: review round 2 clean; F1 resolved; 9 non-blocking noted (F2-F8, R2-1, R2-2)
+- 2026-11-08 — published: user approved; pushed `feat/T-151-shell-completion`, opened PR #111 (merge is the human's)
