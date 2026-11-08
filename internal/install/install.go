@@ -167,6 +167,9 @@ type Options struct {
 	Test        string
 	Lint        string
 	Docs        string
+	// TicketPrefix is the first child's ticket_prefix; empty means
+	// config.DefaultTicketPrefix (T-150).
+	TicketPrefix string
 	// InTree records the layout explicitly chosen by the caller (T-108
 	// decision 1: install never infers it). true writes layout = "in-tree";
 	// false writes layout = "umbrella" — always written explicitly, never left
@@ -233,6 +236,13 @@ func Run(payload fs.FS, root, payloadVersion string, opts Options) (Result, erro
 	// the tree byte-identical.
 	if err := checkExistingConfig(root, opts, &res); err != nil {
 		return res, err
+	}
+	// A bad --ticket-prefix is refused here too, not in writeConfig after the
+	// payload and tickets/ are already on disk (T-150).
+	if opts.ProjectPath != "" {
+		if err := (&config.Config{}).AddProject(firstChild(opts)); err != nil {
+			return res, err
+		}
 	}
 
 	if err := copyPayload(payload, root, &res); err != nil {
@@ -346,6 +356,9 @@ func checkExistingConfig(root string, opts Options, res *Result) error {
 		case filepath.Clean(p.Path) != filepath.Clean(opts.ProjectPath):
 			bad = append(bad, fmt.Sprintf("child %q is registered at %q, not %q", p.Name, p.Path, opts.ProjectPath))
 		default:
+			if opts.TicketPrefix != "" && opts.TicketPrefix != p.Prefix() {
+				bad = append(bad, fmt.Sprintf("child %q has ticket_prefix = %q, but --ticket-prefix %q was given", p.Name, p.Prefix(), opts.TicketPrefix))
+			}
 			for _, c := range []struct{ flag, have, want string }{
 				{"build", p.Build, opts.Build}, {"test", p.Test, opts.Test},
 				{"lint", p.Lint, opts.Lint}, {"docs", p.Docs, opts.Docs},
@@ -1382,14 +1395,7 @@ func writeConfig(root, payloadVersion string, opts Options, res *Result) (*confi
 	// state registers no child at all; `pickle project add` registers the
 	// first one afterwards.
 	if opts.ProjectPath != "" {
-		if err := cfg.AddProject(config.Project{
-			Name:  opts.ProjectName,
-			Path:  opts.ProjectPath,
-			Build: opts.Build,
-			Test:  opts.Test,
-			Lint:  opts.Lint,
-			Docs:  opts.Docs,
-		}); err != nil {
+		if err := cfg.AddProject(firstChild(opts)); err != nil {
 			return nil, err
 		}
 	}
@@ -1736,6 +1742,7 @@ func stripMarkerText(text string, bi, ei int) string {
 // that is *not* derivable from the config does not belong between the markers;
 // it belongs in the surrounding file, which pickle never touches.
 func MarkerBlock(cfg *config.Config) string {
+	px := markerPrefix(cfg)
 	var names []string
 	for _, p := range cfg.Projects {
 		names = append(names, "`"+p.Name+"`")
@@ -1855,8 +1862,8 @@ func MarkerBlock(cfg *config.Config) string {
 		"  directly; `pickle install --agent claude` adds a `.claude/skills/brine` view for\n" +
 		"  Claude Code. The directory is pickle-owned — `pickle install` and `pickle upgrade`\n" +
 		"  both replace it wholesale, so keep hand-written notes outside it.\n" +
-		"- Triggers: \"make it a ticket\", \"refine ticket T-NNN\", \"implement ticket T-NNN\", \"rework ticket\n" +
-		"  T-NNN\", \"validate ticket T-NNN\" (or \"review ticket T-NNN\"), \"audit the board\".\n" +
+		"- Triggers: \"make it a ticket\", \"refine ticket " + px + "-NNN\", \"implement ticket " + px + "-NNN\", \"rework ticket\n" +
+		"  " + px + "-NNN\", \"validate ticket " + px + "-NNN\" (or \"review ticket " + px + "-NNN\"), \"audit the board\".\n" +
 		"\n" +
 		"### Project configuration\n" +
 		"\n" +
@@ -1864,8 +1871,8 @@ func MarkerBlock(cfg *config.Config) string {
 		"  frontmatter (`pickle project list`). Registered child-projects: " + children + "." +
 		commandsBullet + "\n" +
 		"- **Branch & commit.** Conventional Commits with the **ticket id in brackets at the end of\n" +
-		"  the subject** (e.g. `feat(cli): add board audit (T-2)`) for child-project code. Ticket/board\n" +
-		"  bookkeeping uses its own `board: T-NNN <verb phrase>` form instead — grammar and scope in\n" +
+		"  the subject** (e.g. `feat(cli): add board audit (" + px + "-2)`) for child-project code. Ticket/board\n" +
+		"  bookkeeping uses its own `board: " + px + "-NNN <verb phrase>` form instead — grammar and scope in\n" +
 		"  the rules §0." + branchesBullet + "\n" +
 		wipLine + "\n" +
 		"- **Commit policy.** " + childPolicy + "\n" +
@@ -1898,3 +1905,27 @@ const ticketsReadme = "# `tickets/` — the ticket-based feature flow\n\n" +
 	"- **Build target:** every ticket targets a registered child-project (see `../pickle.toml`).\n\n" +
 	"This directory holds **instance data only** (the tickets, the generated board, the notes).\n" +
 	"See `../AGENTS.md` for the project configuration and commit policy.\n"
+
+// firstChild is the child-project install registers from opts.
+func firstChild(opts Options) config.Project {
+	return config.Project{
+		Name: opts.ProjectName, Path: opts.ProjectPath,
+		Build: opts.Build, Test: opts.Test, Lint: opts.Lint, Docs: opts.Docs,
+		TicketPrefix: opts.TicketPrefix,
+	}
+}
+
+// markerPrefix is the ticket prefix the marker block's examples show (T-150):
+// the one prefix every registered child shares, the default T with none
+// registered, or the literal <PREFIX> when children differ.
+func markerPrefix(cfg *config.Config) string {
+	px := config.DefaultTicketPrefix
+	for i, p := range cfg.Projects {
+		if i == 0 {
+			px = p.Prefix()
+		} else if p.Prefix() != px {
+			return "<PREFIX>"
+		}
+	}
+	return px
+}

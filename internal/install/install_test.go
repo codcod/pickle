@@ -2093,3 +2093,67 @@ func TestRunRefusalNamesChildHoldingThePath(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+// TestMarkerBlockPrefix pins T-150 decision 3: the trigger phrases, the
+// board grammar and the commit example show the prefix the children share.
+func TestMarkerBlockPrefix(t *testing.T) {
+	child := func(name, px string) config.Project {
+		return config.Project{Name: name, Path: name, BranchPrefix: "feat/", TicketPrefix: px, WIPInDevelopment: 1, WIPInReview: 1}
+	}
+	const oldTriggers = "\"refine ticket T-NNN\", \"implement ticket T-NNN\", \"rework ticket\n  T-NNN\""
+	cases := []struct {
+		name     string
+		projects []config.Project
+		want     string
+	}{
+		{"no children", nil, oldTriggers},
+		{"all T renders as before", []config.Project{child("a", ""), child("b", "T")}, oldTriggers},
+		{"one child ABC", []config.Project{child("a", "ABC")}, "\"refine ticket ABC-NNN\""},
+		{"mixed", []config.Project{child("a", "ABC"), child("b", "")}, "\"refine ticket <PREFIX>-NNN\""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			block := MarkerBlock(&config.Config{Projects: c.projects})
+			if !strings.Contains(block, c.want) {
+				t.Errorf("want %q in:\n%s", c.want, block)
+			}
+			if c.want != oldTriggers && strings.Contains(block, "ticket T-NNN") {
+				t.Errorf("hardcoded T-NNN left in:\n%s", block)
+			}
+		})
+	}
+	block := MarkerBlock(&config.Config{Projects: []config.Project{child("a", "ABC")}})
+	for _, want := range []string{"board: ABC-NNN <verb phrase>", "add board audit (ABC-2)"} {
+		if !strings.Contains(block, want) {
+			t.Errorf("want %q in:\n%s", want, block)
+		}
+	}
+}
+
+// TestRunRefusesBadTicketPrefixBeforeWriting: an illegal --ticket-prefix is
+// refused with nothing written (T-150, matching T-148 decision 3).
+func TestRunRefusesBadTicketPrefixBeforeWriting(t *testing.T) {
+	root := t.TempDir()
+	_, err := Run(os.DirFS(payloadRoot()), root, "v1", Options{ProjectName: "demo", ProjectPath: ".", TicketPrefix: "abc", InTree: true})
+	if err == nil {
+		t.Fatal("lowercase ticket prefix accepted")
+	}
+	if entries, _ := os.ReadDir(root); len(entries) != 0 {
+		t.Errorf("refused install wrote %d entries", len(entries))
+	}
+}
+
+// TestRunRefusesContradictingTicketPrefix: a re-install whose --ticket-prefix
+// differs from the registered child's is a T-148 mismatch, not silently dropped.
+func TestRunRefusesContradictingTicketPrefix(t *testing.T) {
+	root := t.TempDir()
+	payload := os.DirFS(payloadRoot())
+	opts := Options{ProjectName: "demo", ProjectPath: ".", InTree: true}
+	if _, err := Run(payload, root, "v1", opts); err != nil {
+		t.Fatal(err)
+	}
+	opts.TicketPrefix = "ABC"
+	if _, err := Run(payload, root, "v1", opts); !errors.Is(err, ErrConfigMismatch) || !strings.Contains(err.Error(), "--ticket-prefix") {
+		t.Errorf("want a --ticket-prefix mismatch, got %v", err)
+	}
+}

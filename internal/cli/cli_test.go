@@ -1293,7 +1293,7 @@ func TestInstallFlagsAreAdvertised(t *testing.T) {
 		t.Fatalf("install entry not found in pickle help:\n%s", out)
 	}
 	entry := out[start:end]
-	for _, want := range []string{"--in-tree", "--path", "--project", "--agent", "--hooks", "pickle install --help"} {
+	for _, want := range []string{"--in-tree", "--path", "--project", "--agent", "--hooks", "--ticket-prefix", "pickle install --help"} {
 		if !strings.Contains(entry, want) {
 			t.Errorf("install entry of pickle help does not mention %q", want)
 		}
