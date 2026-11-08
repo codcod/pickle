@@ -71,6 +71,8 @@ func Run(payload fs.FS, version string, args []string) int {
 		return runServe(args[1:])
 	case "scaffold":
 		return runScaffold(args[1:])
+	case "completion":
+		return runCompletion(args[1:])
 	case "version", "--version", "-v":
 		return runVersion(args[1:])
 	case "help", "--help", "-h":
@@ -181,6 +183,8 @@ Visualize:
                           (default 127.0.0.1:8745). Writes nothing.
 
 Other:
+  completion bash|zsh|fish
+                          Print a shell completion script (see the user manual).
   version                 Print the pickle version.
   help                    Show this help.
 `)
