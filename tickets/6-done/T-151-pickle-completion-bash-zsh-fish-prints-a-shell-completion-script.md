@@ -221,3 +221,4 @@ cost: estimated S, actual S
 - 2026-11-08 — REWORK → IN REVIEW: findings fixed
 - 2026-11-08 — IN REVIEW → DONE: review round 2 clean; F1 resolved; 9 non-blocking noted (F2-F8, R2-1, R2-2)
 - 2026-11-08 — published: user approved; pushed `feat/T-151-shell-completion`, opened PR #111 (merge is the human's)
+- 2026-11-08 — merged to main (PR #111, d616dd3, https://github.com/codcod/pickle/commit/d616dd3)

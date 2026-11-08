@@ -172,7 +172,7 @@ Last updated: 2026-11-08
 | T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | yes — merged to main (PR #108, 3361777, https://github.com/codcod/pickle/commit/3361777) |
 | T-149 | pickle help lists install with none of its flags, so --in-tree is undiscoverable | yes — merged to main (PR #109, b5bb4f9, https://github.com/codcod/pickle/commit/b5bb4f9) |
 | T-150 | install takes --ticket-prefix and the marker block renders the configured prefix instead of a hardcoded T-NNN | yes — merged to main (PR #110, f108a57, https://github.com/codcod/pickle/commit/f108a57) |
-| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | no — publish-gated |
+| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | yes — merged to main (PR #111, d616dd3, https://github.com/codcod/pickle/commit/d616dd3) |
 | T-152 | install refusal names the defaulted child; purge refuses on .DS_Store | yes — merged to main (739280c, https://github.com/codcod/pickle/commit/739280c) |
 
 ## DROPPED
