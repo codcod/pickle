@@ -183,6 +183,10 @@ cost: estimated S, actual S
 - [ ] Impact sweep (step 8) — deferred to the concluding round.
 - [ ] Summary + approval (step 9) — deferred to the concluding round.
 
+### Rework fix record — round 1 (commit 3d46ca0)
+
+- F1 fixed: bash registers `complete -o default -F _pickle pickle`; zsh runs `compadd -- $cands || _files`, so filenames are offered whenever no spec word matches; fish keeps `-f` (no files) only while the previous token is not a flag. Regression test `TestCompletionFallsBackToFiles` asserts each script's fallback line and that bash (5 and `/bin/bash` 3.2) registers `-o default`. zsh fallback verified in a pty: `pickle install --path RE<TAB>` → `README.md`, `pickle tick<TAB>` → `ticket`. fish unverified (not installed).
+
 ## History
 
 - 2026-11-07 — created (TO DO). source: chat: user noted pickle generates no shell completion
@@ -191,3 +195,4 @@ cost: estimated S, actual S
 - 2026-11-08 — READY → IN DEVELOPMENT: picked up
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-08 — IN REVIEW → REWORK: review round 1: 1 blocking finding (F1, no filename fallback)
+- 2026-11-08 — REWORK → IN REVIEW: findings fixed
