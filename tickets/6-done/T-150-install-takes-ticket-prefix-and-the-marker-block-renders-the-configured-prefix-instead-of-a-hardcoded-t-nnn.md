@@ -162,7 +162,30 @@ grep -c 'XYZ-NNN' AGENTS.md                  # ≥ 3
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+Review 1 — 2026-11-08, branch `feat/T-150-install-ticket-prefix` (57dc9b4).
+
+- [x] Reviewer independence settled (step 0): delegated. The orchestrator wrote the branch, so the audits ran in a fresh sub-agent given the verbatim spawn prompt (`hunt: one pass`). No delegated findings discarded; all four were re-verified by hand against the code.
+- [x] In-tree stale-branch check (step 0a): branch rebased onto `main`; `pickle doctor` 0 errors, 0 warnings.
+- [x] Implementation audit (steps 1, 2): acceptance test re-run green; Tasks 1–4, decisions 1–5 verified.
+- [x] Correctness hunt (step 3): one-pass angle hunt (all 8 angles) by the delegated reviewer, no sub-agents, no host tool; angle 7 included in the pass. Extra probes: same-prefix re-install accepted; differing prefix refused exit 2; umbrella `project add --ticket-prefix` renders correctly; legacy unset prefix compares as `T`. No correctness rows.
+- [x] Consistency audit (step 4): remaining `T-NNN` in `internal/` are generic usage strings, comments and parsing (decision 5).
+- [x] Documentation audit (step 4a): cli-reference synopsis, re-install list, configuration bullet, CHANGELOG Added/Changed; whole-tree sweep clean; `just docs-check` green.
+- [x] Docs-readability pass (step 4b): conscious skip — three short additive sentences mirroring adjacent prose.
+- [x] Findings recorded (step 5).
+- [x] Ticket moved to `6-done/` (step 6).
+- [x] Other references / governing documents (step 7): `lifecycle.adoc`'s note that `ticket_prefix` renders into the marker block is now more accurate; no edit needed.
+- [x] Impact sweep (step 8): T-151 (READY) already plans for T-150's flags via its drift test; no patch.
+- [ ] Summary + commit message & MR attributes presented for approval (step 9).
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | test-gap | noted | The "all T renders as before" case checks one trigger substring, not the whole block byte for byte. | `internal/install/install_test.go` `TestMarkerBlockPrefix`; byte-identity is proven in practice by this repo's `pickle doctor -v` "marker block current" | Optionally assert the `board: T-NNN` and `(T-2)` lines too. |
+| F2 | non-blocking | design | noted | Help line misaligned by one column: `--ticket-prefix <P>` is 19 chars, the flag column 19 incl. padding; listed after `--hooks`. | `./pickle help` | Widen the column if another long flag lands. |
+| F3 | non-blocking | design | noted | A lowercase `--ticket-prefix abc` on a re-install is reported as a mismatch (checkExistingConfig runs first), and the hint suggests purge + re-install, which then names the legal shape. | re-install transcript, exit 2 | Edge case; second attempt is self-explanatory. |
+| F4 | non-blocking | design | noted | A fresh install validates the child twice (pre-check in `Run`, then `writeConfig`'s `AddProject`). | `internal/install/install.go` `Run`, `writeConfig` | Harmless; keeps `writeConfig` safe alone. |
+
+Dispositions: 4 noted (F1–F4); 0 fixed inline, 0 folded, 0 new tickets.
+cost: estimated S, actual S
 
 ## History
 
@@ -171,3 +194,4 @@ grep -c 'XYZ-NNN' AGENTS.md                  # ≥ 3
 - 2026-11-08 — READY → IN DEVELOPMENT: picked up
 - 2026-11-08 — plan amended inline: applicability gate (fresh sub-agent, no blocking findings) — refreshed stale line refs; Task 1 validates the prefix before any write; Task 4 now required (T-148 merged) with its mechanics; Docs adds --ticket-prefix to the re-install refusal list
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-11-08 — IN REVIEW → DONE: review 1: no blocking findings; 4 noted (F1-F4)
