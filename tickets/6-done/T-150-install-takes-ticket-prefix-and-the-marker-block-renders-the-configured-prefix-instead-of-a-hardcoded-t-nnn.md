@@ -196,3 +196,4 @@ cost: estimated S, actual S
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-08 — IN REVIEW → DONE: review 1: no blocking findings; 4 noted (F1-F4)
 - 2026-11-08 — published: user approved; pushed `feat/T-150-install-ticket-prefix`, opened PR #110 (merge is the human's)
+- 2026-11-08 — merged to main (PR #110, f108a57, https://github.com/codcod/pickle/commit/f108a57)
