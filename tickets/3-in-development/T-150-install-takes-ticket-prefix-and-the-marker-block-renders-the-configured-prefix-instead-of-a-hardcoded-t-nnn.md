@@ -20,11 +20,11 @@ phrases and bookkeeping grammar, so agents are not pointed at `T-NNN` in a proje
 
 ## Description
 
-On `main` (0017563): `pickle project add` already takes `--ticket-prefix` (T-058), but `install`
+On `main` (ec216c1): `pickle project add` already takes `--ticket-prefix` (T-058), but `install`
 does not, so the first child's prefix can only be changed by hand-editing `pickle.toml`. After that
 edit, `pickle upgrade` re-renders the branch line (`feat/ABC-NNN-<slug>`) and `ticket new` allocates
 `ABC-001`. But the trigger phrases and the `board: T-NNN <verb phrase>` grammar in `MarkerBlock()`
-(`internal/install/install.go`, the hardcoded lines near 1608-1618) stay `T-NNN`.
+(`internal/install/install.go`, the hardcoded lines near 1858-1868) stay `T-NNN`.
 `pickle doctor` does flag the stale block and names `upgrade`, and the configuration chapter
 says so too.
 
@@ -90,6 +90,9 @@ None. `main` is clean and `just test` passes on it. T-148 is a soft coupling onl
 - In `internal/install/install.go`, add `TicketPrefix string` to `Options`, and pass it into the
   `config.Project` that `writeConfig` builds. An empty value falls through to `AddProject`'s
   default.
+- Validate the prefix in `Run` before `copyPayload` writes anything (a throwaway
+  `(&config.Config{}).AddProject(...)` with the same fields), so a refused `--ticket-prefix abc`
+  leaves the tree byte-identical, as T-148's refusals do.
 
 #### Task 2 — Prefix-aware marker block
 In `internal/install/install.go`, add `markerPrefix(cfg *config.Config) string` implementing
@@ -105,10 +108,10 @@ same output as before this change.
 In `internal/cli/cli.go` `usage()`, add a `--ticket-prefix <P>` clause under `install`, in the
 style T-149 established if it has landed, otherwise as one continuation line.
 
-#### Task 4 — T-148 coupling (only if T-148 is merged at pickup)
-Add `ticket_prefix` to `checkExistingConfig`'s comparison: a `--ticket-prefix` differing from the
-registered child's prefix is a mismatch. If T-148 is not merged, skip this task. T-148's own
-pickup then sees the flag in `Options` and compares it.
+#### Task 4 — T-148 coupling (T-148 is merged: required)
+Add `ticket_prefix` to `checkExistingConfig`'s comparison: when `opts.TicketPrefix != ""` and it
+differs from the registered child's `Prefix()`, it is a mismatch naming `--ticket-prefix`. Its own
+check, not a fifth entry in the command loop (that loop uses one string for both key and flag).
 
 ### Acceptance test
 
@@ -138,7 +141,8 @@ grep -c 'XYZ-NNN' AGENTS.md                  # ≥ 3
 ### Docs update (mandatory when user-facing)
 
 - `docs/user-manual/cli-reference.adoc`: add `[--ticket-prefix <P>]` to the `== pickle install`
-  synopsis, with one sentence pointing at `project add`'s identical flag.
+  synopsis, with one sentence pointing at `project add`'s identical flag; add `--ticket-prefix` to
+  the list of flags a re-install can contradict.
 - `docs/user-manual/configuration.adoc`: in the `ticket_prefix` bullet, add that
   `pickle install --ticket-prefix` sets it for the first child.
 - `CHANGELOG.md` `[Unreleased]`:
@@ -164,3 +168,5 @@ grep -c 'XYZ-NNN' AGENTS.md                  # ≥ 3
 
 - 2026-11-07 — created (TO DO). source: chat: user changed ticket_prefix after install and found AGENTS.md still says T; confirmed upgrade fixes only the branch line
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
+- 2026-11-08 — READY → IN DEVELOPMENT: picked up
+- 2026-11-08 — plan amended inline: applicability gate (fresh sub-agent, no blocking findings) — refreshed stale line refs; Task 1 validates the prefix before any write; Task 4 now required (T-148 merged) with its mechanics; Docs adds --ticket-prefix to the re-install refusal list
