@@ -162,3 +162,4 @@ adjust the member name. The check is that the three paths are present.
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
 - 2026-11-08 — plan amended inline: decision 4(b) widened to check one-line usage strings and names its exemptions (gate F1); decision 5's before-hook wrapped in `sh -c`, since goreleaser hooks run without a shell (gate F2). Gate F3 (skip the `pickle <command>` usage line) and F4 (completion usage description on its own line) noted and closed
 - 2026-11-08 — READY → IN DEVELOPMENT: picked up
+- 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
