@@ -1282,6 +1282,24 @@ func TestServeHelpIsAdvertised(t *testing.T) {
 	}
 }
 
+// TestInstallFlagsAreAdvertised (T-149): the install entry of pickle help lists
+// the flags that shape an install. Scoped to that entry, since --agent and
+// --project also appear elsewhere in the help.
+func TestInstallFlagsAreAdvertised(t *testing.T) {
+	out := captureStdout(t, func() { Run(nil, "test", []string{"help"}) })
+	start := strings.Index(out, "\n  install ")
+	end := strings.Index(out, "\n  project add ")
+	if start < 0 || end < start {
+		t.Fatalf("install entry not found in pickle help:\n%s", out)
+	}
+	entry := out[start:end]
+	for _, want := range []string{"--in-tree", "--path", "--project", "--agent", "--hooks", "pickle install --help"} {
+		if !strings.Contains(entry, want) {
+			t.Errorf("install entry of pickle help does not mention %q", want)
+		}
+	}
+}
+
 // TestScaffoldReleaseIsUnrelatedToBrine (T-113): pickle scaffold release
 // writes its files into a plain directory with no pickle.toml / brine
 // install at all — unlike every newProject-based test in this file, on

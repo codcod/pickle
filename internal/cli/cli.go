@@ -95,11 +95,15 @@ Usage:
   pickle <command> [arguments]
 
 Setup commands:
-  install                 Scaffold tickets/, install the skill for the agents named by
-                          --agent (default claude), inject the AGENTS.md marker block
-                          (and CLAUDE.md's @AGENTS.md import when --agent includes
-                          claude), write
-                          pickle.toml, and register the first child-project.
+  install                 Scaffold tickets/, install the skill, inject the AGENTS.md
+                          marker block (and CLAUDE.md's @AGENTS.md import for claude),
+                          write pickle.toml, and register the first child-project.
+                          --in-tree          board inside its sole child, registered at "."
+                          --path <dir>       first child for the umbrella layout
+                          --project <name>   the child's name (default: root dir name)
+                          --agent <list>     agents to wire up (default claude)
+                          --hooks            also install the guard hooks
+                          pickle install --help lists every flag.
   project add <name> <path>   Register another connected child-project.
   project list                List registered child-projects.
   project remove <name>       Unregister a child-project (refused if it has live tickets).
