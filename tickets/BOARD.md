@@ -20,11 +20,10 @@ Last updated: 2026-11-08
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | [] |
 
 ## REWORK
 
@@ -32,6 +31,7 @@ Last updated: 2026-11-08
 
 | id | title | open findings |
 |---|---|---|
+| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | review round 1: 1 blocking finding (F1, no filename fallback) |
 
 ## READY (impact order, per child)
 

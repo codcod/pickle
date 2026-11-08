@@ -154,7 +154,34 @@ adjust the member name. The check is that the three paths are present.
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+### Round 1 — 2026-11-08
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | blocking | correctness | — | None of the three scripts falls back to filename completion, so installing them (automatic via Homebrew and the .deb) removes path completion for value-taking flags such as `install --path`, `serve --dir`, `changelog check --changelog` | `bash -c 'eval "$(./pickle completion bash)"; COMP_WORDS=(pickle install --path RE); COMP_CWORD=3; _pickle; echo "[${COMPREPLY[@]}]"'` → `[]`, with the bash script registered without `-o default`; zsh `compadd`s only the word list; fish sets a global `complete -c pickle -f` | bash `complete -o default`; zsh `_files` when the word list is empty; fish suppresses files only when the previous token is not a flag; add a bash behaviour case |
+| F2 | non-blocking | test-gap | noted | The 4(b) exemption for `hooks run` matches only that exact path, so `walk` still reaches `hooks run pre-commit` and `hooks run pre-push` and runs the real guards with `--help` as an argument | `completion_test.go` exempt map; `hooks.go` `runHooksRun` dispatches `args[1:]` to the guard. Harmless today (TestMain's sandbox CWD is not a git repo) but not hermetic | Exempt by prefix |
+| F3 | non-blocking | design | noted | `ticket move` offers status tokens at every non-flag position, including the ticket-id slot and after `--reason` | Both reviewers: `pickle ticket move <TAB>` offers `to-do ready …`. Ticket ids are out of scope (T-151 decision 3), so nothing better can be offered there | Offer statuses only after a positional |
+| F4 | non-blocking | design | noted | The bare status token is derived with `strings.Cut(Dir, "-")`, not `flow.ByToken`'s `^\d+-` strip, so the two would disagree for a flow whose dirs lack a numeric prefix | `completion.go` `completionSpec`; only the brine flow exists today, and its dirs all carry the prefix | Export a bare-token helper from `flow` if a second flow ever lands |
+| F5 | non-blocking | design | noted | `pickle completion --help` exits 2 on stderr, while the other command groups answer `-h/--help` with exit 0 | T-151 decision 1 mandates exit 2 for any argument other than a shell name | Revisit only alongside decision 1 |
+| F6 | non-blocking | design | noted | fish evaluates one `__pickle_is` condition per flag (about 55) on each TAB, and each recomputes the command path | `renderFish` | One `complete` line per command path if latency is ever reported |
+| F7 | non-blocking | design | noted | Shell `case` and `echo` words are rendered with Go's `%q`, which is not shell quoting | `renderShHelpers`; every spec word is plain ASCII today, so the output is valid shell | Single-quote helper if a spec word ever needs it |
+| F8 | non-blocking | design | noted | `renderFish` compiles a regexp only to strip a `--` prefix | `completion.go` `renderFish` | `strings.CutPrefix` |
+
+Disposition summary: 1 blocking (F1 → rework); 7 non-blocking, all noted (F2–F8); 0 fixed inline, 0 folded, 0 new tickets.
+cost: estimated S, actual S
+
+- [x] Reviewer independence settled (step 0): delegated — the orchestrator authored the branch in this session; steps 1–4a ran in a fresh sub-agent (`hunt: angle 7 only`). Delegated findings discarded: none.
+- [x] In-tree stale-branch check (step 0a): `pickle doctor` warned the branch had T-151 in `3-in-development`; rebased onto `main`, re-run clean.
+- [x] Implementation audit (steps 1, 2): Tasks 1–3 met; acceptance re-run verbatim green (fish check skipped — fish not installed); decisions 1–6 honoured.
+- [x] Correctness hunt (step 3): host tool path — `/code-review` (medium) run by the orchestrator on `main...feat/T-151-shell-completion`, no sub-agents; 8 tool findings, 1 discarded on re-verification (the Homebrew default shell list includes `:pwsh`: not reproduced — the installed Homebrew's `Utils::ShellCompletion.default_completion_shells(nil)` returns `[:bash, :zsh, :fish]`); angle 7 run separately by the delegated reviewer, no findings (hostile `COMP_WORDS` under bash 5, bash 3.2 and zsh executed and globbed nothing). F1 reproduced.
+- [x] Consistency audit (step 4): no contradictions.
+- [x] Documentation audit (step 4a): coverage met (installation, cli-reference, CHANGELOG); sweep clean; `just docs-check` green.
+- [ ] Docs-readability pass (step 4b): conscious skip — optional.
+- [x] Findings recorded (step 5).
+- [x] Ticket moved to `tickets/5-rework/` (step 6a).
+- [ ] Other references (step 7) — deferred to the concluding round.
+- [ ] Impact sweep (step 8) — deferred to the concluding round.
+- [ ] Summary + approval (step 9) — deferred to the concluding round.
 
 ## History
 
@@ -163,3 +190,4 @@ adjust the member name. The check is that the three paths are present.
 - 2026-11-08 — plan amended inline: decision 4(b) widened to check one-line usage strings and names its exemptions (gate F1); decision 5's before-hook wrapped in `sh -c`, since goreleaser hooks run without a shell (gate F2). Gate F3 (skip the `pickle <command>` usage line) and F4 (completion usage description on its own line) noted and closed
 - 2026-11-08 — READY → IN DEVELOPMENT: picked up
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-11-08 — IN REVIEW → REWORK: review round 1: 1 blocking finding (F1, no filename fallback)
