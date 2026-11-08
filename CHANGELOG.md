@@ -15,6 +15,8 @@ may change in any release.
 
 ### Added
 
+- `pickle completion bash|zsh|fish` prints a shell completion script. The Homebrew formula and
+  the `.deb` install completion automatically (T-151).
 - `.deb` packages for Debian and Ubuntu, installable with `apt` from the Cloudsmith repository
   `codcod/pickle-cli` (T-147).
 - `pickle uninstall --purge` also removes `pickle.toml` and the untouched `tickets/` scaffold, so a

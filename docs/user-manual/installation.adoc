@@ -116,6 +116,22 @@ Cutting an actual release is tag-driven and documented in the repository's own
 `RELEASING.md` — pickle's, not yours. <<releasing>> covers the convention for
 your project.
 
+[#shell-completion]
+== Shell completion
+
+Homebrew and apt installs set up completion for bash, zsh and fish on their
+own. For any other install, add one line to your shell's rc file:
+
+[source,sh]
+----
+eval "$(pickle completion bash)"   # ~/.bashrc
+source <(pickle completion zsh)    # ~/.zshrc, after compinit
+pickle completion fish | source    # ~/.config/fish/config.fish
+----
+
+Completion covers every command, subcommand and flag, plus the status names
+after `pickle ticket move`. See <<cmd-completion>>.
+
 == Then, inside any project
 
 [source,sh]

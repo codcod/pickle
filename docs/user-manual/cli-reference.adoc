@@ -93,6 +93,9 @@ the same tree. Wait for it to finish, then try again.
   Prescribes no release tooling. Entirely separate from `pickle install` —
   unrelated to {flow}.
 
+| `pickle completion bash\|zsh\|fish`
+| Print a shell completion script.
+
 | `pickle version` · `pickle help`
 | Print the version / the usage summary.
 |===
@@ -1944,6 +1947,20 @@ documented to work in a repo with no `pickle.toml` at all, where that command
 would simply fail. This omission is the design, not an unfinished feature:
 filling in the actual release procedure, and naming whatever tools that
 procedure needs, is left entirely to the project.
+
+[#cmd-completion]
+== `pickle completion`
+
+----
+pickle completion bash|zsh|fish
+----
+
+Prints a completion script for that shell to stdout and does nothing else. Any
+other argument, or none, prints usage and exits `2`. The script completes every
+command, subcommand and flag, plus the status names `pickle ticket move` takes
+(`to-do`, `ready`, `in-development`, …). It does not complete ticket ids or
+child-project names. Homebrew and apt installs wire it up automatically; for
+the one-line rc-file setup otherwise, see <<shell-completion>>.
 
 [#cmd-version]
 == `pickle version` and `pickle help`
