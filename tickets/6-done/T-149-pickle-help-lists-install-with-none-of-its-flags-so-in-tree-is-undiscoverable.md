@@ -146,3 +146,4 @@ Verdict: approved → DONE.
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
 - 2026-11-08 — IN REVIEW → DONE: review approved, 0 blocking
 - 2026-11-08 — published: pushed feat/T-149-install-flags-in-help, opened PR #109 (91450a6)
+- 2026-11-08 — merged to main (PR #109, b5bb4f9, https://github.com/codcod/pickle/commit/b5bb4f9)
