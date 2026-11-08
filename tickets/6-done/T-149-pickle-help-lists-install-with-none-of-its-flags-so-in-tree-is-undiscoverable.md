@@ -107,7 +107,35 @@ go test ./internal/cli/ -run TestInstallFlagsAreAdvertised -v   # PASS
 
 ## Review
 
-<!-- empty until IN REVIEW -->
+- [x] Reviewer independence settled (step 0): the orchestrator wrote this branch in this same
+  session, so steps 1-4a were **delegated** to a freshly spawned independent sub-agent using the
+  verbatim spawn prompt (`hunt: one pass`, low complexity). Its one finding was re-verified by hand
+  against `internal/cli/install.go` before recording. Classification, disposition and the move
+  stayed with the orchestrator.
+- [x] Step 0a: ticket resolved from `main`; `pickle doctor` flagged the branch's stale ticket
+  copy (3-in-development vs main's 4-in-review). This is expected: the branch carries no `tickets/`
+  path in its diff.
+- [x] Implementation audit (step 2): Tasks 1-2 and decisions 1-4 met. Acceptance test re-run
+  verbatim and green (`just build && just test && just lint && just docs-check`; `grep -c` = 3;
+  `TestInstallFlagsAreAdvertised` PASS).
+- [x] Hunt (step 3, one pass, all eight angles): static help text plus one test, with no
+  behaviour, flag or exit-code change. No correctness findings.
+- [x] Quality audit (step 3): the test is scoped to the install entry and fails if any listed flag
+  line is removed.
+- [x] Consistency audit (step 4): no other doc quotes the old install help prose. The
+  `== pickle install` synopsis already lists every flag and agrees with the new lines.
+- [x] Documentation audit (step 4a): Overview row and CHANGELOG `### Changed` entry in place,
+  ordered between Added and Fixed. `just docs-check` green.
+
+| id | severity | class | disposition | description | evidence | suggestion |
+|---|---|---|---|---|---|---|
+| F1 | non-blocking | docs-gap | fixed inline | `--project <name>   that child's name` reads as the `--path` child only, but `--project` also names the sole `--in-tree` child, and the line omitted the default. | `internal/cli/install.go`: `--in-tree` sets `path = "."`, and `--project` defaults to the root dir name | Reworded to `the child's name (default: root dir name)`, folded into the branch commit (`4c20951`). |
+
+Disposition summary: 1 finding, non-blocking — F1 fixed inline. 0 blocking findings.
+
+cost: estimated S, actual S
+
+Verdict: approved → DONE.
 
 ## History
 
@@ -116,3 +144,4 @@ go test ./internal/cli/ -run TestInstallFlagsAreAdvertised -v   # PASS
 - 2026-11-08 — READY → IN DEVELOPMENT: picked up
 - 2026-11-08 — plan amended inline: TestInstallFlagsAreAdvertised asserts on the install entry only (--agent and --project already appear elsewhere in help, so a whole-text check passes vacuously); install prose drops its --agent clause now that --agent has its own line. Applicability gate: 5 non-blocking findings, 2 amended inline, 3 noted and closed.
 - 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
+- 2026-11-08 — IN REVIEW → DONE: review approved, 0 blocking

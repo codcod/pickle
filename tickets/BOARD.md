@@ -20,11 +20,10 @@ Last updated: 2026-11-08
 
 ## IN REVIEW
 
-### pickle (1/1)
+### pickle (0/1)
 
 | id | title | depends-on |
 |---|---|---|
-| T-149 | pickle help lists install with none of its flags, so --in-tree is undiscoverable | [] |
 
 ## REWORK
 
@@ -173,6 +172,7 @@ Last updated: 2026-11-08
 | T-146 | Default CLAUDE.md to an @AGENTS.md import stub instead of a duplicate marker block | yes — merged to main (PR #105, 494e790, https://github.com/codcod/pickle/commit/494e790) |
 | T-147 | publish release .deb packages to the Cloudsmith apt repository so Debian and Ubuntu users can apt install pickle | yes — merged to main (PR #107, 91f9782, https://github.com/codcod/pickle/commit/91f9782) |
 | T-148 | pickle install over a leftover pickle.toml silently ignores its flags; add uninstall --purge for a clean re-install | yes — merged to main (PR #108, 3361777, https://github.com/codcod/pickle/commit/3361777) |
+| T-149 | pickle help lists install with none of its flags, so --in-tree is undiscoverable | no — publish-gated |
 | T-152 | install refusal names the defaulted child; purge refuses on .DS_Store | yes — merged to main (739280c, https://github.com/codcod/pickle/commit/739280c) |
 
 ## DROPPED
