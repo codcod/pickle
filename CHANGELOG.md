@@ -20,6 +20,12 @@ may change in any release.
 - `pickle uninstall --purge` also removes `pickle.toml` and the untouched `tickets/` scaffold, so a
   clean re-install is one command; it refuses, removing nothing, if any work is found (T-148).
 
+### Changed
+
+- `pickle help` lists install's layout, child-project and agent flags (`--in-tree`, `--path`,
+  `--project`, `--agent`, `--hooks`), so the layout choice is visible before the first install
+  (T-149).
+
 ### Fixed
 
 - `pickle install` over an existing `pickle.toml` refuses flags that config contradicts (such as

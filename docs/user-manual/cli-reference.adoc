@@ -28,7 +28,7 @@ the same tree. Wait for it to finish, then try again.
 |===
 | Command | What it does
 
-| `pickle install [--agent …]`
+| `pickle install [--in-tree] [--agent …]`
 | Scaffold `tickets/` + install the skill + inject markers + write
   `pickle.toml` + register the first child-project.
 
