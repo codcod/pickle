@@ -64,15 +64,19 @@ pickup, its flags belong in the spec; the drift test in Task 2 enforces that.
    are out of scope.
 4. **A test fails when the spec drifts from the CLI.** (a) Every command word in `usage()`'s
    command lines is in the spec, and vice versa. (b) For every spec'd command whose `--help`
-   prints `flag`-package usage, the flags printed equal the spec's. Commands that parse flags by
-   hand (some `board` subcommands) are listed in the test as exempt from (b).
+   prints `flag`-package usage, the flags printed equal the spec's; for every command whose
+   `--help` prints a one-line usage string instead (`ticket new|set|move`, `changelog check`,
+   `retro`, `board sync|state`, `serve`), the spec's flags equal the `--name`/`-x` tokens in it.
+   Exempt from (b), by name in the test: `project add` (its usage says only `[flags]`), and the
+   commands that need a `pickle.toml` before reading `--help` or take no flags.
 5. **Packaging: Homebrew via `generate_completions_from_executable`; the .deb via a goreleaser
    `before` hook.** User decision, 2026-11-07.
    - The `brews` entry gets an `install` block: `bin.install "pickle"` plus
      `generate_completions_from_executable(bin/"pickle", "completion")`. Homebrew then runs
      `pickle completion bash|zsh|fish` itself.
    - A `before` hook writes `completions/pickle.bash`, `completions/_pickle` and
-     `completions/pickle.fish` (`go run . completion <sh> > …`).
+     `completions/pickle.fish` (`sh -c 'go run . completion <sh> > …'` — goreleaser runs hooks
+     without a shell, so the redirect needs one).
    - The nfpm `contents` install those to `/usr/share/bash-completion/completions/pickle`,
      `/usr/share/zsh/vendor-completions/_pickle` and
      `/usr/share/fish/vendor_completions.d/pickle.fish`.
@@ -156,3 +160,5 @@ adjust the member name. The check is that the three paths are present.
 
 - 2026-11-07 — created (TO DO). source: chat: user noted pickle generates no shell completion
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
+- 2026-11-08 — plan amended inline: decision 4(b) widened to check one-line usage strings and names its exemptions (gate F1); decision 5's before-hook wrapped in `sh -c`, since goreleaser hooks run without a shell (gate F2). Gate F3 (skip the `pickle <command>` usage line) and F4 (completion usage description on its own line) noted and closed
+- 2026-11-08 — READY → IN DEVELOPMENT: picked up

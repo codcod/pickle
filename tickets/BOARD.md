@@ -13,10 +13,11 @@ Last updated: 2026-11-08
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-11-08
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | low | low | S | [] |  |
 
 ## TO DO (impact order, per child)
 
