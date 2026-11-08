@@ -1,6 +1,7 @@
 # Build artifacts
 /pickle
 /dist/
+/completions/
 
 # Go
 *.test

@@ -9,6 +9,11 @@ before:
   hooks:
     - go mod tidy
     - go test ./...
+    # Shell completion scripts for the .deb (nfpms contents below). Hooks run
+    # without a shell, so the redirects need sh -c. completions/ is gitignored.
+    - sh -c 'mkdir -p completions && go run . completion bash > completions/pickle.bash'
+    - sh -c 'go run . completion zsh > completions/_pickle'
+    - sh -c 'go run . completion fish > completions/pickle.fish'
 
 builds:
   - id: pickle
@@ -54,6 +59,13 @@ nfpms:
     license: MIT
     bindir: /usr/bin
     file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Arch }}"
+    contents:
+      - src: completions/pickle.bash
+        dst: /usr/share/bash-completion/completions/pickle
+      - src: completions/_pickle
+        dst: /usr/share/zsh/vendor-completions/_pickle
+      - src: completions/pickle.fish
+        dst: /usr/share/fish/vendor_completions.d/pickle.fish
 
 # Pin the release forge to GitHub explicitly. goreleaser otherwise infers it and
 # will prefer GitLab whenever a GITLAB_TOKEN is present in the environment, which
@@ -101,3 +113,7 @@ brews:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/codcod/pickle"
     description: "Ticket-based, board-driven feature flow as a CLI"
+    # Homebrew runs `pickle completion bash|zsh|fish` itself and installs each.
+    install: |
+      bin.install "pickle"
+      generate_completions_from_executable(bin/"pickle", "completion")
