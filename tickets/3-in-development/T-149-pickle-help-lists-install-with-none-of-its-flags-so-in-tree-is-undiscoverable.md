@@ -113,3 +113,5 @@ go test ./internal/cli/ -run TestInstallFlagsAreAdvertised -v   # PASS
 
 - 2026-11-07 — created (TO DO). source: chat: user found --in-tree absent from pickle help; confirmed on main
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
+- 2026-11-08 — READY → IN DEVELOPMENT: picked up
+- 2026-11-08 — plan amended inline: TestInstallFlagsAreAdvertised asserts on the install entry only (--agent and --project already appear elsewhere in help, so a whole-text check passes vacuously); install prose drops its --agent clause now that --agent has its own line. Applicability gate: 5 non-blocking findings, 2 amended inline, 3 noted and closed.

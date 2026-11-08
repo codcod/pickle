@@ -9,14 +9,15 @@ hand — edit the tickets. Hand-written planning notes live in [`NOTES.md`](NOTE
 **WIP limits (per child-project):**
 - `pickle`: `3-in-development/` ≤ 1 · `4-in-review/` ≤ 1
 
-Last updated: 2026-11-07
+Last updated: 2026-11-08
 
 ## IN DEVELOPMENT
 
-### pickle (0/1)
+### pickle (1/1)
 
 | id | title | depends-on |
 |---|---|---|
+| T-149 | pickle help lists install with none of its flags, so --in-tree is undiscoverable | [] |
 
 ## IN REVIEW
 
@@ -38,7 +39,6 @@ Last updated: 2026-11-07
 
 | id | title | impact | complexity | cost | depends-on | family |
 |---|---|---|---|---|---|---|
-| T-149 | pickle help lists install with none of its flags, so --in-tree is undiscoverable | medium | low | S | [] |  |
 | T-150 | install takes --ticket-prefix and the marker block renders the configured prefix instead of a hardcoded T-NNN | medium | low | S | [] |  |
 | T-151 | pickle completion bash¦zsh¦fish prints a shell completion script | low | low | S | [] |  |
 
