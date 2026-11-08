@@ -170,3 +170,4 @@ grep -c 'XYZ-NNN' AGENTS.md                  # ≥ 3
 - 2026-11-07 — TO DO → READY: plan complete; decisions confirmed with the user 2026-11-07
 - 2026-11-08 — READY → IN DEVELOPMENT: picked up
 - 2026-11-08 — plan amended inline: applicability gate (fresh sub-agent, no blocking findings) — refreshed stale line refs; Task 1 validates the prefix before any write; Task 4 now required (T-148 merged) with its mechanics; Docs adds --ticket-prefix to the re-install refusal list
+- 2026-11-08 — IN DEVELOPMENT → IN REVIEW: acceptance green
