@@ -20,6 +20,48 @@ Use `pickle serve` to visualize the board in a browser.
 
 For the best UX use `pickle` with [Pi](https://pi.dev).
 
+## Is brine right for you?
+
+Brine trades speed per change for a written record of every change. Every feature goes
+through a ticket that is planned, gated, built, reviewed and merged, and all of it is
+stored as markdown in your repository.
+
+**It fits when:**
+
+- Work spans many sessions or many agents, and the plan has to outlive the context window
+  of the agent that wrote it.
+- You want an agent to plan before it builds, and you want to approve that plan. A ticket
+  can't be picked up until its Implementation Plan passes the READY gate.
+- You want reviews whose findings are recorded and resolved, not lost in chat.
+- You want the backlog, history and design decisions in git, next to the code, readable
+  without any service.
+- A human keeps the last word: agents commit locally, but pushing, opening a merge request
+  and merging wait for you.
+
+**It doesn't fit when:**
+
+- The project is a one-off script, a spike or a prototype you'll throw away.
+- Most changes are small and immediate, and a ticket round-trip would cost more than the
+  change itself.
+- Your team already plans in an external tracker (Jira, Linear, GitHub Issues) and wants
+  to keep it. Brine doesn't sync with one, and running two boards means two sources of
+  truth.
+- You want agents to push and merge on their own. Brine is built around human gates.
+
+**What it costs day to day.** One ticket per feature, each with a dated History. A WIP
+limit: one ticket in development and one in review per project, by default. Bookkeeping
+commits on the base branch, separate from feature branches. Your agent does most of this
+through the skill; you mostly approve plans and merges.
+
+**What `pickle install` adds.** A `tickets/` directory with a generated `BOARD.md`,
+`pickle.toml`, the brine skill under `.agents/skills/brine/`, a marked block in
+`AGENTS.md`, and per-agent wiring for Claude Code, opencode or Pi. Git hooks are optional,
+via `--hooks`.
+
+**Leaving.** `pickle uninstall --dry-run` lists what would be removed, and `pickle uninstall`
+removes it. Your tickets and `pickle.toml` stay, so you keep the record. `--purge` also
+deletes them, and refuses if any ticket holds work.
+
 ## Install
 
 > **Two different "installs."** *This* section installs the **`pickle` binary**
