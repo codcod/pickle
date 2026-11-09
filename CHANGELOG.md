@@ -13,6 +13,8 @@ may change in any release.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-09
+
 ### Added
 
 - `pickle completion bash|zsh|fish` prints a shell completion script. The Homebrew formula and
@@ -1165,7 +1167,8 @@ self-hosting that very flow (see `tickets/`).
   `just docs-check` and rendered to PDF/EPUB with `just docs-build` (both via
   [snowball](https://github.com/codcod/snowball)).
 
-[Unreleased]: https://github.com/codcod/pickle/compare/v1.4.3...HEAD
+[Unreleased]: https://github.com/codcod/pickle/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/codcod/pickle/compare/v1.4.3...v1.5.0
 [1.4.3]: https://github.com/codcod/pickle/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/codcod/pickle/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/codcod/pickle/compare/v1.4.0...v1.4.1
