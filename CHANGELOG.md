@@ -13,6 +13,11 @@ may change in any release.
 
 ## [Unreleased]
 
+### Added
+
+- The README has an "Is brine right for you?" section: when brine fits and when it does not,
+  what it costs day to day, what `pickle install` adds, and how to leave.
+
 ## [1.5.0] - 2026-11-09
 
 ### Added
