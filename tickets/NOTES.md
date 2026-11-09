@@ -1442,3 +1442,42 @@ T-151 (shell completion). Two were declined, without filing:
   T-148 makes that recoverable, and T-149 and T-150 make the flags visible and complete, so the
   wizard's remaining value is small. Reconsider once those ship, and only if the regret still
   shows up in field use. If it is built, it prompts only on a TTY with no flags given.
+
+## Matt Pocock's skills exploration (2026-11-09) — explored, nothing filed
+
+Compared brine with Matt Pocock's public skill set (`mattpocock/skills`: to-tickets, to-spec,
+triage, implement, code-review, retro, wayfinder, grilling, diagnosing-bugs, tdd,
+writing-for-agents). Four borrowings looked worth taking, then failed a challenge against the
+corpus (119 tickets in `6-done/`, 30 in `7-dropped/`). Recorded here so they are not re-proposed
+without new evidence:
+
+- **Dedup at filing also reads `7-dropped/`, prior rejections and the code** (from triage's
+  redundancy and prior-rejection checks). No re-filing of a rejected idea could be found: the drops
+  are almost all absorptions into board-triage merges. The three overrides of § *"Rejected
+  outright"* (T-105, T-126, T-141) were human calls a check would not have changed. Already-built
+  behaviour is caught by refine step 2 and by the applicability gate. The only remainder is adding
+  `7-dropped/` titles to make-ticket step 2's reading list: cheap, with no observed failure.
+- **Review step 2 flags behaviour the ticket did not ask for** (code-review's Spec axis). No
+  review row in the corpus records unrequested behaviour, and 85 `plan amended inline` lines
+  show plan changes already get recorded. Unproven either way. **Trial:** ask the question by
+  hand in the next three reviews; add the bullet to `review-protocol.md` §2 only if it surfaces a
+  finding no other step recorded, otherwise close the direction.
+- **Grilling-style question rounds in refine step 3** (numbered, each with a recommended answer,
+  worded so "yes" accepts). Refinement does not fail on outcome: 6 `plan-wrong` rows across the
+  corpus. "Look up facts yourself" is already default behaviour, and batching the whole frontier
+  invites the question floods the source repo itself records as a problem. What remains is
+  round-trip comfort, which is the human's preference, not a payload rule.
+- **A bug-fix ticket's acceptance test shown failing on the base branch first**
+  (diagnosing-bugs). `test-gap` already covers "a test that cannot fail". Of 62 `test-gap` rows,
+  2 are blocking cannot-fail tests, both caught by review. Only about 15 of 119 tickets are fixes
+  (title match, rough), there is no ticket-type field to key the rule on, and the acceptance test
+  is a command list, not one regression test. The narrowest form (a TEMPLATE hint: "if the ticket
+  fixes a defect, name the test that fails on the base branch") is cheap, but review already
+  does the job.
+
+Also set aside without challenge, as they contradict locked choices: tickets without file paths
+(brine pins paths and re-checks them at pickup), parallel implementers on an integration branch
+(WIP ≤ 1), a separate `.out-of-scope/` directory (`7-dropped/` plus this file), and
+glossary/ADR flows (§ *ADR exploration (2026-08-15)*). Filed as a note rather than as tickets
+dropped on arrival: none was filed in earnest, and `7-dropped/` is for work someone meant to
+build.
