@@ -98,6 +98,16 @@ pickle install        # lay down brine
 pickle version
 ```
 
+## Command completion
+
+Make use of completion:
+
+```sh
+mkdir -p ~/.config/zsh/completions
+pickle completion > ~/.config/zsh/completions/_pickle
+exec zsh
+```
+
 ## Documentation
 
 Each release offers a current version of the user manual in PDF and EPUB
